@@ -90,3 +90,90 @@ if (! function_exists('safe_has_table')) {
     }
 }
 
+if (! function_exists('tenant')) {
+    /**
+     * Current client (tenant) details from admin_erp, or null when tenancy is off.
+     *
+     * @return mixed
+     */
+    function tenant(?string $key = null, $default = null)
+    {
+        $tenant = app(\App\Services\Tenancy\TenantManager::class)->current();
+
+        return $key === null ? $tenant : data_get($tenant, $key, $default);
+    }
+}
+
+if (! function_exists('tenant_has_module')) {
+    /**
+     * Check if current tenant has access to given module name(s).
+     * If tenancy is disabled or not active, returns true.
+     * Automatically handles common module aliases for Hotel ERP.
+     *
+     * @param string|array $moduleNames
+     * @return bool
+     */
+    function tenant_has_module($moduleNames): bool
+    {
+        if (! config('tenant.enabled') || ! tenant()) {
+            return true;
+        }
+
+        $assigned = (array) tenant('modules', []);
+
+        if (empty($assigned)) {
+            return false;
+        }
+
+        $assignedNormalized = array_map(function ($m) {
+            return strtolower(trim((string) $m));
+        }, $assigned);
+
+        static $aliasGroups = [
+            ['dashboard'],
+            ['products', 'product', 'all products'],
+            ['orders', 'order', 'sales', 'sales & bills', 'sales and bills', 'sales and orders'],
+            ['purchases', 'purchase', 'purchase orders'],
+            ['invoices', 'invoice', 'custom invoice', 'custom invoices', 'billing'],
+            ['expenses', 'expense', 'manage expense', 'manage expenses'],
+            ['categories & brands', 'category', 'categories', 'brand', 'brands', 'catalog setup', 'catalog'],
+            ['tables', 'table', 'table reservation', 'table reservations'],
+            ['vendors', 'vendor', 'suppliers', 'supplier'],
+            ['staff', 'employees', 'employee', 'users'],
+            ['general settings', 'settings', 'setting'],
+            ['tax rates', 'tax rate', 'tax', 'taxes', 'gst'],
+            ['accounting', 'manage accounting', 'accounts', 'account ledger'],
+            ['inventory', 'manage inventory', 'stock'],
+            ['advance pay', 'advance payment', 'advance payments'],
+            ['attendance', 'manage attendance', 'biometric'],
+            ['cash & bank', 'cash and bank', 'cash and bank book', 'cash book', 'bank book', 'banks'],
+            ['leaves', 'leave', 'leave request'],
+            ['payroll', 'salary', 'salary details'],
+            ['credit/debit notes', 'credit and debit notes', 'credit notes', 'debit notes', 'credit debit notes'],
+        ];
+
+        $checkList = is_array($moduleNames) ? $moduleNames : [$moduleNames];
+        $expandedCheckList = [];
+
+        foreach ($checkList as $name) {
+            $norm = strtolower(trim((string) $name));
+            $expandedCheckList[$norm] = true;
+            foreach ($aliasGroups as $group) {
+                if (in_array($norm, $group, true)) {
+                    foreach ($group as $alias) {
+                        $expandedCheckList[$alias] = true;
+                    }
+                }
+            }
+        }
+
+        foreach (array_keys($expandedCheckList) as $name) {
+            if (in_array($name, $assignedNormalized, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+

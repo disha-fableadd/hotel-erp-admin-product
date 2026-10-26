@@ -2,11 +2,16 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Artisan;
 use App\Models\UserPermission;
+use App\Services\Tenancy\TenantManager;
+use App\Support\AppViewData;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
+use Laravel\Passport\Passport;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -14,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(TenantManager::class);
+
         // After config:cache, env() is empty in providers — use config (filled from .env at cache time).
         $imagePath = config('app.image_path');
         if (! is_string($imagePath) || $imagePath === '') {
@@ -34,7 +41,24 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \Illuminate\Support\Facades\View::share('imagePath', config('app.image_path'));
+        View::share('imagePath', config('app.image_path'));
+
+        // Passport keys are shared by all tenants; pin the path before the
+        // tenant switch moves storage_path() to storage/tenants/{id}.
+        if (class_exists(Passport::class)) {
+            Passport::loadKeysFrom(storage_path());
+        }
+
+        $tenancy = $this->app->make(TenantManager::class);
+
+        if ($tenancy->enabled() && $this->app->runningInConsole() && ($tenantId = (int) getenv('TENANT_ID')) > 0) {
+            $tenancy->activateById($tenantId);
+        }
+
+        // Over HTTP with tenancy on, IdentifyTenant shares this after the client DB is selected.
+        if (! $tenancy->enabled() || $this->app->runningInConsole()) {
+            AppViewData::share();
+        }
 
         if (!File::exists(public_path('storage'))) {
             try {
@@ -43,13 +67,42 @@ class AppServiceProvider extends ServiceProvider
                 // Optional: Log error or ignore silently
             }
         }
+
         app()->singleton('hasPermission', function () {
             return function ($moduleId, $action) {
+                // Map module IDs to names for tenant module access validation
+                static $idToNameMap = [
+                    0  => 'Dashboard',
+                    1  => 'Products',
+                    2  => 'Orders',
+                    3  => 'Purchases',
+                    4  => 'Invoices',
+                    5  => 'Expenses',
+                    8  => 'Categories & Brands',
+                    9  => 'Tables',
+                    10 => 'Vendors',
+                    11 => 'Staff',
+                    14 => 'General Settings',
+                    15 => 'Tax Rates',
+                    16 => 'Accounting',
+                    17 => 'Inventory',
+                    23 => 'Advance Pay',
+                    26 => 'Attendance',
+                    27 => 'Cash & Bank',
+                    28 => 'Leaves',
+                    29 => 'Payroll',
+                    30 => 'Credit/Debit Notes',
+                ];
+
+                if (isset($idToNameMap[$moduleId]) && ! tenant_has_module($idToNameMap[$moduleId])) {
+                    return false;
+                }
+
                 $user = Auth::user(); // Use default auth guard for web
 
                 if (!$user) return false;
 
-                // Grant all permissions to admin users
+                // Grant all permissions to admin users for tenant-allowed modules
                 if (strtolower($user->role) === 'admin' || $user->role_id == 1) {
                     return true;
                 }
