@@ -6,6 +6,7 @@ use App\Models\Expense;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\PurchaseInvoice;
+use App\Models\Table_no;
 use App\Models\User;
 use App\Models\AdvancePayment;
 use App\Models\Attendance;
@@ -187,11 +188,9 @@ class AuthController extends Controller
             ->sum('amount');
 
         // ✅ Counts
-        $runningTableCount = \App\Models\Table_no::where('branch_id', $BranchID)
-            ->where('isDeleted', 0)
-            ->get()
-            ->filter(fn($table) => $table->resolved_status === 'running')
-            ->count();
+        $tables = Table_no::where('branch_id', $BranchID)->get();
+        $tableCount = $tables->count();
+        $runningTableCount = $tables->filter(fn($table) => $table->resolved_status === 'running')->count();
 
         $customerCount = User::where('role', 'customer')
             ->where('isDeleted', '!=', 1)
@@ -503,6 +502,7 @@ class AuthController extends Controller
 
         return view('index', compact(
             'runningTableCount',
+            'tableCount',
             'totalPurchaseAmount',
             'totalSalesAmount',
             'totalExpenseAmount',
