@@ -16,12 +16,29 @@ class CheckPermission
             return redirect()->route('auth.signin');
         }
 
-        // 1. Admin always has full access
+        $routeName = $request->route() ? $request->route()->getName() : null;
+        $normalizedRouteName = $routeName ? strtolower($routeName) : null;
+
+        // Enforce tenant module restrictions across ALL roles (admin, sub-admin, staff)
+        // If the tenant/client does NOT have access to the module in admin_erp,
+        // block access immediately so users cannot access unassigned modules via direct URL.
+        $requiredTenantModule = \App\Services\ModuleAccessService::resolveRequiredModule($request, $normalizedRouteName);
+        if ($requiredTenantModule !== null && ! tenant_has_module($requiredTenantModule)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You do not have permission to access this module.',
+                ], 403);
+            }
+
+            return redirect()->route('auth.profile')
+                ->with('error', 'You do not have permission to access this page or module.');
+        }
+
+        // 1. Admin always has full access to permitted tenant modules
         if ($user->role === 'admin' || $user->role_id === 1) {
             return $next($request);
         }
-
-        $routeName = $request->route() ? $request->route()->getName() : null;
 
         // 2. Protect Sub-Branch/Admin modules exclusively
         $adminOnlyRoutes = [

@@ -17,6 +17,10 @@ use App\Models\{PurchaseInvoice, Order, Expense, Product};
 use App\Models\FaceLoginAudit;
 use App\Services\FaceRecognitionService;
 use App\Services\AttendanceLocationService;
+use App\Exceptions\TenantResolutionException;
+use App\Services\Tenancy\TenantManager;
+use App\Support\AppViewData;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 
 class LoginController extends Controller
@@ -39,17 +43,63 @@ class LoginController extends Controller
     //     }
     // }
     public function login(Request $request)
-{
-    // dd('asd');
-    $request->validate([
-        'email' => 'required|string|email',
-        'password' => 'required|string',
-    ]);
+    {
+        $request->validate([
+            'username' => 'nullable|string',
+            'email'    => 'nullable|string',
+            'password' => 'required|string',
+        ]);
 
-    $force = filter_var($request->input('force', false), FILTER_VALIDATE_BOOLEAN);
+        $loginIdentifier = trim((string)($request->input('username') ?? $request->input('email') ?? ''));
+        if (empty($loginIdentifier)) {
+            return response()->json([
+                'status' => false,
+                'error'  => 'Username or email is required.',
+            ], 422);
+        }
 
-    if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
-        $user = Auth::user();
+        // Auto-ensure username column exists in users table
+        if (Schema::hasTable('users') && !Schema::hasColumn('users', 'username')) {
+            Schema::table('users', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->string('username')->nullable()->after('name');
+            });
+        }
+
+        if ($denied = $this->ensureTenantAllowsLogin($request)) {
+            return $denied;
+        }
+
+        $force = filter_var($request->input('force', false), FILTER_VALIDATE_BOOLEAN);
+
+        $authResult = $this->authenticateByEmailPassword($loginIdentifier, $request->password);
+        if ($authResult['error']) {
+            $statusCode = $authResult['error'] === 'Wrong Login credentials entered.' ? 401 : 403;
+
+            return response()->json([
+                'status' => false,
+                'error'  => $authResult['error'],
+            ], $statusCode);
+        }
+
+        $user = $authResult['user'];
+
+        if ($request->hasSession()) {
+            $tenancy = app(TenantManager::class);
+            if ($tenancy->enabled() && $tenancy->current()) {
+                $request->session()->put('tenant_id', $tenancy->current()['id']);
+                $request->session()->put('tenant', $tenancy->current());
+            }
+            Auth::login($user);
+            AppViewData::share();
+
+            // If sub-admin (sub-branch) or staff with branch_id, initialize selectedSubAdminId
+            if ($user->role === 'sub-admin') {
+                $request->session()->put('selectedSubAdminId', $user->id);
+            } elseif ($user->role === 'staff' && !empty($user->branch_id)) {
+                $request->session()->put('selectedSubAdminId', $user->branch_id);
+            }
+        }
+
         $token = $user->createToken('LaravelPassportToken')->accessToken;
 
         // Get permissions
@@ -66,69 +116,11 @@ class LoginController extends Controller
                 'update' => $permission->edit,
                 'delete' => $permission->delete,
                 'created_at' => $permission->created_at,
-            ]; 
+            ];
         }
 
         $redirect = route('auth.dashboard');
 
-        // ✅ Staff attendance logic
-        // if ($user->role === 'staff') {
-        //     $today = now('Asia/Kolkata')->format('Y-m-d');
-        //     $time = now('Asia/Kolkata')->format('H:i:s');
-
-        //     $attendance = Attendance::where('user_id', $user->id)
-        //         ->where('date', $today)
-        //         ->first();
-
-        //     // Case 1: Already logged in (no checkout)
-        //     if ($attendance && empty($attendance->check_out_time)) {
-        //         return response()->json([
-        //             'status' => false,
-        //             'message' => 'You are already logged in today. Please logout before logging in again.'
-        //         ], 400);
-        //     }
-
-        //     // Case 2: Already checked in & out — show warning (popup)
-        //     if ($attendance && !empty($attendance->check_in_time) && !empty($attendance->check_out_time) && !$force) {
-        //         return response()->json([
-        //             'status' => true,
-        //             'warning' => true,
-        //             'message' => 'You have already checked in and checked out once today. Do you still want to log in again?',
-        //             'user' => $user,
-        //             'token' => $token,
-        //             'redirect' => route('auth.profile'),
-        //             'permissions' => $formattedPermissions,
-        //             'showAppointments' => false,
-        //         ]);
-        //     }
-
-        //     // Case 3: Normal login or forced re-login
-        //     LogAttendance::create([
-        //         'user_id' => $user->id,
-        //         'check_date' => $today,
-        //         'check_in' => $time,
-        //         'checkout_out' => null,
-        //         'branch_id' => $user->branch_id ?? '0',
-        //     ]);
-
-        //     if (!$attendance) {
-        //         Attendance::create([
-        //             'user_id' => $user->id,
-        //             'branch_id' => $user->branch_id ?? '0',
-        //             'date' => $today,
-        //             'check_in_time' => $time,
-        //             'check_out_time' => null,
-        //             'status' => 'P',
-        //         ]);
-        //     } else {
-        //         $attendance->update([
-        //             'check_in_time' => $time,
-        //             'check_out_time' => null,
-        //         ]);
-        //     }
-
-        //     $redirect = route('auth.profile');
-        // }
         if (strtolower($user->role) === 'staff') {
             $redirect = route('auth.staff-dashboard');
 
@@ -153,22 +145,127 @@ class LoginController extends Controller
             ]);
         }
 
-    // Return response for non-staff logins (admin, sub-admin, etc.)
-    return response()->json([
-        'status' => true,
-        'token' => $token,
-        'user' => $user,
-        'redirect' => $redirect,
-        'permissions' => $formattedPermissions,
-        'showAppointments' => true,
-    ]);
-    } else {
+        // Return response for non-staff logins (admin, sub-admin, etc.)
         return response()->json([
-            'status' => false,
-            'error' => 'Login Credential Wrong'
-        ], 401);
+            'status' => true,
+            'token' => $token,
+            'user' => $user,
+            'redirect' => $redirect,
+            'permissions' => $formattedPermissions,
+            'showAppointments' => true,
+        ]);
     }
-}
+
+    /**
+     * Authenticate by username/email/password.
+     */
+    protected function authenticateByEmailPassword(string $login, string $password): array
+    {
+        $cleanLogin = strtolower(trim($login));
+        $candidates = User::where(function ($q) use ($cleanLogin) {
+            if (Schema::hasColumn('users', 'username')) {
+                $q->whereRaw('LOWER(TRIM(username)) = ?', [$cleanLogin])
+                  ->orWhereRaw('LOWER(TRIM(email)) = ?', [$cleanLogin]);
+                if (!str_contains($cleanLogin, '_')) {
+                    $q->orWhereRaw('LOWER(TRIM(username)) LIKE ?', ['%_' . $cleanLogin]);
+                }
+            } else {
+                $q->whereRaw('LOWER(TRIM(email)) = ?', [$cleanLogin]);
+            }
+        })
+        ->where('isDeleted', 0)
+        ->latest('id')
+        ->get();
+
+        foreach ($candidates as $user) {
+            if (! Hash::check($password, $user->password)) {
+                continue;
+            }
+
+            if ((int) ($user->status ?? 1) === 0) {
+                return ['user' => null, 'error' => 'Your account has been deactivated. Please contact the administrator.'];
+            }
+
+            return ['user' => $user, 'error' => null];
+        }
+
+        return ['user' => null, 'error' => 'Wrong Login credentials entered.'];
+    }
+
+    /**
+     * Ensures the tenant allows login via central admin_erp.
+     */
+    protected function ensureTenantAllowsLogin(Request $request): ?\Illuminate\Http\JsonResponse
+    {
+        $tenancy = app(TenantManager::class);
+        if (! $tenancy->enabled()) {
+            return null;
+        }
+
+        $login = trim((string)($request->input('username') ?? $request->input('email') ?? ''));
+
+        $buildTenantErrorResponse = function (TenantResolutionException $ex) {
+            $ctx = $ex->context ?? [];
+            $isExpired = in_array(strtoupper((string) $ex->reason), ['EXPIRED', 'INACTIVE'], true)
+                || str_contains(strtolower($ex->getMessage()), 'expired');
+            $rawDate = $ctx['end_date'] ?? ($ctx['expiry_date'] ?? null);
+            $formattedDate = $rawDate;
+            if ($rawDate && $rawDate !== 'N/A') {
+                try {
+                    $formattedDate = \Carbon\Carbon::parse($rawDate)->format('d-m-Y');
+                } catch (\Throwable) {}
+            }
+
+            return response()->json([
+                'status'       => false,
+                'is_expired'   => $isExpired,
+                'tenant_error' => $ex->reason,
+                'error'        => $ex->getMessage(),
+                'plan_name'    => $ctx['plan_name'] ?? 'Starter',
+                'end_date'     => $formattedDate ?: 'N/A',
+                'expiry_date'  => $formattedDate ?: 'N/A',
+            ], in_array($ex->status, [403, 404, 409, 503], true) ? $ex->status : 403);
+        };
+
+        // On central/localhost domain, identify tenant directly by user credentials
+        if (\App\Http\Middleware\IdentifyTenant::isCentralHost($request->getHost())) {
+            if (!empty($login)) {
+                try {
+                    $tenant = $tenancy->resolveByEmail($login, true);
+                    if ($request->hasSession()) {
+                        $request->session()->put('tenant_id', $tenant['id']);
+                        $request->session()->put('tenant', $tenant);
+                    }
+                    return null;
+                } catch (TenantResolutionException $userTenantError) {
+                    return $buildTenantErrorResponse($userTenantError);
+                }
+            }
+            return null;
+        }
+
+        try {
+            // Check if request host matches a specific tenant subdomain
+            $tenancy->resolveByHost($request->getHost(), true);
+            return null;
+        } catch (TenantResolutionException $e) {
+            // If domain not registered, try resolving tenant by user's username or email
+            if ($e->reason === 'NOT_FOUND' && !empty($login)) {
+                try {
+                    $tenant = $tenancy->resolveByEmail($login, true);
+                    if ($request->hasSession()) {
+                        $request->session()->put('tenant_id', $tenant['id']);
+                        $request->session()->put('tenant', $tenant);
+                    }
+                    return null;
+                } catch (TenantResolutionException $userTenantError) {
+                    return $buildTenantErrorResponse($userTenantError);
+                }
+            }
+
+            return $buildTenantErrorResponse($e);
+        }
+    }
 
     protected function extractLoginLocation(Request $request): array
     {

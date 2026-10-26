@@ -40,6 +40,7 @@ class ProfileController extends Controller
             return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
         }
 
+        $oldEmail = $user->email;
         $user->name = $request->name;
         $user->email = $request->email;
         $user->phone = $request->phone;
@@ -54,6 +55,28 @@ class ProfileController extends Controller
         }
 
         $user->save();
+
+        // If updating admin user profile, also synchronize changes to master admin_erp
+        if ($user->role === 'admin' || (int) ($user->role_id ?? 0) === 1 || (int) $user->id === 1) {
+            try {
+                $tenantManager = app(\App\Services\Tenancy\TenantManager::class);
+                if ($tenantManager->enabled()) {
+                    $tenant = $tenantManager->current();
+                    $tenantManager->syncProfileToAdmin([
+                        'client_id' => $tenant['client_id'] ?? null,
+                        'tenant_id' => $tenant['id'] ?? null,
+                        'domain' => request()->getHost(),
+                        'current_email' => $oldEmail,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'phone' => $user->phone,
+                        'password' => $request->filled('password') ? $request->password : null,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Profile update sync to admin_erp failed: ' . $e->getMessage());
+            }
+        }
 
         return response()->json(['status' => true, 'message' => 'Profile updated successfully'], 200);
     }
