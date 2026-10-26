@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use App\Providers\RouteServiceProvider;
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\Response;
+
+class RedirectIfAuthenticated
+{
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     */
+    public function handle(Request $request, Closure $next, string ...$guards): Response
+    {
+        $guards = empty($guards) ? [null] : $guards;
+
+    
+        if (Auth::guard('web')->check()) {
+            $user = Auth::guard('web')->user();
+            if ($user) {
+                if (strtolower($user->role) === 'staff') {
+                    return redirect('/staff-dashboard');
+                } elseif (strtolower($user->role) === 'hr') {
+                    return redirect('/hr/dashboard');
+                }
+            }
+            return redirect('/dashboard'); // or any other page
+        }
+        
+        return $next($request);
+
+    }
+}

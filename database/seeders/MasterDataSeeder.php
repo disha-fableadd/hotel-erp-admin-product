@@ -1,0 +1,489 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\User;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+class MasterDataSeeder extends Seeder
+{
+    /**
+     * Seed essential ERP and HR master tables.
+     */
+    public function run(): void
+    {
+        $branchId = 1;
+        $adminUserId = User::where('role', 'admin')->value('id')
+            ?? DB::table('users')->value('id');
+
+        // 1. Taxes Master (GST rates)
+        if (Schema::hasTable('taxes')) {
+            $taxes = [
+                ['tax_name' => 'CGST', 'tax_rate' => 5.00, 'status' => 'active'],
+                ['tax_name' => 'SGST', 'tax_rate' => 5.00, 'status' => 'active'],
+                ['tax_name' => 'IGST', 'tax_rate' => 5.00, 'status' => 'active'],
+                ['tax_name' => 'GST 0%', 'tax_rate' => 0.00, 'status' => 'active'],
+                ['tax_name' => 'GST 5%', 'tax_rate' => 5.00, 'status' => 'active'],
+                ['tax_name' => 'GST 12%', 'tax_rate' => 12.00, 'status' => 'active'],
+                ['tax_name' => 'GST 18%', 'tax_rate' => 18.00, 'status' => 'active'],
+                ['tax_name' => 'GST 28%', 'tax_rate' => 28.00, 'status' => 'active'],
+            ];
+
+            foreach ($taxes as $tax) {
+                DB::table('taxes')->updateOrInsert(
+                    [
+                        'tax_name' => $tax['tax_name'],
+                        'branch_id' => $branchId,
+                    ],
+                    [
+                        'tax_rate' => $tax['tax_rate'],
+                        'status' => $tax['status'],
+                        'isDeleted' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+
+        // 2. Currency Master
+        if (Schema::hasTable('currency')) {
+            $currencies = [
+                ['currency_name' => 'Indian Rupee', 'currency_symbol' => '₹'],
+                ['currency_name' => 'US Dollar', 'currency_symbol' => '$'],
+                ['currency_name' => 'Euro', 'currency_symbol' => '€'],
+                ['currency_name' => 'British Pound', 'currency_symbol' => '£'],
+                ['currency_name' => 'UAE Dirham', 'currency_symbol' => 'AED'],
+            ];
+
+            foreach ($currencies as $curr) {
+                DB::table('currency')->updateOrInsert(
+                    ['currency_name' => $curr['currency_name']],
+                    [
+                        'currency_symbol' => $curr['currency_symbol'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+
+        // 3. Departments & Designations Master
+        if (Schema::hasTable('department') && Schema::hasTable('designation')) {
+            $departmentsData = [
+                'Management' => [
+                    'General Manager',
+                    'Operations Manager',
+                ],
+                'Front Office' => [
+                    'Front Desk Executive',
+                    'Guest Relations Executive',
+                ],
+                'Kitchen & Culinary' => [
+                    'Head Chef',
+                    'Sous Chef',
+                    'Line Cook',
+                ],
+                'F&B Service' => [
+                    'Restaurant Captain',
+                    'Steward / Waiter',
+                    'Bartender',
+                ],
+                'Housekeeping' => [
+                    'Housekeeping Supervisor',
+                    'Room Attendant',
+                ],
+                'Accounts & Finance' => [
+                    'Accountant',
+                    'Cashier',
+                ],
+                'Human Resources' => [
+                    'HR Executive',
+                ],
+            ];
+
+            foreach ($departmentsData as $deptName => $designations) {
+                DB::table('department')->updateOrInsert(
+                    [
+                        'department_name' => $deptName,
+                        'branch_id' => $branchId,
+                    ],
+                    [
+                        'enable_overtime' => 0,
+                        'overtime_rate_type' => 'multiplier',
+                        'overtime_multiplier' => 1.50,
+                        'min_overtime_count_in_minutes' => 30,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+
+                $departmentId = DB::table('department')
+                    ->where('department_name', $deptName)
+                    ->where('branch_id', $branchId)
+                    ->value('id');
+
+                foreach ($designations as $desigName) {
+                    DB::table('designation')->updateOrInsert(
+                        [
+                            'designation_name' => $desigName,
+                            'department_id' => $departmentId,
+                            'branch_id' => $branchId,
+                        ],
+                        [
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]
+                    );
+                }
+            }
+
+            // Assign Staff user to F&B Service department & Restaurant Captain designation if staff exists
+            $staffUser = User::where('role', 'staff')->first();
+            if ($staffUser && Schema::hasTable('user_details')) {
+                $fbDeptId = DB::table('department')->where('department_name', 'F&B Service')->where('branch_id', $branchId)->value('id');
+                $captainDesigId = $fbDeptId ? DB::table('designation')->where('department_id', $fbDeptId)->where('designation_name', 'Restaurant Captain')->value('id') : null;
+
+                if ($fbDeptId && $captainDesigId) {
+                    DB::table('user_details')->where('user_id', $staffUser->id)->update([
+                        'department_id' => $fbDeptId,
+                        'designation_id' => $captainDesigId,
+                        'salary' => 25000.00,
+                        'joining_date' => now()->toDateString(),
+                    ]);
+                }
+            }
+        }
+
+        // 4. Leave Types Master
+        if (Schema::hasTable('leave_type')) {
+            $leaveTypes = [
+                ['leave_type' => 'Casual Leave', 'number_of_leaves' => 12, 'allow_half_day' => 1, 'requires_approval' => 1],
+                ['leave_type' => 'Sick Leave', 'number_of_leaves' => 10, 'allow_half_day' => 1, 'requires_approval' => 1],
+                ['leave_type' => 'Earned Leave', 'number_of_leaves' => 15, 'allow_half_day' => 0, 'requires_approval' => 1],
+                ['leave_type' => 'Leave Without Pay', 'number_of_leaves' => 0, 'allow_half_day' => 1, 'requires_approval' => 1],
+            ];
+
+            foreach ($leaveTypes as $lt) {
+                DB::table('leave_type')->updateOrInsert(
+                    [
+                        'leave_type' => $lt['leave_type'],
+                        'branch_id' => $branchId,
+                    ],
+                    [
+                        'number_of_leaves' => $lt['number_of_leaves'],
+                        'allow_half_day' => $lt['allow_half_day'],
+                        'requires_approval' => $lt['requires_approval'],
+                        'created_by' => $adminUserId ?: 1,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+
+        // 5. Holiday Calendar Master
+        if (Schema::hasTable('holiday_calendar')) {
+            $holidays = [
+                ['title' => 'New Year Day', 'holiday_date' => '2026-01-01', 'description' => 'New Year Celebration'],
+                ['title' => 'Republic Day', 'holiday_date' => '2026-01-26', 'description' => 'Indian Republic Day'],
+                ['title' => 'Independence Day', 'holiday_date' => '2026-08-15', 'description' => 'Indian Independence Day'],
+                ['title' => 'Gandhi Jayanti', 'holiday_date' => '2026-10-02', 'description' => 'Mahatma Gandhi Jayanti'],
+                ['title' => 'Diwali', 'holiday_date' => '2026-11-08', 'description' => 'Festival of Lights'],
+            ];
+
+            foreach ($holidays as $h) {
+                DB::table('holiday_calendar')->updateOrInsert(
+                    [
+                        'title' => $h['title'],
+                        'holiday_date' => $h['holiday_date'],
+                        'branch_id' => $branchId,
+                    ],
+                    [
+                        'description' => $h['description'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+
+        // 6. Product Categories Master
+        if (Schema::hasTable('categories')) {
+            $categories = [
+                'Starters',
+                'Main Course',
+                'Breads & Rice',
+                'Beverages',
+                'Desserts',
+                'Snacks & Fast Food',
+            ];
+
+            foreach ($categories as $cat) {
+                DB::table('categories')->updateOrInsert(
+                    [
+                        'name' => $cat,
+                        'branch_id' => $branchId,
+                    ],
+                    [
+                        'isDeleted' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+
+        // 7. Product Brands Master
+        if (Schema::hasTable('brands')) {
+            $brands = [
+                'In-House Kitchen',
+                'Amul',
+                'Coca-Cola',
+                'Pepsi',
+                'Nestle',
+                'Mother Dairy',
+            ];
+
+            foreach ($brands as $brand) {
+                DB::table('brands')->updateOrInsert(
+                    [
+                        'name' => $brand,
+                        'branch_id' => $branchId,
+                    ],
+                    [
+                        'status' => 1,
+                        'isDeleted' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+
+        // 8. Quantity Types (Units) Master
+        if (Schema::hasTable('quantity_types')) {
+            $quantityTypes = [
+                'Pcs',
+                'Plate',
+                'Portion',
+                'Kg',
+                'Gm',
+                'Ltr',
+                'Ml',
+                'Box',
+                'Bottle',
+            ];
+
+            foreach ($quantityTypes as $qt) {
+                DB::table('quantity_types')->updateOrInsert(
+                    [
+                        'quantity_type' => $qt,
+                        'branch_id' => $branchId,
+                    ],
+                    [
+                        'created_by' => $adminUserId,
+                        'isDeleted' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+
+        // 9. Table Master (Restaurant / Hotel Tables)
+        if (Schema::hasTable('table_no')) {
+            $tables = [
+                ['name' => 'Table 1', 'type' => 'Dine-In'],
+                ['name' => 'Table 2', 'type' => 'Dine-In'],
+                ['name' => 'Table 3', 'type' => 'Dine-In'],
+                ['name' => 'Table 4', 'type' => 'Dine-In'],
+                ['name' => 'Table 5', 'type' => 'Dine-In'],
+                ['name' => 'Table 6', 'type' => 'AC Dining'],
+                ['name' => 'Table 7', 'type' => 'AC Dining'],
+                ['name' => 'Table 8', 'type' => 'AC Dining'],
+                ['name' => 'VIP 1', 'type' => 'VIP Lounge'],
+                ['name' => 'VIP 2', 'type' => 'VIP Lounge'],
+                ['name' => 'Outdoor 1', 'type' => 'Garden Terrace'],
+                ['name' => 'Outdoor 2', 'type' => 'Garden Terrace'],
+            ];
+
+            foreach ($tables as $t) {
+                DB::table('table_no')->updateOrInsert(
+                    [
+                        'table_name' => $t['name'],
+                        'branch_id' => $branchId,
+                    ],
+                    [
+                        'table_type' => $t['type'],
+                        'table_status' => 0,
+                        'status' => 'blank',
+                        'isDeleted' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+
+        // 10. Bank Master
+        if (Schema::hasTable('bank_master')) {
+            $banks = [
+                [
+                    'bank_name' => 'SBI Bank',
+                    'account_number' => '342234234',
+                    'ifsc_code' => 'IC123452101',
+                    'branch_name' => 'Adajan',
+                    'opening_balance' => 0.00,
+                    'status' => 'active',
+                ],
+                [
+                    'bank_name' => 'Cash Account',
+                    'account_number' => 'CASH-MAIN',
+                    'ifsc_code' => 'N/A',
+                    'branch_name' => 'Main Branch',
+                    'opening_balance' => 0.00,
+                    'status' => 'active',
+                ],
+            ];
+
+            foreach ($banks as $b) {
+                DB::table('bank_master')->updateOrInsert(
+                    [
+                        'bank_name' => $b['bank_name'],
+                        'account_number' => $b['account_number'],
+                        'branch_id' => $branchId,
+                    ],
+                    [
+                        'ifsc_code' => $b['ifsc_code'],
+                        'branch_name' => $b['branch_name'],
+                        'opening_balance' => $b['opening_balance'],
+                        'status' => $b['status'],
+                        'isDeleted' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+
+        // 11. Expense Types Master
+        if (Schema::hasTable('expense_types')) {
+            $expenseTypes = [
+                'Food & Grocery Purchase',
+                'Electricity & Utility Bills',
+                'Staff Salary & Welfare',
+                'Maintenance & Repairs',
+                'Rent & Premises',
+                'Cleaning & Housekeeping',
+                'Office & Stationery',
+                'Miscellaneous Expenses',
+            ];
+
+            foreach ($expenseTypes as $type) {
+                DB::table('expense_types')->updateOrInsert(
+                    [
+                        'type' => $type,
+                    ],
+                    [
+                        'branch_id' => $branchId,
+                        'created_by' => $adminUserId,
+                        'isDeleted' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+
+        // 12. Credit Note Types Master
+        if (Schema::hasTable('credit_notes_type')) {
+            $creditNoteTypes = [
+                'Sales Return',
+                'Rate Difference',
+                'Discount / Rebate',
+                'Order Cancellation',
+                'Damaged / Spoiled Items',
+            ];
+
+            foreach ($creditNoteTypes as $cnt) {
+                DB::table('credit_notes_type')->updateOrInsert(
+                    [
+                        'type_name' => $cnt,
+                        'branch_id' => $branchId,
+                    ],
+                    [
+                        'isdeleted' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+
+        // 13. SMTP Settings Master
+        if (Schema::hasTable('smtp_settings')) {
+            DB::table('smtp_settings')->updateOrInsert(
+                ['branch_id' => $branchId],
+                [
+                    'mailer' => 'smtp',
+                    'host' => env('MAIL_HOST', 'mailpit'),
+                    'port' => (string) env('MAIL_PORT', '1025'),
+                    'username' => env('MAIL_USERNAME', ''),
+                    'password' => env('MAIL_PASSWORD', ''),
+                    'encryption' => env('MAIL_ENCRYPTION', 'tls'),
+                    'from_address' => env('MAIL_FROM_ADDRESS', 'fabinfo@gmail.com'),
+                    'from_name' => env('APP_NAME', 'Fablead ERP'),
+                    'status' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
+
+        // 14. Discounts Master
+        if (Schema::hasTable('discounts')) {
+            $discounts = [
+                [
+                    'name' => 'Welcome Offer 10%',
+                    'description' => '10% discount on orders above ₹500',
+                    'discount_type' => 'percentage',
+                    'discount_value' => 10.00,
+                    'min_order_value' => 500.00,
+                    'valid_from' => '2026-01-01',
+                    'valid_to' => '2026-12-31',
+                    'status' => 'active',
+                ],
+                [
+                    'name' => 'Flat ₹100 Off',
+                    'description' => 'Flat ₹100 discount on orders above ₹1000',
+                    'discount_type' => 'fixed',
+                    'discount_value' => 100.00,
+                    'min_order_value' => 1000.00,
+                    'valid_from' => '2026-01-01',
+                    'valid_to' => '2026-12-31',
+                    'status' => 'active',
+                ],
+            ];
+
+            foreach ($discounts as $d) {
+                DB::table('discounts')->updateOrInsert(
+                    ['name' => $d['name']],
+                    [
+                        'description' => $d['description'],
+                        'discount_type' => $d['discount_type'],
+                        'discount_value' => $d['discount_value'],
+                        'min_order_value' => $d['min_order_value'],
+                        'valid_from' => $d['valid_from'],
+                        'valid_to' => $d['valid_to'],
+                        'status' => $d['status'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
+    }
+}
