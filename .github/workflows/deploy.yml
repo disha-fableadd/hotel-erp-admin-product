@@ -55,7 +55,7 @@ jobs:
           password: 'O*0lg6qC8s'
           server-dir: /
           local-dir: ./build_output/
-          protocol: ftps
+          protocol: ftp
           port: 21
           timeout: 60000
           exclude: |
