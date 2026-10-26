@@ -18,8 +18,8 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 8px;
+        gap: 6px;
+        margin-bottom: 6px;
     }
 
     .product-label-action label {
@@ -27,7 +27,7 @@
     }
 
     .product-label-action .btn-add-inline {
-        padding: 7px 13px;
+        padding: 6px 14px;
         border: 0;
         border-radius: 7px;
         color: #fff;
@@ -36,12 +36,35 @@
         font-weight: 600;
         line-height: 1;
         white-space: nowrap;
+        transition: all 0.2s ease;
     }
 
     .product-label-action .btn-add-inline:hover,
     .product-label-action .btn-add-inline:focus {
         color: #fff;
         background: #ff8f1f;
+    }
+     @media screen and (max-width: 1200px) {
+        .product-label-action .btn-add-inline {
+            width: 26px;
+            min-width: 26px;
+            height: 26px;
+            padding: 0;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0 !important;
+            flex-shrink: 0;
+        }
+
+        .product-label-action .btn-add-inline::before {
+            content: "+";
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1;
+            color: #fff;
+        }
     }
 </style>
 <div class="content">

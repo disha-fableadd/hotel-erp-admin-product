@@ -16,148 +16,396 @@
         height: 20px;
         width: 100%;
         margin-bottom: 5px;
+        display: none;
     }
 
     .table-scroll-top div {
         height: 1px;
     }
 
-    .table-scroll-top {
+    /* Card representation default */
+    .quantity-m-card {
+        display: none;
+    }
+    .quantity-search-bar-wrap {
+        display: none;
+    }
+    .quantity-count-sub {
         display: none;
     }
 
-    .quantity-type-name {
-        display: block !important;
-        white-space: normal !important;
-        /* allow new line */
-        word-break: break-word !important;
-        /* break long words */
-        overflow-wrap: anywhere !important;
-        /* modern browsers */
-        max-width: 350px;
-        /* adjust as needed */
-        line-height: 1.4;
-    }
-
-    @media screen and (max-width: 768px) {
+    /* ========================================================
+       Desktop View (>= 1281px): UNCHANGED
+       ======================================================== */
+    @media (min-width: 1281px) {
         .table-scroll-top {
-            display: block;
-            -webkit-overflow-scrolling: touch !important;
+            display: none !important;
         }
-
-        .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch !important;
-        }
-
-        .search-set {
-            margin-right: 1rem !important;
-        }
-    }
-
-    /* Desktop: show all columns normally */
-    @media (min-width: 769px) {
-
         table.datanew thead th,
         table.datanew tbody td {
             display: table-cell !important;
         }
-
         /* Hide the Details toggle column on desktop */
         table.datanew thead th.details-column,
         table.datanew tbody td:nth-child(2) {
             display: none !important;
         }
+        .quantity-m-card {
+            display: none !important;
+        }
+        .quantity-desktop-head {
+            display: flex !important;
+            align-items: center;
+        }
+        .quantity-desktop-search {
+            display: block !important;
+        }
+        .quantity-search-bar-wrap {
+            display: none !important;
+        }
+        .quantity-count-sub {
+            display: none !important;
+        }
     }
 
-    /* Mobile: hide non-essential columns, show Details toggle */
-    @media (max-width: 768px) {
+    /* ========================================================
+       Mobile, Tablet & Nest Hub Max View (<= 1280px): Pooja ERP Style
+       ======================================================== */
+    @media (max-width: 1280.98px) {
+        .table-scroll-top {
+            display: none !important;
+        }
+        .table-responsive {
+            overflow: visible !important;
+            border: 0 !important;
+            min-height: auto;
+        }
 
-        table.datanew thead th:nth-child(n+3),
-        table.datanew tbody td:nth-child(n+3) {
+        /* Page Header */
+        .quantity-page-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            margin-bottom: 16px !important;
+        }
+        .quantity-page-header .page-title h4 {
+            font-size: 18px !important;
+            font-weight: 700 !important;
+            color: #1e293b !important;
+            margin-bottom: 2px !important;
+        }
+        .quantity-count-sub {
+            display: block !important;
+            font-size: 12px !important;
+            color: #64748b !important;
+            font-weight: 400 !important;
+        }
+        .quantity-new-btn {
+            background-color: #ff9f43 !important;
+            border-color: #ff9f43 !important;
+            color: #ffffff !important;
+            border-radius: 8px !important;
+            padding: 7px 14px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            box-shadow: none !important;
+        }
+        .quantity-new-btn:hover {
+            background-color: #f39c12 !important;
+            border-color: #f39c12 !important;
+            color: #ffffff !important;
+        }
+        .quantity-new-btn i, .quantity-new-btn img {
+            margin-right: 5px !important;
+        }
+
+        /* Search Bar */
+        .quantity-desktop-search {
+            display: none !important;
+        }
+        .quantity-search-bar-wrap {
+            display: block !important;
+            margin-bottom: 14px !important;
+        }
+        .quantity-search-box {
+            position: relative;
+            width: 100%;
+        }
+        .quantity-search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 14px;
+            pointer-events: none;
+        }
+        .quantity-search-input {
+            width: 100% !important;
+            height: 42px !important;
+            border-radius: 8px !important;
+            border: 1px solid #e2e8f0 !important;
+            background: #ffffff !important;
+            padding: 0 14px 0 38px !important;
+            font-size: 13px !important;
+            color: #334155 !important;
+            font-weight: 500 !important;
+            box-shadow: none !important;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .quantity-search-input::placeholder {
+            color: #94a3b8 !important;
+            letter-spacing: 0.5px !important;
+            text-transform: uppercase !important;
+            font-size: 12px !important;
+        }
+        .quantity-search-input:focus {
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 0 0 3px rgba(241, 245, 249, 0.8) !important;
+        }
+
+        /* Table transform to Card Grid */
+        table.datanew {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            border: 0 !important;
+        }
+        table.datanew thead {
+            display: none !important;
+        }
+        table.datanew tbody tr {
+            display: block !important;
+            width: 100% !important;
+            padding: 12px 14px !important;
+            border: 1px solid #edf2f7 !important;
+            border-radius: 12px !important;
+            background: #ffffff !important;
+            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04) !important;
+            margin-bottom: 0 !important;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        table.datanew tbody tr:hover {
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+        }
+        table.datanew tbody tr > td {
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+        }
+        table.datanew tbody tr > td:first-child {
+            display: block !important;
+            width: 100% !important;
+            padding: 0 !important;
+        }
+        table.datanew tbody tr > td:not(:first-child) {
+            display: none !important;
+        }
+        table.datanew tbody tr > td.dataTables_empty {
+            display: block !important;
+            width: 100% !important;
+            text-align: center !important;
+            padding: 24px 14px !important;
+            color: #94a3b8 !important;
+            font-size: 14px !important;
+        }
+
+        .quantity-desktop-head {
             display: none !important;
         }
 
-        table.datanew thead th.details-column,
-        table.datanew tbody td:nth-child(2) {
-            display: table-cell !important;
-            text-align: center;
-            vertical-align: top !important;
-            padding-top: 18px !important;
-            width: 50px;
-        }
-
-        .toggle-details i {
-            font-size: 18px;
-        }
-
-        /* Style for quantity type name wrapping */
-        table.datanew tbody td:first-child {
+        /* Quantity Card Component */
+        .quantity-m-card {
             display: flex !important;
             align-items: center !important;
-            max-width: calc(100vw - 100px) !important;
+            justify-content: space-between !important;
+            width: 100% !important;
         }
-
-        table.datanew tbody td:first-child span {
-            display: inline-block !important;
-            /* max-width: calc(100% - 50px) !important; */
-            margin-left: 8px !important;
+        .quantity-m-left {
+            display: flex !important;
+            align-items: center !important;
+            flex: 1 !important;
+            min-width: 0 !important;
+        }
+        .quantity-m-avatar {
+            width: 44px !important;
+            height: 44px !important;
+            min-width: 44px !important;
+            border-radius: 10px !important;
+            background-color: #fff1ea !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex-shrink: 0 !important;
+            overflow: hidden !important;
+        }
+        .quantity-m-initials {
+            color: #ea580c !important;
+            font-weight: 700 !important;
+            font-size: 15px !important;
+            letter-spacing: 0.5px !important;
+            text-transform: uppercase !important;
+            line-height: 1 !important;
+        }
+        .quantity-m-info {
+            margin-left: 12px !important;
+            flex: 1 !important;
+            min-width: 0 !important;
+        }
+        .quantity-m-name {
             font-size: 14px !important;
-            word-break: break-word !important;
-            hyphens: auto !important;
-            -webkit-hyphens: auto !important;
-            -ms-hyphens: auto !important;
-        }
-
-        /* Limit to 2 lines with ellipsis */
-        .quantity-type-name.truncated {
-            display: -webkit-box !important;
-            /* -webkit-line-clamp: 2 !important; */
-            -webkit-box-orient: vertical !important;
+            font-weight: 700 !important;
+            color: #1e293b !important;
+            text-transform: uppercase !important;
+            margin: 0 0 2px 0 !important;
+            line-height: 1.25 !important;
+            white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
         }
-
-        .quantity-type-name {
+        .quantity-m-date {
+            font-size: 11.5px !important;
+            color: #8c98a9 !important;
+            font-weight: 400 !important;
+            line-height: 1.2 !important;
             display: block !important;
-            white-space: normal !important;
-            /* allow new line */
-            word-break: break-word !important;
-            /* break long words */
-            overflow-wrap: anywhere !important;
-            /* modern browsers */
-            max-width: 350px;
-            /* adjust as needed */
-            line-height: 1.4;
+        }
+        .quantity-m-actions {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            flex-shrink: 0 !important;
+            margin-left: 10px !important;
+        }
+        .quantity-btn-action {
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 50% !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-decoration: none !important;
+            transition: background-color 0.15s ease, transform 0.15s ease !important;
+        }
+        .quantity-btn-action:active {
+            transform: scale(0.95);
+        }
+        .quantity-btn-edit {
+            background-color: #eff6ff !important;
+            color: #3b82f6 !important;
+        }
+        .quantity-btn-edit:hover {
+            background-color: #dbeafe !important;
+            color: #2563eb !important;
+        }
+        .quantity-btn-edit i {
+            font-size: 13px !important;
+            color: #3b82f6 !important;
+        }
+        .quantity-btn-delete {
+            background-color: #fef2f2 !important;
+            color: #ef4444 !important;
+        }
+        .quantity-btn-delete:hover {
+            background-color: #fee2e2 !important;
+            color: #dc2626 !important;
+        }
+        .quantity-btn-delete i {
+            font-size: 13px !important;
+            color: #ef4444 !important;
+        }
+
+        /* DataTable Bottom Pagination Styling */
+        div.dataTables_wrapper div.dataTables_length,
+        div.dataTables_wrapper div.dataTables_info {
+            font-size: 13px !important;
+            color: #64748b !important;
+        }
+        div.dataTables_wrapper div.dataTables_length select {
+            border-radius: 6px !important;
+            border: 1px solid #cbd5e1 !important;
+            padding: 3px 8px !important;
+            font-size: 13px !important;
+            margin: 0 4px !important;
+        }
+        div.dataTables_wrapper div.dataTables_paginate {
+            margin-top: 8px !important;
+        }
+        div.dataTables_wrapper div.dataTables_paginate ul.pagination {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            justify-content: flex-end !important;
+            gap: 3px !important;
+        }
+        div.dataTables_wrapper div.dataTables_paginate ul.pagination .page-item .page-link {
+            border-radius: 6px !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #475569 !important;
+            font-size: 13px !important;
+            padding: 4px 10px !important;
+        }
+        div.dataTables_wrapper div.dataTables_paginate ul.pagination .page-item.active .page-link {
+            background-color: #ff7a00 !important;
+            border-color: #ff7a00 !important;
+            color: #ffffff !important;
         }
     }
 
-    /* Tablet specific fixes */
-    @media screen and (width: 768px) {
-        .table-responsive {
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch !important;
+    /* ========================================================
+       Tablet & Nest Hub Max View (768px to 1280.98px): 2 Column Grid
+       ======================================================== */
+    @media (min-width: 768px) and (max-width: 1280.98px) {
+        table.datanew tbody {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+            width: 100% !important;
         }
-
-        table.datanew thead th.details-column,
-        table.datanew tbody td:nth-child(2) {
-            display: table-cell !important;
-            width: 60px !important;
-            min-width: 60px !important;
-            max-width: 60px !important;
+        table.datanew tbody tr:has(.dataTables_empty) {
+            grid-column: span 2 !important;
         }
-
-        .toggle-details {
-            display: inline-block !important;
-            padding: 8px !important;
-            z-index: 10 !important;
+        .quantity-new-btn {
+            background-color: #ff9f43 !important;
+            border-color: #ff9f43 !important;
         }
+        .quantity-new-btn:hover {
+            background-color: #f39c12 !important;
+            border-color: #f39c12 !important;
+        }
+    }
 
-        .toggle-details i {
-            font-size: 20px !important;
-            width: 24px !important;
-            height: 24px !important;
-            line-height: 24px !important;
+    /* ========================================================
+       Mobile View (< 768px): 1 Column Vertical Stack
+       ======================================================== */
+    @media (max-width: 767.98px) {
+        table.datanew tbody {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 10px !important;
+            width: 100% !important;
+        }
+        .quantity-new-btn {
+            background-color: #102a54 !important;
+            border-color: #102a54 !important;
+        }
+        .quantity-new-btn:hover {
+            background-color: #0b1d3a !important;
+            border-color: #0b1d3a !important;
+        }
+        div.dataTables_wrapper div.row:last-child {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            margin-top: 12px !important;
+        }
+        div.dataTables_wrapper div.row:last-child > div {
+            width: auto !important;
+            max-width: 100% !important;
         }
     }
 
@@ -173,20 +421,40 @@
 </style>
 
 <div class="content">
-    <div class="page-header">
+    <div class="page-header quantity-page-header">
         <div class="page-title">
             <h4>All Quantity Types</h4>
+            <span class="quantity-count-sub" id="quantityCountSub">0 items</span>
         </div>
         <div class="page-btn">
-            <button class="btn btn-sm btn-added" id="addQuantityTypeBtn">
-                <img src="{{ env('ImagePath') . 'admin/assets/img/icons/plus.svg' }}" class="me-1" alt="img">
-                New Quantity Type
+            <button class="btn btn-sm btn-added quantity-new-btn" id="addQuantityTypeBtn">
+                <i class="fa-solid fa-plus me-1"></i>New Quantity Type
             </button>
         </div>
     </div>
 
     <div class="card">
         <div class="card-body">
+            <!-- Mobile / Tablet Search Bar (Pooja / Dolphin ERP style) -->
+            <div class="quantity-search-bar-wrap">
+                <div class="quantity-search-box">
+                    <i class="fa-solid fa-magnifying-glass quantity-search-icon"></i>
+                    <input type="search" id="quantityMobileSearchInput" class="form-control quantity-search-input" placeholder="SEARCH QUANTITY TYPES...">
+                </div>
+            </div>
+
+            <!-- Desktop Search Bar (Unchanged) -->
+            <div class="mb-2 quantity-desktop-search">
+                <div class="search-set d-flex justify-content-md-start justify-content-start w-100">
+                    <div class="search-path"></div>
+                    <div class="search-input">
+                        <a class="btn btn-searchset">
+                            <img src="{{ env('ImagePath') . 'admin/assets/img/icons/search-white.svg' }}" alt="img">
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <div class="table-scroll-top">
                 <div></div>
             </div>
@@ -214,6 +482,7 @@
             <form id="quantitytypeForm">
                 <div class="modal-header">
                     <h5 class="modal-title" id="qauntitytypeModalLabel">Add Quantity Type</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="quantity_type_id">
@@ -246,6 +515,52 @@
             url += `?selectedSubAdminId=${selectedSubAdminId}`;
         }
 
+        // Connect mobile/tablet search bar to DataTable
+        $(document).on('keyup input', '#quantityMobileSearchInput', function() {
+            table.search($(this).val()).draw();
+        });
+
+        // Calculate initials for Pooja ERP style avatar
+        function getQuantityInitials(name) {
+            if (!name) return 'QT';
+            let words = name.trim().split(/\s+/).filter(Boolean);
+            if (words.length === 0) return 'QT';
+            if (words.length === 1) {
+                return words[0].substring(0, 1).toUpperCase();
+            }
+            let firstChar = words[0].charAt(0).toUpperCase();
+            let lastChar = words[words.length - 1].charAt(0).toUpperCase();
+            return firstChar + lastChar;
+        }
+
+        // Format date to DD/MM/YYYY
+        function formatCreatedDate(dateStr) {
+            if (!dateStr || dateStr === 'N/A') return 'N/A';
+            try {
+                let cleanStr = dateStr.split("T")[0].split(" ")[0];
+                let parts = cleanStr.split("-");
+                if (parts.length === 3) {
+                    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+            return dateStr;
+        }
+
+        // Capitalize words for desktop view
+        function capitalizeWords(str) {
+            if (!str || str.trim() === '') return 'N/A';
+            return str.replace(/\b\w/g, function(char) {
+                return char.toUpperCase();
+            });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return $('<div>').text(text).html();
+        }
+
         fetchQuantityTypes();
 
         // Fetch Quantity Types
@@ -261,50 +576,69 @@
                     if (response.status) {
                         let rows = [];
 
-                        // Function to capitalize first letter of each word
-                        function capitalizeWords(str) {
-                            if (!str || str.trim() === '') return 'N/A';
-                            return str.replace(/\b\w/g, function(char) {
-                                return char.toUpperCase();
-                            });
-                        }
+                        // Update count in header
+                        $('#quantityCountSub').text(`${response.data.length} items`);
 
                         response.data.forEach(qt => {
-                            let createdAt = qt.created_at ? qt.created_at.split("T")[0] : "N/A";
+                            let rawCreatedAt = qt.created_at ? qt.created_at.split("T")[0] : "N/A";
+                            let formattedDate = formatCreatedDate(qt.created_at);
                             let quantityTypeName = capitalizeWords(qt.quantity_type);
+                            let upperQuantityTypeName = (qt.quantity_type || 'N/A').toUpperCase();
+                            let initials = getQuantityInitials(qt.quantity_type);
 
-                            // Details toggle for mobile
+                            // Details toggle for legacy / desktop
                             let detailsToggle = `
-                                    <a href="#details-${qt.id}" class="toggle-details" data-bs-toggle="collapse">
-                                        <i class="fas fa-plus-circle" style="color: #ff9f43;"></i>
-                                    </a>
-                                `;
+                                <a href="#details-${qt.id}" class="toggle-details" data-bs-toggle="collapse">
+                                    <i class="fas fa-plus-circle" style="color: #ff9f43;"></i>
+                                </a>
+                            `;
+
+                            // Mobile / Tablet Card View (Pooja / Dolphin ERP layout)
+                            let mobileCardHtml = `
+                                <div class="quantity-m-card">
+                                    <div class="quantity-m-left">
+                                        <div class="quantity-m-avatar">
+                                            <span class="quantity-m-initials">${initials}</span>
+                                        </div>
+                                        <div class="quantity-m-info">
+                                            <div class="quantity-m-name" title="${escapeHtml(upperQuantityTypeName)}">${escapeHtml(upperQuantityTypeName)}</div>
+                                            <div class="quantity-m-date">Created ${formattedDate}</div>
+                                        </div>
+                                    </div>
+                                    <div class="quantity-m-actions">
+                                        <a href="javascript:void(0)" class="quantity-btn-action quantity-btn-edit edit-quantity-type"
+                                            data-id="${qt.id}"
+                                            data-name="${escapeHtml(quantityTypeName)}"
+                                            title="Edit">
+                                            <i class="fa-solid fa-pencil"></i>
+                                        </a>
+                                        <a href="javascript:void(0)" class="quantity-btn-action quantity-btn-delete delete-quantity-type"
+                                            data-id="${qt.id}"
+                                            title="Delete">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+
+                            // Desktop View First Cell (Unchanged layout for desktop)
+                            let desktopHeadHtml = `
+                                <div class="quantity-desktop-head" style="display: flex; align-items: center;">
+                                    <span class="quantity-type-name truncated" style="color: #1b2850; font-weight: 500;">${escapeHtml(quantityTypeName)}</span>
+                                </div>
+                            `;
 
                             rows.push([
-                                // Column 1: Quantity Type Name with collapsible details
-                                `<div>
-                                        <div style="display: flex; align-items: center;">
-                                            <span class="quantity-type-name truncated">${quantityTypeName}</span>
-                                        </div>
-                                        
-                                        <!-- Collapsible Details (visible only on mobile) -->
-                                        <div class="collapse mt-2 d-lg-none" id="details-${qt.id}">
-                                            <div class="card card-body p-2 bg-light border">
-                                                <p class="mb-1"><strong>Created At:</strong> ${createdAt}</p>
-                                                <div class="mt-2">
-                                                    ${getActionButtons(qt.id, quantityTypeName)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>`,
+                                // Column 1: Mobile/Tablet Card + Desktop Head
+                                `${mobileCardHtml}${desktopHeadHtml}`,
 
-                                // Column 2: Details Toggle (only for mobile)
+                                // Column 2: Details Toggle (legacy / hidden on desktop)
                                 detailsToggle,
 
-                                // Column 3: Created At (hidden on mobile)
-                                createdAt,
+                                // Column 3: Created At (desktop view)
+                                rawCreatedAt,
 
-                                // Column 4: Action Buttons (hidden on mobile)
+                                // Column 4: Action Buttons (desktop view)
                                 getActionButtons(qt.id, quantityTypeName)
                             ]);
                         });
@@ -329,7 +663,8 @@
                         }
                     } else {
                         table.clear().draw();
-                        $(".datanew tbody").html('<tr><td colspan="4">No quantity types found</td></tr>');
+                        $(".datanew tbody").html('<tr><td colspan="4" class="dataTables_empty">No quantity types found</td></tr>');
+                        $('#quantityCountSub').text('0 items');
                     }
                 },
                 error: function(xhr) {
@@ -338,18 +673,18 @@
             });
         }
 
-        // Helper function to generate action buttons
+        // Helper function to generate action buttons for desktop
         function getActionButtons(id, name) {
             return `
-                    <a href="javascript:void(0)" class="me-2 edit-quantity-type"
-                        data-id="${id}"
-                        data-name="${name}">
-                        <img src="{{ env('ImagePath') . 'admin/assets/img/icons/edit.svg' }}" alt="Edit">
-                    </a>
-                    <a href="javascript:void(0)" class="delete-quantity-type" data-id="${id}">
-                        <img src="{{ env('ImagePath') . 'admin/assets/img/icons/delete.svg' }}" alt="Delete">
-                    </a>
-                `;
+                <a href="javascript:void(0)" class="me-2 edit-quantity-type"
+                    data-id="${id}"
+                    data-name="${name}">
+                    <img src="{{ env('ImagePath') . 'admin/assets/img/icons/edit.svg' }}" alt="Edit">
+                </a>
+                <a href="javascript:void(0)" class="delete-quantity-type" data-id="${id}">
+                    <img src="{{ env('ImagePath') . 'admin/assets/img/icons/delete.svg' }}" alt="Delete">
+                </a>
+            `;
         }
 
         // Toggle details icon
@@ -448,16 +783,28 @@
                 if (result.isConfirmed) {
                     $.ajax({
                         url: `/api/delete-quantity-type/${id}`,
-                        type: "POST",
+                        type: 'POST',
                         headers: {
                             "Authorization": "Bearer " + authToken
                         },
-                        success: function(response) {
-                            Swal.fire("Deleted!", response.message, "success");
-                            fetchQuantityTypes();
+                        data: {
+                            _token: $('meta[name="csrf-token"]').attr('content')
                         },
-                        error: function() {
-                            Swal.fire("Error!", "Unable to delete!", "error");
+                        success: function(response) {
+                            if (response.status) {
+                                Swal.fire({
+                                    title: "Deleted!",
+                                    text: response.message,
+                                    icon: "success",
+                                    confirmButtonColor: "#ff9f43"
+                                });
+                                fetchQuantityTypes();
+                            } else {
+                                Swal.fire("Error!", response.message, "error");
+                            }
+                        },
+                        error: function(xhr) {
+                            Swal.fire("Error!", "Something went wrong!", "error");
                         }
                     });
                 }

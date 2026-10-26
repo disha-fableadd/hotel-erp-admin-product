@@ -1,4 +1,4 @@
-@extends('layout.app')
+    @extends('layout.app')
 
 @section('title', 'Product List')
 
@@ -40,7 +40,7 @@
         }
         
         .table-responsive {
-            min-height: 250px;
+            min-height: 250px;  
         }
 
         .table-scroll-top {
@@ -139,58 +139,170 @@
 
         .product-search-input {
             position: relative;
+            display: flex;
+            align-items: center;
         }
 
         .product-search-input i {
             position: absolute;
             top: 50%;
-            left: 12px;
+            left: 14px;
             color: #637381;
             transform: translateY(-50%);
             pointer-events: none;
+            font-size: 14px;
+            z-index: 2;
         }
 
-        .product-search-input input {
-            height: 40px;
-            padding-left: 36px;
-            border-color: #dbe0e6;
-            border-radius: 5px;
-            font-size: 14px;
+        .product-search-input input,
+        .product-search-input input.form-control,
+        .product-search-input input.form-control-sm {
+            height: 40px !important;
+            padding-left: 38px !important;
+            padding-right: 12px !important;
+            border-color: #dbe0e6 !important;
+            border-radius: 6px !important;
+            font-size: 14px !important;
+            width: 100%;
         }
 
         .product-search-input input:focus {
-            border-color: #ff9f43;
-            box-shadow: none;
+            border-color: #ff9f43 !important;
+            box-shadow: none !important;
+        }
+
+        /* Page Header Layout matching pooja-erp */
+        .page-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            flex-wrap: nowrap !important;
+            margin-bottom: 15px !important;
+            gap: 8px !important;
+        }
+
+        .page-header .page-title {
+            margin: 0 !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+        }
+
+        .page-header .page-title h4 {
+            margin: 0 !important;
+            font-size: 18px !important;
+            font-weight: 700 !important;
+            color: #1b2850 !important;
+            white-space: nowrap !important;
+            line-height: 1.2 !important;
         }
 
         .product-page-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            flex-wrap: nowrap !important;
+            justify-content: flex-end !important;
+            flex-shrink: 0 !important;
+            margin: 0 !important;
         }
 
         .product-import-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            min-height: 34px;
-            padding: 8px 13px;
-            border-radius: 4px;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            height: 34px !important;
+            padding: 0 12px !important;
+            border-radius: 8px !important;
             color: #fff !important;
-            background: #1b2850;
-            font-size: 14px;
-            font-weight: 600;
-            line-height: 1;
+            background: #ff9f43 !important;
+            border: 1px solid #ff9f43 !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;
+            white-space: nowrap !important;
+            text-decoration: none !important;
+            transition: all 0.2s ease !important;
         }
 
         .product-import-btn:hover,
         .product-import-btn:focus {
             color: #fff !important;
-            background: #101a3b;
+            background: #f38e27 !important;
+            border-color: #f38e27 !important;
         }
 
+        .product-new-btn,
+        .page-btn .btn-added.product-new-btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            height: 34px !important;
+            padding: 0 12px !important;
+            border-radius: 8px !important;
+            color: #fff !important;
+            background: #1b2850 !important;
+            border: 1px solid #1b2850 !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;
+            white-space: nowrap !important;
+            text-decoration: none !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .product-new-btn:hover,
+        .product-new-btn:focus {
+            color: #fff !important;
+            background: #101a3b !important;
+            border-color: #101a3b !important;
+        }
+
+        /* Excel and PDF Export Buttons matching pooja-erp */
+        #exportAllChallan {
+            background: #e7f6ec !important;
+            color: #198754 !important;
+            border: 1px solid #d1f0db !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            font-size: 13px !important;
+            height: 36px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            transition: all 0.2s ease !important;
+            box-shadow: none !important;
+        }
+        #exportAllChallan:hover,
+        #exportAllChallan:focus {
+            background: #d4eedd !important;
+            color: #146c43 !important;
+            border-color: #bee5cb !important;
+        }
+
+        #exportPdf {
+            background: #fdecee !important;
+            color: #dc3545 !important;
+            border: 1px solid #fbd2d6 !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            font-size: 13px !important;
+            height: 36px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            transition: all 0.2s ease !important;
+            box-shadow: none !important;
+        }
+        #exportPdf:hover,
+        #exportPdf:focus {
+            background: #fad7db !important;
+            color: #b02a37 !important;
+            border-color: #f7c1c7 !important;
+        }
 
         @media screen and (max-width: 768px) {
             .table-scroll-top {
@@ -231,59 +343,523 @@
                 min-width: 100%;
             }
 
-             #exportAllChallan,
+            #exportAllChallan,
             #exportPdf {
-                width: 48% !important;
-                flex: 0 0 48% !important;
-                max-width: 48% !important;
-                min-width: 48% !important;
+                flex: 1 1 0 !important;
+                width: auto !important;
+                max-width: none !important;
+                min-width: 0 !important;
+                height: 36px !important;
                 margin: 0 !important;
-                padding: 6px 0px !important;
+                padding: 0 10px !important;
                 font-size: 13px !important;
             }
 
-            /* Optional: Adjust icon size */
             #exportAllChallan i,
             #exportPdf i {
-                font-size: 12px !important;
+                font-size: 13px !important;
                 margin-right: 4px !important;
             }
         }
 
-        /* Desktop: show all columns normally */
-        @media (min-width: 769px) {
+        @media screen and (max-width: 576px) {
+            .page-header .page-title h4 {
+                font-size: 16px !important;
+            }
+            .product-page-actions {
+                gap: 6px !important;
+            }
+            .product-import-btn,
+            .product-new-btn {
+                height: 32px !important;
+                padding: 0 10px !important;
+                font-size: 12px !important;
+                border-radius: 7px !important;
+            }
+        }
 
+        /* Hide duplicate DataTable default search input */
+        .dataTables_filter {
+            display: none !important;
+        }
+
+        /* ========================================================
+           Mobile Filter Toggle & Bottom Sheet Modal (from pooja-erp)
+           ======================================================== */
+        .pl-filter-toggle {
+            position: relative;
+            flex: 0 0 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            border: 0 !important;
+            border-radius: 50% !important;
+            background: #f05a6a;
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(240, 90, 106, .35);
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.15s ease;
+        }
+        .pl-filter-toggle:active {
+            transform: scale(0.95);
+        }
+        .pl-filter-toggle.has-active {
+            background: #e8334a;
+        }
+        .pl-filter-toggle i {
+            color: #fff;
+            font-size: 14px;
+        }
+        .pl-filter-count {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: #1b2850;
+            color: #fff;
+            font-size: 11px;
+            line-height: 18px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .pl-filter-backdrop {
+            display: block;
+            position: fixed;
+            inset: 0;
+            z-index: 1050;
+            background: rgba(16, 24, 40, .45);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s ease;
+        }
+        .pl-filter-sheet {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: 0 auto !important;
+            max-width: 520px !important;
+            width: 100% !important;
+            z-index: 1055;
+            display: flex;
+            flex-direction: column;
+            max-height: 85vh;
+            background: #fff;
+            border-radius: 24px 24px 0 0 !important;
+            border: none !important;
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.16) !important;
+            transform: translate3d(0, 105%, 0) !important;
+            transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1) !important;
+        }
+        body.pl-filter-open .pl-filter-backdrop {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        body.pl-filter-open .pl-filter-sheet {
+            transform: translate3d(0, 0, 0) !important;
+        }
+        body.pl-filter-open {
+            overflow: hidden !important;
+        }
+
+        .pl-filter-sheet-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid #eef0f4;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1b2850;
+        }
+        .pl-filter-sheet-close {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: #64748b;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: color 0.15s, background-color 0.15s;
+        }
+        .pl-filter-sheet-close:hover {
+            color: #1e293b;
+            background-color: #f1f5f9;
+        }
+        .pl-filter-sheet-body {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            padding: 16px 20px 8px;
+        }
+        .pl-filter-sheet-body .form-label {
+            display: block;
+            margin: 0 0 6px !important;
+            font-size: 13px !important;
+            font-weight: 600;
+            color: #344054 !important;
+        }
+        .filter-select-custom {
+            border-radius: 8px !important;
+            border: 1px solid #d0d5dd !important;
+            padding: 9px 12px !important;
+            font-size: 13.5px !important;
+            background-color: #fff !important;
+            width: 100% !important;
+            height: 42px !important;
+            color: #344054 !important;
+            font-weight: 500 !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        .filter-select-custom:focus {
+            border-color: #ff9f43 !important;
+            box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.15) !important;
+        }
+        .pl-filter-sheet-foot {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
+            border-top: 1px solid #eef0f4;
+        }
+        .pl-filter-clear,
+        .pl-filter-apply {
+            height: 42px;
+            border: 0;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .pl-filter-clear {
+            background: #f1f5f9;
+            color: #475467;
+        }
+        .pl-filter-clear:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .pl-filter-apply {
+            background: #ef4444;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.28);
+        }
+        .pl-filter-apply:hover {
+            background: #dc2626;
+        }
+        body.pl-filter-open .select2-container--open .select2-dropdown {
+            z-index: 1060 !important;
+        }
+
+        /* Card representation default */
+        .pl-m-card {
+            display: none;
+        }
+
+        /* ========================================================
+           Desktop View (>= 1281px): Standard DataTable & Filter Selects
+           ======================================================== */
+        @media (min-width: 1281px) {
             table.datanew thead th,
             table.datanew tbody td {
                 display: table-cell !important;
             }
-
-            /* Hide the Details toggle column on desktop */
             table.datanew thead th.details-column,
             table.datanew tbody td:nth-child(2) {
+                display: none !important;
+            }
+            .pl-m-card {
+                display: none !important;
+            }
+            .pl-desktop-head {
+                display: flex !important;
+            }
+            .pl-filter-toggle,
+            .pl-filter-backdrop,
+            .pl-filter-sheet {
                 display: none !important;
             }
         }
 
-        /* Mobile: hide non-essential columns, show Details toggle */
-        @media (max-width: 768px) {
-
-            table.datanew thead th:nth-child(n+3),
-            table.datanew tbody td:nth-child(n+3) {
+        /* ========================================================
+           Mobile, Tablet & Nest Hub Max View (<= 1280.98px): Card UI
+           ======================================================== */
+        @media (max-width: 1280.98px) {
+            .table-scroll-top {
+                display: none !important;
+            }
+            .table-responsive {
+                overflow: visible !important;
+                border: 0 !important;
+                min-height: auto;
+            }
+            table.datanew {
+                display: block !important;
+                width: 100% !important;
+                margin: 0 !important;
+                border: 0 !important;
+            }
+            table.datanew thead {
+                display: none !important;
+            }
+            table.datanew tbody tr {
+                display: block !important;
+                width: 100% !important;
+                padding: 12px 14px !important;
+                border: 1px solid #eceef3 !important;
+                border-radius: 12px !important;
+                background: #fff !important;
+                box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08) !important;
+                margin-bottom: 0 !important;
+                transition: box-shadow 0.2s ease, border-color 0.2s ease;
+            }
+            table.datanew tbody tr:hover {
+                border-color: #e2e8f0 !important;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+            }
+            table.datanew tbody tr > td {
+                background: transparent !important;
+                border: 0 !important;
+                box-shadow: none !important;
+            }
+            table.datanew tbody tr > td:first-child {
+                display: block !important;
+                width: 100% !important;
+                padding: 0 !important;
+            }
+            table.datanew tbody tr > td:not(:first-child) {
+                display: none !important;
+            }
+            table.datanew tbody tr > td.dataTables_empty {
+                display: block !important;
+                width: 100% !important;
+                text-align: center;
+                padding: 24px 14px !important;
+                color: #94a3b8 !important;
+                font-size: 14px !important;
+            }
+            .pl-desktop-head {
+                display: none !important;
+            }
+            .collapse.pl-details {
                 display: none !important;
             }
 
-            table.datanew thead th.details-column,
-            table.datanew tbody td:nth-child(2) {
-                display: table-cell !important;
-                text-align: center;
-                vertical-align: top;
-                padding-top: 25px !important;
-                width: 50px;
+            .pl-filter-toggle {
+                display: inline-flex !important;
             }
 
-            .toggle-details i {
-                font-size: 18px;
+            /* Product Card Layout inside first cell */
+            .pl-m-card {
+                display: grid !important;
+                grid-template-columns: 48px minmax(0, 1fr);
+                column-gap: 12px;
+                row-gap: 8px;
+                width: 100%;
+            }
+            .pl-m-img {
+                width: 48px;
+                height: 48px;
+                border-radius: 8px;
+                overflow: hidden;
+                background: #f3f4f6;
+                display: block;
+                flex-shrink: 0;
+            }
+            .pl-m-img img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            .pl-m-body {
+                min-width: 0;
+            }
+            .pl-m-top {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 8px;
+            }
+            .pl-m-name {
+                font-size: 14px;
+                font-weight: 600;
+                color: #1b2850 !important;
+                text-transform: uppercase;
+                line-height: 1.3;
+                min-width: 0;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+            .pl-m-amount {
+                font-size: 14px;
+                font-weight: 700;
+                color: #1b2850;
+                white-space: nowrap;
+            }
+            .pl-m-badges {
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 4px 8px;
+                margin-top: 5px;
+                min-width: 0;
+            }
+            .pl-m-badge {
+                font-size: 10px;
+                font-weight: 600;
+                padding: 2px 9px;
+                border-radius: 12px;
+                white-space: nowrap;
+            }
+            .pl-m-badge.is-ok {
+                background: #e7f8ef;
+                color: #12a150;
+            }
+            .pl-m-badge.is-low {
+                background: #fdecec;
+                color: #e5483d;
+            }
+            .pl-m-code {
+                font-size: 11px;
+                color: #8b93a7;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 100%;
+            }
+            .pl-m-foot {
+                grid-column: 1 / -1;
+                display: flex;
+                align-items: flex-end;
+                gap: 16px;
+                padding-top: 8px;
+                border-top: 1px dashed #eceef3;
+            }
+            .pl-m-stat {
+                min-width: 0;
+            }
+            .pl-m-stat span {
+                display: block;
+                font-size: 11px;
+                color: #8b93a7;
+            }
+            .pl-m-stat strong {
+                display: block;
+                font-size: 13px;
+                color: #1b2850;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .pl-m-stat.quantity-history {
+                cursor: pointer;
+            }
+            .pl-m-cat {
+                flex: 1 1 auto;
+            }
+            .pl-m-acts {
+                margin-left: auto;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                flex-shrink: 0;
+            }
+            .pl-m-acts .action-dropdown .btn {
+                border: 0 !important;
+                background: transparent !important;
+                color: #8b93a7 !important;
+                padding: 0 !important;
+                width: 32px !important;
+                height: 32px !important;
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+            }
+            .pl-m-acts .action-dropdown .btn i {
+                font-size: 16px;
+            }
+
+            /* Hide desktop filters on mobile/tablet */
+            .product-filter-box > .product-filter-select {
+                display: none !important;
+            }
+            .product-filter-wrap {
+                margin-bottom: 12px;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 10px !important;
+            }
+            .product-filter-box {
+                width: 100% !important;
+            }
+            .product-filter-search {
+                width: 100% !important;
+                min-width: 100% !important;
+            }
+            .product-export-btns {
+                width: 100% !important;
+                display: flex !important;
+                flex-wrap: nowrap !important;
+                gap: 8px !important;
+            }
+            .product-export-btns button,
+            #exportAllChallan,
+            #exportPdf {
+                flex: 1 1 0 !important;
+                width: 100% !important;
+                max-width: none !important;
+                min-width: 0 !important;
+                height: 36px !important;
+                margin: 0 !important;
+                padding: 0 10px !important;
+                font-size: 13px !important;
+            }
+            #exportAllChallan i,
+            #exportPdf i {
+                font-size: 13px !important;
+                margin-right: 4px !important;
+            }
+        }
+
+        /* ========================================================
+           Tablet & Nest Hub Max View (768px to 1280.98px): 2 Column Grid
+           ======================================================== */
+        @media (min-width: 768px) and (max-width: 1280.98px) {
+            table.datanew tbody {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 12px !important;
+                width: 100% !important;
+            }
+            table.datanew tbody tr:has(.dataTables_empty) {
+                grid-column: span 2 !important;
+            }
+        }
+
+        /* ========================================================
+           Mobile View (< 768px): 1 Column Vertical Stack
+           ======================================================== */
+        @media (max-width: 767.98px) {
+            table.datanew tbody {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 10px !important;
+                width: 100% !important;
             }
         }
     </style>
@@ -332,6 +908,41 @@
         </div>
     </div>
 
+    <!-- Filter Bottom Sheet Modal for Mobile/Tablet -->
+    <div class="pl-filter-backdrop" id="plFilterBackdrop"></div>
+    <div class="pl-filter-sheet" id="plFilterSheet" role="dialog" aria-modal="true" aria-labelledby="plFilterSheetTitle">
+        <div class="pl-filter-sheet-head">
+            <span id="plFilterSheetTitle">Filter By</span>
+            <button type="button" class="pl-filter-sheet-close" id="plFilterSheetClose" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="pl-filter-sheet-body" id="plFilterSheetBody">
+            <div class="mb-3">
+                <label for="filterCategoryMobile" class="form-label">Category</label>
+                <select id="filterCategoryMobile" class="form-select filter-select-custom">
+                    <option value="">All Categories</option>
+                    @foreach ($categories as $category)
+                        <option value="{{ $category->id }}">{{ $category->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="filterBrandMobile" class="form-label">Brand</label>
+                <select id="filterBrandMobile" class="form-select filter-select-custom">
+                    <option value="">All Brands</option>
+                    @foreach ($brands as $brand)
+                        <option value="{{ $brand->id }}">{{ $brand->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+        <div class="pl-filter-sheet-foot">
+            <button type="button" class="pl-filter-clear" id="plFilterClear">Clear</button>
+            <button type="button" class="pl-filter-apply" id="plFilterApply">Apply</button>
+        </div>
+    </div>
+
     <div class="content">
         <div class="page-header">
             <div class="page-title">
@@ -339,13 +950,12 @@
             </div>
             <div class="page-btn product-page-actions">
                 <a href="{{ route('product.import') }}" class="product-import-btn">
-                    <i class="fas fa-file-import"></i> Import Products
+                    <i class="fas fa-file-import me-1"></i> <span class="d-none d-sm-inline">Import Products</span><span class="d-sm-none">Import</span>
                 </a>
                 @if (app('hasPermission')(1, 'add'))
-                    <a href="{{ route('product.add') }}" class="btn btn-sm btn-added"><img
-                            src="{{ env('ImagePath') . '/admin/assets/img/icons/plus.svg' }}" alt="img"
-                            class="me-1">New
-                        Product</a>
+                    <a href="{{ route('product.add') }}" class="btn btn-sm btn-added product-new-btn">
+                        <i class="fas fa-plus me-1"></i> New Product
+                    </a>
                 @endif
             </div>
         </div>
@@ -356,9 +966,15 @@
                     <div class="product-filter-box">
                         <div class="form-group product-filter-search">
                             <label for="productSearch" class="form-label mb-1">Search</label>
-                            <div class="product-search-input">
-                                <i class="fas fa-search"></i>
-                                <input type="text" id="productSearch" class="form-control form-control-sm" placeholder="Search...">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="product-search-input flex-grow-1">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" id="productSearch" class="form-control form-control-sm" placeholder="Search...">
+                                </div>
+                                <button type="button" id="plFilterToggle" class="pl-filter-toggle" aria-label="Filters" aria-expanded="false">
+                                    <i class="fas fa-filter"></i>
+                                    <span class="pl-filter-count d-none" id="plFilterCount">0</span>
+                                </button>
                             </div>
                         </div>
                         <div class="form-group product-filter-select">
@@ -381,11 +997,11 @@
                         </div>
                     </div>
 
-                    <div class="d-flex flex-wrap gap-2 col-12 col-md-auto">
-                        <button id="exportAllChallan" class="btn btn-sm btn-success col-6 col-md-auto">
+                    <div class="product-export-btns d-flex flex-wrap gap-2 col-12 col-md-auto">
+                        <button id="exportAllChallan" class="btn btn-sm col-6 col-md-auto">
                             <i class="fas fa-file-excel me-1"></i> Excel
                         </button>
-                        <button id="exportPdf" class="btn btn-sm btn-danger col-6 col-md-auto">
+                        <button id="exportPdf" class="btn btn-sm col-6 col-md-auto">
                             <i class="fas fa-file-pdf me-1"></i> PDF
                         </button>
                     </div>
@@ -426,8 +1042,9 @@
     <script>
         $(document).ready(function() {
 
+            $.fn.dataTable.ext.errMode = 'none';
             var authToken = localStorage.getItem("authToken");
-            var table = $('.datanew').DataTable(); // Initialize DataTable
+            var table = $('.datanew').DataTable(); // Retrieve DataTable instance
 
             $('#filterCategory, #filterBrand').select2({
                 width: '100%'
@@ -460,8 +1077,6 @@
                             let tableBody = [];
 
                             let lowStockThreshold = response.lowStockThreshold || 0;
-
-
                             // Function to capitalize first letter of each word
                             function capitalizeWords(str) {
                                 if (!str || str.trim() === '') return 'N/A';
@@ -469,39 +1084,42 @@
                                     return char.toUpperCase();
                                 });
                             }
+
+                            function escapeHtmlText(str) {
+                                if (str === null || str === undefined) return '';
+                                return String(str)
+                                    .replace(/&/g, '&amp;')
+                                    .replace(/</g, '&lt;')
+                                    .replace(/>/g, '&gt;')
+                                    .replace(/"/g, '&quot;')
+                                    .replace(/'/g, '&#039;');
+                            }
+
                             $.each(products, function(index, product) {
                                 let productName = capitalizeWords(product.name || 'N/A');
                                 let sku = product.SKU || 'N/A';
                                 let quantity = product.quantity ?? 'N/A';
-                                let categoryName = capitalizeWords(product.category ? product
-                                    .category.name : "N/A");
-                                let brandName = capitalizeWords(product.brand ? product
-                                    .brand.name : "N/A");
-                               let qtyTypeName = capitalizeWords(product.quantity_type?.quantity_type ?? "N/A");                           
+                                let categoryName = capitalizeWords(product.category ? product.category.name : "N/A");
+                                let brandName = capitalizeWords(product.brand ? product.brand.name : "N/A");
+                                let qtyTypeName = capitalizeWords(product.quantity_type?.quantity_type ?? "N/A");                           
 
-                                let createdAt = capitalizeWords(product.product_type ? product
-                                    .product_type
-                                    .name : "N/A");
                                 let detailsToggle = `
-    <a href="#details-${product.id}" class="toggle-details d-md-none" data-bs-toggle="collapse">
-        <i class="fas fa-plus-circle" style="color: #ff9f43;"></i>
-    </a>
-`;
+                                    <a href="#details-${product.id}" class="toggle-details d-md-none" data-bs-toggle="collapse">
+                                        <i class="fas fa-plus-circle" style="color: #ff9f43;"></i>
+                                    </a>
+                                `;
 
-                                let productImage =
-                                    '{{ env('ImagePath') . 'admin/assets/img/product/noimage.png' }}';
+                                let productImage = '{{ env('ImagePath') . 'admin/assets/img/product/noimage.png' }}';
                                 const ImagePath = "{{ env('ImagePath') . 'storage/' }}";
                                 if (product.images) {
-                                    let imagesArray = typeof product.images === "string" ? JSON
-                                        .parse(product.images) : product.images;
+                                    let imagesArray = typeof product.images === "string" ? JSON.parse(product.images) : product.images;
                                     if (Array.isArray(imagesArray) && imagesArray.length > 0) {
                                         productImage = `${ImagePath}${imagesArray[0]}`;
                                     }
                                 }
 
                                 let formattedPrice = 'N/A';
-                                if (product.price !== undefined && product.price !== null &&
-                                    product.price !== '') {
+                                if (product.price !== undefined && product.price !== null && product.price !== '') {
                                     if (currencyPosition === 'left') {
                                         formattedPrice = currencySymbol + product.price;
                                     } else {
@@ -509,66 +1127,91 @@
                                     }
                                 }
 
+                                let isLowStock = quantity !== 'N/A' && !isNaN(parseFloat(quantity)) && parseFloat(quantity) <= parseFloat(lowStockThreshold);
+
                                 let quantityDisplay =
                                     `<span class="quantity-history" data-id="${product.id}" style="cursor:pointer; border: 1px solid #ececec; padding: 4px 8px; border-radius: 4px; display: inline-block;">${quantity}</span>`;
-                                if (quantity !== 'N/A' && parseInt(quantity) <=
-                                    lowStockThreshold) {
-                                    quantityDisplay +=
-                                        ` <span class="badge bg-danger ms-1">Low Stock</span>`;
+                                if (isLowStock) {
+                                    quantityDisplay += ` <span class="badge bg-danger ms-1">Low Stock</span>`;
                                 }
 
+                                let actionDropdownHtml = `
+                                    <div class="dropdown action-dropdown">
+                                        <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border: 1px solid #e2e8f0; background: #fff; color: #64748b; border-radius: 6px; padding: 4px 12px; transition: all 0.2s;">
+                                            <i class="fa-solid fa-ellipsis"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-lg" style="border: none; border-radius: 12px; min-width: 160px; padding: 8px;">
+                                            @if (app('hasPermission')(1, 'view')) 
+                                            <li>
+                                                <a class="dropdown-item d-flex align-items-center" href="/inventory-View/${product.id}" style="border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 500; color: #475569; transition: all 0.2s;">
+                                                    <i class="fa-solid fa-clock-rotate-left me-3" style="font-size: 14px; color: #94a3b8; width: 16px;"></i> History
+                                                </a>
+                                            </li>
+                                            @endif
+                                            @if (app('hasPermission')(1, 'view')) 
+                                            <li>
+                                                <a class="dropdown-item d-flex align-items-center" href="/product-view/${product.id}" style="border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 500; color: #475569; transition: all 0.2s;">
+                                                    <i class="fa-regular fa-eye me-3" style="font-size: 14px; color: #94a3b8; width: 16px;"></i> View
+                                                </a>
+                                            </li>
+                                            @endif
+                                            @if (app('hasPermission')(1, 'edit'))
+                                            <li>
+                                                <a class="dropdown-item d-flex align-items-center" href="/edit-product/${product.id}" style="border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 500; color: #475569; transition: all 0.2s;">
+                                                    <i class="fa-regular fa-pen-to-square me-3" style="font-size: 14px; color: #94a3b8; width: 16px;"></i> Edit
+                                                </a>
+                                            </li>
+                                            @endif
+                                            @if (app('hasPermission')(1, 'delete'))
+                                            <li>
+                                                <a class="dropdown-item confirm-text delete-product d-flex align-items-center" data-id="${product.id}" href="javascript:void(0);" style="border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 500; color: #ef4444; transition: all 0.2s;">
+                                                    <i class="fa-regular fa-trash-can me-3" style="font-size: 14px; color: #ef4444; width: 16px;"></i> Delete
+                                                </a>
+                                            </li>
+                                            @endif
+                                        </ul>
+                                    </div>
+                                `;
+
+                                let mobileCard = `
+                                    <div class="pl-m-card">
+                                        <a href="/product-view/${product.id}" class="pl-m-img">
+                                            <img src="${productImage}" alt="" loading="lazy">
+                                        </a>
+                                        <div class="pl-m-body">
+                                            <div class="pl-m-top">
+                                                <a href="/product-view/${product.id}" class="pl-m-name">${escapeHtmlText(productName)}</a>
+                                                <span class="pl-m-amount">${formattedPrice}</span>
+                                            </div>
+                                            <div class="pl-m-badges">
+                                                <span class="pl-m-badge ${isLowStock ? 'is-low' : 'is-ok'}">${isLowStock ? 'LOW STOCK' : 'IN STOCK'}</span>
+                                                ${sku !== 'N/A' && sku ? `<span class="pl-m-code">${escapeHtmlText(sku)}</span>` : ''}
+                                            </div>
+                                        </div>
+                                        <div class="pl-m-foot">
+                                            <div class="pl-m-stat quantity-history" data-id="${product.id}"><span>Qty</span><strong class="${isLowStock ? 'text-danger' : ''}">${quantity}</strong></div>
+                                            ${brandName && brandName !== 'N/A' ? `<div class="pl-m-stat"><span>Brand</span><strong>${escapeHtmlText(brandName)}</strong></div>` : ''}
+                                            <div class="pl-m-stat pl-m-cat"><span>Category</span><strong>${escapeHtmlText(categoryName)}</strong></div>
+                                            <div class="pl-m-acts">
+                                                ${actionDropdownHtml}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+
+                                let desktopHead = `
+                                    <div class="pl-desktop-head" style="display: flex; align-items: center;">
+                                        <a href="/product-view/${product.id}" class="product-img mb-1">
+                                            <img src="${productImage}" alt="product" style="max-width: 60px;">
+                                        </a>
+                                        <a href="/product-view/${product.id}" style="color: #1b2850; font-weight: 500; text-align: center; margin-left: 8px;">
+                                            ${escapeHtmlText(productName)}
+                                        </a>
+                                    </div>
+                                `;
+
                                 tableBody.push([
-                                    `<div style="display: flex; align-items: center;">
-                                    
-                                    <a href="/product-view/${product.id}" class="product-img mb-1">
-                                        <img src="${productImage}" alt="product" style="max-width: 60px;">
-                                    </a>
-                                    <a href="/product-view/${product.id}" style="color: #1b2850; font-weight: 500; text-align: center; margin-left: 8px;">
-                                        ${productName}
-                                    </a>
-                                    
-                                </div>
-                                
-                                  <!-- Collapsible Details (visible only on mobile) -->
-    <div class="collapse mt-2 d-md-none" id="details-${product.id}">
-        <div class=" card-body p-2 ">
-            <p class="mb-1"><strong>SKU:</strong> ${sku}</p>
-            <p class="mb-1"><strong>Category:</strong> ${categoryName}</p>
-            <p class="mb-1"><strong>Price:</strong> ${formattedPrice}</p>
-            <p class="mb-1"><strong>Quantity:</strong> ${quantityDisplay}</p>
-            <p class="mb-1"><strong>Quantity Type:</strong> ${qtyTypeName}</p>
-            <div class="mt-2">
-                ${`@if (app('hasPermission')(1, 'view')) 
-                                                                     <a class="me-3 btn btn-sm btn-primary" style="color:white; font-size: 13px;" href="/inventory-View/${product.id}">
-                                                                        History    
-                                                                    </a>
-                                                                    @endif
-                                                                    @if (app('hasPermission')(1, 'view')) 
-                                                                    <a class="me-3" href="/product-view/${product.id}">
-                                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 9C11.206 9.00524 10.4459 9.32299 9.88447 9.88447C9.32299 10.4459 9.00524 11.206 9 12C9 13.642 10.358 15 12 15C13.641 15 15 13.642 15 12C15 10.359 13.641 9 12 9Z" fill="#092C4C"/>
-                            <path d="M12 5C4.36704 5 2.07304 11.617 2.05204 11.684L1.94604 12L2.05105 12.316C2.07305 12.383 4.36704 19 12 19C19.633 19 21.927 12.383 21.948 12.316L22.054 12L21.949 11.684C21.927 11.617 19.633 5 12 5ZM12 17C6.64904 17 4.57604 13.154 4.07404 12C4.57804 10.842 6.65204 7 12 7C17.351 7 19.424 10.846 19.926 12C19.422 13.158 17.348 17 12 17Z" fill="#092C4C"/>
-                            </svg>
-                                                                    </a>
-                                                                    @endif
-                                                                    @if (app('hasPermission')(1, 'edit'))
-                                                                    <a class="me-3" href="/edit-product/${product.id}">
-                                                                        <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M15.045 5.401C15.423 5.023 15.631 4.521 15.631 3.987C15.631 3.453 15.423 2.951 15.045 2.573L13.459 0.987001C13.081 0.609001 12.579 0.401001 12.045 0.401001C11.511 0.401001 11.009 0.609001 10.632 0.986001L0 11.585V16H4.413L15.045 5.401ZM12.045 2.401L13.632 3.986L12.042 5.57L10.456 3.985L12.045 2.401ZM2 14V12.415L9.04 5.397L10.626 6.983L3.587 14H2ZM0 18H16V20H0V18Z" fill="#092C4C"/>
-                            </svg>
-                                                                    </a>
-                                                                    @endif
-                                                                    @if (app('hasPermission')(1, 'delete'))
-                                                                    <a class="confirm-text delete-product" data-id="${product.id}" href="javascript:void(0);">
-                                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                                <path d="M5 20C5 20.5304 5.21071 21.0391 5.58579 21.4142C5.96086 21.7893 6.46957 22 7 22H17C17.5304 22 18.0391 21.7893 18.4142 21.4142C18.7893 21.0391 19 20.5304 19 20V8H21V6H17V4C17 3.46957 16.7893 2.96086 16.4142 2.58579C16.0391 2.21071 15.5304 2 15 2H9C8.46957 2 7.96086 2.21071 7.58579 2.58579C7.21071 2.96086 7 3.46957 7 4V6H3V8H5V20ZM9 4H15V6H9V4ZM8 8H17V20H7V8H8Z" fill="#092C4C"/>
-                                                                <path d="M9 10H11V18H9V10ZM13 10H15V18H13V10Z" fill="#092C4C"/>
-                                                            </svg>
-                                                                    </a>
-                                                                    @endif`}
-            </div>
-        </div>
-    </div>`,
+                                    `${mobileCard}${desktopHead}`,
                                     detailsToggle,
                                     sku,
                                     categoryName,
@@ -576,43 +1219,7 @@
                                     formattedPrice,
                                     quantityDisplay,
                                     qtyTypeName,
-                                    `
-                                        <div class="dropdown action-dropdown">
-                                            <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border: 1px solid #e2e8f0; background: #fff; color: #64748b; border-radius: 6px; padding: 4px 12px; transition: all 0.2s;">
-                                                <i class="fa-solid fa-ellipsis"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end shadow-lg" style="border: none; border-radius: 12px; min-width: 160px; padding: 8px;">
-                                                @if (app('hasPermission')(1, 'view')) 
-                                                <li>
-                                                    <a class="dropdown-item d-flex align-items-center" href="/inventory-View/${product.id}" style="border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 500; color: #475569; transition: all 0.2s;">
-                                                        <i class="fa-solid fa-clock-rotate-left me-3" style="font-size: 14px; color: #94a3b8; width: 16px;"></i> History
-                                                    </a>
-                                                </li>
-                                                @endif
-                                                @if (app('hasPermission')(1, 'view')) 
-                                                <li>
-                                                    <a class="dropdown-item d-flex align-items-center" href="/product-view/${product.id}" style="border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 500; color: #475569; transition: all 0.2s;">
-                                                        <i class="fa-regular fa-eye me-3" style="font-size: 14px; color: #94a3b8; width: 16px;"></i> View
-                                                    </a>
-                                                </li>
-                                                @endif
-                                                @if (app('hasPermission')(1, 'edit'))
-                                                <li>
-                                                    <a class="dropdown-item d-flex align-items-center" href="/edit-product/${product.id}" style="border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 500; color: #475569; transition: all 0.2s;">
-                                                        <i class="fa-regular fa-pen-to-square me-3" style="font-size: 14px; color: #94a3b8; width: 16px;"></i> Edit
-                                                    </a>
-                                                </li>
-                                                @endif
-                                                @if (app('hasPermission')(1, 'delete'))
-                                                <li>
-                                                    <a class="dropdown-item confirm-text delete-product d-flex align-items-center" data-id="${product.id}" href="javascript:void(0);" style="border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 500; color: #ef4444; transition: all 0.2s;">
-                                                        <i class="fa-regular fa-trash-can me-3" style="font-size: 14px; color: #ef4444; width: 16px;"></i> Delete
-                                                    </a>
-                                                </li>
-                                                @endif
-                                            </ul>
-                                        </div>
-                                    `
+                                    actionDropdownHtml
                                 ]);
                             });
                             table.clear().rows.add(tableBody).draw();
@@ -679,6 +1286,63 @@
                     }
                 });
             });
+
+            // Mobile Filter Bottom Sheet handling (matching Dolphin ERP)
+            (function initMobileFilterSheet() {
+                const sheet = document.getElementById('plFilterSheet');
+                const toggle = document.getElementById('plFilterToggle');
+                if (!sheet || !toggle) return;
+
+                function openSheet() {
+                    $('#filterCategoryMobile').val($('#filterCategory').val() || '');
+                    $('#filterBrandMobile').val($('#filterBrand').val() || '');
+                    document.body.classList.add('pl-filter-open');
+                    toggle.setAttribute('aria-expanded', 'true');
+                }
+
+                function closeSheet() {
+                    document.body.classList.remove('pl-filter-open');
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+
+                function updateCount() {
+                    const n = ['#filterCategory', '#filterBrand'].filter(function(sel) {
+                        return !!$(sel).val();
+                    }).length;
+                    $('#plFilterCount').text(n).toggleClass('d-none', n === 0);
+                    $(toggle).toggleClass('has-active', n > 0);
+                }
+
+                toggle.addEventListener('click', openSheet);
+                ['plFilterSheetClose', 'plFilterBackdrop'].forEach(function(id) {
+                    const el = document.getElementById(id);
+                    if (el) el.addEventListener('click', closeSheet);
+                });
+
+                $('#plFilterApply').on('click', function() {
+                    let catVal = $('#filterCategoryMobile').val() || '';
+                    let brandVal = $('#filterBrandMobile').val() || '';
+                    $('#filterCategory').val(catVal).trigger('change');
+                    $('#filterBrand').val(brandVal).trigger('change');
+                    updateCount();
+                    closeSheet();
+                });
+
+                $('#plFilterClear').on('click', function() {
+                    $('#filterCategoryMobile').val('');
+                    $('#filterBrandMobile').val('');
+                    $('#filterCategory').val('').trigger('change');
+                    $('#filterBrand').val('').trigger('change');
+                    updateCount();
+                    closeSheet();
+                });
+
+                $('#filterCategory, #filterBrand').on('change', function() {
+                    updateCount();
+                });
+
+                updateCount();
+            })();
 
             // Initial fetch
             fetchProducts();
