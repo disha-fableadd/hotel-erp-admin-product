@@ -876,12 +876,12 @@
             @endif --}}
             @if (in_array($role, ['inventory-manager', 'admin', 'sub-admin']))
                 <div class="col-lg col-md-4 col-sm-6 col-6">
-                    <a href="{{ route('customer.list') ?? '#' }}" style="text-decoration: none;">
+                    <a href="{{ route('tables.create') }}" style="text-decoration: none;">
                         <div style="background-color: white; border-radius: 8px; padding: 15px; border: 1px solid #f0f0f0; position: relative; margin-bottom: 20px; height: 110px;">
                             <div style="position: absolute; top: 15px; right: 15px;">
-                                <i data-feather="users" style="color: #00cfe8; width: 20px; height: 20px;"></i>
+                                <i data-feather="grid" style="color: #00cfe8; width: 20px; height: 20px;"></i>
                             </div>
-                            <h4 style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px; margin-top: 10px;">{{ $customerCount ?? 0 }}</h4>
+                            <h4 style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px; margin-top: 10px;">{{ $tableCount ?? 0 }}</h4>
                             <h6 style="font-size: 13px; font-weight: 600; color: #667085; margin: 0;">Tables</h6>
                         </div>
                     </a>
