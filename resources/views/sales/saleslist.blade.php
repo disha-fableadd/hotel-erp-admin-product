@@ -13,131 +13,622 @@
                 display: block;
             }
         } */
-    /* ===== Mobile table behaviour like Quantity Type ===== */
+    /* ===== Pooja ERP Mobile & Tablet Card UI Styles ===== */
+    .sl-card,
+    .sl-m-only,
+    .sl-quick-links,
+    .sl-filter-backdrop,
+    .sl-filter-sheet,
+    .sl-fab-new-sale,
+    .sales-filter-toolbar {
+        display: none !important;
+    }
 
     /* Desktop: hide details column */
-    @media (min-width: 768px) {
-
+    @media (min-width: 1281px) {
         table.datanew thead th.details-column,
         table.datanew tbody td:nth-child(2) {
             display: none !important;
         }
     }
 
-    /* Mobile view */
-    @media (max-width: 767px) {
-
-        .table-responsive {
-            overflow-x: hidden !important;
+    /* Mobile & Tablet view (<= 1280.98px) */
+    @media (max-width: 1280.98px) {
+        .page-wrapper:has(.sl-quick-links) {
+            padding-top: 0 !important;
         }
-
-        table.datanew {
-            table-layout: fixed !important;
-            width: 100% !important;
+        .content:has(.sl-quick-links) {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+            padding-top: 6px !important;
         }
-
-        table.datanew thead th:first-child,
-        table.datanew tbody td:first-child {
-            word-wrap: break-word;
-            white-space: normal;
-        }
-
-        /* Hide all except first (Order) + Details */
-        table.datanew thead th:nth-child(n+3),
-        table.datanew tbody td:nth-child(n+3) {
+        .content:has(.sl-quick-links) > .page-header {
             display: none !important;
         }
-
-        table.datanew thead th.details-column,
-        table.datanew tbody td:nth-child(2) {
-            display: table-cell !important;
-            width: 50px;
-            text-align: center;
-            vertical-align: top !important;
-            padding-top: 25px !important;
-        }
-
-        .toggle-details i {
-            font-size: 18px;
-            color: #ff9f43;
-        }
-
-        .mobile-details-card {
-            background: #f8f9fa;
-            border-radius: 6px;
-            padding: 8px;
-            margin-top: 6px;
-            font-size: 14px;
-        }
-
-        /* Fix action button SVG visibility on mobile */
-        .mobile-details-card a svg,
-        table.datanew tbody td a svg {
-            width: 20px !important;
-            height: 20px !important;
-            display: inline-block;
-            vertical-align: middle;
-        }
-
-        .mobile-details-card a,
-        table.datanew tbody td a {
-            display: inline-flex;
-            align-items: center;
-            margin-right: 6px;
-        }
-
-        /* Unpack action menu inline on mobile */
-        .mobile-details-card .action-dropdown-wrap {
-            display: block;
-        }
-        .mobile-details-card .action-ellipsis-btn {
-            display: none !important;
-        }
-        .mobile-details-card .action-dropdown-menu-src {
-            display: flex !important;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            gap: 8px;
-            margin-top: 8px;
-            padding-bottom: 4px; /* for scrollbar spacing */
-            max-width: calc(100vw - 110px); /* Prevent table column from stretching */
-        }
-        .mobile-details-card .action-dropdown-menu-src::-webkit-scrollbar {
-            height: 4px;
-        }
-        .mobile-details-card .action-dropdown-menu-src::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1;
-            border-radius: 4px;
-        }
-        .mobile-details-card .action-dropdown-menu-src a,
-        .mobile-details-card .action-dropdown-menu-src button.dd-item {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 8px 12px;
-            background: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            font-size: 0 !important; /* Hide text */
-            color: transparent !important; /* Hide text color */
-            width: auto;
-            margin: 0;
-            cursor: pointer;
-            text-decoration: none;
-            line-height: 1;
-        }
-        .mobile-details-card .action-dropdown-menu-src .dd-icon {
-            font-size: 16px !important;
-            color: #495057; /* Default icon color fallback */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: auto;
-            height: auto;
+        .content:has(.sl-quick-links) > .card {
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
             margin: 0 !important;
         }
-        .mobile-details-card .action-dropdown-menu-src .dd-item-delete {
-            border-color: #dc3545;
+        .content:has(.sl-quick-links) > .card > .card-body {
+            padding: 0 !important;
+        }
+        .content:has(.sl-quick-links) .table-scroll-top,
+        .purchase-filter-card {
+            display: none !important;
+        }
+
+        /* Quick Links Card (Header + Summary Badges) */
+        .sl-quick-links {
+            display: block !important;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+            padding: 12px 10px 10px;
+            margin-bottom: 8px;
+        }
+        .sl-quick-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .sl-quick-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1b2850;
+            margin: 0 0 0 2px;
+            white-space: nowrap;
+        }
+        .sl-quick-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .sl-quick-actions .btn {
+            display: inline-flex;
+            align-items: center;
+            height: 32px;
+            padding: 0 12px !important;
+            font-size: 13px !important;
+            font-weight: 600;
+            white-space: nowrap;
+            margin: 0 !important;
+        }
+
+        /* Filter Toolbar (Search + Red Filter Icon) */
+        .sales-filter-toolbar {
+            display: flex !important;
+            align-items: center;
+            gap: 8px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+            padding: 8px 10px !important;
+            margin: 0 0 10px !important;
+        }
+        .sales-filter-toolbar .filter-search {
+            display: flex !important;
+            align-items: center;
+            gap: 8px;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .sales-filter-toolbar .filter-search .search-input {
+            position: relative;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .sales-filter-toolbar .filter-search .search-input input {
+            height: 40px !important;
+            border-radius: 8px !important;
+            border: 1px solid #d1d5db !important;
+            padding-left: 38px !important;
+            padding-right: 12px !important;
+            font-size: 14px !important;
+            width: 100% !important;
+            background: #fff;
+        }
+        .sales-filter-toolbar .filter-search .search-input .btn-searchset {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: #9ca3af;
+            font-size: 15px;
+            pointer-events: none;
+        }
+        .sales-filter-toggle {
+            display: inline-flex !important;
+            position: relative;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            flex: 0 0 40px;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: #f05a6a;
+            color: #fff;
+            font-size: 16px;
+            box-shadow: 0 2px 6px rgba(240, 90, 106, 0.35);
+            cursor: pointer;
+        }
+        .sales-filter-toggle.has-active {
+            background: #e8334a;
+        }
+        .sales-filter-count {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: #1b2850;
+            color: #fff;
+            font-size: 11px;
+            line-height: 18px;
+            text-align: center;
+        }
+
+        /* Filter Bottom Sheet (Modal matching Dolphin & Pooja ERP) */
+        .sl-filter-backdrop {
+            display: block !important;
+            position: fixed;
+            inset: 0;
+            z-index: 1040;
+            background: rgba(16, 24, 40, 0.45);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .2s ease;
+        }
+        .sl-filter-sheet {
+            display: flex !important;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1045;
+            flex-direction: column;
+            max-height: 85vh;
+            max-width: 520px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -8px 24px rgba(16, 24, 40, 0.18);
+            transform: translateY(105%);
+            transition: transform .25s ease;
+        }
+        body.sl-filter-open .sl-filter-backdrop {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        body.sl-filter-open .sl-filter-sheet {
+            transform: translateY(0);
+        }
+        body.sl-filter-open {
+            overflow: hidden;
+        }
+        body.sl-filter-open .mobile-bottom-nav,
+        body.sl-filter-open .floating-calculator-wrapper,
+        body.sl-filter-open .sl-fab-new-sale {
+            display: none !important;
+        }
+        .sl-filter-sheet-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid #eef0f4;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1b2850;
+        }
+        .sl-filter-sheet-close {
+            border: 0;
+            background: transparent;
+            color: #2f6fd8;
+            font-size: 20px;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            cursor: pointer;
+        }
+        .sl-filter-sheet-body {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            padding: 10px 20px;
+        }
+        .sl-filter-sheet-body .filter-field {
+            display: block !important;
+            width: 100% !important;
+            padding: 10px 0 !important;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .sl-sheet-label {
+            display: block;
+            margin: 0 0 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475467;
+        }
+        .sl-filter-sheet-body .form-select,
+        .sl-filter-sheet-body .form-control {
+            height: 42px !important;
+            border-radius: 8px !important;
+            border: 1px solid #d1d5db;
+            font-size: 14px;
+            color: #1b2850 !important;
+        }
+        .sl-filter-sheet-foot {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
+            border-top: 1px solid #eef0f4;
+            background: #fff;
+        }
+        .sl-filter-clear,
+        .sl-filter-apply {
+            height: 46px;
+            border: 0;
+            border-radius: 24px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .sl-filter-clear {
+            background: #eef0f4;
+            color: #475467;
+        }
+        .sl-filter-apply {
+            background: #e8334a;
+            color: #fff;
+        }
+
+        /* Summary Badges Row (Mobile & Tablet) */
+        .summary-badges-row {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) auto !important;
+            align-items: stretch;
+            gap: 6px !important;
+            margin: 0 !important;
+        }
+        .summary-badges-row .summary-badge-box {
+            display: flex !important;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 2px;
+            min-width: 0;
+            width: auto !important;
+            margin: 0 !important;
+            padding: 5px 8px !important;
+            border-radius: 10px !important;
+            border: 1px solid transparent;
+            line-height: 1.2;
+        }
+        .summary-badge-box.pending {
+            background: #fff0f1 !important;
+            border-color: #ffd6d9 !important;
+            color: #e5483d !important;
+        }
+        .summary-badge-box.paid {
+            background: #edfbf3 !important;
+            border-color: #c7f3d9 !important;
+            color: #12a150 !important;
+        }
+        .summary-badge-box.total {
+            background: #f4f7fb !important;
+            border-color: #dce4f0 !important;
+            color: #3b5998 !important;
+        }
+        .summary-badges-row .summary-badge-box span:first-child {
+            font-size: 10px;
+            font-weight: 600;
+            opacity: .85;
+            white-space: nowrap;
+        }
+        .summary-badges-row .summary-badge-box span:last-child {
+            margin: 0 !important;
+            font-size: 13px;
+            font-weight: 800;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+        .summary-badges-row .summary-export-group {
+            display: flex !important;
+            flex-direction: row;
+            align-items: stretch;
+            gap: 4px;
+            margin: 0 !important;
+            width: auto !important;
+        }
+        .summary-badges-row .summary-export-group #exportAllChallan,
+        .summary-badges-row .summary-export-group #exportPdf {
+            width: 36px !important;
+            min-width: 0 !important;
+            height: auto !important;
+            min-height: 36px;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            font-size: 0 !important;
+            border-radius: 8px !important;
+        }
+        .summary-badges-row .summary-export-group #exportAllChallan i,
+        .summary-badges-row .summary-export-group #exportPdf i {
+            font-size: 15px !important;
+            margin: 0 !important;
+        }
+
+        /* Floating Add Sale Button */
+        .sl-fab-new-sale {
+            position: fixed;
+            left: 50%;
+            bottom: 74px;
+            transform: translateX(-50%);
+            z-index: 1030;
+            display: inline-flex !important;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 30px;
+            background: #e8334a;
+            color: #fff !important;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: 0 6px 16px rgba(232, 51, 74, 0.35);
+            white-space: nowrap;
+        }
+        .sl-fab-new-sale i {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+        }
+        .content:has(.sl-fab-new-sale) {
+            padding-bottom: 90px !important;
+        }
+
+        /* Table transformation to Pooja ERP Cards */
+        .table-responsive {
+            overflow: visible !important;
+            border: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        #order-table,
+        #order-table tbody {
+            display: block !important;
+            width: 100% !important;
+            border: 0 !important;
+        }
+        #order-table thead,
+        #order-table tbody tr.order-details-row,
+        #order-table tbody .sl-desktop-head,
+        #order-table tbody td:nth-child(n+2):nth-child(-n+10) {
+            display: none !important;
+        }
+        #order-table tbody tr:not(.order-details-row) {
+            display: block !important;
+            position: relative;
+            background: #fff;
+            border: 1px solid #eef0f4;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+            margin: 0 0 10px;
+            padding: 12px 14px;
+        }
+        #order-table tbody tr > td:first-child {
+            display: block !important;
+            width: 100% !important;
+            max-width: none !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            background: transparent !important;
+        }
+        #order-table tbody tr > td:last-child:not(.dataTables_empty) {
+            display: flex !important;
+            align-items: center;
+            position: absolute;
+            right: 8px;
+            bottom: 10px;
+            width: auto !important;
+            max-width: none !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            background: transparent !important;
+            gap: 4px;
+        }
+        #order-table tbody td.dataTables_empty {
+            display: block !important;
+            text-align: center;
+            padding: 24px !important;
+            background: #fff;
+            border-radius: 10px;
+        }
+
+        /* Card Styles */
+        .sl-card {
+            display: block !important;
+            cursor: pointer;
+        }
+        .sl-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .sl-card-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1b2850;
+            text-transform: uppercase;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
+        .sl-card-date {
+            font-size: 12px;
+            color: #8b93a7;
+            white-space: nowrap;
+            padding-top: 2px;
+        }
+        .sl-card-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0 8px;
+            flex-wrap: wrap;
+        }
+        .sl-card-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            background: #e7f8ef;
+            color: #12a150;
+            text-transform: uppercase;
+        }
+        .sl-card-badge.is-unpaid {
+            background: #fff3df;
+            color: #e8960c;
+        }
+        .sl-card-badge.is-partial {
+            background: #e6f0ff;
+            color: #2f6fd8;
+        }
+        .sl-card-badge.is-other {
+            background: #eef0f4;
+            color: #475467;
+        }
+        .sl-card-no {
+            font-size: 11px;
+            color: #8b93a7;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sl-card-type-badge {
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: #f1f5f9;
+            color: #475467;
+            font-weight: 600;
+        }
+        .sl-card-amounts {
+            display: grid;
+            grid-template-columns: auto auto;
+            justify-content: start;
+            column-gap: 24px;
+            max-width: calc(100% - 136px);
+        }
+        .sl-card-amounts small {
+            display: block;
+            font-size: 12px;
+            color: #8b93a7;
+        }
+        .sl-card-amounts b {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            color: #1b2850;
+            white-space: nowrap;
+        }
+
+        /* Quick Action Buttons on Card */
+        .sl-m-only {
+            display: inline-flex !important;
+        }
+        #order-table .sl-m-print,
+        #order-table .sl-m-share,
+        #order-table .action-ellipsis-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            border: 0 !important;
+            background: transparent !important;
+            color: #8b93a7 !important;
+            font-size: 16px;
+            box-shadow: none !important;
+            cursor: pointer;
+        }
+        #order-table .sl-m-print:hover,
+        #order-table .sl-m-share:hover,
+        #order-table .action-ellipsis-btn:hover {
+            color: #1b2850 !important;
+        }
+        #order-table .sl-m-pdf {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            margin: 0 2px;
+        }
+        #order-table .sl-m-pdf span {
+            background: #e5483d;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 4px;
+            padding: 4px 6px;
+            line-height: 1;
+        }
+        #order-table .action-ellipsis-btn i {
+            transform: rotate(90deg);
+        }
+    }
+
+    /* Tablet View (768px to 1280.98px) - 2 Column Grid */
+    @media screen and (min-width: 768px) and (max-width: 1280.98px) {
+        #order-table tbody {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            align-items: start;
+            gap: 12px !important;
+        }
+        #order-table tbody > tr:not(.order-details-row) {
+            min-width: 0;
+            margin: 0 !important;
+        }
+        #order-table tbody > tr:has(> td.dataTables_empty) {
+            grid-column: 1 / -1;
+        }
+        .sl-card {
+            padding: 2px;
+        }
+        .sl-fab-new-sale {
+            bottom: 86px;
+            font-size: 16px;
+        }
+        .content:has(.sl-fab-new-sale) {
+            padding-bottom: 100px !important;
         }
     }
 
@@ -563,7 +1054,7 @@
     color: #9ca3af;
 }
 
-.summary-strip {
+.summary-badges-row {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
@@ -572,97 +1063,48 @@
     margin-top: 14px;
 }
 
-.summary-pill {
+.summary-badge-box {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     padding: 8px 14px;
     border-radius: 10px;
-    border: 1px solid transparent;
+    border: 1px solid;
     font-size: 14px;
+    font-weight: 600;
     line-height: 1;
     white-space: nowrap;
 }
 
-.summary-pill-pending {
+.summary-badge-box.pending {
     background: #fee2e2;
     border-color: #fecaca;
     color: #dc2626;
 }
 
-.summary-pill-paid {
+.summary-badge-box.paid {
     background: #dcfce7;
     border-color: #bbf7d0;
     color: #16a34a;
 }
 
-.summary-pill-total {
-    background: #ffffff;
-    border-color: #d1d5db;
-    color: #111827;
+.summary-badge-box.total {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #1e293b;
 }
 
-.summary-pill-orders {
-    background: #f3f4f6;
-    border-color: #e5e7eb;
-    color: #374151;
-}
-
-.summary-actions {
+.summary-export-group {
     display: inline-flex;
     gap: 10px;
     margin-left: auto;
 }
 
-.summary-actions .btn {
+.summary-export-group .btn {
     height: 40px;
     border-radius: 8px;
     min-width: 86px;
     font-weight: 600;
-}
-@media screen and (max-width: 575.98px) {
-    .purchase-filter-row {
-        gap: 8px !important;
-    }
-    .purchase-filter-row > div {
-        flex: 1 1 calc(50% - 4px) !important;
-        min-width: 0 !important;
-    }
-    .summary-strip {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .summary-pill {
-        width: 100%;
-        justify-content: space-between;
-    }
-    .summary-actions {
-        width: 100%;
-        flex-wrap: wrap;
-    }
-    .summary-actions .btn {
-        flex: 1 1 calc(50% - 6px);
-    }
-}
-@media screen and (max-width: 575.98px) {
-    /* .purchase-filter-row > div {
-        flex: 1 1 100% !important;
-    } */
-    .summary-strip {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .summary-pill {
-        width: 100%;
-        justify-content: space-between;
-    }
-    .summary-actions {
-        width: 100%;
-        flex-wrap: wrap;
-    }
-    .summary-actions .btn {
-        flex: 1 1 calc(50% - 6px);
-    }
 }
 .dataTables_filter {
     display: none !important;
@@ -712,6 +1154,109 @@
             @endif
         </div>
         
+    </div>
+
+    <!-- Mobile & Tablet Quick Header and Summary Slot -->
+    <div class="sl-quick-links d-none">
+        <div class="sl-quick-head">
+            <div class="sl-quick-title">All Orders</div>
+            @if (app('hasPermission')(2, 'add'))
+                <div class="sl-quick-actions">
+                    <a href="{{ route('sales.add') }}" class="btn btn-sm btn-added">
+                        <i class="fas fa-plus me-1"></i> Take Away
+                    </a>
+                    <a href="{{ route('tables.create') }}" class="btn btn-sm btn-added">
+                        <i class="fas fa-plus me-1"></i> Dine In
+                    </a>
+                </div>
+            @endif
+        </div>
+        <div id="slSummarySlot"></div>
+    </div>
+
+    <!-- Floating Add New Sale Button (Mobile & Tablet) -->
+    @if (app('hasPermission')(2, 'add'))
+        <a href="{{ route('sales.add') }}" class="sl-fab-new-sale d-none">
+            <i class="fas fa-rupee-sign"></i> Add New Sale
+        </a>
+    @endif
+
+    <!-- Mobile Filter Backdrop and Bottom Sheet -->
+    <div class="sl-filter-backdrop d-none" id="slFilterBackdrop"></div>
+    <div class="sl-filter-sheet d-none" id="slFilterSheet" role="dialog" aria-modal="true" aria-labelledby="slFilterSheetTitle">
+        <div class="sl-filter-sheet-head">
+            <span id="slFilterSheetTitle">Filter By</span>
+            <button type="button" class="sl-filter-sheet-close" id="slFilterSheetClose" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="sl-filter-sheet-body" id="slFilterSheetBody">
+            <div class="filter-field">
+                <label class="sl-sheet-label" for="filter-month-mobile">Month</label>
+                <select id="filter-month-mobile" class="form-select">
+                    <option value="">All Months</option>
+                    @for ($m = 1; $m <= 12; $m++)
+                        <option value="{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}">
+                            {{ DateTime::createFromFormat('!m', $m)->format('F') }}
+                        </option>
+                    @endfor
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="sl-sheet-label" for="filter-year-mobile">Year</label>
+                <select id="filter-year-mobile" class="form-select">
+                    <option value="">All Years</option>
+                    @foreach ($years as $year)
+                        <option value="{{ $year }}">{{ $year }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="sl-sheet-label" for="filter-financial-year-mobile">Financial Year</label>
+                <select id="filter-financial-year-mobile" class="form-select">
+                    <option value="">All Financial Years</option>
+                    <option value="2024-25">2024-25</option>
+                    <option value="2025-26">2025-26</option>
+                    <option value="2026-27">2026-27</option>
+                </select>
+            </div>
+            @if(isset($staffList) && count($staffList))
+            <div class="filter-field">
+                <label class="sl-sheet-label" for="filter-staff-mobile">Staff</label>
+                <select id="filter-staff-mobile" class="form-select">
+                    <option value="">All Staff</option>
+                    @foreach ($staffList as $id => $name)
+                        <option value="{{ is_object($name) ? $name->id : $id }}">{{ is_object($name) ? $name->name : $name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+            <div class="filter-field">
+                <label class="sl-sheet-label" for="filter-date-mobile">Date</label>
+                <input type="text" id="filter-date-mobile" placeholder="Choose Date" class="datetimepicker form-control">
+            </div>
+            <div class="filter-field">
+                <label class="sl-sheet-label" for="filter-payment-status-mobile">Status</label>
+                <select id="filter-payment-status-mobile" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="partial">Partial</option>
+                    <option value="completed">Completed</option>
+                    <option value="extra_paid">Extra Paid</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="sl-sheet-label" for="filter-sort-mobile">Sort By</label>
+                <select id="filter-sort-mobile" class="form-select">
+                    <option value="">Latest First</option>
+                    <option value="oldest">Oldest First</option>
+                </select>
+            </div>
+        </div>
+        <div class="sl-filter-sheet-foot">
+            <button type="button" class="sl-filter-clear" id="slFilterClear">Clear</button>
+            <button type="button" class="sl-filter-apply" id="slFilterApply">Apply</button>
+        </div>
     </div>
 
     <div class="card">
@@ -894,30 +1439,43 @@
         </div>
     </div>
 
-    <div class="summary-strip">
-        <span class="summary-pill summary-pill-pending">
-            <span>Pending:</span> <strong>₹<span id="total-pending">0.00</span></strong>
-        </span>
-        <span class="summary-pill summary-pill-paid">
-            <span>Paid:</span> <strong>₹<span id="total-paid">0.00</span></strong>
-        </span>
-        <span class="summary-pill summary-pill-total">
-            <span>Total:</span> <strong>₹<span id="total-amount">0.00</span></strong>
-        </span>
-        <!-- <span class="summary-pill summary-pill-orders">
-            <span>Orders:</span> <strong id="total-orders">0</strong>
-        </span> -->
-
-        <div class="summary-actions">
-            <button id="exportAllChallan" class="btn btn-sm btn-success">
+    <div class="summary-badges-row">
+        <div class="summary-badge-box pending">
+            <span>Total Pending:</span>
+            <span>₹<span id="total-pending">0.00</span></span>
+        </div>
+        <div class="summary-badge-box paid">
+            <span>Total Paid:</span>
+            <span>₹<span id="total-paid">0.00</span></span>
+        </div>
+        <div class="summary-badge-box total">
+            <span>Total:</span>
+            <span>₹<span id="total-amount">0.00</span></span>
+        </div>
+        <div class="summary-export-group">
+            <button id="exportAllChallan" class="btn btn-sm btn-success" title="Excel">
                 <i class="fas fa-file-excel"></i> Excel
             </button>
-            <button id="exportPdf" class="btn btn-sm btn-danger">
+            <button id="exportPdf" class="btn btn-sm btn-danger" title="PDF">
                 <i class="fas fa-file-pdf"></i> PDF
             </button>
         </div>
     </div>
 </div>
+            </div>
+
+            <!-- Mobile & Tablet Search Bar with Filter Button -->
+            <div class="sales-filter-toolbar d-none">
+                <div class="filter-search">
+                    <div class="search-input">
+                        <a class="btn btn-searchset"><i class="fas fa-search"></i></a>
+                        <input type="text" id="sales-search-mobile" class="form-control" placeholder="SEARCH...">
+                    </div>
+                    <button type="button" id="salesFilterToggle" class="sales-filter-toggle" aria-expanded="false" aria-label="Filters" title="Filters">
+                        <i class="fas fa-filter"></i>
+                        <span class="sales-filter-count d-none" id="salesFilterCount">0</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Advanced Filters Card (Collapsible) -->
@@ -1272,6 +1830,151 @@
         $('#total-orders').text(totalOrders);
     }
 
+    // ===== POOJA ERP CARD & FILTER HELPERS =====
+    function formatMoney(amount) {
+        let n = parseFloat(amount || 0);
+        if (!isFinite(n)) n = 0;
+        return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function getCardDate(dateStr) {
+        if (!dateStr) return '';
+        try {
+            let d = new Date(dateStr);
+            if (isNaN(d.getTime())) {
+                return dateStr;
+            }
+            let months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            let day = ('0' + d.getDate()).slice(-2);
+            let month = months[d.getMonth()];
+            let year = String(d.getFullYear()).slice(-2);
+            let hours = d.getHours() % 12 || 12;
+            let minutes = ('0' + d.getMinutes()).slice(-2);
+            let ampm = d.getHours() >= 12 ? 'PM' : 'AM';
+            return `${day} ${month}, ${year} ${hours}:${minutes} ${ampm}`;
+        } catch(e) {
+            return dateStr;
+        }
+    }
+
+    function getCardBadge(order) {
+        let pay = String(order.payment_status || '').toLowerCase().trim();
+        if (pay === 'pending' || pay === 'unpaid') {
+            return { text: 'SALE : PENDING', cls: 'is-unpaid' };
+        } else if (pay === 'partial' || pay === 'partially') {
+            return { text: 'SALE : PARTIAL', cls: 'is-partial' };
+        } else if (pay === 'completed' || pay === 'paid') {
+            return { text: 'SALE : PAID', cls: '' };
+        }
+        return { text: 'SALE : ' + (order.payment_status || 'OTHER').toUpperCase(), cls: 'is-other' };
+    }
+
+    function buildCard(order, customerNameHtml) {
+        let b = getCardBadge(order);
+        let total = formatMoney(order.total_amount);
+        let balance = formatMoney(Math.max(0, parseFloat(order.remaining_amount || 0)));
+        let custName = (order.user && order.user.name) ? order.user.name : (order.customer_name || 'DEFAULT CUSTOMER');
+        let dateFormatted = getCardDate(order.created_date || order.created_at);
+        let typeBadge = '';
+        if (order.type === 'dinein' || order.order_type === 'dinein' || order.order_type === 'Dine In') {
+            typeBadge = `<span class="sl-card-type-badge"><i class="fas fa-utensils me-1"></i> Dine In ${order.table_no ? '#' + order.table_no : ''}</span>`;
+        } else if (order.type === 'delivery' || order.order_type === 'delivery' || order.order_type === 'Delivery') {
+            typeBadge = `<span class="sl-card-type-badge"><i class="fas fa-truck me-1"></i> Delivery</span>`;
+        } else {
+            typeBadge = `<span class="sl-card-type-badge"><i class="fas fa-shopping-bag me-1"></i> Take Away</span>`;
+        }
+
+        return `
+        <div class="sl-card" data-order-id="${order.id}">
+            <div class="sl-card-top">
+                <span class="sl-card-name">${custName}</span>
+                <span class="sl-card-date">${dateFormatted}</span>
+            </div>
+            <div class="sl-card-meta">
+                <span class="sl-card-badge ${b.cls}">${b.text}</span>
+                <span class="sl-card-no">${order.order_number || ''}</span>
+                ${typeBadge}
+            </div>
+            <div class="sl-card-amounts">
+                <div><small>Total</small><b>${total}</b></div>
+                <div><small>Balance</small><b>${balance}</b></div>
+            </div>
+        </div>
+        `;
+    }
+
+    function shareInvoice(id) {
+        var url = '/sales/invoice/pdf/' + encodeURIComponent(id);
+        var name = 'Invoice-' + id + '.pdf';
+        fetch(url, { credentials: 'same-origin' }).then(function(res) {
+            if (!res.ok) throw new Error('download failed');
+            return res.blob();
+        }).then(function(blob) {
+            var file = new File([blob], name, { type: 'application/pdf' });
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                return navigator.share({ files: [file], title: name }).catch(function() {});
+            }
+            window.open(url, '_blank');
+        }).catch(function() {
+            window.open(url, '_blank');
+        });
+    }
+
+    function placeSummary() {
+        var slot = document.getElementById('slSummarySlot');
+        var row = document.querySelector('.summary-badges-row');
+        if (!slot || !row) return;
+        if (!placeSummary.home) {
+            placeSummary.home = document.createComment('summary-badges-row-placeholder');
+            row.parentNode.insertBefore(placeSummary.home, row);
+        }
+        var isMobileOrTablet = window.matchMedia('(max-width: 1280.98px)').matches;
+        if (isMobileOrTablet && row.parentNode !== slot) {
+            slot.appendChild(row);
+        } else if (!isMobileOrTablet && row.parentNode === slot) {
+            placeSummary.home.parentNode.insertBefore(row, placeSummary.home);
+        }
+    }
+
+    function openFilterSheet() {
+        $('#filter-month-mobile').val($('#filter-month').val() || '');
+        $('#filter-year-mobile').val($('#filter-year').val() || '');
+        $('#filter-financial-year-mobile').val($('#filter-financial-year').val() || '');
+        if ($('#filter-staff').length) {
+            $('#filter-staff-mobile').val($('#filter-staff').val() || '');
+        }
+        $('#filter-date-mobile').val($('#filter-date').val() || '');
+        $('#filter-payment-status-mobile').val($('#filter-payment-status').val() || '');
+        $('#filter-sort-mobile').val($('#filter-sort').val() || '');
+
+        $('body').addClass('sl-filter-open');
+        $('#salesFilterToggle').attr('aria-expanded', 'true');
+    }
+
+    function closeFilterSheet() {
+        $('body').removeClass('sl-filter-open');
+        $('#salesFilterToggle').attr('aria-expanded', 'false');
+    }
+
+    function updateFilterCount() {
+        var n = 0;
+        if ($('#filter-month').val()) n++;
+        if ($('#filter-year').val()) n++;
+        if ($('#filter-financial-year').val()) n++;
+        if ($('#filter-staff').length && $('#filter-staff').val()) n++;
+        if ($('#filter-date').val() && $('#filter-date').val().trim()) n++;
+        if ($('#filter-payment-status').val()) n++;
+        if ($('#filter-sort').val()) n++;
+
+        if (n > 0) {
+            $('#salesFilterCount').text(n).removeClass('d-none');
+            $('#salesFilterToggle').addClass('has-active');
+        } else {
+            $('#salesFilterCount').text('0').addClass('d-none');
+            $('#salesFilterToggle').removeClass('has-active');
+        }
+    }
+
     $(document).ready(function() {
 
         var authToken = localStorage.getItem("authToken");
@@ -1298,6 +2001,84 @@
                 ]
             });
         }
+
+        // ===== MOBILE & TABLET INTERACTIONS =====
+        placeSummary();
+        updateFilterCount();
+        $(window).on('resize', placeSummary);
+
+        // Sync mobile search with desktop search
+        $('#sales-search-mobile').on('input', function() {
+            var val = $(this).val();
+            $('#search-box').val(val);
+            table.search(val).draw();
+            calculateTotals();
+        });
+        $('#search-box').on('input', function() {
+            var val = $(this).val();
+            $('#sales-search-mobile').val(val);
+            table.search(val).draw();
+            calculateTotals();
+        });
+
+        // Filter toggle & bottom sheet
+        $('#salesFilterToggle').on('click', function(e) {
+            e.preventDefault();
+            openFilterSheet();
+        });
+        $('#slFilterSheetClose, #slFilterBackdrop').on('click', function(e) {
+            e.preventDefault();
+            closeFilterSheet();
+        });
+
+        $('#slFilterApply').on('click', function(e) {
+            e.preventDefault();
+            $('#filter-month').val($('#filter-month-mobile').val()).trigger('change');
+            $('#filter-year').val($('#filter-year-mobile').val()).trigger('change');
+            $('#filter-financial-year').val($('#filter-financial-year-mobile').val()).trigger('change');
+            if ($('#filter-staff').length) {
+                $('#filter-staff').val($('#filter-staff-mobile').val()).trigger('change');
+            }
+            $('#filter-payment-status').val($('#filter-payment-status-mobile').val()).trigger('change');
+            $('#filter-sort').val($('#filter-sort-mobile').val()).trigger('change');
+            
+            var mobileDate = $('#filter-date-mobile').val();
+            if (mobileDate !== $('#filter-date').val()) {
+                $('#filter-date').val(mobileDate).trigger('dp.change');
+            }
+
+            updateFilterCount();
+            closeFilterSheet();
+        });
+
+        $('#slFilterClear').on('click', function(e) {
+            e.preventDefault();
+            $('#filter-month-mobile, #filter-year-mobile, #filter-financial-year-mobile, #filter-staff-mobile, #filter-payment-status-mobile, #filter-sort-mobile, #filter-date-mobile').val('');
+            $('#filter-month, #filter-year, #filter-financial-year, #filter-staff, #filter-payment-status, #filter-sort').val('').trigger('change');
+            $('#filter-date').val('').trigger('dp.change');
+
+            table.search('').columns().search('').order([2, 'desc']).draw();
+            calculateTotals();
+
+            updateFilterCount();
+            closeFilterSheet();
+        });
+
+        // Click card to open sales details
+        $(document).on('click', '#order-table .sl-card', function(e) {
+            if ($(e.target).closest('a, button, input, select').length) return;
+            var orderId = $(this).data('order-id');
+            if (orderId) {
+                window.location.href = '/sales-details/' + encodeURIComponent(orderId);
+            }
+        });
+
+        // Share invoice
+        $(document).on('click', '#order-table .sl-m-share', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            shareInvoice($(this).data('order-id'));
+        });
 
         // ===== FILTER COLLAPSE ICON TOGGLE =====
         $('#advancedFilters').on('show.bs.collapse', function() {
@@ -2102,7 +2883,20 @@
                             </a>`;
                         }
 
+                        let quickBtns = `
+                            <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id});" title="Print">
+                                <i class="fas fa-print"></i>
+                            </a>
+                            <button type="button" class="btn sl-m-only sl-m-share" data-order-id="${order.id}" title="Share">
+                                <i class="fas fa-share"></i>
+                            </button>
+                            <a class="sl-m-only sl-m-pdf" href="/sales/invoice/pdf/${order.id}" target="_blank" rel="noopener" title="PDF">
+                                <span>Pdf</span>
+                            </a>
+                        `;
+
                         let actionBtns = `
+                            ${quickBtns}
                             <div class="action-dropdown-wrap">
                                 <button class="ellipsis-btn action-ellipsis-btn" type="button" title="Actions"><i class="fa-solid fa-ellipsis"></i></button>
                                 <div class="action-dropdown-menu-src" style="display:none">
@@ -2140,21 +2934,6 @@
                             return `<span>${biller || 'Admin'}</span>`;
                         }
 
-                        //without type(dine in and take away)
-                        // <div class="d-md-none mb-1">
-                        //                 <strong>${order.order_number}</strong><br>
-                        //                 <span class="text-muted" style="font-size:0.95rem;">${order.user?.name || '-'}</span>
-                        //             </div>
-                        //             <div class="d-none d-md-block">
-                        //                 <strong>${order.order_number}</strong>
-                        //             </div><div class="d-md-none mb-1">
-                        //                 <strong>${order.order_number}</strong><br>
-                        //                 <span class="text-muted" style="font-size:0.95rem;">${order.user?.name || '-'}</span>
-                        //             </div>
-                        //             <div class="d-none d-md-block">
-                        //                 <strong>${order.order_number}</strong>
-                        //             </div>
-
                         // Generate assigned staff dropdown
                         let staffOptions = '<option value="">- Unassigned -</option>';
                         let assignedStaffName = '- Unassigned -';
@@ -2175,44 +2954,17 @@
                         </select>`;
 
                         tableBody.push([
-
-                            /* Order column */
+                            /* Order column: desktop header + mobile/tablet Pooja ERP card */
                             `
-                                <div>
-                                <div class="d-md-none mb-1">
-                                    <strong>${order.order_number}</strong><br>
-                                    <span class="text-muted" style="font-size:0.95rem;">${customerNameHtml}</span><br>
-                                    ${getOrderTypeBadge(order)}
-                                </div>
-                                <div class="d-none d-md-block">
-                                    <strong>${order.order_number}</strong><br>
-                                    ${getOrderTypeBadge(order)}
-                                </div>                                  
-
-                                    <!-- Mobile collapse -->
-                                    <div class="collapse d-md-none mt-2" id="details-${order.id}">
-                                        <div class="mobile-details-card">
-                                            <p><strong>Date:</strong> ${order.created_date}</p>
-                                            <p><strong>Customer:</strong> ${customerNameHtml}</p>
-                                            <p><strong>Status:</strong> ${order.payment_status}</p>
-                                            <p><strong>Method:</strong> ${order.payment_method}</p>
-                                            <p><strong>Total:</strong> ${displayAmount}</p>
-                                            <p><strong>Assigned Staff:</strong> ${assignedStaffName}</p>
-                                            <p><strong>Biller:</strong> ${order.biller || 'Admin'}</p>
-                                            <div class="mt-2">
-                                                ${actionBtns}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                `,
-
-                            /* Details (+ icon) */
-                            `
-                            <a href="#details-${order.id}" class="toggle-details" data-bs-toggle="collapse">
-                                <i class="fas fa-plus-circle"></i>
-                            </a>
+                            <div class="sl-desktop-head">
+                                <strong>${order.order_number}</strong><br>
+                                ${getOrderTypeBadge(order)}
+                            </div>
+                            ${buildCard(order, customerNameHtml)}
                             `,
+
+                            /* Details column (hidden) */
+                            "",
 
                             /* Desktop-only columns - Date is sortable */
                             `<span data-sort="${new Date(order.created_date).getTime()}">${order.created_date}</span>`,
@@ -2714,7 +3466,19 @@
                 </button>`;
                 @endif
             }
+            let quickBtns2 = `
+                <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id});" title="Print">
+                    <i class="fas fa-print"></i>
+                </a>
+                <button type="button" class="btn sl-m-only sl-m-share" data-order-id="${order.id}" title="Share">
+                    <i class="fas fa-share"></i>
+                </button>
+                <a class="sl-m-only sl-m-pdf" href="/sales/invoice/pdf/${order.id}" target="_blank" rel="noopener" title="PDF">
+                    <span>Pdf</span>
+                </a>
+            `;
             let actionBtns = `
+                ${quickBtns2}
                 <div class="action-dropdown-wrap">
                     <button class="ellipsis-btn action-ellipsis-btn" type="button" title="Actions"><i class="fa-solid fa-ellipsis"></i></button>
                     <div class="action-dropdown-menu-src" style="display:none">
@@ -2754,33 +3518,15 @@
             `;
 
             tableBody.push([
-                /* Order column */
+                /* Order column: desktop header + mobile/tablet Pooja ERP card */
                 `
-                <div>
-                    <div class="d-md-none mb-1">
-                        <strong>${order.order_number || ''}</strong><br>
-                        <span class="text-muted" style="font-size:0.95rem;">${order.user?.name || 'N/A'}</span>
-                    </div>
-                    <div class="d-none d-md-block">
-                        <strong>${order.order_number || ''}</strong>
-                    </div>
-                    <div class="collapse d-md-none mt-2" id="details-filter-${order.id}">
-                        <div class="mobile-details-card">
-                            <p><strong>Date:</strong> ${order.created_date || 'N/A'}</p>
-                            <p><strong>Customer:</strong> ${order.user?.name || 'N/A'}</p>
-                            <p><strong>Status:</strong> ${order.payment_status || ''}</p>
-                            <p><strong>Method:</strong> ${order.payment_method || ''}</p>
-                            <p><strong>Total:</strong> ${displayAmount}</p>
-                            <p><strong>Assigned Staff:</strong> ${assignedStaffHtml}</p>
-                            <p><strong>Order Type:</strong> ${orderTypeHtml}</p>
-                            <p><strong>Biller:</strong> ${order.biller || 'Admin'}</p>
-                            <div class="mt-2">${actionBtns}</div>
-                        </div>
-                    </div>
+                <div class="sl-desktop-head">
+                    <strong>${order.order_number || ''}</strong>
                 </div>
+                ${buildCard(order, order.user?.name || 'N/A')}
                 `,
-                /* Details (+ icon) */
-                `<a href="#details-filter-${order.id}" class="toggle-details" data-bs-toggle="collapse"><i class="fas fa-plus-circle"></i></a>`,
+                /* Details column (hidden) */
+                "",
                 /* Desktop-only columns */
                 order.created_date || 'N/A',
                 order.user?.name || 'N/A',
@@ -2880,7 +3626,19 @@
                 </button>`;
                 @endif
             }
+            let quickBtns3 = `
+                <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id});" title="Print">
+                    <i class="fas fa-print"></i>
+                </a>
+                <button type="button" class="btn sl-m-only sl-m-share" data-order-id="${order.id}" title="Share">
+                    <i class="fas fa-share"></i>
+                </button>
+                <a class="sl-m-only sl-m-pdf" href="/sales/invoice/pdf/${order.id}" target="_blank" rel="noopener" title="PDF">
+                    <span>Pdf</span>
+                </a>
+            `;
             let actionBtns = `
+                ${quickBtns3}
                 <div class="action-dropdown-wrap">
                     <button class="ellipsis-btn action-ellipsis-btn" type="button" title="Actions"><i class="fa-solid fa-ellipsis"></i></button>
                     <div class="action-dropdown-menu-src" style="display:none">
@@ -2920,33 +3678,15 @@
             `;
 
             tableBody.push([
-                /* Order column */
+                /* Order column: desktop header + mobile/tablet Pooja ERP card */
                 `
-                <div>
-                    <div class="d-md-none mb-1">
-                        <strong>${order.order_number || ''}</strong><br>
-                        <span class="text-muted" style="font-size:0.95rem;">${order.user?.name || 'N/A'}</span>
-                    </div>
-                    <div class="d-none d-md-block">
-                        <strong>${order.order_number || ''}</strong>
-                    </div>
-                    <div class="collapse d-md-none mt-2" id="details-date-${order.id}">
-                        <div class="mobile-details-card">
-                            <p><strong>Date:</strong> ${order.created_date || 'N/A'}</p>
-                            <p><strong>Customer:</strong> ${order.user?.name || 'N/A'}</p>
-                            <p><strong>Status:</strong> ${order.payment_status || ''}</p>
-                            <p><strong>Method:</strong> ${order.payment_method || ''}</p>
-                            <p><strong>Total:</strong> ${displayAmount}</p>
-                            <p><strong>Assigned Staff:</strong> ${assignedStaffHtml}</p>
-                            <p><strong>Order Type:</strong> ${orderTypeHtml}</p>
-                            <p><strong>Biller:</strong> ${order.biller || 'Admin'}</p>
-                            <div class="mt-2">${actionBtns}</div>
-                        </div>
-                    </div>
+                <div class="sl-desktop-head">
+                    <strong>${order.order_number || ''}</strong>
                 </div>
+                ${buildCard(order, order.user?.name || 'N/A')}
                 `,
-                /* Details (+ icon) */
-                `<a href="#details-date-${order.id}" class="toggle-details" data-bs-toggle="collapse"><i class="fas fa-plus-circle"></i></a>`,
+                /* Details column (hidden) */
+                "",
                 /* Desktop-only columns */
                 order.created_date || 'N/A',
                 order.user?.name || 'N/A',
