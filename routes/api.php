@@ -26,6 +26,7 @@ use App\Http\Controllers\api\ExpenseTypeController;
 use App\Http\Controllers\api\SaleReturnController;
 use App\Http\Controllers\api\CustomInvoiceController;
 use App\Http\Controllers\api\StaffController;
+use App\Http\Controllers\api\PlanController;
 use App\Http\Controllers\api\GstController;
 use App\Http\Controllers\api\TdsController;
 use App\Http\Controllers\api\SubBranchController;
@@ -507,6 +508,14 @@ Route::middleware(['auth.api'])->group(function () {
     Route::get('/debit-note-items/{id}', [DebitNoteItemApiController::class, 'show']);
     Route::post('/debit-note-items/update/{id}', [DebitNoteItemApiController::class, 'update']);
     Route::post('/debit-note-items/delete/{id}', [DebitNoteItemApiController::class, 'destroy']);
+
+    // Plans API
+    Route::get('/getAllPlans', [PlanController::class, 'getAllPlans'])->name('plans.getAll');
+    Route::get('/getPlanById/{id}', [PlanController::class, 'getPlanById'])->name('plans.getById');
+    Route::post('/createPlan', [PlanController::class, 'createPlan'])->name('plans.create');
+    Route::post('/updatePlan', [PlanController::class, 'updatePlan'])->name('plans.update');
+    Route::post('/deletePlan/{id}', [PlanController::class, 'deletePlan'])->name('plans.delete');
+    Route::post('/togglePlanStatus/{id}', [PlanController::class, 'togglePlanStatus'])->name('plans.toggleStatus');
 });
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

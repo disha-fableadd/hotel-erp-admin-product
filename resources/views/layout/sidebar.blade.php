@@ -689,6 +689,10 @@
                             <span class="menu-arrow"></span>
                         </a>
                         <ul>
+                            @if (in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']))
+                                <li><a href="{{ route('plans.planlist') }}" class="{{ request()->routeIs('plans.planlist') ? 'active' : '' }}">Plans</a></li>
+                                <li><a href="{{ route('plans.myplan') }}" class="{{ request()->routeIs('plans.myplan') ? 'active' : '' }}">My Plan Details</a></li>
+                            @endif
                             @if(app('hasPermission')(14, 'view'))
                                 <li><a href="{{route('setting.generalsettings')}}">Shop Settings</a></li>
                                    @if (app('hasPermission')(14, 'view') && (!$settings || $settings->send_mail))
