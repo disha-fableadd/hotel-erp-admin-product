@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Carbon\Carbon;
+use App\Services\PlanPermissionSyncService;
 
 class PlanController extends Controller
 {
@@ -256,6 +257,11 @@ class PlanController extends Controller
             ]);
         });
 
+        // Synchronize permissions and modules according to this plan
+        if ($plan && $plan->is_active) {
+            PlanPermissionSyncService::syncPlanModulesAndPermissions($plan);
+        }
+
         return response()->json([
             'status'  => true,
             'message' => 'Plan created successfully',
@@ -367,6 +373,11 @@ class PlanController extends Controller
             ]);
         });
 
+        // Synchronize permissions and modules according to this updated plan
+        if ($plan->is_active) {
+            PlanPermissionSyncService::syncPlanModulesAndPermissions($plan);
+        }
+
         return response()->json([
             'status'  => true,
             'message' => 'Plan updated successfully',
@@ -391,6 +402,9 @@ class PlanController extends Controller
             $plan->delete();
         });
 
+        // Re-synchronize modules and permissions for remaining active plan
+        PlanPermissionSyncService::syncPlanModulesAndPermissions();
+
         return response()->json([
             'status'  => true,
             'message' => 'Plan deleted successfully',
@@ -412,6 +426,12 @@ class PlanController extends Controller
 
         $plan->is_active = ! $plan->is_active;
         $plan->save();
+
+        if ($plan->is_active) {
+            PlanPermissionSyncService::syncPlanModulesAndPermissions($plan);
+        } else {
+            PlanPermissionSyncService::syncPlanModulesAndPermissions();
+        }
 
         return response()->json([
             'status'    => true,

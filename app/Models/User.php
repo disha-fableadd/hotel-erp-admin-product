@@ -101,6 +101,17 @@ class User extends Authenticatable
         // fallback image
         return url($basePath . 'admin/assets/img/customer/customer5.jpg');
     }
+
+    public function permissions()
+    {
+        return $this->hasMany(\App\Models\UserPermission::class, 'user_id');
+    }
+
+    public function userPermissions()
+    {
+        return $this->hasMany(\App\Models\UserPermission::class, 'user_id');
+    }
+
     public function plan()
     {
         return $this->belongsTo(\App\Models\Plan::class, 'plan_id');
@@ -159,6 +170,61 @@ class User extends Authenticatable
         }
 
         return \App\Models\Plan::latest('id')->first();
+    }
+
+    /**
+     * Check plan expiry status using Carbon date comparison.
+     */
+    public function checkPlanExpiryStatus(): array
+    {
+        $plan = $this->getLatestPlan();
+
+        if (! $plan || empty($plan->end_date)) {
+            return [
+                'status' => 'active',
+                'message' => null,
+                'end_date' => null,
+            ];
+        }
+
+        $today = Carbon::today('Asia/Kolkata');
+        $endDate = Carbon::parse($plan->end_date, 'Asia/Kolkata')->startOfDay();
+        $warningDays = method_exists($plan, 'getWarningDays') ? $plan->getWarningDays() : 30;
+        $warningStartDate = $endDate->copy()->subDays($warningDays);
+
+        if ($today->gt($endDate)) {
+            if ($plan->is_active) {
+                $plan->is_active = 0;
+                $plan->save();
+            }
+
+            return [
+                'status' => 'expired',
+                'message' => 'Your subscription plan has expired. Please renew your plan to continue using the system.',
+                'end_date' => $endDate->format('d-m-Y'),
+            ];
+        }
+
+        // If subscription has been renewed/extended, auto-reactivate the plan
+        if (! $plan->is_active && $today->lte($endDate)) {
+            $plan->is_active = 1;
+            $plan->save();
+        }
+
+        if ($today->gte($warningStartDate)) {
+            $formattedDate = $endDate->format('d-m-Y');
+            return [
+                'status' => 'warning',
+                'message' => "⚠️ Your subscription plan will expire on {$formattedDate}. Please renew your plan to avoid interruption of service.",
+                'end_date' => $formattedDate,
+            ];
+        }
+
+        return [
+            'status' => 'active',
+            'message' => null,
+            'end_date' => $endDate->format('d-m-Y'),
+        ];
     }
 
     protected static function boot()
