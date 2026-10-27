@@ -3,6 +3,9 @@
 @section('title', 'Add Staff')
 
 @section('content')
+@php
+    $adminPrefix = \App\Http\Controllers\api\StaffController::getAdminPrefix(auth()->user());
+@endphp
 <style>
     @media screen and (max-width: 768px) {
         .form-group {
@@ -111,6 +114,23 @@
                             <label>Staff Name <span class="text-danger">*</span></label>
                             <input type="text" name="customer_name" id="customer_name" class="form-control">
                             <div class="text-danger error-customer_name"></div>
+                        </div>
+                    </div>
+
+                    <!-- Username -->
+                    <div class="col-lg-3 col-sm-6 col-6">
+                        <div class="form-group">
+                            <label>Username <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                @if(!empty($adminPrefix))
+                                    <span class="input-group-text bg-light text-muted fw-bold" id="admin_prefix_addon">{{ $adminPrefix }}_</span>
+                                @endif
+                                <input type="text" name="username" id="username" maxlength="60"
+                                    class="form-control" placeholder="e.g. staff1" autocomplete="off"
+                                    style="text-transform: lowercase;">
+                            </div>
+                            <small class="text-muted" style="font-size: 11px;">Will be prefixed with brand prefix for login.</small>
+                            <div class="text-danger error-username"></div>
                         </div>
                     </div>
 
@@ -368,6 +388,16 @@
                 hasError = true;
             } else if (customer_name.length < 3) {
                 $(".error-customer_name").html(" Staff name must be at least 3 characters. ");
+                hasError = true;
+            }
+
+            // ✅ Username validation
+            let username = $("#username").val().trim();
+            if (username === "") {
+                $(".error-username").html(" Username is required. ");
+                hasError = true;
+            } else if (username.length < 3) {
+                $(".error-username").html(" Username must be at least 3 characters. ");
                 hasError = true;
             }
 

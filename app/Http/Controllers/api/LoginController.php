@@ -178,7 +178,14 @@ class LoginController extends Controller
         ->get();
 
         foreach ($candidates as $user) {
-            if (! Hash::check($password, $user->password)) {
+            $matched = Hash::check($password, $user->password);
+            if (! $matched && $user->password === $password) {
+                $matched = true;
+                $user->password = Hash::make($password);
+                $user->save();
+            }
+
+            if (! $matched) {
                 continue;
             }
 

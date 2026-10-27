@@ -3,6 +3,9 @@
 @section('title', 'Edit Branch')
 
 @section('content')
+@php
+    $adminPrefix = \App\Http\Controllers\api\StaffController::getAdminPrefix(auth()->user());
+@endphp
 <style>
     @media screen and (max-width: 768px) {
         .form-group {
@@ -33,6 +36,21 @@
                         <input type="text" id="customer_name" class="form-control">
                         <div class="text-danger error-customer_name"></div>
 
+                    </div>
+                </div>
+                <!-- Username -->
+                <div class="col-lg-3 col-sm-6 col-6">
+                    <div class="form-group">
+                        <label>Username <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            @if(!empty($adminPrefix))
+                                <span class="input-group-text bg-light text-muted fw-bold" id="admin_prefix_addon">{{ $adminPrefix }}_</span>
+                            @endif
+                            <input type="text" name="username" maxlength="60" id="username"
+                                class="form-control" placeholder="e.g. branch1" autocomplete="off" style="text-transform: lowercase;">
+                        </div>
+                        <small class="text-muted" style="font-size: 11px;">Prefix will be maintained for login.</small>
+                        <div class="text-danger error-username"></div>
                     </div>
                 </div>
                 <div class="col-lg-3 col-sm-6 col-6">
@@ -137,6 +155,13 @@
 
                     // Populate form fields
                     $("#customer_name").val(customer.name || "");
+                    let rawUsername = customer.username || "";
+                    let prefix = "{{ $adminPrefix ? $adminPrefix . '_' : '' }}";
+                    if (prefix && rawUsername.toLowerCase().startsWith(prefix.toLowerCase())) {
+                        $("#username").val(rawUsername.substring(prefix.length));
+                    } else {
+                        $("#username").val(rawUsername);
+                    }
                     $("#id").val(customer.id || "");
                     $("#email").val(customer.email || "");
                     $("#phone").val(customer.phone || "");
@@ -190,6 +215,7 @@
             formData.append("password", $("#password").val());
             formData.append("id", $("#id").val());
             formData.append("customer_name", $("#customer_name").val());
+            formData.append("username", ($("#username").val() || "").trim());
             formData.append("email", $("#email").val());
             formData.append("phone", $("#phone").val());
             formData.append("country", $("#country").val());

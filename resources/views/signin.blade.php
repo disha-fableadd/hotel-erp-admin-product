@@ -646,12 +646,12 @@
 
                         <form id="loginForm">
                             <div class="form-login">
-                                <label>Email</label>
+                                <label>Username</label>
                                 <div class="form-addons">
-                                    <input type="text" id="email" placeholder="Enter your email address">
-                                    <img src="{{ $imagePath . '/admin/assets/img/icons/mail.svg'}}" alt="img">
+                                    <input type="text" id="username" name="username" placeholder="Enter your username" autocomplete="username">
+                                    <img src="{{ $imagePath . '/admin/assets/img/icons/users1.svg' }}" alt="img" onerror="this.src='{{ $imagePath . '/admin/assets/img/icons/mail.svg' }}'">
                                 </div>
-                                <small id="emailError" class="text-danger"></small>
+                                <small id="usernameError" class="text-danger"></small>
                             </div>
 
                             <div class="form-login">
@@ -769,16 +769,16 @@
                 });
             }
 
-            /* ── Normal email/password login ─────────────────────────── */
+            /* ── Normal username/password login ─────────────────────────── */
             $("#loginForm").submit(function (e) {
                 e.preventDefault();
 
-                let email = $("#email").val().trim();
+                let username = ($("#username").val() || $("#email").val() || "").trim();
                 let password = $("#password").val().trim();
-                $("#emailError, #passwordError, #loginMessage").text("");
+                $("#usernameError, #emailError, #passwordError, #loginMessage").text("");
 
-                if (!email) {
-                    $("#emailError").text("Email is required.");
+                if (!username) {
+                    $("#usernameError, #emailError").text("Username is required.");
                     return;
                 }
                 if (!password) {
@@ -798,7 +798,8 @@
                         type: "POST",
                         dataType: "json",
                         data: {
-                            email: email,
+                            username: username,
+                            email: username,
                             password: password,
                             force: forceLogin ? 1 : 0,
                             latitude: location.latitude,

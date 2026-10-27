@@ -16,12 +16,67 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class StaffController extends Controller
 {
-    
+    /**
+     * Get the brand/admin prefix to apply to staff usernames.
+     * Takes the prefix before underscore in admin username (e.g. 'apex' from 'apex_admin')
+     * or the first 4 chars of company name.
+     */
+    public static function getAdminPrefix($admin = null): string
+    {
+        if (!$admin) {
+            $admin = Auth::guard('api')->user() ?? Auth::user();
+        }
+
+        if ($admin && in_array($admin->role, ['staff', 'hr']) && !empty($admin->branch_id)) {
+            $branchAdmin = User::find($admin->branch_id);
+            if ($branchAdmin) {
+                $admin = $branchAdmin;
+            }
+        }
+
+        if ($admin) {
+            if (!empty($admin->username)) {
+                if (str_contains($admin->username, '_')) {
+                    $parts = explode('_', $admin->username, 2);
+                    $cand = trim($parts[0]);
+                    if (!empty($cand)) {
+                        return strtolower($cand);
+                    }
+                } else {
+                    $cleaned = preg_replace('/[^a-zA-Z0-9]/', '', $admin->username);
+                    if (!empty($cleaned)) {
+                        return strtolower(substr($cleaned, 0, 4));
+                    }
+                }
+            }
+
+            if (!empty($admin->company_name)) {
+                $cleaned = preg_replace('/[^a-zA-Z0-9]/', '', $admin->company_name);
+                if (!empty($cleaned)) {
+                    return strtolower(substr($cleaned, 0, 4));
+                }
+            }
+        }
+
+        try {
+            $setting = Setting::first();
+            if ($setting && !empty($setting->company_name)) {
+                $cleaned = preg_replace('/[^a-zA-Z0-9]/', '', $setting->company_name);
+                if (!empty($cleaned)) {
+                    return strtolower(substr($cleaned, 0, 4));
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        return '';
+    }
+
     public function getAllStaff(Request $request)
     {
         $user = Auth::guard('api')->user();
@@ -48,6 +103,7 @@ class StaffController extends Controller
         $query = User::select(
             'id',
             'name',
+            'username',
             'email',
             'phone',
             'profile_image',
@@ -62,10 +118,11 @@ class StaffController extends Controller
             ->where('isDeleted', 0)
             ->with('details:user_id,country,city,department_id,designation_id,joining_date,shift_time,working_location,salary,face_photo');
 
-        // Apply search filter on name, email, phone
+        // Apply search filter on name, username, email, phone
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
+                    ->orWhere('username', 'LIKE', "%{$search}%")
                     ->orWhere('email', 'LIKE', "%{$search}%")
                     ->orWhere('phone', 'LIKE', "%{$search}%")
                     ->orWhere('gst_number', 'LIKE', "%{$search}%")
@@ -85,6 +142,7 @@ class StaffController extends Controller
             return [
                 'id'                => $customer->id,
                 'name'              => $customer->name,
+                'username'          => $customer->username ?? '',
                 'role'              => $customer->role,
                 'email'             => $customer->email,
                 'phone'             => $customer->phone,
@@ -157,8 +215,15 @@ class StaffController extends Controller
             ], 422);
         }
 
+        if (!Schema::hasColumn('users', 'username')) {
+            Schema::table('users', function ($table) {
+                $table->string('username', 100)->nullable()->unique()->after('name');
+            });
+        }
+
         $rules =  [
             'customer_name' => 'required|string|max:80',
+            'username'      => 'required|string|max:80',
             'email'         => [
                 'nullable',
                 'email',
@@ -240,12 +305,48 @@ class StaffController extends Controller
             ], 422);
         }
 
+        // Generate staff username with admin prefix
+        $branchAdmin = User::find($userBranchId);
+        $adminPrefix = self::getAdminPrefix($branchAdmin ?: $user);
+        $rawUsername = trim($request->input('username', ''));
+        $lowerUsername = strtolower($rawUsername);
+
+        if (!empty($adminPrefix)) {
+            $prefixWithUnder = $adminPrefix . '_';
+            if (str_starts_with($lowerUsername, $prefixWithUnder)) {
+                $finalUsername = $lowerUsername;
+            } elseif (str_starts_with($lowerUsername, $adminPrefix)) {
+                $remainder = substr($lowerUsername, strlen($adminPrefix));
+                $finalUsername = $adminPrefix . '_' . ltrim($remainder, '_');
+            } else {
+                $finalUsername = $prefixWithUnder . ltrim($lowerUsername, '_');
+            }
+        } else {
+            $finalUsername = $lowerUsername;
+        }
+
+        // Validate uniqueness of username across active users
+        $duplicateUsername = User::where('isDeleted', 0)
+            ->whereRaw('LOWER(TRIM(username)) = ?', [$finalUsername])
+            ->exists();
+
+        if ($duplicateUsername) {
+            return response()->json([
+                'status' => false,
+                'message' => 'The username has already been taken.',
+                'errors' => [
+                    'username' => ['The username has already been taken.']
+                ]
+            ], 422);
+        }
+
         $plainPassword = $request->password;
         $createdStaff = null;
 
-        DB::transaction(function () use ($request, $userBranchId, &$createdStaff) {
+        DB::transaction(function () use ($request, $userBranchId, $finalUsername, &$createdStaff) {
             $customer = new User();
             $customer->name          = $request->customer_name;
+            $customer->username      = $finalUsername;
             $customer->email         = $request->email;
             $customer->phone         = $request->phone;
             $customer->gst_number    = $request->gst_number;
@@ -438,6 +539,12 @@ class StaffController extends Controller
             ], 404);
         }
 
+        if (!Schema::hasColumn('users', 'username')) {
+            Schema::table('users', function ($table) {
+                $table->string('username', 100)->nullable()->unique()->after('name');
+            });
+        }
+
         // Validate input data
         $messages = [
             'email.unique' => 'Already exist with this mail',
@@ -446,6 +553,7 @@ class StaffController extends Controller
 
         $validator = Validator::make($request->all(), [
             'staff_name' => 'required|string|max:80',
+            'username'   => 'nullable|string|max:80',
             'email'      => [
                 'nullable',
                 'email',
@@ -510,9 +618,49 @@ class StaffController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($request, $customer, $id) {
+        $finalUsername = null;
+        if ($request->filled('username')) {
+            $branchAdmin = User::find($customer->branch_id);
+            $adminPrefix = self::getAdminPrefix($branchAdmin);
+            $rawUsername = trim($request->input('username', ''));
+            $lowerUsername = strtolower($rawUsername);
+
+            if (!empty($adminPrefix)) {
+                $prefixWithUnder = $adminPrefix . '_';
+                if (str_starts_with($lowerUsername, $prefixWithUnder)) {
+                    $finalUsername = $lowerUsername;
+                } elseif (str_starts_with($lowerUsername, $adminPrefix)) {
+                    $remainder = substr($lowerUsername, strlen($adminPrefix));
+                    $finalUsername = $adminPrefix . '_' . ltrim($remainder, '_');
+                } else {
+                    $finalUsername = $prefixWithUnder . ltrim($lowerUsername, '_');
+                }
+            } else {
+                $finalUsername = $lowerUsername;
+            }
+
+            $duplicateUsername = User::where('id', '!=', $id)
+                ->where('isDeleted', 0)
+                ->whereRaw('LOWER(TRIM(username)) = ?', [$finalUsername])
+                ->exists();
+
+            if ($duplicateUsername) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The username has already been taken.',
+                    'errors' => [
+                        'username' => ['The username has already been taken.']
+                    ]
+                ], 422);
+            }
+        }
+
+        DB::transaction(function () use ($request, $customer, $id, $finalUsername) {
             // Update main user fields
             $customer->name          = $request->staff_name;
+            if ($finalUsername !== null) {
+                $customer->username  = $finalUsername;
+            }
             $customer->email         = $request->email;
             $customer->phone         = $request->phone;
             $customer->gst_number    = $request->gst_number;

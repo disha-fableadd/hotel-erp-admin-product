@@ -3,6 +3,9 @@
 @section('title', 'Edit Staff')
 
 @section('content')
+@php
+    $adminPrefix = \App\Http\Controllers\api\StaffController::getAdminPrefix(auth()->user());
+@endphp
     <style>
         :root {
             --staff-accent: #ff9f43;
@@ -162,6 +165,23 @@
                             <input type="text" name="customer_name" maxlength="80" id="customer_name"
                                 class="form-control">
                             <div class="text-danger error-customer_name"></div>
+                        </div>
+                    </div>
+
+                    <!-- Username -->
+                    <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                        <div class="form-group">
+                            <label>Username <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                @if(!empty($adminPrefix))
+                                    <span class="input-group-text bg-light text-muted fw-bold" id="admin_prefix_addon">{{ $adminPrefix }}_</span>
+                                @endif
+                                <input type="text" name="username" id="username" maxlength="60"
+                                    class="form-control" placeholder="e.g. staff1" autocomplete="off"
+                                    style="text-transform: lowercase;">
+                            </div>
+                            <small class="text-muted" style="font-size: 11px;">Prefix will be maintained for login.</small>
+                            <div class="text-danger error-username"></div>
                         </div>
                     </div>
 
@@ -529,6 +549,13 @@
                         $('input[name="permission_type"]').trigger('change');
                         // }
                         $("#customer_name").val(customer.name);
+                        let rawUsername = customer.username || "";
+                        let prefix = "{{ $adminPrefix ? $adminPrefix . '_' : '' }}";
+                        if (prefix && rawUsername.toLowerCase().startsWith(prefix.toLowerCase())) {
+                            $("#username").val(rawUsername.substring(prefix.length));
+                        } else {
+                            $("#username").val(rawUsername);
+                        }
                         $("#email").val(customer.email || ""); // Use empty string if email is null
                         $("#phone").val(customer.phone);
                         $("#gst_number").val(customer.gst_number);
@@ -802,6 +829,7 @@
                 formData.append("password", $("#password").val());
                 formData.append("role", $("#role").val());
                 formData.append("staff_name", $("#customer_name").val());
+                formData.append("username", $("#username").val().trim());
                 formData.append("email", $("#email").val());
                 formData.append("phone", $("#phone").val());
                 formData.append("gst_number", $("#gst_number").val());
