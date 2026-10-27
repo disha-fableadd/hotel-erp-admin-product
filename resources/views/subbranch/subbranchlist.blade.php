@@ -314,10 +314,16 @@
             </div>
             <div class="page-btn">
                 @if (auth()->user()->role === 'admin')
-                    <a href="{{ route('subbranch.add') }}" class="btn btn-added btn-sm">
-                        <img src="{{ env('ImagePath') . 'admin/assets/img/icons/plus.svg' }}" alt="img">
-                        New Branch
-                    </a>
+                    @if (can_create_branch())
+                        <a href="{{ route('subbranch.add') }}" class="btn btn-added btn-sm">
+                            <img src="{{ env('ImagePath') . 'admin/assets/img/icons/plus.svg' }}" alt="img">
+                            New Branch
+                        </a>
+                    @else
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="alert('You have reached the branch limit ({{ plan_branch_limit() }}) allowed by your active subscription plan. Please upgrade your plan to add more branches.');" title="Plan branch limit reached">
+                            <i data-feather="lock" class="me-1" style="width: 14px; height: 14px;"></i> New Branch (Limit Reached)
+                        </button>
+                    @endif
                 @endif
             </div>
         </div>

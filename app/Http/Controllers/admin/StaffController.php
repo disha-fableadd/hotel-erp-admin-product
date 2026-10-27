@@ -16,6 +16,11 @@ class StaffController extends Controller
     }
     public function add_staff(Request $request)
     {
+        if (!can_create_user()) {
+            $limit = plan_user_limit();
+            return redirect()->route('staff.list')->with('error', "You have reached the maximum user limit ({$limit}) allowed by your current plan. Please upgrade your plan to add more staff.");
+        }
+
         $modules = Module::all();
         $departments = DepartmentModel::query()
             ->orderBy('department_name')

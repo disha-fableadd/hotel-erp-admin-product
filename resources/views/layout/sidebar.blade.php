@@ -32,7 +32,10 @@
 
     $showSettingsSection = tenant_has_module(['General Settings', 'Tax Rates', 'Settings']) && (
         (tenant_has_module(['General Settings', 'Settings']) && app('hasPermission')(14, 'view')) ||
-        (tenant_has_module('Tax Rates') && app('hasPermission')(15, 'view'))
+        (tenant_has_module('Tax Rates') && app('hasPermission')(15, 'view')) ||
+        tenant_has_sub_module(['Change Password', 'change-password'], ['Settings', 'General Settings']) ||
+        tenant_has_sub_module(['My Plan Details', 'my-plan-details', 'Plan Details'], ['Settings', 'General Settings']) ||
+        tenant_has_sub_module(['Plans', 'plans'], ['Settings', 'General Settings'])
     );
 @endphp
 <style>
@@ -723,9 +726,14 @@
                             <span class="menu-arrow"></span>
                         </a>
                         <ul>
-                            @if(tenant_has_sub_module(['My Plan Details', 'my-plan-details', 'plans', 'Plan Details'], 'General Settings') && in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']))
+                            @if(tenant_has_sub_module(['Plans', 'plans'], ['Settings', 'General Settings']) && in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']))
                                 <li><a href="{{ route('plans.planlist') }}" class="{{ request()->routeIs('plans.planlist') ? 'active' : '' }}">Plans</a></li>
+                            @endif
+                            @if(tenant_has_sub_module(['My Plan Details', 'my-plan-details', 'Plan Details'], ['Settings', 'General Settings']) && in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']))
                                 <li><a href="{{ route('plans.myplan') }}" class="{{ request()->routeIs('plans.myplan') ? 'active' : '' }}">My Plan Details</a></li>
+                            @endif
+                            @if(tenant_has_sub_module(['Change Password', 'change-password'], ['Settings', 'General Settings']))
+                                <li><a href="{{ route('auth.change-password') }}" class="{{ request()->routeIs('auth.change-password') ? 'active' : '' }}">Change Password</a></li>
                             @endif
                             @if(tenant_has_module(['General Settings', 'Settings']) && app('hasPermission')(14, 'view'))
                                 @if(tenant_has_sub_module(['Shop Settings', 'shop-settings', 'Settings'], 'General Settings'))

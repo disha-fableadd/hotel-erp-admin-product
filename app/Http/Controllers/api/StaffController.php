@@ -195,6 +195,17 @@ class StaffController extends Controller
 
     public function createStaff(Request $request)
     {
+        if (!can_create_user()) {
+            $limit = plan_user_limit();
+            return response()->json([
+                'status'  => false,
+                'message' => "You have reached the maximum user limit ({$limit}) allowed by your current plan. Please upgrade your plan to add more staff.",
+                'errors'  => [
+                    'limit' => ["User limit of {$limit} reached for your active plan. Please upgrade to add more staff."]
+                ]
+            ], 422);
+        }
+
         $user = Auth::guard('api')->user();
         if (!empty($request->sub_admin_id)) {
             $userBranchId = $request->sub_admin_id;

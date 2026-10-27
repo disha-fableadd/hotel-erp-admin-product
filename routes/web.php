@@ -145,6 +145,9 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
         return view('hr.dashboard');
     })->name('hr.dashboard');
     Route::get('/profile', [AuthController::class, 'profile'])->name('auth.profile');
+    Route::get('/change-password', function () {
+        return view('change-password');
+    })->name('auth.change-password');
     Route::get('/taxrates', [AuthController::class, 'taxrates'])->name('auth.taxrates');
     Route::get('/currency', [AuthController::class, 'currency'])->name('auth.currency');
 

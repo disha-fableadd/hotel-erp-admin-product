@@ -62,46 +62,62 @@ class AuthController extends Controller
         $currencySymbol = $settings->currency_symbol ?? '₹';
         $currencyPosition = $settings->currency_position ?? 'left';
 
+        // Module checks according to active plan & user permissions
+        $hasOrdersModule = tenant_has_module('Orders') && app('hasPermission')(2, 'view');
+        $hasPurchasesModule = tenant_has_module('Purchases') && app('hasPermission')(3, 'view');
+        $hasExpensesModule = tenant_has_module('Expenses') && app('hasPermission')(5, 'view');
+        $hasTablesModule = tenant_has_module('Tables') && app('hasPermission')(9, 'view');
+        $hasVendorsModule = tenant_has_module('Vendors') && app('hasPermission')(10, 'view');
+        $hasInvoicesModule = tenant_has_module('Invoices') && app('hasPermission')(4, 'view');
+        $hasProductsDeliveryModule = tenant_has_module(['Products Delivery', 'Orders']) && app('hasPermission')(2, 'view');
+        $hasStaffModule = tenant_has_module('Staff') && app('hasPermission')(11, 'view');
+        $hasAttendanceModule = tenant_has_module('Attendance') && app('hasPermission')(26, 'view');
+        $hasPayrollModule = tenant_has_module('Payroll') && app('hasPermission')(29, 'view');
+        $hasHrModule = ($hasStaffModule || $hasAttendanceModule || $hasPayrollModule || tenant_has_module(['Leaves', 'Advance Pay', 'HR']));
+
         // Toggles
-        $showCrmDashboardSection = (bool) ($settings->show_crm_dashboard ?? true);
-        $showHrDashboardSection = (bool) ($settings->show_hr_dashboard ?? true);
+        $showCrmDashboardSection = false;
+        $showHrDashboardSection = $hasHrModule && (bool) ($settings->show_hr_dashboard ?? true);
 
         // CRM subsection visibility settings
-        $showCrmLeadPipeline = (bool) ($settings->show_crm_lead_pipeline ?? true);
-        $showCrmConversion = (bool) ($settings->show_crm_conversion ?? true);
-        $showCrmFollowupLoad = (bool) ($settings->show_crm_followup_load ?? true);
-        $showCrmMeetingMomentum = (bool) ($settings->show_crm_meeting_momentum ?? true);
-        $showCrmLeadStatusMix = (bool) ($settings->show_crm_lead_status_mix ?? true);
-        $showCrmActivityTrend = (bool) ($settings->show_crm_activity_trend ?? true);
-        $showCrmPipelineQuality = (bool) ($settings->show_crm_pipeline_quality ?? true);
-        $showCrmRecentLeads = (bool) ($settings->show_crm_recent_leads ?? true);
-        $showCrmNext7Days = (bool) ($settings->show_crm_next_7_days ?? true);
+        $showCrmLeadPipeline = false;
+        $showCrmConversion = false;
+        $showCrmFollowupLoad = false;
+        $showCrmMeetingMomentum = false;
+        $showCrmLeadStatusMix = false;
+        $showCrmActivityTrend = false;
+        $showCrmPipelineQuality = false;
+        $showCrmRecentLeads = false;
+        $showCrmNext7Days = false;
 
         // HR subsection visibility settings
-        $showHrStaffStrength = (bool) ($settings->show_hr_staff_strength ?? true);
-        $showHrActiveStaff = (bool) ($settings->show_hr_active_staff ?? true);
-        $showHrMonthlyAttendance = (bool) ($settings->show_hr_monthly_attendance ?? true);
-        $showHrPersonalProgress = (bool) ($settings->show_hr_personal_progress ?? true);
-        $showHrAttendancePattern = (bool) ($settings->show_hr_attendance_pattern ?? true);
-        $showHrSalaryPayrollTrend = (bool) ($settings->show_hr_salary_payroll_trend ?? true);
-        $showHrPayrollSnapshot = (bool) ($settings->show_hr_payroll_snapshot ?? true);
-        $showHrAttendanceWatch = (bool) ($settings->show_hr_attendance_watch ?? true);
-        $showHrPayrollStatus = (bool) ($settings->show_hr_payroll_status ?? true);
+        $showHrStaffStrength = $showHrDashboardSection && $hasStaffModule && (bool) ($settings->show_hr_staff_strength ?? true);
+        $showHrActiveStaff = $showHrDashboardSection && $hasAttendanceModule && (bool) ($settings->show_hr_active_staff ?? true);
+        $showHrMonthlyAttendance = $showHrDashboardSection && $hasAttendanceModule && (bool) ($settings->show_hr_monthly_attendance ?? true);
+        $showHrPersonalProgress = $showHrDashboardSection && $hasPayrollModule && (bool) ($settings->show_hr_personal_progress ?? true);
+        $showHrAttendancePattern = $showHrDashboardSection && $hasAttendanceModule && (bool) ($settings->show_hr_attendance_pattern ?? true);
+        $showHrSalaryPayrollTrend = $showHrDashboardSection && $hasPayrollModule && (bool) ($settings->show_hr_salary_payroll_trend ?? true);
+        $showHrPayrollSnapshot = $showHrDashboardSection && $hasPayrollModule && (bool) ($settings->show_hr_payroll_snapshot ?? true);
+        $showHrAttendanceWatch = $showHrDashboardSection && $hasAttendanceModule && (bool) ($settings->show_hr_attendance_watch ?? true);
+        $showHrPayrollStatus = $showHrDashboardSection && $hasPayrollModule && (bool) ($settings->show_hr_payroll_status ?? true);
 
         // ERP subsection visibility settings
         $showErpDashboard = (bool) ($settings->show_erp_dashboard ?? true);
-        $showErpTotalSales = (bool) ($settings->show_erp_total_sales ?? true);
-        $showErpTotalPurchase = (bool) ($settings->show_erp_total_purchase ?? true);
-        $showErpTotalExpense = (bool) ($settings->show_erp_total_expense ?? true);
-        $showErpSalesInvoiceCount = (bool) ($settings->show_erp_sales_invoice_count ?? true);
-        $showErpPurchaseInvoiceCount = (bool) ($settings->show_erp_purchase_invoice_count ?? true);
+        $showErpTotalSales = $hasOrdersModule && (bool) ($settings->show_erp_total_sales ?? true);
+        $showErpTotalPurchase = $hasPurchasesModule && (bool) ($settings->show_erp_total_purchase ?? true);
+        $showErpTotalExpense = $hasExpensesModule && (bool) ($settings->show_erp_total_expense ?? true);
+        $showErpSalesInvoiceCount = ($hasOrdersModule || $hasInvoicesModule) && (bool) ($settings->show_erp_sales_invoice_count ?? true);
+        $showErpPurchaseInvoiceCount = ($hasPurchasesModule || $hasInvoicesModule) && (bool) ($settings->show_erp_purchase_invoice_count ?? true);
+        $showRunningTables = $hasTablesModule;
+        $showTablesCount = $hasTablesModule;
         $showErpCustomersCount = (bool) ($settings->show_erp_customers_count ?? true);
-        $showErpVendorsCount = (bool) ($settings->show_erp_vendors_count ?? true);
-        $showErpSalesChart = (bool) ($settings->show_erp_sales_chart ?? true);
-        $showErpPurchaseChart = (bool) ($settings->show_erp_purchase_chart ?? true);
-        $showErpRecentSales = (bool) ($settings->show_erp_recent_sales ?? true);
-        $showErpRecentPurchases = (bool) ($settings->show_erp_recent_purchases ?? true);
-        $showErpRecentProducts = (bool) ($settings->show_erp_recent_products ?? true);
+        $showErpVendorsCount = $hasVendorsModule && (bool) ($settings->show_erp_vendors_count ?? true);
+        $showErpSalesChart = $hasOrdersModule && (bool) ($settings->show_erp_sales_chart ?? true);
+        $showErpPurchaseChart = $hasPurchasesModule && (bool) ($settings->show_erp_purchase_chart ?? true);
+        $showErpRecentSales = $hasOrdersModule && (bool) ($settings->show_erp_recent_sales ?? true);
+        $showErpRecentPurchases = $hasPurchasesModule && (bool) ($settings->show_erp_recent_purchases ?? true);
+        $showErpRecentProducts = tenant_has_module('Products') && (bool) ($settings->show_erp_recent_products ?? true);
+        $showProductsDelivery = $hasProductsDeliveryModule;
 
         $currentYear = Carbon::now()->year;
         $previousYear = $currentYear - 1;
@@ -565,6 +581,9 @@ class AuthController extends Controller
             'showErpRecentSales',
             'showErpRecentPurchases',
             'showErpRecentProducts',
+            'showRunningTables',
+            'showTablesCount',
+            'showProductsDelivery',
 
             // HR data
             'totalStaff',
