@@ -497,10 +497,11 @@
                         });
                     } else {
                         Swal.fire({
-                            title: "Error!",
-                            text: "Something went wrong. Please try again.",
-                            icon: "error",
-                            confirmButtonText: "OK"
+                            title: xhr.status === 403 ? "Limit Reached" : "Error!",
+                            text: (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : "Something went wrong. Please try again.",
+                            icon: xhr.status === 403 ? "warning" : "error",
+                            confirmButtonText: "OK",
+                            confirmButtonColor: "#ff9f43"
                         });
                     }
                 },

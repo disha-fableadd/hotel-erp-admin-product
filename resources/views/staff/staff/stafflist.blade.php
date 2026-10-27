@@ -371,7 +371,7 @@
                                 Staff
                             </a>
                         @else
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="alert('You have reached the user limit ({{ plan_user_limit() }}) allowed by your active subscription plan. Please upgrade your plan to add more staff.');" title="Plan user limit reached">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="Swal.fire({ icon: 'warning', title: 'User Limit Reached', text: 'You have reached the user limit ({{ plan_user_limit() }}) allowed by your active subscription plan. Please upgrade your plan to add more staff.', confirmButtonColor: '#ff9f43' });" title="Plan user limit reached">
                                 <i data-feather="lock" class="me-1" style="width: 14px; height: 14px;"></i> New Staff (Limit Reached)
                             </button>
                         @endif
