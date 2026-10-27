@@ -28,6 +28,15 @@ class RoleWiseUserSeeder extends Seeder
                 ?? DB::table('designation')->value('id');
         }
 
+        // Ensure dummy demo users are deleted from the users table
+        User::whereIn('email', [
+            'subadmin@gmail.com',
+            'staff@gmail.com',
+            'customer@gmail.com',
+            'vendor@gmail.com'
+        ])->delete();
+
+        // Only seed the primary admin user
         $usersData = [
             [
                 'email' => 'admin@gmail.com',
@@ -35,56 +44,8 @@ class RoleWiseUserSeeder extends Seeder
                 'phone' => '1234567890',
                 'role' => 'admin',
                 'haspermission' => 1,
-                'city' => 'Surat',
-                'address' => '5001, Ascon Plaza , Adjana Surat',
-                'department_id' => null,
-                'designation_id' => null,
-                'salary' => null,
-            ],
-            [
-                'email' => 'subadmin@gmail.com',
-                'name' => 'Sub Admin',
-                'phone' => '1234567892',
-                'role' => 'sub-admin',
-                'haspermission' => 1,
-                'city' => 'Surat',
-                'address' => 'Adajan, Surat',
-                'department_id' => null,
-                'designation_id' => null,
-                'salary' => null,
-            ],
-            [
-                'email' => 'staff@gmail.com',
-                'name' => 'Staff User',
-                'phone' => '1234567893',
-                'role' => 'staff',
-                'haspermission' => 1,
-                'city' => 'Surat',
-                'address' => 'Adajan, Surat',
-                'department_id' => $staffDeptId,
-                'designation_id' => $staffDesigId,
-                'salary' => 25000.00,
-            ],
-            [
-                'email' => 'customer@gmail.com',
-                'name' => 'Default Customer',
-                'phone' => '1234567891',
-                'role' => 'customer',
-                'haspermission' => 0,
-                'city' => 'Surat',
-                'address' => 'Default Address',
-                'department_id' => null,
-                'designation_id' => null,
-                'salary' => null,
-            ],
-            [
-                'email' => 'vendor@gmail.com',
-                'name' => 'Default Vendor',
-                'phone' => '1234567894',
-                'role' => 'vendor',
-                'haspermission' => 0,
-                'city' => 'Surat',
-                'address' => 'Default Address',
+                'city' => null,
+                'address' => null,
                 'department_id' => null,
                 'designation_id' => null,
                 'salary' => null,

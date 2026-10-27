@@ -70,92 +70,7 @@ class MasterDataSeeder extends Seeder
             }
         }
 
-        // 3. Departments & Designations Master
-        if (Schema::hasTable('department') && Schema::hasTable('designation')) {
-            $departmentsData = [
-                'Management' => [
-                    'General Manager',
-                    'Operations Manager',
-                ],
-                'Front Office' => [
-                    'Front Desk Executive',
-                    'Guest Relations Executive',
-                ],
-                'Kitchen & Culinary' => [
-                    'Head Chef',
-                    'Sous Chef',
-                    'Line Cook',
-                ],
-                'F&B Service' => [
-                    'Restaurant Captain',
-                    'Steward / Waiter',
-                    'Bartender',
-                ],
-                'Housekeeping' => [
-                    'Housekeeping Supervisor',
-                    'Room Attendant',
-                ],
-                'Accounts & Finance' => [
-                    'Accountant',
-                    'Cashier',
-                ],
-                'Human Resources' => [
-                    'HR Executive',
-                ],
-            ];
-
-            foreach ($departmentsData as $deptName => $designations) {
-                DB::table('department')->updateOrInsert(
-                    [
-                        'department_name' => $deptName,
-                        'branch_id' => $branchId,
-                    ],
-                    [
-                        'enable_overtime' => 0,
-                        'overtime_rate_type' => 'multiplier',
-                        'overtime_multiplier' => 1.50,
-                        'min_overtime_count_in_minutes' => 30,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]
-                );
-
-                $departmentId = DB::table('department')
-                    ->where('department_name', $deptName)
-                    ->where('branch_id', $branchId)
-                    ->value('id');
-
-                foreach ($designations as $desigName) {
-                    DB::table('designation')->updateOrInsert(
-                        [
-                            'designation_name' => $desigName,
-                            'department_id' => $departmentId,
-                            'branch_id' => $branchId,
-                        ],
-                        [
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]
-                    );
-                }
-            }
-
-            // Assign Staff user to F&B Service department & Restaurant Captain designation if staff exists
-            $staffUser = User::where('role', 'staff')->first();
-            if ($staffUser && Schema::hasTable('user_details')) {
-                $fbDeptId = DB::table('department')->where('department_name', 'F&B Service')->where('branch_id', $branchId)->value('id');
-                $captainDesigId = $fbDeptId ? DB::table('designation')->where('department_id', $fbDeptId)->where('designation_name', 'Restaurant Captain')->value('id') : null;
-
-                if ($fbDeptId && $captainDesigId) {
-                    DB::table('user_details')->where('user_id', $staffUser->id)->update([
-                        'department_id' => $fbDeptId,
-                        'designation_id' => $captainDesigId,
-                        'salary' => 25000.00,
-                        'joining_date' => now()->toDateString(),
-                    ]);
-                }
-            }
-        }
+        // 3. Departments & Designations Master (Skipped dummy seeding per client requirements)
 
         // 4. Leave Types Master
         if (Schema::hasTable('leave_type')) {
@@ -210,58 +125,8 @@ class MasterDataSeeder extends Seeder
             }
         }
 
-        // 6. Product Categories Master
-        if (Schema::hasTable('categories')) {
-            $categories = [
-                'Starters',
-                'Main Course',
-                'Breads & Rice',
-                'Beverages',
-                'Desserts',
-                'Snacks & Fast Food',
-            ];
-
-            foreach ($categories as $cat) {
-                DB::table('categories')->updateOrInsert(
-                    [
-                        'name' => $cat,
-                        'branch_id' => $branchId,
-                    ],
-                    [
-                        'isDeleted' => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]
-                );
-            }
-        }
-
-        // 7. Product Brands Master
-        if (Schema::hasTable('brands')) {
-            $brands = [
-                'In-House Kitchen',
-                'Amul',
-                'Coca-Cola',
-                'Pepsi',
-                'Nestle',
-                'Mother Dairy',
-            ];
-
-            foreach ($brands as $brand) {
-                DB::table('brands')->updateOrInsert(
-                    [
-                        'name' => $brand,
-                        'branch_id' => $branchId,
-                    ],
-                    [
-                        'status' => 1,
-                        'isDeleted' => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]
-                );
-            }
-        }
+        // 6. Product Categories Master (Skipped per client requirements)
+        // 7. Product Brands Master (Skipped per client requirements)
 
         // 8. Quantity Types (Units) Master
         if (Schema::hasTable('quantity_types')) {
@@ -293,40 +158,7 @@ class MasterDataSeeder extends Seeder
             }
         }
 
-        // 9. Table Master (Restaurant / Hotel Tables)
-        if (Schema::hasTable('table_no')) {
-            $tables = [
-                ['name' => 'Table 1', 'type' => 'Dine-In'],
-                ['name' => 'Table 2', 'type' => 'Dine-In'],
-                ['name' => 'Table 3', 'type' => 'Dine-In'],
-                ['name' => 'Table 4', 'type' => 'Dine-In'],
-                ['name' => 'Table 5', 'type' => 'Dine-In'],
-                ['name' => 'Table 6', 'type' => 'AC Dining'],
-                ['name' => 'Table 7', 'type' => 'AC Dining'],
-                ['name' => 'Table 8', 'type' => 'AC Dining'],
-                ['name' => 'VIP 1', 'type' => 'VIP Lounge'],
-                ['name' => 'VIP 2', 'type' => 'VIP Lounge'],
-                ['name' => 'Outdoor 1', 'type' => 'Garden Terrace'],
-                ['name' => 'Outdoor 2', 'type' => 'Garden Terrace'],
-            ];
-
-            foreach ($tables as $t) {
-                DB::table('table_no')->updateOrInsert(
-                    [
-                        'table_name' => $t['name'],
-                        'branch_id' => $branchId,
-                    ],
-                    [
-                        'table_type' => $t['type'],
-                        'table_status' => 0,
-                        'status' => 'blank',
-                        'isDeleted' => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]
-                );
-            }
-        }
+        // 9. Table Master (Skipped per client requirements)
 
         // 10. Bank Master
         if (Schema::hasTable('bank_master')) {
@@ -369,34 +201,7 @@ class MasterDataSeeder extends Seeder
             }
         }
 
-        // 11. Expense Types Master
-        if (Schema::hasTable('expense_types')) {
-            $expenseTypes = [
-                'Food & Grocery Purchase',
-                'Electricity & Utility Bills',
-                'Staff Salary & Welfare',
-                'Maintenance & Repairs',
-                'Rent & Premises',
-                'Cleaning & Housekeeping',
-                'Office & Stationery',
-                'Miscellaneous Expenses',
-            ];
-
-            foreach ($expenseTypes as $type) {
-                DB::table('expense_types')->updateOrInsert(
-                    [
-                        'type' => $type,
-                    ],
-                    [
-                        'branch_id' => $branchId,
-                        'created_by' => $adminUserId,
-                        'isDeleted' => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]
-                );
-            }
-        }
+        // 11. Expense Types Master (Skipped per client requirements)
 
         // 12. Credit Note Types Master
         if (Schema::hasTable('credit_notes_type')) {

@@ -148,6 +148,30 @@ class PlanPermissionSyncService
             fn($m) => in_array($m['id'], $allowedModuleIds, true)
         );
 
+        // Also check if any plan features match existing custom modules in the modules table
+        $rawFeatures = [];
+        if (!empty($features)) {
+            if (is_string($features)) {
+                $decoded = json_decode($features, true);
+                $rawFeatures = is_array($decoded) ? $decoded : preg_split('/[\n,]+/', $features);
+            } elseif (is_array($features)) {
+                $rawFeatures = $features;
+            }
+        }
+        if (!empty($rawFeatures)) {
+            $existingModules = DB::table('modules')->get();
+            foreach ($existingModules as $em) {
+                foreach ($rawFeatures as $rf) {
+                    if (strcasecmp(trim((string)$em->module), trim((string)$rf)) === 0) {
+                        $allowedModuleIds[] = (int) $em->id;
+                        $allowedModules[] = ['id' => (int) $em->id, 'module' => $em->module];
+                        break;
+                    }
+                }
+            }
+        }
+        $allowedModuleIds = array_values(array_unique($allowedModuleIds));
+
         try {
             DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         } catch (\Throwable) {}
@@ -173,22 +197,19 @@ class PlanPermissionSyncService
             DB::table('user_permissions')->whereNotIn('module_id', $allowedModuleIds)->delete();
         }
 
-        // 3. Upsert user_permissions for admin, sub-admin, staff users for allowed modules
+        // 3. Upsert user_permissions ONLY for the client admin user
         if (Schema::hasTable('users')) {
-            $users = User::whereIn('role', ['admin', 'sub-admin', 'staff', 'hr'])
-                ->orWhere('id', 1)
-                ->get();
+            $adminUser = User::where('role', 'admin')->first()
+                ?: User::where('id', 1)->first();
 
-            foreach ($users as $user) {
-                if ($user->role === 'sub-admin' || $user->role === 'staff' || $user->role === 'hr') {
-                    $user->haspermission = 1;
-                    $user->save();
-                }
+            // Clean up any non-admin permissions from user_permissions table as requested
+            if ($adminUser) {
+                DB::table('user_permissions')->where('user_id', '!=', $adminUser->id)->delete();
 
                 foreach ($allowedModules as $mod) {
                     DB::table('user_permissions')->updateOrInsert(
                         [
-                            'user_id'   => $user->id,
+                            'user_id'   => $adminUser->id,
                             'module_id' => $mod['id'],
                         ],
                         [
