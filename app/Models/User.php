@@ -20,6 +20,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'branch_id',
+        'plan_id',
         'name',
         'username',
         'email',
@@ -100,11 +101,66 @@ class User extends Authenticatable
         // fallback image
         return url($basePath . 'admin/assets/img/customer/customer5.jpg');
     }
-    // User.php
-    public function permissions()
+    public function plan()
     {
-        return $this->hasMany(UserPermission::class, 'user_id');
+        return $this->belongsTo(\App\Models\Plan::class, 'plan_id');
     }
+
+    /**
+     * Get the active plan for the user/admin.
+     */
+    public function getActivePlan()
+    {
+        if ($this->plan_id) {
+            $plan = $this->plan ?? \App\Models\Plan::find($this->plan_id);
+            if ($plan && $plan->is_active) {
+                return $plan;
+            }
+        }
+
+        if (! empty($this->branch_id)) {
+            $plan = \App\Models\Plan::where('sub_branch_id', $this->branch_id)->where('is_active', 1)->latest('id')->first();
+            if ($plan) {
+                return $plan;
+            }
+        }
+
+        if (in_array($this->role, ['admin', 'sub-admin'], true)) {
+            $plan = \App\Models\Plan::where('sub_branch_id', $this->id)->where('is_active', 1)->latest('id')->first();
+            if ($plan) {
+                return $plan;
+            }
+        }
+
+        return \App\Models\Plan::where('is_active', 1)->latest('id')->first();
+    }
+
+    public function getLatestPlan()
+    {
+        if ($this->plan_id) {
+            $plan = $this->plan ?? \App\Models\Plan::find($this->plan_id);
+            if ($plan) {
+                return $plan;
+            }
+        }
+
+        if (! empty($this->branch_id)) {
+            $plan = \App\Models\Plan::where('sub_branch_id', $this->branch_id)->latest('id')->first();
+            if ($plan) {
+                return $plan;
+            }
+        }
+
+        if (in_array($this->role, ['admin', 'sub-admin'], true)) {
+            $plan = \App\Models\Plan::where('sub_branch_id', $this->id)->latest('id')->first();
+            if ($plan) {
+                return $plan;
+            }
+        }
+
+        return \App\Models\Plan::latest('id')->first();
+    }
+
     protected static function boot()
     {
         parent::boot();

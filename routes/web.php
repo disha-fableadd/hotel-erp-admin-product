@@ -12,6 +12,7 @@ use App\Http\Controllers\admin\CategoryController;
 use App\Http\Controllers\admin\ProductController;
 use App\Http\Controllers\admin\QuotationController;
 use App\Http\Controllers\admin\CustomerController;
+use App\Http\Controllers\admin\PlanController;
 use App\Http\Controllers\admin\StaffController;
 use App\Http\Controllers\admin\SalesController;
 use App\Http\Controllers\admin\ProductsDeliveryController;
@@ -465,6 +466,20 @@ Route::get('/settings/smtp', [SmtpSettingController::class, 'index'])
     Route::get('/edit-subbranch/{id}', [SubBranchController::class, 'edit_subbranch'])->name('subbranch.edit');
     Route::get('/delete-subbranch/{id}', [SubBranchController::class, 'delete_subbranch'])->name('subbranch.delete');
     Route::get('/view-subbranch/{id}', [SubBranchController::class, 'view_subbranch'])->name('subbranch.view');
+
+    // Plans
+    Route::get('/plan', [PlanController::class, 'index'])->name('plans.planlist');
+    Route::get('/add-plan', [PlanController::class, 'create'])->name('plans.addplan');
+    Route::post('/add-plan', [PlanController::class, 'store'])->name('plans.store');
+    Route::get('/edit-plan/{plan}', [PlanController::class, 'edit'])->name('plans.edit');
+    Route::put('/edit-plan/{plan}', [PlanController::class, 'update'])->name('plans.update');
+    Route::delete('/delete-plan/{plan}', [PlanController::class, 'destroy'])->name('plans.destroy');
+    Route::get('/my-plan', [PlanController::class, 'myplan'])->name('plans.myplan');
+    Route::get('/plan-details', [PlanController::class, 'myplan'])->name('plans.details');
+    Route::get('/plans/upgrade-options', [PlanController::class, 'getUpgradePlans'])->name('plans.upgrade.options');
+    Route::post('/plans/razorpay/create-order', [PlanController::class, 'createRazorpayOrder'])->name('plans.razorpay.createOrder');
+    Route::post('/plans/razorpay/verify', [PlanController::class, 'verifyRazorpayPayment'])->name('plans.razorpay.verify');
+    Route::get('/plans/invoice/pdf/{id?}', [PlanController::class, 'downloadInvoicePdf'])->name('plans.invoice.pdf');
 
 
     Route::get('/inventory-list', [InventoryController::class, 'index'])->name('inventory.list');
