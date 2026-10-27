@@ -48,6 +48,7 @@ use App\Http\Controllers\admin\LeaveTypeController as AdminLeaveTypeController;
 use App\Http\Controllers\admin\AttendanceeController;
 use App\Http\Controllers\api\TransactionController;
 use App\Http\Controllers\api\TransactionApiController;
+use App\Http\Controllers\api\ChangePasswordController;
 use App\Http\Controllers\api\BankMasterController;
 use App\Http\Controllers\api\CreditNotesTypeController;
 use App\Http\Controllers\api\CreditNoteItemApiController;
@@ -135,6 +136,8 @@ Route::middleware(['auth.api'])->group(function () {
 
     Route::get('getProfile', [ProfileController::class, 'getProfile'])->name('getProfile');
     Route::post('updateProfile', [ProfileController::class, 'updateProfile'])->name('updateProfile');
+    Route::post('change-password', [ChangePasswordController::class, 'changePassword'])->name('change-password');
+    Route::post('change-password-web', [ChangePasswordController::class, 'changePasswordWeb'])->name('change-password-web');
     Route::get('getProductById/{num:}', [ProductController::class, 'getProductById'])->name('getProductById');
     Route::get('get_subadmin', [ProfileController::class, 'get_subadmin'])->name('get_subadmin');
 

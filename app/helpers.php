@@ -257,4 +257,93 @@ if (! function_exists('tenant_has_sub_module')) {
     }
 }
 
+if (! function_exists('plan_user_limit')) {
+    /**
+     * Get the maximum allowed users for the current tenant / active plan.
+     */
+    function plan_user_limit(): ?int
+    {
+        $limit = tenant('user_limit') ?? tenant('max_user');
+        if ($limit !== null && is_numeric($limit)) {
+            return (int) $limit;
+        }
+
+        try {
+            if (auth()->check() && auth()->user()->plan && auth()->user()->plan->user_limit !== null) {
+                return (int) auth()->user()->plan->user_limit;
+            }
+
+            $plan = \Illuminate\Support\Facades\DB::table('plans')->where('is_active', 1)->latest('id')->first()
+                ?: \Illuminate\Support\Facades\DB::table('plans')->orderBy('id', 'desc')->first();
+            if ($plan && $plan->user_limit !== null) {
+                return (int) $plan->user_limit;
+            }
+        } catch (\Throwable) {}
+
+        return null;
+    }
+}
+
+if (! function_exists('plan_branch_limit')) {
+    /**
+     * Get the maximum allowed branches for the current tenant / active plan.
+     */
+    function plan_branch_limit(): ?int
+    {
+        $limit = tenant('branch_limit') ?? tenant('max_branch');
+        if ($limit !== null && is_numeric($limit)) {
+            return (int) $limit;
+        }
+
+        try {
+            if (auth()->check() && auth()->user()->plan && auth()->user()->plan->branch_limit !== null) {
+                return (int) auth()->user()->plan->branch_limit;
+            }
+
+            $plan = \Illuminate\Support\Facades\DB::table('plans')->where('is_active', 1)->latest('id')->first()
+                ?: \Illuminate\Support\Facades\DB::table('plans')->orderBy('id', 'desc')->first();
+            if ($plan && $plan->branch_limit !== null) {
+                return (int) $plan->branch_limit;
+            }
+        } catch (\Throwable) {}
+
+        return null;
+    }
+}
+
+if (! function_exists('can_create_user')) {
+    /**
+     * Check if a new user (staff / sub-admin) can be created under the current plan.
+     */
+    function can_create_user(): bool
+    {
+        $limit = plan_user_limit();
+        if ($limit === null || $limit <= 0) {
+            return true;
+        }
+
+        $currentCount = \App\Models\User::where('isDeleted', 0)->count();
+        return $currentCount < $limit;
+    }
+}
+
+if (! function_exists('can_create_branch')) {
+    /**
+     * Check if a new branch / sub-branch can be created under the current plan.
+     */
+    function can_create_branch(): bool
+    {
+        $limit = plan_branch_limit();
+        if ($limit === null || $limit <= 0) {
+            return true;
+        }
+
+        $subAdminCount = \App\Models\User::where('role', 'sub-admin')->where('isDeleted', 0)->count();
+        $totalBranches = 1 + $subAdminCount;
+
+        return $totalBranches < $limit;
+    }
+}
+
+
 

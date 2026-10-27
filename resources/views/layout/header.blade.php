@@ -424,6 +424,11 @@ $user = auth()->user();
                     <a class="dropdown-item" href="{{ route('auth.profile') }}">
                         <i class="me-2" data-feather="user"></i> My Profile
                     </a>
+                    @if(tenant_has_sub_module(['Change Password', 'change-password'], ['Settings', 'General Settings']))
+                    <a class="dropdown-item" href="{{ route('auth.change-password') }}">
+                        <i class="me-2" data-feather="lock"></i> Change Password
+                    </a>
+                    @endif
                     @if($user->role === 'admin')
                     <a class="dropdown-item" href="{{ route('setting.generalsettings') }}">
                         <i class="me-2" data-feather="settings"></i> Settings
@@ -496,6 +501,9 @@ $user = auth()->user();
                 aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
             <div class="dropdown-menu dropdown-menu-right">
                 <a class="dropdown-item" href="{{route('auth.profile')}}">My Profile</a>
+                @if(tenant_has_sub_module(['Change Password', 'change-password'], ['Settings', 'General Settings']))
+                <a class="dropdown-item" href="{{ route('auth.change-password') }}">Change Password</a>
+                @endif
                 @if($user->role === 'admin')
                 <a class="dropdown-item" href="{{route('setting.generalsettings')}}">Settings</a>
                 <a class="dropdown-item new_branch" href="{{route('subbranch.list')}}">My Branch</a>

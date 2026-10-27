@@ -365,10 +365,16 @@
                 </div>
                 <div class="page-btn">
                     @if (app('hasPermission')(8, 'add'))
-                    <a href="{{ route('staff.add') }}" class="btn btn-added btn-sm">
-                        <img src="{{ env('ImagePath') . 'admin/assets/img/icons/plus.svg' }}" class="me-1" alt="img">New
-                        Staff
-                    </a>
+                        @if (can_create_user())
+                            <a href="{{ route('staff.add') }}" class="btn btn-added btn-sm">
+                                <img src="{{ env('ImagePath') . 'admin/assets/img/icons/plus.svg' }}" class="me-1" alt="img">New
+                                Staff
+                            </a>
+                        @else
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="alert('You have reached the user limit ({{ plan_user_limit() }}) allowed by your active subscription plan. Please upgrade your plan to add more staff.');" title="Plan user limit reached">
+                                <i data-feather="lock" class="me-1" style="width: 14px; height: 14px;"></i> New Staff (Limit Reached)
+                            </button>
+                        @endif
                     @endif
                 </div>
             </div>

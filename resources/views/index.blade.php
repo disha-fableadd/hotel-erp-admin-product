@@ -627,6 +627,9 @@
             .latest-summary-col {
                 width: 50%;
             }
+            .latest-summary-col:only-child {
+                width: 100%;
+            }
         }
 
         .hr-section .card {
@@ -756,8 +759,8 @@
     </style>
     <div class="content db-page">
         <div class="row dashboard-widgets-row">
-            @if (in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'sales-manager']))
-                <div class="col-lg-4 col-md-4 col-sm-4 col-4">
+            @if ($showErpTotalSales && in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'sales-manager']))
+                <div class="col-lg col-md-4 col-sm-6 col-12">
                     <a href="{{ route('sales.list') }}" style="text-decoration: none;">
                         <div class="top-stat-card" style="background-color: white; border-radius: 8px; padding: 20px; display: flex; align-items: center; border: 1px solid #f0f0f0; margin-bottom: 20px; height: 100px;">
                             <div class="top-stat-icon" style="background-color: rgba(255, 159, 67, 0.1); width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 15px; flex-shrink: 0;">
@@ -785,8 +788,8 @@
                     </a>
                 </div>
             @endif
-            @if (in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'purchase-manager']))
-                <div class="col-lg-4 col-md-4 col-sm-4 col-4">
+            @if ($showErpTotalPurchase && in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'purchase-manager']))
+                <div class="col-lg col-md-4 col-sm-6 col-12">
                     <a href="{{ route('purchase.lists') }}" style="text-decoration: none;">
                         <div class="top-stat-card" style="background-color: white; border-radius: 8px; padding: 20px; display: flex; align-items: center; border: 1px solid #f0f0f0; margin-bottom: 20px; height: 100px;">
                             <div class="top-stat-icon" style="background-color: rgba(255, 159, 67, 0.1); width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 15px; flex-shrink: 0;">
@@ -802,8 +805,8 @@
                     </a>
                 </div>
             @endif
-            @if (in_array($role, ['inventory-manager', 'admin', 'sub-admin']))
-                <div class="col-lg-4 col-md-4 col-sm-4 col-4">
+            @if ($showErpTotalExpense && in_array($role, ['inventory-manager', 'admin', 'sub-admin']))
+                <div class="col-lg col-md-4 col-sm-6 col-12">
                     <a href="{{ route('expense.list') }}" style="text-decoration: none;">
                         <div class="top-stat-card" style="background-color: white; border-radius: 8px; padding: 20px; display: flex; align-items: center; border: 1px solid #f0f0f0; margin-bottom: 20px; height: 100px;">
                             <div class="top-stat-icon" style="background-color: rgba(0, 207, 232, 0.1); width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 15px; flex-shrink: 0;">
@@ -822,7 +825,7 @@
         </div>
 
         <div class="row dashboard-widgets-row">
-            @if (in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'sales-manager']))
+            @if ($showRunningTables && in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'sales-manager']))
                 <div class="col-lg col-md-4 col-sm-6 col-6">
                     <a href="{{ route('tables.create') }}" style="text-decoration: none;">
                         <div style="background-color: white; border-radius: 8px; padding: 15px; border: 1px solid #f0f0f0; position: relative; margin-bottom: 20px; height: 110px;">
@@ -835,7 +838,7 @@
                     </a>
                 </div>
             @endif
-            @if (in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'sales-manager']))
+            @if ($showErpSalesInvoiceCount && in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'sales-manager']))
                 <div class="col-lg col-md-4 col-sm-6 col-6">
                     <a href="{{ route('sales.list') }}" style="text-decoration: none;">
                         <div style="background-color: white; border-radius: 8px; padding: 15px; border: 1px solid #f0f0f0; position: relative; margin-bottom: 20px; height: 110px;">
@@ -848,7 +851,7 @@
                     </a>
                 </div>
             @endif
-            @if (in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'purchase-manager']))
+            @if ($showErpPurchaseInvoiceCount && in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'purchase-manager']))
                 <div class="col-lg col-md-4 col-sm-6 col-6">
                     <a href="{{ route('purchase.lists') }}" style="text-decoration: none;">
                         <div style="background-color: white; border-radius: 8px; padding: 15px; border: 1px solid #f0f0f0; position: relative; margin-bottom: 20px; height: 110px;">
@@ -861,20 +864,7 @@
                     </a>
                 </div>
             @endif
-           {{-- @if (in_array($role, ['inventory-manager', 'admin', 'sub-admin']))
-                <div class="col-lg col-md-4 col-sm-6 col-6">
-                    <a href="#" style="text-decoration: none;">
-                        <div style="background-color: white; border-radius: 8px; padding: 15px; border: 1px solid #f0f0f0; position: relative; margin-bottom: 20px; height: 110px;">
-                            <div style="position: absolute; top: 15px; right: 15px;">
-                                <i data-feather="clipboard" style="color: #ff9f43; width: 20px; height: 20px;"></i>
-                            </div>
-                            <h4 style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px; margin-top: 10px;">0</h4>
-                            <h6 style="font-size: 13px; font-weight: 600; color: #667085; margin: 0;">Total Quotations</h6>
-                        </div>
-                    </a>
-                </div>
-            @endif --}}
-            @if (in_array($role, ['inventory-manager', 'admin', 'sub-admin']))
+            @if ($showTablesCount && in_array($role, ['inventory-manager', 'admin', 'sub-admin']))
                 <div class="col-lg col-md-4 col-sm-6 col-6">
                     <a href="{{ route('tables.create') }}" style="text-decoration: none;">
                         <div style="background-color: white; border-radius: 8px; padding: 15px; border: 1px solid #f0f0f0; position: relative; margin-bottom: 20px; height: 110px;">
@@ -887,7 +877,7 @@
                     </a>
                 </div>
             @endif
-            @if (in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'purchase-manager']))
+            @if ($showErpVendorsCount && in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'purchase-manager']))
                 <div class="col-lg col-md-4 col-sm-6 col-6">
                     <a href="{{ route('vendor.list') }}" style="text-decoration: none;">
                         <div style="background-color: white; border-radius: 8px; padding: 15px; border: 1px solid #f0f0f0; position: relative; margin-bottom: 20px; height: 110px;">
@@ -902,7 +892,7 @@
             @endif
         </div>
         <div class="latest-summary-row">
-            @if (in_array($role, ['inventory-manager', 'sales-manager', 'admin', 'sub-admin']))
+            @if ($showErpRecentSales && in_array($role, ['inventory-manager', 'sales-manager', 'admin', 'sub-admin']))
                 <div class="latest-summary-col">
                     <div class="card flex-fill" style="border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; margin-bottom: 20px;">
                         <div class="card-header" style="background-color: #ff9f43; color: white; padding: 15px; border-bottom: none; display: flex; justify-content: space-between; align-items: center;">
@@ -1017,7 +1007,7 @@
                     </div>
                 </div>
             @endif
-            @if (in_array($role, ['inventory-manager', 'purchase-manager', 'admin', 'sub-admin']))
+            @if ($showErpRecentPurchases && in_array($role, ['inventory-manager', 'purchase-manager', 'admin', 'sub-admin']))
                 <div class="latest-summary-col">
                     <div class="card flex-fill" style="border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; margin-bottom: 20px;">
                         <div class="card-header" style="background-color: #ff9f43; color: white; padding: 15px; border-bottom: none; display: flex; justify-content: space-between; align-items: center;">
@@ -1138,8 +1128,8 @@
         @endphp
 
         <div class="row">
-            @if (in_array($role, ['inventory-manager', 'sales-manager', 'admin', 'sub-admin']))
-                <div class="col-lg-6 col-sm-12 col-12 d-flex">
+            @if ($showErpSalesChart && in_array($role, ['inventory-manager', 'sales-manager', 'admin', 'sub-admin']))
+                <div class="{{ ($showErpSalesChart && $showErpPurchaseChart) ? 'col-lg-6' : 'col-lg-12' }} col-sm-12 col-12 d-flex">
                     <div class="card flex-fill" style="border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; margin-bottom: 20px;">
                         <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #e87c1e; color: white; padding: 15px; border-bottom: none;">
                             <div class="card-title mb-0" style="color: white; font-size: 18px; font-weight: 600; margin: 0;">Sales</div>
@@ -1159,8 +1149,8 @@
                     </div>
                 </div>
             @endif
-            @if (in_array($role, ['inventory-manager', 'purchase-manager', 'admin', 'sub-admin']))
-                <div class="col-lg-6 col-sm-12 col-12 d-flex">
+            @if ($showErpPurchaseChart && in_array($role, ['inventory-manager', 'purchase-manager', 'admin', 'sub-admin']))
+                <div class="{{ ($showErpSalesChart && $showErpPurchaseChart) ? 'col-lg-6' : 'col-lg-12' }} col-sm-12 col-12 d-flex">
                     <div class="card flex-fill" style="border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; margin-bottom: 20px;">
                         <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #e87c1e; color: white; padding: 15px; border-bottom: none;">
                             <div class="card-title mb-0" style="color: white; font-size: 18px; font-weight: 600; margin: 0;">Purchases</div>
@@ -1182,8 +1172,14 @@
             @endif
             
 
-            @if (in_array($role, ['inventory-manager', 'sales-manager', 'admin', 'sub-admin']))
-                <div class="col-xl-4 col-lg-6 col-md-6 col-12 mb-4">
+            @php
+                $visibleErpTables = ($showErpRecentSales ? 1 : 0) + ($showErpRecentPurchases ? 1 : 0) + ($showProductsDelivery ? 1 : 0);
+                $erpTableColClass = $visibleErpTables == 1 ? 'col-12 mb-4' : ($visibleErpTables == 2 ? 'col-xl-6 col-lg-6 col-md-6 col-12 mb-4' : 'col-xl-4 col-lg-6 col-md-6 col-12 mb-4');
+                $erpDeliveryColClass = $visibleErpTables == 1 ? 'col-12 mb-4' : ($visibleErpTables == 2 ? 'col-xl-6 col-lg-12 col-md-12 col-12 mb-4' : 'col-xl-4 col-lg-12 col-md-12 col-12 mb-4');
+            @endphp
+
+            @if ($showErpRecentSales && in_array($role, ['inventory-manager', 'sales-manager', 'admin', 'sub-admin']))
+                <div class="{{ $erpTableColClass }}">
                     <div class="card mb-0 h-100 recent-erp-card" style="border-radius: 8px; overflow: hidden; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                         <div class="card-header d-flex justify-content-between align-items-center recent-card-header"
                             style="background-color: #ff9f43; color: white; padding: 12px 16px; border-bottom: none;">
@@ -1247,8 +1243,8 @@
             @endif
 
             <!-- Latest Purchases Table - UPDATED -->
-            @if (in_array($role, ['inventory-manager', 'purchase-manager', 'admin', 'sub-admin']))
-                <div class="col-xl-4 col-lg-6 col-md-6 col-12 mb-4">
+            @if ($showErpRecentPurchases && in_array($role, ['inventory-manager', 'purchase-manager', 'admin', 'sub-admin']))
+                <div class="{{ $erpTableColClass }}">
                     <div class="card mb-0 h-100 recent-erp-card" style="border-radius: 8px; overflow: hidden; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                         <div class="card-header d-flex justify-content-between align-items-center recent-card-header"
                             style="background-color: #ff9f43; color: white; padding: 12px 16px; border-bottom: none;">
@@ -1312,8 +1308,8 @@
             @endif
 
             <!-- Latest Products Delivery Table -->
-            @if (in_array($role, ['inventory-manager', 'sales-manager', 'admin', 'sub-admin']))
-                <div class="col-xl-4 col-lg-12 col-md-12 col-12 mb-4">
+            @if ($showProductsDelivery && in_array($role, ['inventory-manager', 'sales-manager', 'admin', 'sub-admin']))
+                <div class="{{ $erpDeliveryColClass }}">
                     <div class="card mb-0 h-100" style="border-radius: 8px; overflow: hidden;">
                         <div class="card-header d-flex justify-content-between align-items-center"
                             style="background-color: #ff9f43; color: white; padding: 15px; border-bottom: none;">

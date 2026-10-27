@@ -15,6 +15,17 @@ class SubBranchController extends Controller
 {
     public function createSubbranch(Request $request)
     {
+        if (!can_create_branch()) {
+            $limit = plan_branch_limit();
+            return response()->json([
+                'status'  => false,
+                'message' => "You have reached the maximum branch limit ({$limit}) allowed by your current plan. Please upgrade your plan to create additional branches.",
+                'errors'  => [
+                    'limit' => ["Branch limit of {$limit} reached for your active plan. Please upgrade to create additional branches."]
+                ]
+            ], 422);
+        }
+
         if (!Schema::hasColumn('users', 'username')) {
             Schema::table('users', function ($table) {
                 $table->string('username', 100)->nullable()->unique()->after('name');

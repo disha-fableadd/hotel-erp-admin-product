@@ -15,6 +15,11 @@ class SubBranchController extends Controller
     }
     public function add_subbranch(Request $request)
     {
+        if (!can_create_branch()) {
+            $limit = plan_branch_limit();
+            return redirect()->route('subbranch.list')->with('error', "You have reached the maximum branch limit ({$limit}) allowed by your current plan. Please upgrade your plan to create additional branches.");
+        }
+
         return view('subbranch/addsubbranch');
     }
     public function edit_subbranch(Request $request, $id)
