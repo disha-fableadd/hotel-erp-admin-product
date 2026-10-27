@@ -220,11 +220,6 @@
                                 </td>
                             </tr>
                             @endforeach
-                            @if($orders->isEmpty())
-                            <tr>
-                                <td colspan="7" class="text-center">No delivery orders found.</td>
-                            </tr>
-                            @endif
                         </tbody>
                     </table>
                 </div>

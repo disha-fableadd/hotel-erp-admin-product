@@ -26,6 +26,9 @@
 
 <script>
     $(document).ready(function () {
+        setTimeout(function () {
+            $('#global-loader').fadeOut('fast');
+        }, 800);
         var $sidebarMenu = $('#sidebar-menu');
         var $searchInput = $('#sidebar-module-search');
 

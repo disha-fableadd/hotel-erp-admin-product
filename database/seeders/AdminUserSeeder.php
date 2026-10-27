@@ -15,7 +15,7 @@ class AdminUserSeeder extends Seeder
             BasicSettingsSeeder::class,
             RoleWiseUserSeeder::class,
             MasterDataSeeder::class,
-            ProductSeeder::class,
+           
         ]);
     }
 }
