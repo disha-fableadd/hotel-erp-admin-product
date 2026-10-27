@@ -253,5 +253,34 @@
             }
         });
     });
-
 </script>
+
+@if(session('error'))
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Limit Reached',
+                text: {!! json_encode(session('error')) !!},
+                confirmButtonColor: '#ff9f43'
+            });
+        }
+    });
+</script>
+@endif
+
+@if(session('success'))
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: {!! json_encode(session('success')) !!},
+                confirmButtonColor: '#ff9f43'
+            });
+        }
+    });
+</script>
+@endif

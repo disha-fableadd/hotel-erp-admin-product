@@ -320,7 +320,7 @@
                             New Branch
                         </a>
                     @else
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="alert('You have reached the branch limit ({{ plan_branch_limit() }}) allowed by your active subscription plan. Please upgrade your plan to add more branches.');" title="Plan branch limit reached">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="Swal.fire({ icon: 'warning', title: 'Branch Limit Reached', text: 'You have reached the branch limit ({{ plan_branch_limit() }}) allowed by your active subscription plan. Please upgrade your plan to add more branches.', confirmButtonColor: '#ff9f43' });" title="Plan branch limit reached">
                             <i data-feather="lock" class="me-1" style="width: 14px; height: 14px;"></i> New Branch (Limit Reached)
                         </button>
                     @endif
