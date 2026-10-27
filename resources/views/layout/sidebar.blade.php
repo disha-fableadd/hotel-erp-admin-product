@@ -1,6 +1,39 @@
 @php
     $user = auth()->user();
     $isStaff = $user && $user->role === 'staff';
+    $settings = \App\Models\Setting::first();
+
+    $showErpSection = tenant_has_module(['Products', 'Categories & Brands', 'Orders', 'Purchases', 'Manage Inventory', 'Inventory', 'Tables', 'Vendors']) && (
+        (tenant_has_module('Products') && (app('hasPermission')(1, 'view') || app('hasPermission')(1, 'add'))) ||
+        (tenant_has_module('Categories & Brands') && app('hasPermission')(8, 'view')) ||
+        (tenant_has_module('Orders') && (app('hasPermission')(2, 'view') || app('hasPermission')(2, 'add'))) ||
+        (tenant_has_module('Purchases') && (app('hasPermission')(3, 'view') || app('hasPermission')(3, 'add'))) ||
+        (tenant_has_module(['Inventory', 'Manage Inventory']) && app('hasPermission')(17, 'view')) ||
+        (tenant_has_module('Tables') && (app('hasPermission')(9, 'view') || app('hasPermission')(9, 'add') || app('hasPermission')(2, 'view'))) ||
+        (tenant_has_module('Vendors') && (app('hasPermission')(10, 'view') || app('hasPermission')(10, 'add')))
+    );
+
+    $showAccountingSection = tenant_has_module(['Accounting', 'Manage Accounting', 'Expenses', 'Cash & Bank', 'Credit/Debit Notes', 'GST Reports', 'Reports']) && (
+        (tenant_has_module(['Accounting', 'Manage Accounting']) && app('hasPermission')(16, 'view')) ||
+        (tenant_has_module('Expenses') && (app('hasPermission')(5, 'view') || app('hasPermission')(5, 'add'))) ||
+        (tenant_has_module('Cash & Bank') && app('hasPermission')(27, 'view')) ||
+        (tenant_has_module('Credit/Debit Notes') && app('hasPermission')(30, 'view')) ||
+        (tenant_has_module('GST Reports') && app('hasPermission')(20, 'view')) ||
+        (tenant_has_module('Reports') && (app('hasPermission')(2, 'view') || app('hasPermission')(3, 'view') || app('hasPermission')(5, 'view')))
+    );
+
+    $showHrSection = tenant_has_module(['Staff', 'Attendance', 'Leaves', 'Payroll', 'Advance Pay', 'HR']) && (
+        (tenant_has_module('Staff') && (app('hasPermission')(11, 'view') || app('hasPermission')(11, 'add'))) ||
+        (tenant_has_module('Attendance') && (app('hasPermission')(26, 'view') || app('hasPermission')(26, 'add'))) ||
+        (tenant_has_module('Leaves') && (app('hasPermission')(28, 'view') || app('hasPermission')(28, 'add'))) ||
+        (tenant_has_module('Payroll') && (app('hasPermission')(29, 'view') || app('hasPermission')(29, 'add'))) ||
+        (tenant_has_module('Advance Pay') && (app('hasPermission')(23, 'view') || app('hasPermission')(23, 'add')))
+    );
+
+    $showSettingsSection = tenant_has_module(['General Settings', 'Tax Rates', 'Settings']) && (
+        (tenant_has_module(['General Settings', 'Settings']) && app('hasPermission')(14, 'view')) ||
+        (tenant_has_module('Tax Rates') && app('hasPermission')(15, 'view'))
+    );
 @endphp
 <style>
     body.mini-sidebar:not(.expand-menu) .sidebar .sidebar-menu>ul>li.menu-title {
@@ -251,7 +284,7 @@
             <ul class="sidebar-nav-list">
 
                 {{-- Dashboard --}}
-                @if($isStaff || app('hasPermission')(0, 'view'))
+                @if(tenant_has_module('Dashboard') && ($isStaff || app('hasPermission')(0, 'view')))
                     <li>
                         @if($isStaff)
                             <a href="{{route('auth.staff-dashboard')}}"><img
@@ -266,7 +299,7 @@
                 @endif
 
                 {{-- ERP CATEGORY --}}
-                @if(app('hasPermission')(1, 'view') || app('hasPermission')(1, 'add') || app('hasPermission')(2, 'view') || app('hasPermission')(3, 'view') || app('hasPermission')(17, 'view') || app('hasPermission')(9, 'view') || app('hasPermission')(10, 'view'))
+                @if($showErpSection)
                     <li class="submenu sidebar-category sidebar-category-erp">
                         <a href="javascript:void(0);">
                             <i class="fas fa-industry"></i>
@@ -275,101 +308,80 @@
                         </a>
                         <ul>
                             {{-- Products --}}
-                            @if(app('hasPermission')(1, 'view') || app('hasPermission')(1, 'add'))
+                            @if(tenant_has_module('Products') && (app('hasPermission')(1, 'view') || app('hasPermission')(1, 'add')))
                                 <li class="sidebar-module sidebar-module-link">
                                     <a href="{{route('product.list')}}"><img
                                             src="{{ env('ImagePath') . '/admin/assets/img/icons/product.svg' }}" alt="img"><span>
                                             Product</span></a>
-                                    <!-- <ul>
-                                        @if(app('hasPermission')(1, 'view'))
-                                            <li><a href="{{route('product.list')}}">All Products</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(1, 'add'))
-                                            <li><a href="{{route('product.add')}}">New Product</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(1, 'view') || app('hasPermission')(8, 'view'))
-                                            <li><a href="{{route('product.import')}}">Import Products</a></li>
-                                        @endif
-                                    </ul> -->
                                 </li>
                             @endif
 
                             {{-- Category Setup --}}
-                            @if(app('hasPermission')(8, 'view'))
-                                <li class="submenu sidebar-module">
-                                    <a href="javascript:void(0);">
-                                        <i class="fas fa-tags"></i>
-                                        <span>Category</span>
-                                        <span class="menu-arrow"></span>
-                                    </a>
-                                    <ul>
-                                        <li><a href="{{route('category.list')}}">All Categories</a></li>
-                                        <li><a href="{{route('category.add')}}">New Category</a></li>
-                                        <li><a href="{{route('brand.list')}}">All Brands</a></li>
-                                        <li><a href="{{route('brand.add')}}">New Brand</a></li>
-                                        <li><a href="{{route('quantity_type.quantity')}}">Quantity Type</a></li>
-                                    </ul>
-                                </li>
+                            @if(tenant_has_module('Categories & Brands') && app('hasPermission')(8, 'view'))
+                                @php
+                                    $canAllCategories = tenant_has_sub_module(['All Categories', 'all-categories'], 'Categories & Brands');
+                                    $canNewCategory = tenant_has_sub_module(['New Category', 'new-category'], 'Categories & Brands');
+                                    $canAllBrands = tenant_has_sub_module(['All Brands', 'all-brands'], 'Categories & Brands');
+                                    $canNewBrand = tenant_has_sub_module(['New Brand', 'new-brand'], 'Categories & Brands');
+                                    $canQuantityType = tenant_has_sub_module(['Quantity Type', 'quantity-type'], 'Categories & Brands');
+                                @endphp
+                                @if($canAllCategories || $canNewCategory || $canAllBrands || $canNewBrand || $canQuantityType)
+                                    <li class="submenu sidebar-module">
+                                        <a href="javascript:void(0);">
+                                            <i class="fas fa-tags"></i>
+                                            <span>Category</span>
+                                            <span class="menu-arrow"></span>
+                                        </a>
+                                        <ul>
+                                            @if($canAllCategories)
+                                                <li><a href="{{route('category.list')}}">All Categories</a></li>
+                                            @endif
+                                            @if($canNewCategory)
+                                                <li><a href="{{route('category.add')}}">New Category</a></li>
+                                            @endif
+                                            @if($canAllBrands)
+                                                <li><a href="{{route('brand.list')}}">All Brands</a></li>
+                                            @endif
+                                            @if($canNewBrand)
+                                                <li><a href="{{route('brand.add')}}">New Brand</a></li>
+                                            @endif
+                                            @if($canQuantityType)
+                                                <li><a href="{{route('quantity_type.quantity')}}">Quantity Type</a></li>
+                                            @endif
+                                        </ul>
+                                    </li>
+                                @endif
                             @endif
 
                             {{-- Orders --}}
-                            @if(app('hasPermission')(2, 'view') || app('hasPermission')(2, 'add'))
+                            @if(tenant_has_module('Orders') && (app('hasPermission')(2, 'view') || app('hasPermission')(2, 'add')))
                                 <li class="sidebar-module sidebar-module-link">
                                     <a href="{{route('sales.list')}}"><img
                                             src="{{ env('ImagePath') . '/admin/assets/img/icons/sales1.svg' }}"
                                             alt="img"><span>Orders</span> <span class="menu-arrow"></span></a>
-                                    <!-- <ul>
-                                        @if(app('hasPermission')(2, 'view'))
-                                            <li><a href="{{route('sales.list')}}">All Orders</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(2, 'add'))
-                                            <li><a href="{{route('sales.add')}}">New Orders</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(2, 'view'))
-                                            <li><a href="{{route('sales.products-delivery')}}">Products Delivery</a></li>
-                                        @endif
-                                    </ul> -->
                                 </li>
                             @endif
 
-                            @if(app('hasPermission')(2, 'view') || app('hasPermission')(2, 'add'))
+                            {{-- Products Delivery --}}
+                            @if((tenant_has_module('Products Delivery') || (tenant_has_module('Orders') && tenant_has_sub_module(['Products Delivery', 'products-delivery'], 'Orders'))) && (app('hasPermission')(2, 'view') || app('hasPermission')(2, 'add')))
                                 <li class="sidebar-module sidebar-module-link">
                                     <a href="{{route('sales.products-delivery')}}">
                                     <i class="fas fa-truck" style="color:#4748b; width: 20px; text-align: center; font-size: 16px;"></i>    
                                     <span>Products Delivery</span> <span class="menu-arrow"></span></a>
-                                    <!-- <ul>
-                                        @if(app('hasPermission')(2, 'view'))
-                                            <li><a href="{{route('sales.list')}}">All Orders</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(2, 'add'))
-                                            <li><a href="{{route('sales.add')}}">New Orders</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(2, 'view'))
-                                            <li><a href="{{route('sales.products-delivery')}}">Products Delivery</a></li>
-                                        @endif
-                                    </ul> -->
                                 </li>
                             @endif
 
                             {{-- Purchases --}}
-                            @if(app('hasPermission')(3, 'view') || app('hasPermission')(3, 'add'))
+                            @if(tenant_has_module('Purchases') && (app('hasPermission')(3, 'view') || app('hasPermission')(3, 'add')))
                                 <li class="sidebar-module sidebar-module-link">
                                     <a href="{{route('purchase.lists')}}"><img
                                             src="{{ env('ImagePath') . '/admin/assets/img/icons/purchase1.svg' }}"
                                             alt="img"><span>Purchases</span> <span class="menu-arrow"></span></a>
-                                    <!-- <ul>
-                                        @if(app('hasPermission')(3, 'view'))
-                                            <li><a href="{{route('purchase.lists')}}">All Purchases</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(3, 'add'))
-                                            <li><a href="{{route('purchase.add')}}">New Purchase</a></li>
-                                        @endif
-                                    </ul> -->
                                 </li>
                             @endif
 
                             {{-- Manage Inventory --}}
-                            @if (app('hasPermission')(17, 'view'))
+                            @if(tenant_has_module(['Inventory', 'Manage Inventory']) && app('hasPermission')(17, 'view'))
                                 <li class="sidebar-module sidebar-module-link">
                                     <a href="{{ route('inventory.list') }}">
                                         <i class="fa fa-book"></i>
@@ -379,35 +391,19 @@
                             @endif
 
                             {{-- Tables --}}
-                            @if(app('hasPermission')(9, 'view') || app('hasPermission')(9, 'add') || app('hasPermission')(2, 'view'))
+                            @if(tenant_has_module('Tables') && (app('hasPermission')(9, 'view') || app('hasPermission')(9, 'add') || app('hasPermission')(2, 'view')))
                                 <li class="sidebar-module sidebar-module-link">
                                     <a href="{{route('customer.list')}}"><img src="{{ env('ImagePath') . '/admin/assets/img/icons/tab.svg' }}"
                                             alt="img"><span> Tables</span> <span class="menu-arrow"></span></a>
-                                    <!-- <ul>
-                                        @if(app('hasPermission')(9, 'view'))
-                                            <li><a href="{{route('customer.list')}}">All Tables</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(2, 'view'))
-                                            <li><a href="{{route('tables.create')}}">Tables Views</a></li>
-                                        @endif
-                                    </ul> -->
                                 </li>
                             @endif
 
                             {{-- Vendors --}}
-                            @if(app('hasPermission')(10, 'view') || app('hasPermission')(10, 'add'))
+                            @if(tenant_has_module('Vendors') && (app('hasPermission')(10, 'view') || app('hasPermission')(10, 'add')))
                                 <li class="sidebar-module sidebar-module-link">
                                     <a href="{{route('vendor.list')}}"><img
                                             src="{{ env('ImagePath') . '/admin/assets/img/icons/users1.svg' }}" alt="img"><span>
                                             Vendors</span> <span class="menu-arrow"></span></a>
-                                    <!-- <ul>
-                                        @if(app('hasPermission')(10, 'view'))
-                                            <li><a href="{{route('vendor.list')}}">All Vendors</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(10, 'add'))
-                                            <li><a href="{{route('vendor.add')}}">New Vendor </a></li>
-                                        @endif
-                                    </ul> -->
                                 </li>
                             @endif
                         </ul>
@@ -415,7 +411,7 @@
                 @endif
 
                 {{-- ACCOUNTING CATEGORY --}}
-                @if(app('hasPermission')(1, 'view') || app('hasPermission')(16, 'view') || app('hasPermission')(5, 'view') || app('hasPermission')(27, 'view') || app('hasPermission')(30, 'view') || app('hasPermission')(20, 'view') || app('hasPermission')(2, 'view'))
+                @if($showAccountingSection)
                     <li class="submenu sidebar-category sidebar-category-accounting">
                         <a href="javascript:void(0);">
                             <i class="fas fa-calculator"></i>
@@ -423,105 +419,104 @@
                             <span class="menu-arrow"></span>
                         </a>
                         <ul>
-                            {{-- Account Branch --}}
-                            {{--
-                            @if (app('hasPermission')(1, 'view') || app('hasPermission')(16, 'view'))
-                                <li class="submenu sidebar-module">
-                                    <a href="javascript:void(0);">
-                                        <i class="fa fa-building"></i>
-                                        <span>Account Branch</span>
-                                        <span class="menu-arrow"></span>
-                                    </a>
-                                    <ul>
-                                        @if (app('hasPermission')(1, 'view') || app('hasPermission')(16, 'view'))
-                                            <li><a href="{{ route('account_branch.list') }}">All Account Branches</a></li>
-                                        @endif
-                                        @if (app('hasPermission')(1, 'add') || app('hasPermission')(16, 'add'))
-                                            <li><a href="{{ route('account_branch.add') }}">New Account Branch</a></li>
-                                        @endif
-                                        
-                                    </ul>
-                                </li>
-                            @endif
-                            --}}
-
                             {{-- Manage Accounting --}}
-                            @if (app('hasPermission')(16, 'view'))
-                                <li class="submenu sidebar-module">
-                                    <a href="javascript:void(0);">
-                                        <img src="{{ env('ImagePath') . '/admin/assets/img/icons/purchase1.svg' }}" alt="img">
-                                        <span>Manage Accounting</span>
-                                        <span class="menu-arrow"></span>
-                                    </a>
-                                    <ul>
-                                        @if(app('hasPermission')(16, 'view'))
-                                            <li><a href="{{ route('account_ledger.add') }}">Account Ledger</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(16, 'view'))
-                                            <li><a href="{{ route('income-statement.index') }}">Income Statement</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(16, 'view'))
-                                            <li class="d-none"><a href="{{ route('accounting.balance-sheet') }}">Balance Sheet</a></li>
-                                        @endif
-                                        @if (app('hasPermission')(16, 'view'))
-                                    <li><a href="{{ route('banks.index') }}">Banks</a></li>
+                            @if(tenant_has_module(['Accounting', 'Manage Accounting']) && app('hasPermission')(16, 'view'))
+                                @php
+                                    $canAccountLedger = tenant_has_sub_module(['Account Ledger', 'account-ledger'], 'Accounting');
+                                    $canIncomeStatement = tenant_has_sub_module(['Income Statement', 'income-statement'], 'Accounting');
+                                    $canBalanceSheet = tenant_has_sub_module(['Balance Sheet', 'balance-sheet'], 'Accounting');
+                                    $canBanks = tenant_has_sub_module(['Banks', 'banks'], 'Accounting');
+                                @endphp
+                                @if($canAccountLedger || $canIncomeStatement || $canBalanceSheet || $canBanks)
+                                    <li class="submenu sidebar-module">
+                                        <a href="javascript:void(0);">
+                                            <img src="{{ env('ImagePath') . '/admin/assets/img/icons/purchase1.svg' }}" alt="img">
+                                            <span>Manage Accounting</span>
+                                            <span class="menu-arrow"></span>
+                                        </a>
+                                        <ul>
+                                            @if($canAccountLedger && app('hasPermission')(16, 'view'))
+                                                <li><a href="{{ route('account_ledger.add') }}">Account Ledger</a></li>
+                                            @endif
+                                            @if($canIncomeStatement && app('hasPermission')(16, 'view'))
+                                                <li><a href="{{ route('income-statement.index') }}">Income Statement</a></li>
+                                            @endif
+                                            @if($canBalanceSheet && app('hasPermission')(16, 'view'))
+                                                <li class="d-none"><a href="{{ route('accounting.balance-sheet') }}">Balance Sheet</a></li>
+                                            @endif
+                                            @if($canBanks && app('hasPermission')(16, 'view'))
+                                                <li><a href="{{ route('banks.index') }}">Banks</a></li>
+                                            @endif
+                                        </ul>
+                                    </li>
                                 @endif
-                                    </ul>
-                                </li>
                             @endif
 
                             {{-- Expenses --}}
-                            @if(app('hasPermission')(5, 'view') || app('hasPermission')(5, 'add'))
-                                <li class="submenu sidebar-module">
-                                    <a href="javascript:void(0);"><img
-                                            src="{{ env('ImagePath') . '/admin/assets/img/icons/expense1.svg' }}" alt="img"><span>
-                                            Expenses</span> <span class="menu-arrow"></span></a>
-                                    <ul>
-                                        @if(app('hasPermission')(5, 'view'))
-                                            <li><a href="{{route('expense.list')}}">All Expenses</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(5, 'add'))
-                                            <li><a href="{{route('expense.add')}}">New Expense</a></li>
-                                        @endif
-                                        @if(app('hasPermission')(5, 'view'))
-                                            <li><a href="{{route('expensetype.list')}}">All Expense Type</a></li>
-                                        @endif
-                                    </ul>
-                                </li>
+                            @if(tenant_has_module('Expenses') && (app('hasPermission')(5, 'view') || app('hasPermission')(5, 'add')))
+                                @php
+                                    $canAllExpenses = tenant_has_sub_module(['All Expenses', 'all-expenses'], 'Expenses');
+                                    $canNewExpense = tenant_has_sub_module(['New Expense', 'new-expense'], 'Expenses');
+                                    $canAllExpenseType = tenant_has_sub_module(['All Expense Type', 'all-expense-type', 'expense-types'], 'Expenses');
+                                @endphp
+                                @if($canAllExpenses || $canNewExpense || $canAllExpenseType)
+                                    <li class="submenu sidebar-module">
+                                        <a href="javascript:void(0);"><img
+                                                src="{{ env('ImagePath') . '/admin/assets/img/icons/expense1.svg' }}" alt="img"><span>
+                                                Expenses</span> <span class="menu-arrow"></span></a>
+                                        <ul>
+                                            @if($canAllExpenses && app('hasPermission')(5, 'view'))
+                                                <li><a href="{{route('expense.list')}}">All Expenses</a></li>
+                                            @endif
+                                            @if($canNewExpense && app('hasPermission')(5, 'add'))
+                                                <li><a href="{{route('expense.add')}}">New Expense</a></li>
+                                            @endif
+                                            @if($canAllExpenseType && app('hasPermission')(5, 'view'))
+                                                <li><a href="{{route('expensetype.list')}}">All Expense Type</a></li>
+                                            @endif
+                                        </ul>
+                                    </li>
+                                @endif
                             @endif
 
                             {{-- Cash & Bank --}}
-                            @if (app('hasPermission')(27, 'view'))
-                                <li class="submenu sidebar-module">
-                                    <a href="javascript:void(0);">
-                                        <i class="fas fa-book"></i>
-                                        <span>Cash & Bank</span> <span class="menu-arrow"></span></a>
-                                    <ul>
-                                        @if (app('hasPermission')(27, 'view'))
-                                            <li><a href="{{ route('transaction.bankbook') }}">Bank Book</a></li>
-                                        @endif
-                                        @if (app('hasPermission')(27, 'view'))
-                                            <li><a href="{{ route('transaction.cashbook') }}">Cash Book</a></li>
-                                        @endif
-                                    </ul>
-                                </li>
+                            @if(tenant_has_module('Cash & Bank') && app('hasPermission')(27, 'view'))
+                                @php
+                                    $canBankBook = tenant_has_sub_module(['Bank Book', 'bank-book'], 'Cash & Bank');
+                                    $canCashBook = tenant_has_sub_module(['Cash Book', 'cash-book'], 'Cash & Bank');
+                                @endphp
+                                @if($canBankBook || $canCashBook)
+                                    <li class="submenu sidebar-module">
+                                        <a href="javascript:void(0);">
+                                            <i class="fas fa-book"></i>
+                                            <span>Cash & Bank</span> <span class="menu-arrow"></span></a>
+                                        <ul>
+                                            @if($canBankBook && app('hasPermission')(27, 'view'))
+                                                <li><a href="{{ route('transaction.bankbook') }}">Bank Book</a></li>
+                                            @endif
+                                            @if($canCashBook && app('hasPermission')(27, 'view'))
+                                                <li><a href="{{ route('transaction.cashbook') }}">Cash Book</a></li>
+                                            @endif
+                                        </ul>
+                                    </li>
+                                @endif
                             @endif
 
                             {{-- Credit / Debit Notes --}}
-                            @if (app('hasPermission')(30, 'view'))
+                            @if(tenant_has_module('Credit/Debit Notes') && app('hasPermission')(30, 'view'))
                                 <li class="submenu sidebar-module">
                                     <a href="javascript:void(0);">
                                         <i class="fas fa-file-invoice-dollar"></i>
                                         <span>Credit/Debit Notes</span> <span class="menu-arrow"></span>
                                     </a>
                                     <ul>
-                                        @if (app('hasPermission')(30, 'view'))
+                                        @if(app('hasPermission')(30, 'view'))
                                             <li><a href="{{ route('credit-notes-items.index') }}">Credit Notes</a></li>
                                         @endif
-                                        @if (app('hasPermission')(30, 'view'))
+                                        @if(app('hasPermission')(30, 'view'))
                                             <li><a href="{{ route('debit-notes-items.index') }}">Debit Notes</a></li>
                                         @endif
-                                        @if (app('hasPermission')(30, 'view'))
+                                        @if(app('hasPermission')(30, 'view'))
                                             <li><a href="{{ route('credit-notes.index') }}">Credit/Debit Notes Type</a></li>
                                         @endif
                                     </ul>
@@ -529,7 +524,7 @@
                             @endif
 
                             {{-- GST Reports --}}
-                            @if(app('hasPermission')(20, 'view'))
+                            @if(tenant_has_module('GST Reports') && app('hasPermission')(20, 'view'))
                                 <li class="submenu sidebar-module">
                                     <a href="javascript:void(0);">
                                         <i class="fas fa-chart-line"></i>
@@ -547,7 +542,7 @@
                             @endif
 
                             {{-- Reports --}}
-                            @if(app('hasPermission')(2, 'view') || app('hasPermission')(3, 'view') || app('hasPermission')(5, 'view'))
+                            @if(tenant_has_module('Reports') && (app('hasPermission')(2, 'view') || app('hasPermission')(3, 'view') || app('hasPermission')(5, 'view')))
                                 <li class="submenu sidebar-module">
                                     <a href="javascript:void(0);">
                                         <img src="{{ env('ImagePath') . '/admin/assets/img/icons/time.svg' }}" alt="img">
@@ -571,7 +566,7 @@
                 @endif
 
                 {{-- HR CATEGORY --}}
-                @if(app('hasPermission')(11, 'view') || app('hasPermission')(26, 'view') || app('hasPermission')(28, 'view') || app('hasPermission')(29, 'view') || app('hasPermission')(23, 'view'))
+                @if($showHrSection)
                     <li class="submenu sidebar-category sidebar-category-hr">
                         <a href="javascript:void(0);">
                             <i class="fas fa-id-badge"></i>
@@ -580,108 +575,147 @@
                         </a>
                         <ul>
                             {{-- Staff --}}
-                            @if(app('hasPermission')(11, 'view'))
-                                <li class="submenu sidebar-module">
-                                    <a href="javascript:void(0);">
-                                        <img src="{{ env('ImagePath') . '/admin/assets/img/icons/users1.svg' }}" alt="img">
-                                        <span> Staff</span> <span class="menu-arrow"></span>
-                                    </a>
-                                    <ul>
-                                        <li><a href="{{route('staff.list')}}">All Staff</a></li>
-                                        <li><a href="{{route('staff.add')}}">New Staff</a></li>
-                                    </ul>
-                                </li>
+                            @if(tenant_has_module('Staff') && app('hasPermission')(11, 'view'))
+                                @php
+                                    $canAllStaff = tenant_has_sub_module(['All Staff', 'all-staff'], 'Staff');
+                                    $canNewStaff = tenant_has_sub_module(['New Staff', 'new-staff'], 'Staff');
+                                @endphp
+                                @if($canAllStaff || $canNewStaff)
+                                    <li class="submenu sidebar-module">
+                                        <a href="javascript:void(0);">
+                                            <img src="{{ env('ImagePath') . '/admin/assets/img/icons/users1.svg' }}" alt="img">
+                                            <span> Staff</span> <span class="menu-arrow"></span>
+                                        </a>
+                                        <ul>
+                                            @if($canAllStaff)
+                                                <li><a href="{{route('staff.list')}}">All Staff</a></li>
+                                            @endif
+                                            @if($canNewStaff)
+                                                <li><a href="{{route('staff.add')}}">New Staff</a></li>
+                                            @endif
+                                        </ul>
+                                    </li>
+                                @endif
                             @endif
 
                             {{-- Attendance --}}
-                            @if (app('hasPermission')(26, 'view') || app('hasPermission')(26, 'add'))
-                                <li class="submenu sidebar-module">
-                                    <a href="javascript:void(0);">
-                                        <i class="fa fa-clock"></i>
-                                        <span> Attendance</span> <span class="menu-arrow"></span>
-                                    </a>
-                                    <ul>
-                                        @if (app('hasPermission')(26, 'add') || app('hasPermission')(26, 'view'))
-                                            <li><a href="{{ route('attendence.calendar') }}">Manage Attendance</a></li>
-                                            <li><a href="{{ route('attendence.summary') }}">Attendance</a></li>
-                                        @endif
-                                    </ul>
-                                </li>
+                            @if(tenant_has_module('Attendance') && (app('hasPermission')(26, 'view') || app('hasPermission')(26, 'add')))
+                                @php
+                                    $canManageAttendance = tenant_has_sub_module(['Manage Attendance', 'manage-attendance', 'mark-attendance'], 'Attendance');
+                                    $canAttendanceSummary = tenant_has_sub_module(['Attendance', 'attendance-summary', 'attendance-list'], 'Attendance');
+                                @endphp
+                                @if($canManageAttendance || $canAttendanceSummary)
+                                    <li class="submenu sidebar-module">
+                                        <a href="javascript:void(0);">
+                                            <i class="fa fa-clock"></i>
+                                            <span> Attendance</span> <span class="menu-arrow"></span>
+                                        </a>
+                                        <ul>
+                                            @if($canManageAttendance && (app('hasPermission')(26, 'add') || app('hasPermission')(26, 'view')))
+                                                <li><a href="{{ route('attendence.calendar') }}">Manage Attendance</a></li>
+                                            @endif
+                                            @if($canAttendanceSummary && (app('hasPermission')(26, 'add') || app('hasPermission')(26, 'view')))
+                                                <li><a href="{{ route('attendence.summary') }}">Attendance</a></li>
+                                            @endif
+                                        </ul>
+                                    </li>
+                                @endif
                             @endif
 
                             {{-- Leaves --}}
-                            @if (app('hasPermission')(28, 'view') || app('hasPermission')(28, 'add'))
-                                <li class="submenu sidebar-module">
-                                    <a href="javascript:void(0);">
-                                        <i class="fa fa-calendar-alt"></i>
-                                        <span> Leaves</span> <span class="menu-arrow"></span>
-                                    </a>
-                                    <ul>
-                                        @if (in_array(auth()->user()->role, ['admin', 'sub-admin', 'hr']))
-                                            @if (app('hasPermission')(28, 'view'))
-                                                <li><a href="{{ route('leave.view') }}">All Leaves</a></li>
+                            @if(tenant_has_module('Leaves') && (app('hasPermission')(28, 'view') || app('hasPermission')(28, 'add')))
+                                @php
+                                    $canAllLeaves = tenant_has_sub_module(['All Leaves', 'all-leaves'], 'Leaves');
+                                    $canLeaveRequest = tenant_has_sub_module(['Leave Request', 'leave-request'], 'Leaves');
+                                    $canAddLeave = tenant_has_sub_module(['Add Leave', 'add-leave'], 'Leaves');
+                                @endphp
+                                @if($canAllLeaves || $canLeaveRequest || $canAddLeave)
+                                    <li class="submenu sidebar-module">
+                                        <a href="javascript:void(0);">
+                                            <i class="fa fa-calendar-alt"></i>
+                                            <span> Leaves</span> <span class="menu-arrow"></span>
+                                        </a>
+                                        <ul>
+                                            @if(in_array(auth()->user()->role, ['admin', 'sub-admin', 'hr']))
+                                                @if($canAllLeaves && app('hasPermission')(28, 'view'))
+                                                    <li><a href="{{ route('leave.view') }}">All Leaves</a></li>
+                                                @endif
                                             @endif
-                                        @endif
-                                        @if (app('hasPermission')(28, 'view'))
-                                            <li><a href="{{ route('leave.request') }}">Leave Request</a></li>
-                                        @endif
-                                        @if (app('hasPermission')(28, 'add'))
-                                            <li><a href="{{ route('leave.add') }}">Add Leave </a></li>
-                                        @endif
-                                    </ul>
-                                </li>
+                                            @if($canLeaveRequest && app('hasPermission')(28, 'view'))
+                                                <li><a href="{{ route('leave.request') }}">Leave Request</a></li>
+                                            @endif
+                                            @if($canAddLeave && app('hasPermission')(28, 'add'))
+                                                <li><a href="{{ route('leave.add') }}">Add Leave </a></li>
+                                            @endif
+                                        </ul>
+                                    </li>
+                                @endif
                             @endif
 
                             {{-- Payroll --}}
-                            @if (app('hasPermission')(29, 'view') || app('hasPermission')(29, 'add'))
-                                <li class="submenu sidebar-module">
-                                    <a href="javascript:void(0);">
-                                        <i class="fa fa-money-check-alt"></i>
-                                        <span> Payroll</span> <span class="menu-arrow"></span>
-                                    </a>
-                                    <ul>
-                                        @if (in_array(auth()->user()->role, ['staff']))
-                                            <li><a href="{{ route('payroll.list') }}">View Payroll</a></li>
-                                        @endif
-                                        @if (in_array(auth()->user()->role, ['hr', 'admin']))
-                                            @if (app('hasPermission')(29, 'view'))
-                                                <li><a href="{{ route('payroll.list') }}">Manage Payroll</a></li>
+                            @if(tenant_has_module('Payroll') && (app('hasPermission')(29, 'view') || app('hasPermission')(29, 'add')))
+                                @php
+                                    $canViewPayroll = tenant_has_sub_module(['View Payroll', 'view-payroll', 'payroll-list'], 'Payroll');
+                                    $canManagePayroll = tenant_has_sub_module(['Manage Payroll', 'manage-payroll'], 'Payroll');
+                                    $canAddPayroll = tenant_has_sub_module(['Add Payroll', 'add-payroll'], 'Payroll');
+                                    $canGroupSalary = tenant_has_sub_module(['Group Salary', 'group-salary'], 'Payroll');
+                                @endphp
+                                @if($canViewPayroll || $canManagePayroll || $canAddPayroll || $canGroupSalary)
+                                    <li class="submenu sidebar-module">
+                                        <a href="javascript:void(0);">
+                                            <i class="fa fa-money-check-alt"></i>
+                                            <span> Payroll</span> <span class="menu-arrow"></span>
+                                        </a>
+                                        <ul>
+                                            @if(in_array(auth()->user()->role, ['staff']) && $canViewPayroll)
+                                                <li><a href="{{ route('payroll.list') }}">View Payroll</a></li>
                                             @endif
-                                            @if (app('hasPermission')(29, 'add'))
-                                                <li><a href="{{ route('payroll.create') }}">Add Payroll</a></li>
+                                            @if(in_array(auth()->user()->role, ['hr', 'admin']))
+                                                @if($canManagePayroll && app('hasPermission')(29, 'view'))
+                                                    <li><a href="{{ route('payroll.list') }}">Manage Payroll</a></li>
+                                                @endif
+                                                @if($canAddPayroll && app('hasPermission')(29, 'add'))
+                                                    <li><a href="{{ route('payroll.create') }}">Add Payroll</a></li>
+                                                @endif
+                                                @if($canGroupSalary && (app('hasPermission')(29, 'view') || app('hasPermission')(29, 'add')))
+                                                    <li><a href="{{ route('payroll.salary-details') }}">Group Salary</a></li>
+                                                @endif
                                             @endif
-                                            @if (app('hasPermission')(29, 'view') || app('hasPermission')(29, 'add'))
-                                                <li><a href="{{ route('payroll.salary-details') }}">Group Salary</a></li>
-                                            @endif
-                                        @endif
-                                    </ul>
-                                </li>
+                                        </ul>
+                                    </li>
+                                @endif
                             @endif
 
                             {{-- Advance Pay --}}
-                            @if (auth()->user()->role === 'admin')
-                                <li class="submenu sidebar-module">
-                                    <a href="javascript:void(0);">
-                                        <i class="fa fa-money-bill-wave"></i>
-                                        <span>Advance Pay</span>
-                                        <span class="menu-arrow"></span>
-                                    </a>
-                                    <ul>
-                                        @if (app('hasPermission')(23, 'view'))
-                                            <li><a href="{{ route('advance_pay.index') }}">All Advance Pay</a></li>
-                                        @endif
-                                        @if (app('hasPermission')(23, 'add'))
-                                            <li><a href="{{ route('advance_pay.create') }}">New Advance Pay</a></li>
-                                        @endif
-                                    </ul>
-                                </li>
+                            @if(tenant_has_module('Advance Pay') && auth()->user()->role === 'admin')
+                                @php
+                                    $canAllAdvancePay = tenant_has_sub_module(['All Advance Pay', 'all-advance-pay'], 'Advance Pay');
+                                    $canNewAdvancePay = tenant_has_sub_module(['New Advance Pay', 'new-advance-pay'], 'Advance Pay');
+                                @endphp
+                                @if($canAllAdvancePay || $canNewAdvancePay)
+                                    <li class="submenu sidebar-module">
+                                        <a href="javascript:void(0);">
+                                            <i class="fa fa-money-bill-wave"></i>
+                                            <span>Advance Pay</span>
+                                            <span class="menu-arrow"></span>
+                                        </a>
+                                        <ul>
+                                            @if($canAllAdvancePay && app('hasPermission')(23, 'view'))
+                                                <li><a href="{{ route('advance_pay.index') }}">All Advance Pay</a></li>
+                                            @endif
+                                            @if($canNewAdvancePay && app('hasPermission')(23, 'add'))
+                                                <li><a href="{{ route('advance_pay.create') }}">New Advance Pay</a></li>
+                                            @endif
+                                        </ul>
+                                    </li>
+                                @endif
                             @endif
                         </ul>
                     </li>
                 @endif
 
                 {{-- SETTINGS CATEGORY --}}
-                @if(app('hasPermission')(14, 'view') || app('hasPermission')(15, 'view'))
+                @if($showSettingsSection)
                     <li class="submenu sidebar-category sidebar-category-settings">
                         <a href="javascript:void(0);">
                             <i class="fas fa-cog"></i>
@@ -689,27 +723,36 @@
                             <span class="menu-arrow"></span>
                         </a>
                         <ul>
-                            @if (in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']))
+                            @if(tenant_has_sub_module(['My Plan Details', 'my-plan-details', 'plans', 'Plan Details'], 'General Settings') && in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']))
                                 <li><a href="{{ route('plans.planlist') }}" class="{{ request()->routeIs('plans.planlist') ? 'active' : '' }}">Plans</a></li>
                                 <li><a href="{{ route('plans.myplan') }}" class="{{ request()->routeIs('plans.myplan') ? 'active' : '' }}">My Plan Details</a></li>
                             @endif
-                            @if(app('hasPermission')(14, 'view'))
-                                <li><a href="{{route('setting.generalsettings')}}">Shop Settings</a></li>
-                                   @if (app('hasPermission')(14, 'view') && (!$settings || $settings->send_mail))
-                                <li><a href="{{ route('setting.smtpsettings') }}">Smtp Settings</a></li>
-                            @endif
-                            @if (app('hasPermission')(14, 'view') && (!$settings || $settings->customer_whatsapp_message || $settings->admin_whatsapp_message))
-                                <li><a href="{{ route('setting.facebookappconfiguration') }}">WhatsApp
-                                        Configuration</a></li>
-                            @endif
-                                <li><a href="{{ route('department.view') }}">Departments</a></li>
-                                <li><a href="{{ route('designation.view') }}">Designations</a></li>
-                                <li><a href="{{ route('leave-type.view') }}">Leave Types</a></li>
-                                <li><a href="{{ route('holidays.index') }}">Manage Holidays</a></li>
-                                <li><a href="{{ route('holidays.calendar') }}">Holiday Calendar</a></li>
+                            @if(tenant_has_module(['General Settings', 'Settings']) && app('hasPermission')(14, 'view'))
+                                @if(tenant_has_sub_module(['Shop Settings', 'shop-settings', 'Settings'], 'General Settings'))
+                                    <li><a href="{{route('setting.generalsettings')}}">Shop Settings</a></li>
+                                @endif
+                                @if(tenant_has_sub_module(['Smtp Settings', 'smtp-settings'], 'General Settings') && (!$settings || $settings->send_mail))
+                                    <li><a href="{{ route('setting.smtpsettings') }}">Smtp Settings</a></li>
+                                @endif
+                                @if(tenant_has_sub_module(['WhatsApp Configuration', 'whatsapp-configuration'], 'General Settings') && (!$settings || $settings->customer_whatsapp_message || $settings->admin_whatsapp_message))
+                                    <li><a href="{{ route('setting.facebookappconfiguration') }}">WhatsApp Configuration</a></li>
+                                @endif
+                                @if(tenant_has_sub_module(['Departments', 'departments'], 'General Settings'))
+                                    <li><a href="{{ route('department.view') }}">Departments</a></li>
+                                @endif
+                                @if(tenant_has_sub_module(['Designations', 'designations'], 'General Settings'))
+                                    <li><a href="{{ route('designation.view') }}">Designations</a></li>
+                                @endif
+                                @if(tenant_has_sub_module(['Leave Types', 'leave-types'], 'General Settings'))
+                                    <li><a href="{{ route('leave-type.view') }}">Leave Types</a></li>
+                                @endif
+                                @if(tenant_has_sub_module(['Holidays', 'holidays', 'Manage Holidays'], 'General Settings'))
+                                    <li><a href="{{ route('holidays.index') }}">Manage Holidays</a></li>
+                                    <li><a href="{{ route('holidays.calendar') }}">Holiday Calendar</a></li>
+                                @endif
                             @endif
                            
-                            @if(app('hasPermission')(15, 'view'))
+                            @if(tenant_has_module('Tax Rates') && app('hasPermission')(15, 'view'))
                                 <li><a href="{{route('auth.taxrates')}}">Tax Rates</a></li>
                             @endif
                         </ul>

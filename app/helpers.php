@@ -122,6 +122,26 @@ if (! function_exists('tenant_has_module')) {
         $assigned = (array) tenant('modules', []);
 
         if (empty($assigned)) {
+            try {
+                $dbPlanFeatures = null;
+                if (auth()->check() && auth()->user()->plan && !empty(auth()->user()->plan->features)) {
+                    $dbPlanFeatures = auth()->user()->plan->features;
+                } else {
+                    $activePlan = \Illuminate\Support\Facades\DB::table('plans')->where('is_active', 1)->latest('id')->first();
+                    if ($activePlan && !empty($activePlan->features)) {
+                        $dbPlanFeatures = $activePlan->features;
+                    }
+                }
+                if (!empty($dbPlanFeatures)) {
+                    $assigned = is_array($dbPlanFeatures) ? $dbPlanFeatures : (json_decode($dbPlanFeatures, true) ?: []);
+                }
+                if (empty($assigned) && \Illuminate\Support\Facades\Schema::hasTable('modules')) {
+                    $assigned = \Illuminate\Support\Facades\DB::table('modules')->pluck('module')->all();
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        if (empty($assigned)) {
             return false;
         }
 
@@ -131,24 +151,24 @@ if (! function_exists('tenant_has_module')) {
 
         static $aliasGroups = [
             ['dashboard'],
-            ['products', 'product', 'all products'],
-            ['orders', 'order', 'sales', 'sales & bills', 'sales and bills', 'sales and orders'],
-            ['purchases', 'purchase', 'purchase orders'],
-            ['invoices', 'invoice', 'custom invoice', 'custom invoices', 'billing'],
-            ['expenses', 'expense', 'manage expense', 'manage expenses'],
-            ['categories & brands', 'category', 'categories', 'brand', 'brands', 'catalog setup', 'catalog'],
-            ['tables', 'table', 'table reservation', 'table reservations'],
-            ['vendors', 'vendor', 'suppliers', 'supplier'],
-            ['staff', 'employees', 'employee', 'users'],
-            ['general settings', 'settings', 'setting'],
+            ['products', 'product', 'all products', 'new product', 'import products', 'products delivery'],
+            ['orders', 'order', 'all orders', 'new orders', 'sales', 'sales & bills', 'sales and bills', 'sales and orders', 'products delivery'],
+            ['purchases', 'purchase', 'all purchases', 'new purchase', 'purchase orders'],
+            ['invoices', 'invoice', 'custom invoice', 'custom invoices', 'billing', 'all invoices'],
+            ['expenses', 'expense', 'all expenses', 'new expense', 'all expense type', 'expense types', 'manage expense', 'manage expenses'],
+            ['categories & brands', 'category', 'categories', 'brand', 'brands', 'all categories', 'new category', 'all brands', 'new brand', 'quantity type', 'catalog setup', 'catalog'],
+            ['tables', 'table', 'all tables', 'tables views', 'table booking', 'dining tables', 'table reservation', 'table reservations'],
+            ['vendors', 'vendor', 'all vendors', 'new vendor', 'import vendor', 'suppliers', 'supplier'],
+            ['staff', 'all staff', 'new staff', 'employees', 'employee', 'users', 'hr', 'human resources'],
+            ['general settings', 'settings', 'setting', 'shop settings', 'smtp settings', 'change password', 'my plan details', 'plans'],
             ['tax rates', 'tax rate', 'tax', 'taxes', 'gst'],
-            ['accounting', 'manage accounting', 'accounts', 'account ledger'],
-            ['inventory', 'manage inventory', 'stock'],
-            ['advance pay', 'advance payment', 'advance payments'],
-            ['attendance', 'manage attendance', 'biometric'],
-            ['cash & bank', 'cash and bank', 'cash and bank book', 'cash book', 'bank book', 'banks'],
-            ['leaves', 'leave', 'leave request'],
-            ['payroll', 'salary', 'salary details'],
+            ['accounting', 'manage accounting', 'accounts', 'account ledger', 'income statement', 'balance sheet', 'banks', 'bank', 'receipt and payment'],
+            ['inventory', 'manage inventory', 'product inventory', 'stock transfer', 'row material', 'stock'],
+            ['advance pay', 'advance payment', 'advance payments', 'all advance pay', 'new advance pay'],
+            ['attendance', 'manage attendance', 'biometric', 'attendance logs'],
+            ['cash & bank', 'cash and bank', 'cash and bank book', 'cash book', 'bank book', 'banks', 'transactions', 'transaction'],
+            ['leaves', 'leave', 'all leaves', 'leave request', 'add leave', 'manage leaves'],
+            ['payroll', 'salary', 'manage payroll', 'add payroll', 'group salary', 'salary details'],
             ['credit/debit notes', 'credit and debit notes', 'credit notes', 'debit notes', 'credit debit notes'],
         ];
 
@@ -157,6 +177,9 @@ if (! function_exists('tenant_has_module')) {
 
         foreach ($checkList as $name) {
             $norm = strtolower(trim((string) $name));
+            if ($norm === 'dashboard') {
+                return true;
+            }
             $expandedCheckList[$norm] = true;
             foreach ($aliasGroups as $group) {
                 if (in_array($norm, $group, true)) {
@@ -214,7 +237,7 @@ if (! function_exists('tenant_has_sub_module')) {
         } catch (\Throwable $e) {}
 
         if (empty($rawNames)) {
-            return false;
+            return true;
         }
 
         $assignedNormalized = array_map(function ($m) {
