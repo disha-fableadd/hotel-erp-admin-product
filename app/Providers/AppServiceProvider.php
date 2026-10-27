@@ -52,7 +52,15 @@ class AppServiceProvider extends ServiceProvider
         $tenancy = $this->app->make(TenantManager::class);
 
         if ($tenancy->enabled() && $this->app->runningInConsole() && ($tenantId = (int) getenv('TENANT_ID')) > 0) {
-            $tenancy->activateById($tenantId);
+            try {
+                $tenancy->activateById($tenantId);
+            } catch (\Throwable $e) {
+                if (!empty(getenv('DB_DATABASE'))) {
+                    \Illuminate\Support\Facades\Log::warning("Tenant #{$tenantId} activation failed during console boot, using direct environment credentials: " . $e->getMessage());
+                } else {
+                    throw $e;
+                }
+            }
         }
 
         // Over HTTP with tenancy on, IdentifyTenant shares this after the client DB is selected.
