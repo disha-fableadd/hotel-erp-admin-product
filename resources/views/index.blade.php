@@ -882,7 +882,7 @@
                                 <i data-feather="grid" style="color: #00cfe8; width: 20px; height: 20px;"></i>
                             </div>
                             <h4 style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px; margin-top: 10px;">{{ $tableCount ?? 0 }}</h4>
-                            <h6 style="font-size: 13px; font-weight: 600; color: #667085; margin: 0;">Tables</h6>
+                            <h6 style="font-size: 13px; font-weight: 600; color: #667085; margin: 0;">Tables </h6>
                         </div>
                     </a>
                 </div>
