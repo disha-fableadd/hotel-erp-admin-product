@@ -41,6 +41,14 @@ class TenantSetupCurrentCommand extends Command
             $this->line('Users already exist — initial db:seed skipped.');
         }
 
+        // Delete demo dummy users so only the client admin exists
+        User::whereIn('email', [
+            'subadmin@gmail.com',
+            'staff@gmail.com',
+            'customer@gmail.com',
+            'vendor@gmail.com',
+        ])->delete();
+
         $email = $this->option('admin-email') ?: tenant('email');
         $username = $this->option('admin-username');
         $password = $this->option('admin-password');
