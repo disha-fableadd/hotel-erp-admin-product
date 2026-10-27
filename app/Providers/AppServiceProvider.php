@@ -110,8 +110,8 @@ class AppServiceProvider extends ServiceProvider
 
                 if (!$user) return false;
 
-                // Grant all permissions to admin users for tenant-allowed modules
-                if (strtolower($user->role) === 'admin' || $user->role_id == 1) {
+                // Grant all permissions to admin and sub-admin users for tenant-allowed modules
+                if (in_array(strtolower((string)$user->role), ['admin', 'sub-admin'], true) || (int)$user->role_id === 1) {
                     return true;
                 }
 

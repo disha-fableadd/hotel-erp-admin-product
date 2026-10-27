@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\PlanPermissionSyncService;
 
 class PlanController extends Controller
 {
@@ -99,8 +100,9 @@ class PlanController extends Controller
             $featuresArray = array_values(array_filter(array_map('trim', preg_split('/[\n,]+/', $validated['features']))));
         }
 
-        DB::transaction(function () use ($validated, $featuresArray) {
-            Plan::create([
+        $plan = null;
+        DB::transaction(function () use ($validated, $featuresArray, &$plan) {
+            $plan = Plan::create([
                 'name'             => $validated['name'],
                 'price'            => $validated['price']            ?? null,
                 'discount_percent' => $validated['discount_percent'] ?? 0,
@@ -120,6 +122,11 @@ class PlanController extends Controller
                 'features'         => $featuresArray,
             ]);
         });
+
+        // Synchronize permissions and modules according to this plan
+        if ($plan && $plan->is_active) {
+            PlanPermissionSyncService::syncPlanModulesAndPermissions($plan);
+        }
 
         return redirect()->route('plans.planlist')->with('success', 'Plan created successfully.');
     }
@@ -150,6 +157,11 @@ class PlanController extends Controller
             $plan->update($updateData);
         });
 
+        // Synchronize permissions and modules according to this updated plan
+        if ($plan->is_active) {
+            PlanPermissionSyncService::syncPlanModulesAndPermissions($plan);
+        }
+
         return redirect()->route('plans.planlist')->with('success', 'Plan updated successfully.');
     }
 
@@ -159,6 +171,9 @@ class PlanController extends Controller
         DB::transaction(function () use ($plan) {
             $plan->delete();
         });
+
+        // Re-synchronize modules and permissions for remaining active plan
+        PlanPermissionSyncService::syncPlanModulesAndPermissions();
 
         return redirect()->route('plans.planlist')->with('success', 'Plan deleted successfully.');
     }
