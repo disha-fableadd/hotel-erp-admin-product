@@ -3,6 +3,9 @@
 @section('title', 'Sub Branch')
 
 @section('content')
+@php
+    $adminPrefix = \App\Http\Controllers\api\StaffController::getAdminPrefix(auth()->user());
+@endphp
 <style>
     @media screen and (max-width: 768px) {
         .form-group {
@@ -28,9 +31,25 @@
                     <!-- Customer Name -->
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Branch Name</label>
+                            <label>Branch Name <span class="text-danger">*</span></label>
                             <input type="text" name="customer_name" id="customer_name" class="form-control">
                             <div class="text-danger error-customer_name"></div>
+                        </div>
+                    </div>
+
+                    <!-- Username -->
+                    <div class="col-lg-3 col-sm-6 col-6">
+                        <div class="form-group">
+                            <label>Username <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                @if(!empty($adminPrefix))
+                                    <span class="input-group-text bg-light text-muted fw-bold" id="admin_prefix_addon">{{ $adminPrefix }}_</span>
+                                @endif
+                                <input type="text" name="username" maxlength="60" id="username"
+                                    class="form-control" placeholder="e.g. branch1" autocomplete="off" style="text-transform: lowercase;">
+                            </div>
+                            <small class="text-muted" style="font-size: 11px;">Will be prefixed with brand prefix for login.</small>
+                            <div class="text-danger error-username"></div>
                         </div>
                     </div>
 
@@ -139,8 +158,14 @@
             let formData = new FormData(this);
             $(".text-danger").html(""); // Clear previous error messages
 
-            const $btn = $("#submitCustomerBtn"); // Replace with your actual button ID
+            const $btn = $(this).find("button[type='submit']");
             const originalText = $btn.html();
+
+            let username = ($("#username").val() || "").trim();
+            if (username === "") {
+                $(".error-username").html("Username is required.");
+                return false;
+            }
 
             // Show spinner and disable button
             $btn.html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...')

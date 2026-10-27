@@ -15,13 +15,22 @@ class SubBranchController extends Controller
 {
     public function createSubbranch(Request $request)
     {
+        if (!Schema::hasColumn('users', 'username')) {
+            Schema::table('users', function ($table) {
+                $table->string('username', 100)->nullable()->unique()->after('name');
+            });
+        }
+
         $messages = [
-            'email.unique' => 'Already exist with this mail',
-            'phone.unique' => 'Already exist with this phone',
+            'email.unique'   => 'Already exist with this mail',
+            'phone.unique'   => 'Already exist with this phone',
+            'username.regex' => 'Username may only contain letters, numbers, and underscores.',
+            'username.min'   => 'Username must be at least 3 characters.',
         ];
 
         $validator = Validator::make($request->all(), [
             'customer_name' => 'required|string|max:255',
+            'username'      => 'required|string|min:3|max:60|regex:/^[a-zA-Z0-9_]+$/',
             'email'         => 'required|email|unique:users,email',
             'phone'         => 'required|numeric|unique:users,phone',
             'country'       => 'nullable|string|max:100',
@@ -38,9 +47,45 @@ class SubBranchController extends Controller
             ], 422);
         }
 
+        // Generate sub-branch username with admin prefix (same as staff)
+        $authUser = auth()->user() ?? auth()->guard('api')->user();
+        $adminPrefix = StaffController::getAdminPrefix($authUser);
+        $rawUsername = trim($request->input('username', ''));
+        $lowerUsername = strtolower($rawUsername);
+
+        if (!empty($adminPrefix)) {
+            $prefixWithUnder = $adminPrefix . '_';
+            if (str_starts_with($lowerUsername, $prefixWithUnder)) {
+                $finalUsername = $lowerUsername;
+            } elseif (str_starts_with($lowerUsername, $adminPrefix)) {
+                $remainder = substr($lowerUsername, strlen($adminPrefix));
+                $finalUsername = $adminPrefix . '_' . ltrim($remainder, '_');
+            } else {
+                $finalUsername = $prefixWithUnder . ltrim($lowerUsername, '_');
+            }
+        } else {
+            $finalUsername = $lowerUsername;
+        }
+
+        // Validate uniqueness of username across active users
+        $duplicateUsername = User::where('isDeleted', 0)
+            ->whereRaw('LOWER(TRIM(username)) = ?', [$finalUsername])
+            ->exists();
+
+        if ($duplicateUsername) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'The username has already been taken.',
+                'errors'  => [
+                    'username' => ['The username has already been taken.']
+                ]
+            ], 422);
+        }
+
         // ✅ Create user
         $customer           = new User();
         $customer->name     = $request->customer_name;
+        $customer->username = $finalUsername;
         $customer->email    = $request->email;
         $customer->phone    = $request->phone;
         $customer->password = Hash::make($request->password);
@@ -100,14 +145,23 @@ class SubBranchController extends Controller
 
     public function updateSubbranch(Request $request)
     {
+        if (!Schema::hasColumn('users', 'username')) {
+            Schema::table('users', function ($table) {
+                $table->string('username', 100)->nullable()->unique()->after('name');
+            });
+        }
+
         $messages = [
-            'email.unique' => 'Already exist with this mail',
-            'phone.unique' => 'Already exist with this phone',
+            'email.unique'   => 'Already exist with this mail',
+            'phone.unique'   => 'Already exist with this phone',
+            'username.regex' => 'Username may only contain letters, numbers, and underscores.',
+            'username.min'   => 'Username must be at least 3 characters.',
         ];
 
         $validator = Validator::make($request->all(), [
             'id'            => 'required|exists:users,id',
             'customer_name' => 'required|string|max:255',
+            'username'      => 'nullable|string|min:3|max:60|regex:/^[a-zA-Z0-9_]+$/',
             'email'         => 'required|email|unique:users,email,' . $request->id,
             'phone'         => 'required|numeric|unique:users,phone,' . $request->id,
             'password'      => 'nullable|string|min:6',
@@ -124,9 +178,49 @@ class SubBranchController extends Controller
             ], 422);
         }
 
+        $finalUsername = null;
+        if ($request->filled('username')) {
+            $authUser = auth()->user() ?? auth()->guard('api')->user();
+            $adminPrefix = StaffController::getAdminPrefix($authUser);
+            $rawUsername = trim($request->input('username', ''));
+            $lowerUsername = strtolower($rawUsername);
+
+            if (!empty($adminPrefix)) {
+                $prefixWithUnder = $adminPrefix . '_';
+                if (str_starts_with($lowerUsername, $prefixWithUnder)) {
+                    $finalUsername = $lowerUsername;
+                } elseif (str_starts_with($lowerUsername, $adminPrefix)) {
+                    $remainder = substr($lowerUsername, strlen($adminPrefix));
+                    $finalUsername = $adminPrefix . '_' . ltrim($remainder, '_');
+                } else {
+                    $finalUsername = $prefixWithUnder . ltrim($lowerUsername, '_');
+                }
+            } else {
+                $finalUsername = $lowerUsername;
+            }
+
+            $duplicateUsername = User::where('id', '!=', $request->id)
+                ->where('isDeleted', 0)
+                ->whereRaw('LOWER(TRIM(username)) = ?', [$finalUsername])
+                ->exists();
+
+            if ($duplicateUsername) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'The username has already been taken.',
+                    'errors'  => [
+                        'username' => ['The username has already been taken.']
+                    ]
+                ], 422);
+            }
+        }
+
         // ✅ Fetch existing user
         $customer        = User::find($request->id);
         $customer->name  = $request->customer_name;
+        if ($finalUsername !== null) {
+            $customer->username = $finalUsername;
+        }
         $customer->email = $request->email;
         $customer->phone = $request->phone;
 
@@ -325,6 +419,7 @@ class SubBranchController extends Controller
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('username', 'LIKE', "%{$search}%")
                   ->orWhere('email', 'LIKE', "%{$search}%")
                   ->orWhere('phone', 'LIKE', "%{$search}%")
                   ->orWhere('role', 'LIKE', "%{$search}%")
