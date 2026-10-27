@@ -426,8 +426,27 @@ class TenantManager
 
         // Allow flexible aliases for Hotel products (e.g. HOTEL, HOTEL_ERP, FABLEAD_HOTEL)
         $hotelProductAliases = ['HOTEL', 'HOTEL_ERP', 'HOTEL-ERP', 'FABLEAD_HOTEL'];
-        $productMatches = ($tProduct === '' || $product === '' || $tProduct === $product || (in_array($product, $hotelProductAliases, true) && in_array($tProduct, $hotelProductAliases, true)));
-        $projectMatches = ($tProject === '' || $project === '' || $tProject === $project || (in_array($project, $hotelProductAliases, true) && in_array($tProject, $hotelProductAliases, true)));
+        $isThisHotelApp = in_array($product, $hotelProductAliases, true) || in_array($project, $hotelProductAliases, true);
+
+        if ($isThisHotelApp) {
+            // Check if tenant has any hotel product, project, domain, or db indicator
+            $isHotelTenant = in_array($tProduct, $hotelProductAliases, true)
+                || in_array($tProject, $hotelProductAliases, true)
+                || str_contains(strtolower($tenant['domain'] ?? ''), 'hotel')
+                || str_contains(strtolower($tenant['db']['database'] ?? ''), 'hotel');
+
+            if ($isHotelTenant) {
+                return true;
+            }
+
+            // In console commands targeting a specific tenant ID, allow it
+            if (app()->runningInConsole() && !empty($tenant['id']) && (int) $tenant['id'] === (int) getenv('TENANT_ID')) {
+                return true;
+            }
+        }
+
+        $productMatches = ($tProduct === '' || $product === '' || $tProduct === $product || ($isThisHotelApp && in_array($tProduct, $hotelProductAliases, true)));
+        $projectMatches = ($tProject === '' || $project === '' || $tProject === $project || ($isThisHotelApp && in_array($tProject, $hotelProductAliases, true)));
 
         return $productMatches && $projectMatches;
     }
