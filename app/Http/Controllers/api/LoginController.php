@@ -256,8 +256,8 @@ class LoginController extends Controller
             $tenancy->resolveByHost($request->getHost(), true);
             return null;
         } catch (TenantResolutionException $e) {
-            // If domain not registered, try resolving tenant by user's username or email
-            if ($e->reason === 'NOT_FOUND' && !empty($login)) {
+            // If domain not registered or mismatched, try resolving tenant by user's username or email
+            if (in_array($e->reason, ['NOT_FOUND', 'PRODUCT_MISMATCH'], true) && !empty($login)) {
                 try {
                     $tenant = $tenancy->resolveByEmail($login, true);
                     if ($request->hasSession()) {
