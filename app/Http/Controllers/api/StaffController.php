@@ -838,15 +838,17 @@ class StaffController extends Controller
             });
 
         return response()->json([
-            'name'          => $user->name,
-            'email'         => $user->email,
-            'phone'         => $user->phone,
-            'gst_number'    => $user->gst_number,
-            'role'          => $user->role,
-            'profile_image' => $user->profile_image,
-            'address'       => $userDetail->address ?? 'N/A',
-            'city'          => $userDetail->city ?? 'N/A',
-            'country'       => $userDetail->country ?? 'N/A',
+            'name'              => $user->name,
+            'username'          => $user->username ?? '',
+            'email'             => $user->email,
+            'phone'             => $user->phone,
+            'gst_number'        => $user->gst_number,
+            'role'              => $user->role,
+            'profile_image'     => $user->profile_image,
+            'profile_image_url' => $user->profile_image_url,
+            'address'           => $userDetail->address ?? 'N/A',
+            'city'              => $userDetail->city ?? 'N/A',
+            'country'           => $userDetail->country ?? 'N/A',
             'designation_id'    => $userDetail?->designation_id,
             'department_id'     => $userDetail?->department_id,
             'joining_date' => $userDetail?->joining_date 
