@@ -261,7 +261,7 @@
         if (typeof Swal !== 'undefined') {
             Swal.fire({
                 icon: 'warning',
-                title: 'Limit Reached',
+                title: {!! json_encode(session('error_title') ?? 'Notice') !!},
                 text: {!! json_encode(session('error')) !!},
                 confirmButtonColor: '#ff9f43'
             });
