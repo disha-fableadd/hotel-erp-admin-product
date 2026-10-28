@@ -326,7 +326,7 @@ $user = auth()->user();
             <!-- Search Field Container -->
             <div class="header-search d-flex align-items-center position-relative me-3 search-view">
                 <!-- Search Icon -->
-                <img src="{{ env('ImagePath').'/admin/assets/img/icons/search.svg' }}" alt="Search"
+                <img src="{{ image_path('admin/assets/img/icons/search.svg') }}" alt="Search"
                     style="position: absolute; left: 12px; width: 18px; height: 18px; z-index: 10; opacity: 0.6;">
 
                 <!-- Input Field -->

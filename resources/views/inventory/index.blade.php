@@ -427,7 +427,7 @@
             </div>
             <div class="page-btn">
                 <a href="{{ route('product.add') }}" class="btn btn-sm btn-added"><img
-                        src="{{ env('ImagePath') . '/admin/assets/img/icons/plus.svg' }}" alt="img" class="me-1">New
+                        src="{{ image_path('admin/assets/img/icons/plus.svg') }}" alt="img" class="me-1">New
                     Product</a>
             </div>
         </div>

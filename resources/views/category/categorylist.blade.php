@@ -457,8 +457,8 @@
 
                                     // Image URL
                                     let imageUrl = category.image ?
-                                        '{{ env('ImagePath') . 'storage/' }}' + category.image :
-                                        '{{ env('ImagePath') . '/admin/assets/img/product/noimage.png' }}';
+                                        '{{ image_path('storage') }}/' + String(category.image).replace(/^\/+/, '').replace(/^storage\//, '') :
+                                        '{{ image_path('admin/assets/img/product/noimage.png') }}';
 
                                     let mobileCardHtml = `
                                         <div class="category-mobile-card">
@@ -545,10 +545,10 @@
                 function getActionButtons(categoryId) {
                     return `
                         <a class="me-3 edit-category" href="/edit-category/${categoryId}">
-                            <img src="{{ env('ImagePath') . '/admin/assets/img/icons/edit.svg' }}" alt="img">
+                            <img src="{{ image_path('admin/assets/img/icons/edit.svg') }}" alt="img">
                         </a>
                         <a class="me-3 confirm-text delete-category" data-id="${categoryId}" href="javascript:void(0);">
-                            <img src="{{ env('ImagePath') . '/admin/assets/img/icons/delete.svg' }}" alt="img">
+                            <img src="{{ image_path('admin/assets/img/icons/delete.svg') }}" alt="img">
                         </a>
                     `;
                 }

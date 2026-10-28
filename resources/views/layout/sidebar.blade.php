@@ -333,11 +333,11 @@
                     <li>
                         @if($isStaff)
                             <a href="{{route('auth.staff-dashboard')}}"><img
-                                    src="{{ env('ImagePath') . '/admin/assets/img/icons/dashboard.svg' }}" alt="img"><span>
+                                    src="{{ image_path('admin/assets/img/icons/dashboard.svg') }}" alt="img"><span>
                                     Dashboard</span> </a>
                         @else
                             <a href="{{route('auth.dashboard')}}"><img
-                                    src="{{ env('ImagePath') . '/admin/assets/img/icons/dashboard.svg' }}" alt="img"><span>
+                                    src="{{ image_path('admin/assets/img/icons/dashboard.svg') }}" alt="img"><span>
                                     Dashboard</span> </a>
                         @endif
                     </li>
@@ -356,7 +356,7 @@
                             @if(tenant_has_module('Products') && (app('hasPermission')(1, 'view') || app('hasPermission')(1, 'add')))
                                 <li class="sidebar-module sidebar-module-link">
                                     <a href="{{route('product.list')}}"><img
-                                            src="{{ env('ImagePath') . '/admin/assets/img/icons/product.svg' }}" alt="img"><span>
+                                            src="{{ image_path('admin/assets/img/icons/product.svg') }}" alt="img"><span>
                                             Product</span></a>
                                 </li>
                             @endif
@@ -402,7 +402,7 @@
                             @if(tenant_has_module('Orders') && (app('hasPermission')(2, 'view') || app('hasPermission')(2, 'add')))
                                 <li class="sidebar-module sidebar-module-link">
                                     <a href="{{route('sales.list')}}"><img
-                                            src="{{ env('ImagePath') . '/admin/assets/img/icons/sales1.svg' }}"
+                                            src="{{ image_path('admin/assets/img/icons/sales1.svg') }}"
                                             alt="img"><span>Orders</span> <span class="menu-arrow"></span></a>
                                 </li>
                             @endif
@@ -420,7 +420,7 @@
                             @if(tenant_has_module('Purchases') && (app('hasPermission')(3, 'view') || app('hasPermission')(3, 'add')))
                                 <li class="sidebar-module sidebar-module-link">
                                     <a href="{{route('purchase.lists')}}"><img
-                                            src="{{ env('ImagePath') . '/admin/assets/img/icons/purchase1.svg' }}"
+                                            src="{{ image_path('admin/assets/img/icons/purchase1.svg') }}"
                                             alt="img"><span>Purchases</span> <span class="menu-arrow"></span></a>
                                 </li>
                             @endif
@@ -438,7 +438,7 @@
                             {{-- Tables --}}
                             @if(tenant_has_module('Tables') && (app('hasPermission')(9, 'view') || app('hasPermission')(9, 'add') || app('hasPermission')(2, 'view')))
                                 <li class="sidebar-module sidebar-module-link">
-                                    <a href="{{route('customer.list')}}"><img src="{{ env('ImagePath') . '/admin/assets/img/icons/tab.svg' }}"
+                                    <a href="{{route('customer.list')}}"><img src="{{ image_path('admin/assets/img/icons/tab.svg') }}"
                                             alt="img"><span> Tables</span> <span class="menu-arrow"></span></a>
                                 </li>
                             @endif
@@ -447,7 +447,7 @@
                             @if(tenant_has_module('Vendors') && (app('hasPermission')(10, 'view') || app('hasPermission')(10, 'add')))
                                 <li class="sidebar-module sidebar-module-link">
                                     <a href="{{route('vendor.list')}}"><img
-                                            src="{{ env('ImagePath') . '/admin/assets/img/icons/users1.svg' }}" alt="img"><span>
+                                            src="{{ image_path('admin/assets/img/icons/users1.svg') }}" alt="img"><span>
                                             Vendors</span> <span class="menu-arrow"></span></a>
                                 </li>
                             @endif
@@ -456,12 +456,12 @@
                             @if ($showStaffInErp && $canStaffItem)
                                 <li class="submenu sidebar-module">
                                     <a href="javascript:void(0);">
-                                        <img src="{{ env('ImagePath') . '/admin/assets/img/icons/users1.svg' }}" alt="img">
+                                        <img src="{{ image_path('admin/assets/img/icons/users1.svg') }}" alt="img">
                                         <span>Staff</span> <span class="menu-arrow"></span>
                                     </a>
                                     <ul>
                                         @if ($canAllStaff)
-                                            <li><a href="{{ route('staff.list') }}">All Staff</a></li>
+                                             <li><a href="{{ route('staff.list') }}">All Staff</a></li>
                                         @endif
                                         @if ($canNewStaff)
                                             <li><a href="{{ route('staff.add') }}">New Staff</a></li>
@@ -493,7 +493,7 @@
                                 @if($canAccountLedger || $canIncomeStatement || $canBalanceSheet || $canBanks)
                                     <li class="submenu sidebar-module">
                                         <a href="javascript:void(0);">
-                                            <img src="{{ env('ImagePath') . '/admin/assets/img/icons/purchase1.svg' }}" alt="img">
+                                            <img src="{{ image_path('admin/assets/img/icons/purchase1.svg') }}" alt="img">
                                             <span>Manage Accounting</span>
                                             <span class="menu-arrow"></span>
                                         </a>
@@ -525,7 +525,7 @@
                                 @if($canAllExpenses || $canNewExpense || $canAllExpenseType)
                                     <li class="submenu sidebar-module">
                                         <a href="javascript:void(0);"><img
-                                                src="{{ env('ImagePath') . '/admin/assets/img/icons/expense1.svg' }}" alt="img"><span>
+                                                src="{{ image_path('admin/assets/img/icons/expense1.svg') }}" alt="img"><span>
                                                 Expenses</span> <span class="menu-arrow"></span></a>
                                         <ul>
                                             @if($canAllExpenses && app('hasPermission')(5, 'view'))
@@ -629,7 +629,7 @@
                                 @endphp
                                 <li class="submenu sidebar-module">
                                     <a href="javascript:void(0);">
-                                        <img src="{{ env('ImagePath') . '/admin/assets/img/icons/time.svg' }}" alt="img">
+                                        <img src="{{ image_path('admin/assets/img/icons/time.svg') }}" alt="img">
                                         <span> Reports</span> <span class="menu-arrow"></span>
                                     </a>
                                     <ul>
@@ -675,7 +675,7 @@
                                 @if($canAllStaff || $canNewStaff)
                                     <li class="submenu sidebar-module">
                                         <a href="javascript:void(0);">
-                                            <img src="{{ env('ImagePath') . '/admin/assets/img/icons/users1.svg' }}" alt="img">
+                                            <img src="{{ image_path('admin/assets/img/icons/users1.svg') }}" alt="img">
                                             <span> Staff</span> <span class="menu-arrow"></span>
                                         </a>
                                         <ul>
