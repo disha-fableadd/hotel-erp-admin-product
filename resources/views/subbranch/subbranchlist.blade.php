@@ -390,7 +390,8 @@
     <script>
         $(document).ready(function() {
             var authToken = localStorage.getItem("authToken");
-            const imagePath = "{{ env('ImagePath') }}";
+            const imagePath = "{{ rtrim(env('ImagePath'), '/') }}/";
+            const storageBasePath = "{{ rtrim(env('ImagePath'), '/') }}/storage/";
 
             // Initialize DataTable
             var table = $('.datanew').DataTable({
@@ -489,20 +490,12 @@
                 let tableBody = [];
 
                 branches.forEach(branch => {
-                    let defaultBranchImage = '/admin/assets/img/customer/customer5.jpg';
-                    let rawImg = branch.profile_image_url || branch.profile_image || '';
-                    let profileImage = window.resolveImageUrl ? window.resolveImageUrl(rawImg, defaultBranchImage) : null;
-                    if (!profileImage) {
-                        if (rawImg) {
-                            let clean = String(rawImg).replace(/^https?:\/\/[^\/]+/, '').replace(/^\/+/, '').replace(/^storage\//, '');
-                            profileImage = '/storage/' + clean;
-                        } else {
-                            profileImage = defaultBranchImage;
-                        }
-                    }
+                    let cleanProfileImage = (branch.profile_image || '').replace(/^\/+/, '');
+                    let profileImage = cleanProfileImage ?
+                        storageBasePath + cleanProfileImage :
+                        imagePath + 'admin/assets/img/customer/customer5.jpg';
 
                     let branchName = capitalizeFirstLetter(branch.name);
-                    let branchUsername = branch.username ? (branch.username.startsWith('@') ? branch.username : '@' + branch.username) : '';
                     let branchRole = capitalizeFirstLetter(branch.role);
                     let country = capitalizeFirstLetter(branch.user_detail?.country);
                     let city = capitalizeFirstLetter(branch.user_detail?.city);
@@ -518,16 +511,24 @@
                         </a>
                     `;
 
+                    let usernameText = branch.username ? `
+                        <div class="mt-1">
+                            <span class="badge bg-light text-dark border" style="font-size: 11px; font-weight: 500;">
+                                <i class="fa fa-user me-1 text-primary"></i>${branch.username}
+                            </span>
+                        </div>` : '';
+
                     // Mobile expandable details content
                     let mobileDetails = `
                         <div class="collapse mt-2 d-lg-none" id="branch-details-${branch.id}">
                             <div class="">
                                 <div class="mb-2">
-                                    <strong>Username:</strong> ${branchUsername || 'N/A'}
-                                </div>
-                                <div class="mb-2">
                                     <strong>Branch Role:</strong> ${branchRole}
                                 </div>
+                                ${branch.username ? `
+                                <div class="mb-2">
+                                    <strong>Username:</strong> ${branch.username}
+                                </div>` : ''}
                                 <div class="mb-2">
                                     <strong>Phone:</strong> ${phone}
                                 </div>
@@ -551,14 +552,14 @@
                     `;
 
                     tableBody.push([
-                        // Column 1: Branch Name & Username with Image and Mobile Details
+                        // Column 1: Branch Name with Image and Mobile Details
                         `<div>
                             <div style="align-items: center;">
                                 <a href="/view-subbranch/${branch.id}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
-                                    <img src="${profileImage}" alt="Branch" class="branch-img" onerror="if(this.src && !this.src.includes('customer5.jpg')){this.src='${defaultBranchImage}';}else{this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'40\' height=\'40\' viewBox=\'0 0 40 40\'><rect fill=\'%23f3f4f6\' width=\'40\' height=\'40\'/><circle cx=\'20\' cy=\'15\' r=\'8\' fill=\'%23d1d5db\'/><path d=\'M10 34 C10 26, 15 24, 20 24 C25 24, 30 26, 30 34 Z\' fill=\'%23d1d5db\'/></svg>';}">
-                                    <div class="d-flex flex-column ms-2">
-                                        <span class="branch-name font-weight-bold" style="color: #1b2850; font-size: 14px;">${branchName}</span>
-                                        ${branchUsername ? `<small class="text-muted"><i class="fas fa-user-tag me-1 text-warning"></i>${branchUsername}</small>` : ''}
+                                    <img src="${profileImage}" alt="Branch" class="branch-img" onerror="this.onerror=null;this.src='${imagePath}admin/assets/img/customer/customer5.jpg';">
+                                    <div>
+                                        <span class="branch-name">${branchName}</span>
+                                        ${usernameText}
                                     </div>
                                 </a>
                             </div>
