@@ -51,8 +51,20 @@ trait RunsForTenants
         $label = sprintf('#%d %s (%s)', $tenant['id'], $tenant['client_name'] ?? '', $tenant['db']['database'] ?? '?');
         $this->line("<fg=cyan>▶ {$label}</>: php artisan " . implode(' ', $arguments));
 
+        $db = $tenant['db'] ?? [];
+        $env = [
+            'TENANT_ID' => (string) $tenant['id'],
+        ];
+        if (!empty($db['database'])) {
+            $env['DB_DATABASE'] = $db['database'];
+            $env['DB_HOST'] = $db['host'] ?? '127.0.0.1';
+            $env['DB_PORT'] = (string) ($db['port'] ?? 3306);
+            $env['DB_USERNAME'] = $db['username'] ?? 'root';
+            $env['DB_PASSWORD'] = (string) ($db['password'] ?? '');
+        }
+
         $result = Process::path(base_path())
-            ->env(['TENANT_ID' => (string) $tenant['id']])
+            ->env($env)
             ->forever()
             ->run(array_merge([PHP_BINARY, 'artisan'], $arguments), function (string $type, string $output) {
                 $this->output->write($output);

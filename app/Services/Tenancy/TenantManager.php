@@ -297,20 +297,37 @@ class TenantManager
         $databaseName = $db['database'];
 
         // On local development, allow using local MySQL credentials (e.g. XAMPP root with blank password)
-        // and safely fallback if tenant database has not yet been named identically locally.
-        if (app()->environment('local') && env('TENANT_USE_LOCAL_DB_CREDENTIALS', true)) {
-            $defaultUsername = config("database.connections.{$connection}.username");
-            $defaultPassword = config("database.connections.{$connection}.password");
-            if (!empty($defaultUsername) || $defaultPassword === '') {
-                $dbUsername = $defaultUsername ?: 'root';
-                $dbPassword = $defaultPassword ?? '';
-            }
-
+        // Try connecting with tenant's specific DB credentials first
+        $pdo = null;
+        if (!empty($dbUsername)) {
             try {
                 $pdo = new \PDO("mysql:host={$dbHost};port=" . (int) ($db['port'] ?? 3306), $dbUsername, $dbPassword, [
                     \PDO::ATTR_ERRMODE => \PDO::ERRMODE_SILENT,
                     \PDO::ATTR_TIMEOUT => 2,
                 ]);
+            } catch (\Throwable) {
+                $pdo = null;
+            }
+        }
+
+        // On local development, if tenant specific credentials cannot connect (e.g. remote cPanel user), fallback to local default
+        if (!$pdo && app()->environment('local')) {
+            $defaultUsername = config("database.connections.{$connection}.username") ?: 'root';
+            $defaultPassword = config("database.connections.{$connection}.password") ?? '';
+            try {
+                $pdo = new \PDO("mysql:host={$dbHost};port=" . (int) ($db['port'] ?? 3306), $defaultUsername, $defaultPassword, [
+                    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_SILENT,
+                    \PDO::ATTR_TIMEOUT => 2,
+                ]);
+                $dbUsername = $defaultUsername;
+                $dbPassword = $defaultPassword;
+            } catch (\Throwable) {
+                $pdo = null;
+            }
+        }
+
+        if ($pdo) {
+            try {
                 $stmt = $pdo->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = " . $pdo->quote($databaseName));
                 if (!$stmt || !$stmt->fetch()) {
                     // Check if stripped prefix database exists locally (e.g. u573967329_hoteldb -> hoteldb)
@@ -319,7 +336,10 @@ class TenantManager
                     if ($checkCleanStmt && $checkCleanStmt->fetch()) {
                         $databaseName = $cleanDbName;
                     } else {
-                        $databaseName = config("database.connections.{$connection}.database") ?: $databaseName;
+                        // Database was dropped or not yet created: auto-recreate it!
+                        if (preg_match('/^[a-zA-Z0-9_]+$/', $databaseName)) {
+                            $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$databaseName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                        }
                     }
                 }
             } catch (\Throwable) {
