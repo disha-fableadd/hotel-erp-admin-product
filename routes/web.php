@@ -96,6 +96,15 @@ Route::get('sales/report/view-page', [SalesController::class, 'show_sales_report
 Route::get('purchase/report/view-page', [PurchaseController::class, 'show_purchase_report_page']);
 Route::get('/expense/report/view-page', [ExpenseController::class, 'show_expense_report_page']);
 
+// Tenant storage route to handle both /storage/{path} and /public/storage/{path}
+Route::get('storage/{path}', \App\Http\Controllers\TenantStorageController::class)
+    ->where('path', '.*')
+    ->name('tenant.storage');
+
+Route::get('public/storage/{path}', \App\Http\Controllers\TenantStorageController::class)
+    ->where('path', '.*')
+    ->name('tenant.storage.public');
+
 Route::middleware(['guest:web'])->group(function () {
     Route::get('/', [AuthController::class, 'signin'])->name('auth.signin');
     // Route::post('/loginweb', [LoginController::class, 'login'])->name('login');

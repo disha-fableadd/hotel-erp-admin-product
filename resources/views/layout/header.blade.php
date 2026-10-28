@@ -138,12 +138,14 @@ $user = auth()->user();
 
     <div class="header-left active">
         <a href="{{ route('auth.dashboard') }}" class="logo">
-            <img src="{{ !empty($settings) && !empty($settings->logo) ? env('ImagePath').'/storage/' . $settings->logo : 'https://fableadtechnolabs.com/static/media/250x150%20(1).b3f5a4db48c7770366ef.webp' }}"
-                alt="" style="max-width: 80% !important;" class="logo-view">
+            <img src="{{ !empty($settings) && !empty($settings->logo) ? tenant_image_url($settings->logo) : 'https://fableadtechnolabs.com/static/media/250x150%20(1).b3f5a4db48c7770366ef.webp' }}"
+                alt="Logo" style="max-width: 80% !important;" class="logo-view"
+                onerror="this.onerror=null; this.src='https://fableadtechnolabs.com/static/media/250x150%20(1).b3f5a4db48c7770366ef.webp';">
         </a>
         <a href="{{ route('auth.dashboard') }}" class="logo-small">
-            <img src="{{ !empty($settings) && !empty($settings->favicon) ? env('ImagePath').'/storage/' . $settings->favicon : 'https://fableadtechnolabs.com/favicon-192x192.webp' }}"
-                alt="">
+            <img src="{{ !empty($settings) && !empty($settings->favicon) ? tenant_image_url($settings->favicon) : 'https://fableadtechnolabs.com/favicon-192x192.webp' }}"
+                alt="Logo"
+                onerror="this.onerror=null; this.src='https://fableadtechnolabs.com/favicon-192x192.webp';">
         </a>
 
         <!-- <a id="toggle_btn" href="javascript:void(0);">

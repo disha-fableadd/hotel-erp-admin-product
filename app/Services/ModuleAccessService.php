@@ -106,35 +106,98 @@ class ModuleAccessService
             return 'Categories & Brands';
         }
 
-        // 4. Orders / Sales
-        if ($normalizedRouteName && (str_starts_with($normalizedRouteName, 'sales.') || str_starts_with($normalizedRouteName, 'order.'))) {
+        // 4. Reports (Sales, Purchase, Expenses, Profit-Loss, TDS, Orders, etc.)
+        $reportRoutes = [
+            'sales.report',
+            'sale.report.exportpdf',
+            'sale.report.exportexcel',
+            'sales.pool_report',
+            'purchase.report',
+            'purchase.orderreport',
+            'purchase.report.exportpdf',
+            'purchase.report.exportexcel',
+            'expense.report',
+            'expense.report.exportpdf',
+            'expense.single.pdf',
+            'profit-loss-report.index',
+            'profit-loss-report.data',
+            'profit-loss-report.pdf',
+            'profit-loss-statement.index',
+            'tds.report',
+            'vendor.report',
+            'customer.report',
+            'inventory.report',
+            'invoice.report',
+            'staff.report',
+            'gst.reports.purchase',
+            'gst.reports.sales',
+        ];
+        if ($normalizedRouteName && in_array($normalizedRouteName, $reportRoutes, true)) {
+            return ['Reports', 'Purchases', 'Orders', 'Sales & Bills', 'Expenses'];
+        }
+        if ($request->is(
+            'sales/report*',
+            'sales-report*',
+            'sales-pool-report*',
+            'purchases/report*',
+            'purchase-report*',
+            'purchase-order-report*',
+            'expense-report*',
+            'expense/report*',
+            'tds-report*',
+            'profit-loss-report*',
+            'vendor-report*',
+            'customer-report*',
+            'inventory-report*',
+            'invoice-report*',
+            'staff-report*',
+            'gst/reports*'
+        )) {
+            return ['Reports', 'Purchases', 'Orders', 'Sales & Bills', 'Expenses'];
+        }
+
+        // 5. Orders / Sales
+        if ($normalizedRouteName && (
+            str_starts_with($normalizedRouteName, 'sales.') ||
+            str_starts_with($normalizedRouteName, 'order.')
+        ) && !str_contains($normalizedRouteName, 'report')) {
             return 'Orders';
         }
-        if ($request->is('sales*', 'orders*')) {
+        if ($request->is('sales*', 'orders*') && !$request->is('*report*')) {
             return 'Orders';
         }
 
-        // 5. Purchases
-        if ($normalizedRouteName && (str_starts_with($normalizedRouteName, 'purchase.') || str_starts_with($normalizedRouteName, 'purchases.'))) {
+        // 6. Purchases
+        if ($normalizedRouteName && (
+            str_starts_with($normalizedRouteName, 'purchase.') ||
+            str_starts_with($normalizedRouteName, 'purchases.')
+        ) && !str_contains($normalizedRouteName, 'report')) {
             return 'Purchases';
         }
-        if ($request->is('purchases*', 'purchase*')) {
+        if ($request->is('purchases*', 'purchase*') && !$request->is('*report*')) {
             return 'Purchases';
         }
 
-        // 6. Invoices
-        if ($normalizedRouteName && (str_starts_with($normalizedRouteName, 'custom_invoice.') || str_starts_with($normalizedRouteName, 'custom-invoice.'))) {
+        // 7. Invoices
+        if ($normalizedRouteName && (
+            str_starts_with($normalizedRouteName, 'custom_invoice.') ||
+            str_starts_with($normalizedRouteName, 'custom-invoice.') ||
+            str_starts_with($normalizedRouteName, 'invoice.')
+        ) && !str_contains($normalizedRouteName, 'report')) {
             return 'Invoices';
         }
-        if ($request->is('custom-invoice*', 'custom_invoice*', 'invoices*')) {
+        if ($request->is('custom-invoice*', 'custom_invoice*', 'invoices*') && !$request->is('*report*')) {
             return 'Invoices';
         }
 
-        // 7. Expenses
-        if ($normalizedRouteName && (str_starts_with($normalizedRouteName, 'expense.') || str_starts_with($normalizedRouteName, 'expense_type.'))) {
+        // 8. Expenses
+        if ($normalizedRouteName && (
+            str_starts_with($normalizedRouteName, 'expense.') ||
+            str_starts_with($normalizedRouteName, 'expense_type.')
+        ) && !str_contains($normalizedRouteName, 'report')) {
             return 'Expenses';
         }
-        if ($request->is('expense*', 'expenses*', 'expense-category*')) {
+        if ($request->is('expense*', 'expenses*', 'expense-category*') && !$request->is('*report*')) {
             return 'Expenses';
         }
 
@@ -147,18 +210,21 @@ class ModuleAccessService
         }
 
         // 9. Vendors
-        if ($normalizedRouteName && (str_starts_with($normalizedRouteName, 'vendor.') || str_starts_with($normalizedRouteName, 'supplier.'))) {
+        if ($normalizedRouteName && (
+            str_starts_with($normalizedRouteName, 'vendor.') ||
+            str_starts_with($normalizedRouteName, 'supplier.')
+        ) && !str_contains($normalizedRouteName, 'report')) {
             return 'Vendors';
         }
-        if ($request->is('vendors*', 'suppliers*', 'supplier*')) {
+        if ($request->is('vendors*', 'suppliers*', 'supplier*') && !$request->is('*report*')) {
             return 'Vendors';
         }
 
         // 10. Staff
-        if ($normalizedRouteName && str_starts_with($normalizedRouteName, 'staff.')) {
+        if ($normalizedRouteName && str_starts_with($normalizedRouteName, 'staff.') && !str_contains($normalizedRouteName, 'report')) {
             return 'Staff';
         }
-        if ($request->is('staff*', 'employees*')) {
+        if ($request->is('staff*', 'employees*') && !$request->is('*report*')) {
             return 'Staff';
         }
 
@@ -187,10 +253,10 @@ class ModuleAccessService
         }
 
         // 14. Inventory
-        if ($normalizedRouteName && str_starts_with($normalizedRouteName, 'inventory.')) {
+        if ($normalizedRouteName && str_starts_with($normalizedRouteName, 'inventory.') && !str_contains($normalizedRouteName, 'report')) {
             return 'Inventory';
         }
-        if ($request->is('inventory*', 'manage-inventory*')) {
+        if ($request->is('inventory*', 'manage-inventory*') && !$request->is('*report*')) {
             return 'Inventory';
         }
 
