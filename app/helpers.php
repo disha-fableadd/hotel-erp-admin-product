@@ -407,5 +407,80 @@ if (! function_exists('can_create_branch')) {
     }
 }
 
+if (! function_exists('resolve_local_storage_path')) {
+    /**
+     * Resolve a stored relative path to an absolute local file path for PDFs/exports.
+     */
+    function resolve_local_storage_path(?string $relativePath): ?string
+    {
+        $relativePath = trim((string) $relativePath);
+        if ($relativePath === '') {
+            return null;
+        }
 
+        $relativePath = preg_replace('#^https?://[^/]+/#', '', $relativePath);
+        $relativePath = ltrim($relativePath, '/');
+        $relativePath = preg_replace('#^storage/#', '', $relativePath);
 
+        $candidates = [
+            storage_path('app/public/'.$relativePath),
+            public_path('storage/'.$relativePath),
+            public_path($relativePath),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+}
+
+if (! function_exists('tenant_image_url')) {
+    /**
+     * Build an accessible URL for a storage image, dynamically using tenant-specific
+     * path (/storage/tenants/{tenantId}/app/public/{path}) if tenancy is active or
+     * regular (/storage/{path}) if tenancy is disabled or not applicable.
+     */
+    function tenant_image_url(?string $relativePath): string
+    {
+        $relativePath = ltrim(trim((string) $relativePath), '/');
+        if ($relativePath === '') {
+            return image_path('admin/assets/img/product/noimage.png');
+        }
+
+        // Already a full URL
+        if (str_starts_with($relativePath, 'http://') || str_starts_with($relativePath, 'https://')) {
+            return $relativePath;
+        }
+
+        // Already has storage/ prefix
+        $relativePath = preg_replace('#^storage/#', '', $relativePath);
+
+        // Remove redundant public/ prefix if present
+        $relativePath = preg_replace('#^public/#', '', $relativePath);
+
+        // Determine tenant ID dynamically
+        $tenantId = null;
+        try {
+            if (function_exists('tenant')) {
+                $tenantId = tenant('id');
+            }
+            if (! $tenantId && function_exists('session') && session()->has('tenant_id')) {
+                $tenantId = (int) session('tenant_id');
+            }
+        } catch (\Throwable) {
+            $tenantId = null;
+        }
+
+        $base = rtrim(config('app.url') ?: (env('ImagePath') ? rtrim(str_replace('/public', '', env('ImagePath')), '/') : ''), '/');
+
+        if ($tenantId) {
+            return ($base ? $base : '') . '/storage/tenants/' . $tenantId . '/app/public/' . $relativePath;
+        }
+
+        return ($base ? $base : '') . '/storage/' . $relativePath;
+    }
+}

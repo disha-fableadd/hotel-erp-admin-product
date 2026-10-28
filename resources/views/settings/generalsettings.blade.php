@@ -295,7 +295,7 @@
                                         </div>
                                     </div>
                                     <img id="logo_preview" src="" alt="Logo Preview"
-                                        style="display:none; max-width: 100px; margin-top: 10px;">
+                                        style="display:none; max-width: 100px; margin-top: 10px;" onerror="$(this).hide();">
                                 </div>
                             </div>
 
@@ -1327,16 +1327,26 @@
                         $("#invoice_size").val(settings.invoice_size || 'big');
 
                         // Logos and Images
+                        const cleanImagePath = (ImagePath || '').replace(/\/+$/, '');
+                        const getStorageUrl = (filePath) => {
+                            if (!filePath) return '';
+                            let clean = String(filePath).replace(/^\/+/, '');
+                            if (clean.startsWith('http://') || clean.startsWith('https://')) {
+                                return clean;
+                            }
+                            clean = clean.replace(/^storage\//, '');
+                            return cleanImagePath + '/storage/' + clean;
+                        };
+
                         if (settings.logo) {
-                            $("#logo_preview").attr("src", ImagePath + '/storage/' + settings.logo)
+                            $("#logo_preview").attr("src", getStorageUrl(settings.logo))
                                 .show();
                         }
                         if (settings.favicon) {
-                            $("#favicon_preview").attr("src", ImagePath + '/storage/' + settings
-                                .favicon).show();
+                            $("#favicon_preview").attr("src", getStorageUrl(settings.favicon)).show();
                         }
                         if (settings.qr_code) {
-                            $("#qr_preview").attr("src", ImagePath + '/storage/' + settings.qr_code)
+                            $("#qr_preview").attr("src", getStorageUrl(settings.qr_code))
                                 .show();
                         }
 

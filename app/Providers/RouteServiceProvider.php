@@ -29,6 +29,10 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         $this->routes(function () {
+            Route::get('storage/{path}', \App\Http\Controllers\TenantStorageController::class)
+                ->where('path', '.*')
+                ->name('tenant.storage');
+
             Route::middleware('api')
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
