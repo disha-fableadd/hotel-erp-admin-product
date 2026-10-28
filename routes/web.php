@@ -153,6 +153,7 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
 
     // Income Statement
     Route::get('/income-statement', [IncomeSheetController::class, 'index'])->name('income-statement.index');
+    Route::get('/profit-loss-statement', [IncomeSheetController::class, 'index'])->name('profit-loss-statement.index');
     Route::get('/income-statement/pdf', [IncomeSheetController::class, 'generatePdf'])->name('income-statement.pdf');
     Route::get('/income-statement/excel', [IncomeSheetController::class, 'generateExcel'])->name('income-statement.excel');
 
@@ -213,6 +214,7 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     // Route::get('/add-sales', [SalesController::class, 'add_sales'])->name('sales.add');
     Route::get('/edit-sales/{num}', [SalesController::class, 'edit_sales'])->name('sales.edit');
     Route::get('/sales-report', [SalesController::class, 'sales_report'])->name('sales.report');
+    Route::get('/sales-pool-report', [SalesController::class, 'sales_report'])->name('sales.pool_report');
     Route::get('/sales-details/{num}', [SalesController::class, 'sales_details'])->name('sales.details');
     Route::get('/sales-invoice/{num}', [SalesController::class, 'salse_invoice'])->name('sales.invoice');
     Route::get('/add-sales', [SalesController::class, 'pos'])->name('sales.add');
@@ -450,6 +452,9 @@ Route::get('/settings/smtp', [SmtpSettingController::class, 'index'])
 
     // TDS page (UI)
     Route::get('/tds', function () {
+        return view('tds.index');
+    })->name('tds.report');
+    Route::get('/tds-report', function () {
         return view('tds.index');
     });
 
