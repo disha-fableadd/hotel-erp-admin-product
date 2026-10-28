@@ -6,37 +6,7 @@ if (! function_exists('image_path_base')) {
      */
     function image_path_base(): string
     {
-        static $cached = null;
-
-        if ($cached !== null) {
-            return $cached;
-        }
-
-        try {
-            if (function_exists('request') && request() && request()->getHttpHost()) {
-                return $cached = rtrim(request()->getSchemeAndHttpHost() . request()->getBaseUrl(), '/') . '/';
-            }
-        } catch (\Throwable) {}
-
-        try {
-            if (function_exists('app') && app()->bound('config')) {
-                $configured = config('app.image_path');
-                if (is_string($configured) && $configured !== '') {
-                    return $cached = rtrim($configured, '/').'/';
-                }
-
-                $appUrl = config('app.url');
-                if (is_string($appUrl) && $appUrl !== '') {
-                    return $cached = rtrim($appUrl, '/').'/';
-                }
-            }
-        } catch (\Throwable) {
-            // Application not booted yet.
-        }
-
-        $raw = env('ImagePath') ?: env('IMAGE_PATH') ?: env('APP_URL', '');
-
-        return $cached = ($raw !== '' ? rtrim((string) $raw, '/').'/' : '/');
+        return '/';
     }
 }
 
@@ -459,7 +429,11 @@ if (! function_exists('tenant_image_url')) {
 
         // Already a full URL
         if (str_starts_with($relativePath, 'http://') || str_starts_with($relativePath, 'https://')) {
-            return $relativePath;
+            if (str_contains($relativePath, '127.0.0.1') || str_contains($relativePath, 'localhost') || str_contains($relativePath, '/storage/') || str_contains($relativePath, '/admin/assets/')) {
+                $relativePath = preg_replace('#^https?://[^/]+/#', '/', $relativePath);
+            } else {
+                return $relativePath;
+            }
         }
 
         // Already has storage/ prefix

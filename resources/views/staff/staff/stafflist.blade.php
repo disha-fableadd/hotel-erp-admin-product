@@ -803,10 +803,23 @@
 
                                 staffs.forEach((staff) => {
                                     let staffName = capitalizeWords(staff.name);
-                                    let defaultStaffImage2 = '{{ image_path('admin/assets/img/customer/customer5.jpg') }}';
-                                    let imageUrl = staff.profile_image_url || (staff.profile_image ?
-                                        '{{ image_path('storage/') }}' + String(staff.profile_image).replace(/^\/+/, '') :
-                                        defaultStaffImage2);
+                                    let fallbackStaffImage = '/admin/assets/img/customer/customer5.jpg';
+                                    const inlineDefaultAvatar = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' width='40' height='40'><circle cx='20' cy='20' r='20' fill='%23e2e8f0'/><path fill='%2394a3b8' d='M20 20a6 6 0 100-12 6 6 0 000 12zm0 3c-5 0-12 2.5-12 7.5V34h24v-3.5c0-5-7-7.5-12-7.5z'/></svg>";
+
+                                    let raw = staff.profile_image_url || '';
+                                    if (!raw && staff.profile_image) {
+                                        let clean = String(staff.profile_image).replace(/^\/+/, '').replace(/^storage\//, '');
+                                        raw = '/storage/' + clean;
+                                    }
+                                    if (raw && (raw.startsWith('http://') || raw.startsWith('https://'))) {
+                                        try {
+                                            let parsed = new URL(raw);
+                                            raw = parsed.pathname + parsed.search;
+                                        } catch (e) {
+                                            raw = raw.replace(/^https?:\/\/[^\/]+/, '');
+                                        }
+                                    }
+                                    let imageUrl = raw || fallbackStaffImage;
 
                                     let detailsToggle = `
                                         <a href="#details-${staff.id}" class="toggle-details" data-bs-toggle="collapse">
@@ -845,7 +858,7 @@
                                     let firstColumn = `
         <div>
             <a href="javascript:void(0);" class="d-flex align-items-center">
-                <img src="${imageUrl}" alt="staff" class="staff-image" onerror="this.onerror=null; this.src='${defaultStaffImage2}';">
+                <img src="${imageUrl}" alt="staff" class="staff-image" onerror="if (this.src && !this.src.includes('customer5.jpg')) { this.src='${fallbackStaffImage}'; } else { this.onerror=null; this.src='${inlineDefaultAvatar}'; }">
                 <div>
                     <span class="staff-name">${staffName}</span>
                     ${staff.username ? `<div class="mt-1"><span class="badge bg-light text-dark border" style="font-size: 11px; font-weight: 500;"><i class="fa fa-user me-1 text-primary"></i>${staff.username}</span></div>` : ''}

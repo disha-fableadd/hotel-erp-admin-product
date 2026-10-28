@@ -71,6 +71,18 @@ class TenantStorageController extends Controller
             }
         }
 
+        // Pattern 2c: Search across all tenant storage directories
+        $tenantsBase = base_path('storage'.DIRECTORY_SEPARATOR.'tenants');
+        if (is_dir($tenantsBase)) {
+            $matchedFiles = glob($tenantsBase.DIRECTORY_SEPARATOR.'*'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.$normalizedPath);
+            if (!empty($matchedFiles) && is_file($matchedFiles[0])) {
+                return response()->file($matchedFiles[0], [
+                    'Cache-Control' => 'private, max-age=86400',
+                    'X-Content-Type-Options' => 'nosniff',
+                ]);
+            }
+        }
+
         // Pattern 3: Shared base storage fallback (storage/app/public)
         $sharedRoot = realpath(base_path('storage/app/public'));
         if ($sharedRoot) {
@@ -81,6 +93,15 @@ class TenantStorageController extends Controller
                     'X-Content-Type-Options' => 'nosniff',
                 ]);
             }
+        }
+
+        // Pattern 3b: storage/app/{path}
+        $appPath = base_path('storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.$normalizedPath);
+        if (is_file($appPath)) {
+            return response()->file($appPath, [
+                'Cache-Control' => 'private, max-age=86400',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
         }
 
         // Pattern 4: public/storage directory fallback
@@ -97,15 +118,23 @@ class TenantStorageController extends Controller
 
         // Graceful fallbacks for missing images so no broken image icons appear anywhere
         $lowerPath = strtolower($normalizedPath);
-        if (str_contains($lowerPath, 'profile') || str_contains($lowerPath, 'avatar') || str_contains($lowerPath, 'customer') || str_contains($lowerPath, 'user')) {
+        if (str_contains($lowerPath, 'profile') || str_contains($lowerPath, 'avatar') || str_contains($lowerPath, 'customer') || str_contains($lowerPath, 'user') || str_contains($lowerPath, 'staff') || str_contains($lowerPath, 'face') || str_contains($lowerPath, 'employee')) {
             $fallback = public_path('admin/assets/img/customer/customer5.jpg');
             if (is_file($fallback)) {
                 return response()->file($fallback, ['Cache-Control' => 'no-cache']);
             }
         }
 
-        if (str_contains($lowerPath, 'product') || str_contains($lowerPath, 'category') || str_contains($lowerPath, 'brand')) {
+        if (str_contains($lowerPath, 'product') || str_contains($lowerPath, 'category') || str_contains($lowerPath, 'brand') || str_contains($lowerPath, 'item')) {
             $fallback = public_path('admin/assets/img/product/noimage.png');
+            if (is_file($fallback)) {
+                return response()->file($fallback, ['Cache-Control' => 'no-cache']);
+            }
+        }
+
+        // Universal image fallback so any missing image returns a valid placeholder instead of 404
+        if (preg_match('/\.(jpg|jpeg|png|webp|gif|svg)$/i', $normalizedPath)) {
+            $fallback = public_path('admin/assets/img/customer/customer5.jpg');
             if (is_file($fallback)) {
                 return response()->file($fallback, ['Cache-Control' => 'no-cache']);
             }

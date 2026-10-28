@@ -598,13 +598,14 @@
 
                         // Show profile image if exists
                         if (customer.profile_image) {
-                            $("#avatar-preview").attr("src", `${IMAGE_PATH}/storage/${customer.profile_image}`);
+                            let cleanAvatar = String(customer.profile_image).replace(/^\/+/, '').replace(/^storage\//, '');
+                            $("#avatar-preview").attr("src", `/storage/${cleanAvatar}`);
                             $("#avatar-preview-container").show(); // Make sure preview is visible
                         }
 
-                        if (details.face_photo) {
-                            $("#face-photo-preview").attr("src",
-                                `${IMAGE_PATH}/storage/${details.face_photo}`);
+                        if (details && details.face_photo) {
+                            let cleanFace = String(details.face_photo).replace(/^\/+/, '').replace(/^storage\//, '');
+                            $("#face-photo-preview").attr("src", `/storage/${cleanFace}`);
                             $("#face-photo-preview-container").show();
                         }
 
