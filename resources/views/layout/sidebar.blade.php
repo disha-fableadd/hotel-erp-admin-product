@@ -19,7 +19,7 @@
         (tenant_has_module('Cash & Bank') && app('hasPermission')(27, 'view')) ||
         (tenant_has_module('Credit/Debit Notes') && app('hasPermission')(30, 'view')) ||
         (tenant_has_module('GST Reports') && app('hasPermission')(20, 'view')) ||
-        (tenant_has_module('Reports') && (app('hasPermission')(2, 'view') || app('hasPermission')(3, 'view') || app('hasPermission')(5, 'view')))
+        tenant_has_module('Reports')
     );
 
     $showHrSection = tenant_has_module(['Staff', 'Attendance', 'Leaves', 'Payroll', 'Advance Pay', 'HR']) && (
@@ -30,13 +30,11 @@
         (tenant_has_module('Advance Pay') && (app('hasPermission')(23, 'view') || app('hasPermission')(23, 'add')))
     );
 
-    $showSettingsSection = tenant_has_module(['General Settings', 'Tax Rates', 'Settings']) && (
-        (tenant_has_module(['General Settings', 'Settings']) && app('hasPermission')(14, 'view')) ||
-        (tenant_has_module('Tax Rates') && app('hasPermission')(15, 'view')) ||
-        // tenant_has_sub_module(['Change Password', 'change-password'], ['Settings', 'General Settings']) ||
-        tenant_has_sub_module(['My Plan Details', 'my-plan-details', 'Plan Details'], ['Settings', 'General Settings'])
-        // tenant_has_sub_module(['Plans', 'plans'], ['Settings', 'General Settings'])
-    );
+    $canMyBranchItem = in_array($user ? $user->role : '', ['admin', 'hr', 'sub-admin']) && ($user && $user->role === 'admin' && canUseBranches());
+    $hasOtherHrItems = tenant_has_module(['Attendance', 'Leaves', 'Payroll', 'Advance Pay', 'HR']);
+    $showBranchInSettings = ($canMyBranchItem && !$hasOtherHrItems) || tenant_has_sub_module(['My Branch', 'my-branch', 'subbranch', 'sub-branch'], ['Settings', 'General Settings']);
+
+    $showSettingsSection = tenant_has_module(['General Settings', 'Tax Rates', 'Settings']) || $showBranchInSettings;
 @endphp
 <style>
     body.mini-sidebar:not(.expand-menu) .sidebar .sidebar-menu>ul>li.menu-title {
@@ -545,21 +543,54 @@
                             @endif
 
                             {{-- Reports --}}
-                            @if(tenant_has_module('Reports') && (app('hasPermission')(2, 'view') || app('hasPermission')(3, 'view') || app('hasPermission')(5, 'view')))
+                            @if(tenant_has_module('Reports'))
+                                @php
+                                    $canSalesReport = tenant_has_sub_module(['Sales Report', 'sales-report'], 'Reports');
+                                    $canSalesPoolReport = tenant_has_sub_module(['Sales Pool Report', 'sales-pool-report'], 'Reports');
+                                    $canTdsReport = tenant_has_sub_module(['TDS Report', 'tds-report'], 'Reports');
+                                    $canPurchaseReport = tenant_has_sub_module(['Purchase Report', 'purchase-report'], 'Reports');
+                                    $canExpenseReport = tenant_has_sub_module(['Expenses Report', 'expense-report', 'Expense Report'], 'Reports');
+                                    $canProfitLoss = tenant_has_sub_module(['Profit & Loss Statement', 'profit-loss-statement', 'Profit Loss Report'], 'Reports');
+                                    $canOrdersReport = tenant_has_sub_module(['Orders Report', 'orders-report'], 'Reports');
+
+                                    // If no specific sub-module filter matched (or tenancy disabled), default to true so nothing is lost
+                                    $hasSpecificReportSub = $canSalesReport || $canSalesPoolReport || $canTdsReport || $canPurchaseReport || $canExpenseReport || $canProfitLoss || $canOrdersReport;
+                                    if (!$hasSpecificReportSub) {
+                                        $canSalesReport = true;
+                                        $canSalesPoolReport = true;
+                                        $canTdsReport = true;
+                                        $canPurchaseReport = true;
+                                        $canExpenseReport = true;
+                                        $canProfitLoss = true;
+                                        $canOrdersReport = true;
+                                    }
+                                @endphp
                                 <li class="submenu sidebar-module">
                                     <a href="javascript:void(0);">
                                         <img src="{{ env('ImagePath') . '/admin/assets/img/icons/time.svg' }}" alt="img">
                                         <span> Reports</span> <span class="menu-arrow"></span>
                                     </a>
                                     <ul>
-                                        @if(app('hasPermission')(2, 'view'))
-                                            <li><a href="{{route('sales.report')}}">Orders Report</a></li>
+                                        @if($canSalesReport)
+                                            <li><a href="{{ route('sales.report') }}" class="{{ request()->routeIs('sales.report') ? 'active' : '' }}">Sales Report</a></li>
                                         @endif
-                                        @if(app('hasPermission')(3, 'view'))
-                                            <li><a href="{{route('purchase.report')}}">Purchase Report</a></li>
+                                        @if($canSalesPoolReport)
+                                            <li><a href="{{ Route::has('sales.pool_report') ? route('sales.pool_report') : route('sales.report') }}" class="{{ request()->routeIs('sales.pool_report') ? 'active' : '' }}">Sales Pool Report</a></li>
                                         @endif
-                                        @if(app('hasPermission')(5, 'view'))
-                                            <li><a href="{{route('expense.report')}}">Expenses Report</a></li>
+                                        @if($canTdsReport)
+                                            <li><a href="{{ Route::has('tds.report') ? route('tds.report') : url('/tds') }}" class="{{ request()->is('tds*') ? 'active' : '' }}">TDS Report</a></li>
+                                        @endif
+                                        @if($canPurchaseReport)
+                                            <li><a href="{{ route('purchase.report') }}" class="{{ request()->routeIs('purchase.report') ? 'active' : '' }}">Purchase Report</a></li>
+                                        @endif
+                                        @if($canExpenseReport)
+                                            <li><a href="{{ route('expense.report') }}" class="{{ request()->routeIs('expense.report') ? 'active' : '' }}">Expenses Report</a></li>
+                                        @endif
+                                        @if($canProfitLoss)
+                                            <li><a href="{{ Route::has('profit-loss-statement.index') ? route('profit-loss-statement.index') : (Route::has('income-statement.index') ? route('income-statement.index') : url('/income-statement')) }}" class="{{ request()->routeIs('profit-loss-statement.index', 'income-statement.index') ? 'active' : '' }}">Profit &amp; Loss Statement</a></li>
+                                        @endif
+                                        @if($canOrdersReport)
+                                            <li><a href="{{ route('sales.report') }}">Orders Report</a></li>
                                         @endif
                                     </ul>
                                 </li>
@@ -719,6 +750,25 @@
 
                 {{-- SETTINGS CATEGORY --}}
                 @if($showSettingsSection)
+                    @php
+                        $canPlans = in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']) && tenant_has_sub_module(['Plans', 'plans'], ['Settings', 'General Settings']);
+                        $canMyPlan = in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']) && (tenant_has_sub_module(['My Plan Details', 'my-plan-details', 'Plan Details'], ['Settings', 'General Settings']) || !tenant());
+                        $canMyBranch = ($showBranchInSettings || tenant_has_sub_module(['My Branch', 'my-branch', 'subbranch', 'sub-branch'], ['Settings', 'General Settings'])) && in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']);
+                        $canChangePassword = tenant_has_sub_module(['Change Password', 'change-password'], ['Settings', 'General Settings']);
+                        $canShopSettings = (tenant_has_module(['General Settings', 'Settings']) && app('hasPermission')(14, 'view')) && tenant_has_sub_module(['Shop Settings', 'shop-settings', 'Settings'], ['Settings', 'General Settings']);
+                        $canFieldCustomization = in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']) && tenant_has_sub_module(['Field Customization', 'field-customization'], ['Settings', 'General Settings']);
+                        $canSmtpSettings = tenant_has_sub_module(['Smtp Settings', 'smtp-settings'], ['Settings', 'General Settings']) && (!$settings || $settings->send_mail);
+                        $canWhatsAppConfig = tenant_has_sub_module(['WhatsApp Configuration', 'whatsapp-configuration'], ['Settings', 'General Settings']) && (!$settings || $settings->customer_whatsapp_message || $settings->admin_whatsapp_message);
+                        $canCustomizeInvoice = tenant_has_sub_module(['Customize Invoice', 'customize-invoice'], ['Settings', 'General Settings']);
+                        $canTaxRates = (tenant_has_module(['Tax Rates', 'Tax']) && app('hasPermission')(15, 'view')) || tenant_has_sub_module(['Tax Rates', 'tax-rates'], ['Settings', 'General Settings']);
+                        $canDepartments = can_access_module(['Departments', 'Department'], ['Departments', 'departments'], ['Settings', 'HR', 'General Settings'], 14, 'view');
+                        $canDesignations = can_access_module(['Designations', 'Designation'], ['Designations', 'designations'], ['Settings', 'HR', 'General Settings'], 14, 'view');
+                        $canLeaveTypes = tenant_has_sub_module(['Leave Types', 'leave-types'], ['Settings', 'General Settings']);
+                        $canManageHolidays = tenant_has_sub_module(['Manage Holidays', 'manage-holidays', 'Holidays', 'holidays'], ['Settings', 'General Settings']);
+                        $canHolidayCalendar = tenant_has_sub_module(['Holiday Calendar', 'holiday-calendar', 'Holidays', 'holidays'], ['Settings', 'General Settings']);
+                        $canTableTruncate = tenant_has_sub_module(['Table Truncate', 'table-truncate'], ['Settings', 'General Settings']);
+                    @endphp
+                    @if($canPlans || $canMyPlan || $canMyBranch || $canChangePassword || $canShopSettings || $canFieldCustomization || $canSmtpSettings || $canWhatsAppConfig || $canCustomizeInvoice || $canTaxRates || $canDepartments || $canDesignations || $canLeaveTypes || $canManageHolidays || $canHolidayCalendar || $canTableTruncate)
                     <li class="submenu sidebar-category sidebar-category-settings">
                         <a href="javascript:void(0);">
                             <i class="fas fa-cog"></i>
@@ -726,45 +776,57 @@
                             <span class="menu-arrow"></span>
                         </a>
                         <ul>
-                            {{-- @if(tenant_has_sub_module(['Plans', 'plans'], ['Settings', 'General Settings']) && in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']))
+                            @if($canPlans)
                                 <li><a href="{{ route('plans.planlist') }}" class="{{ request()->routeIs('plans.planlist') ? 'active' : '' }}">Plans</a></li>
-                            @endif --}}
-                            @if(tenant_has_sub_module(['My Plan Details', 'my-plan-details', 'Plan Details'], ['Settings', 'General Settings']) && in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']))
+                            @endif
+                            @if($canMyPlan)
                                 <li><a href="{{ route('plans.myplan') }}" class="{{ request()->routeIs('plans.myplan') ? 'active' : '' }}">My Plan Details</a></li>
                             @endif
-                            {{-- @if(tenant_has_sub_module(['Change Password', 'change-password'], ['Settings', 'General Settings']))
-                                <li><a href="{{ route('auth.change-password') }}" class="{{ request()->routeIs('auth.change-password') ? 'active' : '' }}">Change Password</a></li>
-                            @endif --}}
-                            @if(tenant_has_module(['General Settings', 'Settings']) && app('hasPermission')(14, 'view'))
-                                @if(tenant_has_sub_module(['Shop Settings', 'shop-settings', 'Settings'], 'General Settings'))
-                                    <li><a href="{{route('setting.generalsettings')}}">Shop Settings</a></li>
-                                @endif
-                                {{-- @if(tenant_has_sub_module(['Smtp Settings', 'smtp-settings'], 'General Settings') && (!$settings || $settings->send_mail))
-                                    <li><a href="{{ route('setting.smtpsettings') }}">Smtp Settings</a></li>
-                                @endif --}}
-                                @if(tenant_has_sub_module(['WhatsApp Configuration', 'whatsapp-configuration'], 'General Settings') && (!$settings || $settings->customer_whatsapp_message || $settings->admin_whatsapp_message))
-                                    <li><a href="{{ route('setting.facebookappconfiguration') }}">WhatsApp Configuration</a></li>
-                                @endif
-                                @if(tenant_has_sub_module(['Departments', 'departments'], 'General Settings'))
-                                    <li><a href="{{ route('department.view') }}">Departments</a></li>
-                                @endif
-                                @if(tenant_has_sub_module(['Designations', 'designations'], 'General Settings'))
-                                    <li><a href="{{ route('designation.view') }}">Designations</a></li>
-                                @endif
-                                @if(tenant_has_sub_module(['Leave Types', 'leave-types'], 'General Settings'))
-                                    <li><a href="{{ route('leave-type.view') }}">Leave Types</a></li>
-                                @endif
-                                @if(tenant_has_sub_module(['Holidays', 'holidays', 'Manage Holidays'], 'General Settings'))
-                                    <li><a href="{{ route('holidays.index') }}">Manage Holidays</a></li>
-                                    <li><a href="{{ route('holidays.calendar') }}">Holiday Calendar</a></li>
-                                @endif
+                            @if($canMyBranch)
+                                <li><a href="{{ route('subbranch.list') }}" class="{{ request()->routeIs('subbranch.*') ? 'active' : '' }}">My Branch</a></li>
                             @endif
-                           
-                            @if(tenant_has_module('Tax Rates') && app('hasPermission')(15, 'view'))
-                                <li><a href="{{route('auth.taxrates')}}">Tax Rates</a></li>
+                            @if($canChangePassword)
+                                <li><a href="{{ route('auth.change-password') }}" class="{{ request()->routeIs('auth.change-password') ? 'active' : '' }}">Change Password</a></li>
+                            @endif
+                            @if($canShopSettings)
+                                <li><a href="{{ route('setting.generalsettings') }}" class="{{ request()->routeIs('setting.generalsettings') ? 'active' : '' }}">Shop Settings</a></li>
+                            @endif
+                            @if($canFieldCustomization && Route::has('setting.field-customization'))
+                                <li><a href="{{ route('setting.field-customization') }}" class="{{ request()->routeIs('setting.field-customization*') ? 'active' : '' }}">Field Customization</a></li>
+                            @endif
+                            @if($canSmtpSettings)
+                                <li><a href="{{ route('setting.smtpsettings') }}" class="{{ request()->routeIs('setting.smtpsettings') ? 'active' : '' }}">Smtp Settings</a></li>
+                            @endif
+                            @if($canWhatsAppConfig)
+                                <li><a href="{{ route('setting.facebookappconfiguration') }}" class="{{ request()->routeIs('setting.facebookappconfiguration') ? 'active' : '' }}">WhatsApp Configuration</a></li>
+                            @endif
+                            @if($canCustomizeInvoice && Route::has('setting.customize-invoice'))
+                                <li><a href="{{ route('setting.customize-invoice') }}" class="{{ request()->routeIs('setting.customize-invoice') ? 'active' : '' }}">Customize Invoice</a></li>
+                            @endif
+                            @if($canTaxRates)
+                                <li><a href="{{ route('auth.taxrates') }}" class="{{ request()->routeIs('auth.taxrates') ? 'active' : '' }}">Tax Rates</a></li>
+                            @endif
+                            @if($canDepartments)
+                                <li><a href="{{ route('department.view') }}" class="{{ request()->routeIs('department.*') ? 'active' : '' }}">Departments</a></li>
+                            @endif
+                            @if($canDesignations)
+                                <li><a href="{{ route('designation.view') }}" class="{{ request()->routeIs('designation.*') ? 'active' : '' }}">Designations</a></li>
+                            @endif
+                            @if($canLeaveTypes)
+                                <li><a href="{{ route('leave-type.view') }}" class="{{ request()->routeIs('leave-type.*') ? 'active' : '' }}">Leave Types</a></li>
+                            @endif
+                            @if($canManageHolidays)
+                                <li><a href="{{ route('holidays.index') }}" class="{{ request()->routeIs('holidays.index') ? 'active' : '' }}">Manage Holidays</a></li>
+                            @endif
+                            @if($canHolidayCalendar)
+                                <li><a href="{{ route('holidays.calendar') }}" class="{{ request()->routeIs('holidays.calendar') ? 'active' : '' }}">Holiday Calendar</a></li>
+                            @endif
+                            @if($canTableTruncate && Route::has('table-truncate.index'))
+                                <li><a href="{{ route('table-truncate.index') }}">Table Truncate</a></li>
                             @endif
                         </ul>
                     </li>
+                    @endif
                 @endif
             </ul>
         </div>

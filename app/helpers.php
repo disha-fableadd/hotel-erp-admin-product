@@ -160,7 +160,11 @@ if (! function_exists('tenant_has_module')) {
             ['tables', 'table', 'all tables', 'tables views', 'table booking', 'dining tables', 'table reservation', 'table reservations'],
             ['vendors', 'vendor', 'all vendors', 'new vendor', 'import vendor', 'suppliers', 'supplier'],
             ['staff', 'all staff', 'new staff', 'employees', 'employee', 'users', 'hr', 'human resources'],
+            ['reports', 'report'],
             ['general settings', 'settings', 'setting', 'shop settings', 'smtp settings', 'change password', 'my plan details', 'plans'],
+            ['my branch', 'branch', 'branches', 'subbranch', 'sub-branch'],
+            ['departments', 'department', 'manage departments'],
+            ['designations', 'designation', 'manage designations'],
             ['tax rates', 'tax rate', 'tax', 'taxes', 'gst'],
             ['accounting', 'manage accounting', 'accounts', 'account ledger', 'income statement', 'balance sheet', 'banks', 'bank', 'receipt and payment'],
             ['inventory', 'manage inventory', 'product inventory', 'stock transfer', 'row material', 'stock'],
@@ -200,6 +204,27 @@ if (! function_exists('tenant_has_module')) {
     }
 }
 
+if (! function_exists('canUseBranches')) {
+    /**
+     * Determine whether the authenticated user's plan allows multiple branches.
+     */
+    function canUseBranches(): bool
+    {
+        if (! auth()->check()) {
+            return false;
+        }
+
+        $user = auth()->user();
+        $plan = $user->plan;
+
+        if (! $plan) {
+            return true;
+        }
+
+        return $plan->branch_limit === null || $plan->branch_limit > 1;
+    }
+}
+
 if (! function_exists('tenant_has_sub_module')) {
     /**
      * Check if current tenant has access to given sub-module name(s) / slug(s).
@@ -236,24 +261,61 @@ if (! function_exists('tenant_has_sub_module')) {
             }
         } catch (\Throwable $e) {}
 
-        if (empty($rawNames)) {
-            return true;
-        }
-
-        $assignedNormalized = array_map(function ($m) {
+        $activeNames = array_map(function ($m) {
             return strtolower(trim((string) $m));
         }, (array) $rawNames);
+        $activeSlugs = array_map('strtolower', (array) tenant('sub_module_slugs', []));
+
+        if (empty($activeNames) && empty($activeSlugs)) {
+            return $parentModuleName ? tenant_has_module($parentModuleName) : true;
+        }
 
         $checkList = is_array($subModuleNames) ? $subModuleNames : [$subModuleNames];
 
         foreach ($checkList as $name) {
             $norm = strtolower(trim((string) $name));
-            if (in_array($norm, $assignedNormalized, true)) {
+            if (in_array($norm, $activeNames, true) || in_array($norm, $activeSlugs, true)) {
                 return true;
             }
         }
 
         return false;
+    }
+}
+
+if (! function_exists('can_access_module')) {
+    /**
+     * Check if a module or feature is accessible by tenant plan and user permission.
+     */
+    function can_access_module($moduleNames, $subModuleNames = null, $parentModuleName = null, ?int $permissionModuleId = null, string $action = 'view'): bool
+    {
+        if (config('tenant.enabled') && tenant()) {
+            $hasTenantAccess = false;
+            if (! empty($moduleNames) && tenant_has_module($moduleNames)) {
+                $hasTenantAccess = true;
+            }
+            if (! $hasTenantAccess && ! empty($subModuleNames)) {
+                if (tenant_has_sub_module($subModuleNames, $parentModuleName)) {
+                    $hasTenantAccess = true;
+                }
+            }
+            if (! $hasTenantAccess) {
+                return false;
+            }
+        }
+
+        if ($permissionModuleId !== null && function_exists('app')) {
+            try {
+                $hasPerm = app('hasPermission');
+                if (is_callable($hasPerm)) {
+                    return (bool) $hasPerm($permissionModuleId, $action);
+                }
+            } catch (\Throwable) {
+                return true;
+            }
+        }
+
+        return true;
     }
 }
 
