@@ -92,9 +92,6 @@ Route::post('/clear-subadmin-session', function () {
 });
 Route::post('/set-subadmin-session', [AuthController::class, 'subadmin_session'])->name('subadmin_session');
 
-Route::get('sales/report/view-page', [SalesController::class, 'show_sales_report_page']);
-Route::get('purchase/report/view-page', [PurchaseController::class, 'show_purchase_report_page']);
-Route::get('/expense/report/view-page', [ExpenseController::class, 'show_expense_report_page']);
 
 // Tenant storage route to handle both /storage/{path} and /public/storage/{path}
 Route::get('storage/{path}', \App\Http\Controllers\TenantStorageController::class)
@@ -140,6 +137,10 @@ Route::get('/face-photo/{filename}', function (string $filename) {
 
 
 Route::middleware(['auth:web', 'permission'])->group(function () {
+    Route::get('sales/report/view-page', [SalesController::class, 'show_sales_report_page'])->name('sales.report.view_page');
+    Route::get('purchase/report/view-page', [PurchaseController::class, 'show_purchase_report_page'])->name('purchase.report.view_page');
+    Route::get('/expense/report/view-page', [ExpenseController::class, 'show_expense_report_page'])->name('expense.report.view_page');
+
     Route::get('/logout', [LoginController::class, 'logout'])->name('logout');
 
     // Search bar
