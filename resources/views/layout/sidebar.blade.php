@@ -22,18 +22,62 @@
         tenant_has_module('Reports')
     );
 
-    $showHrSection = tenant_has_module(['Staff', 'Attendance', 'Leaves', 'Payroll', 'Advance Pay', 'HR']) && (
-        (tenant_has_module('Staff') && (app('hasPermission')(11, 'view') || app('hasPermission')(11, 'add'))) ||
-        (tenant_has_module('Attendance') && (app('hasPermission')(26, 'view') || app('hasPermission')(26, 'add'))) ||
-        (tenant_has_module('Leaves') && (app('hasPermission')(28, 'view') || app('hasPermission')(28, 'add'))) ||
-        (tenant_has_module('Payroll') && (app('hasPermission')(29, 'view') || app('hasPermission')(29, 'add'))) ||
-        (tenant_has_module('Advance Pay') && (app('hasPermission')(23, 'view') || app('hasPermission')(23, 'add')))
-    );
+    // Staff checks
+    $canAllStaff = tenant_has_sub_module(['All Staff', 'all-staff', 'Staff', 'staff', 'Staff List', 'Employees'], ['Employees', 'Staff', 'HR']);
+    $canNewStaff = tenant_has_sub_module(['Add Staff', 'add-staff', 'New Staff', 'new-staff', 'Create Staff', 'Staff', 'staff', 'Employees'], ['Employees', 'Staff', 'HR']);
+    if (!$canAllStaff && !$canNewStaff && tenant_has_module(['Employees', 'Staff', 'HR'])) {
+        $canAllStaff = true;
+        $canNewStaff = true;
+    }
+    $canStaffItem = in_array($user ? $user->role : '', ['admin', 'hr', 'sub-admin']) && tenant_has_module(['Employees', 'Staff', 'HR']) && app('hasPermission')(11, 'view') && ($canAllStaff || $canNewStaff);
 
+    // Other HR checks (Attendance, Leaves, Payroll, Advance Pay)
+    $canManageAttendance = tenant_has_sub_module(['Manage Attendance', 'manage-attendance', 'mark-attendance'], 'Attendance');
+    $canAttendanceSummary = tenant_has_sub_module(['Attendance', 'attendance-summary', 'attendance-list'], 'Attendance');
+    if (!$canManageAttendance && !$canAttendanceSummary && tenant_has_module('Attendance')) {
+        $canManageAttendance = true;
+        $canAttendanceSummary = true;
+    }
+    $canAttendanceItem = tenant_has_module('Attendance') && (app('hasPermission')(26, 'view') || app('hasPermission')(26, 'add')) && ($canManageAttendance || $canAttendanceSummary);
+
+    $canAllLeaves = tenant_has_sub_module(['All Leaves', 'all-leaves'], 'Leaves');
+    $canLeaveRequest = tenant_has_sub_module(['Leave Request', 'leave-request'], 'Leaves');
+    $canAddLeave = tenant_has_sub_module(['Add Leave', 'add-leave'], 'Leaves');
+    if (!$canAllLeaves && !$canLeaveRequest && !$canAddLeave && tenant_has_module('Leaves')) {
+        $canAllLeaves = true;
+        $canLeaveRequest = true;
+        $canAddLeave = true;
+    }
+    $canLeavesItem = tenant_has_module('Leaves') && (app('hasPermission')(28, 'view') || app('hasPermission')(28, 'add')) && ($canAllLeaves || $canLeaveRequest || $canAddLeave);
+
+    $canViewPayroll = tenant_has_sub_module(['View Payroll', 'view-payroll', 'payroll-list'], 'Payroll');
+    $canManagePayroll = tenant_has_sub_module(['Manage Payroll', 'manage-payroll'], 'Payroll');
+    $canAddPayroll = tenant_has_sub_module(['Add Payroll', 'add-payroll'], 'Payroll');
+    $canGroupSalary = tenant_has_sub_module(['Group Salary', 'group-salary'], 'Payroll');
+    if (!$canViewPayroll && !$canManagePayroll && !$canAddPayroll && !$canGroupSalary && tenant_has_module('Payroll')) {
+        $canViewPayroll = true;
+        $canManagePayroll = true;
+        $canAddPayroll = true;
+    }
+    $canPayrollItem = tenant_has_module('Payroll') && (app('hasPermission')(29, 'view') || app('hasPermission')(29, 'add')) && ($canViewPayroll || $canManagePayroll || $canAddPayroll || $canGroupSalary);
+
+    $canAllAdvancePay = tenant_has_sub_module(['All Advance Pay', 'all-advance-pay'], 'Advance Pay');
+    $canNewAdvancePay = tenant_has_sub_module(['New Advance Pay', 'new-advance-pay'], 'Advance Pay');
+    if (!$canAllAdvancePay && !$canNewAdvancePay && tenant_has_module('Advance Pay')) {
+        $canAllAdvancePay = true;
+        $canNewAdvancePay = true;
+    }
+    $canAdvancePayItem = tenant_has_module('Advance Pay') && ($user && $user->role === 'admin') && (app('hasPermission')(23, 'view') || app('hasPermission')(23, 'add')) && ($canAllAdvancePay || $canNewAdvancePay);
+
+    $hasOtherHrItems = $canAttendanceItem || $canLeavesItem || $canPayrollItem || $canAdvancePayItem;
+
+    // When only Staff is given from HR: show Staff in ERP after Vendor, and hide HR category
+    $showStaffInErp = $canStaffItem && !$hasOtherHrItems;
     $canMyBranchItem = in_array($user ? $user->role : '', ['admin', 'hr', 'sub-admin']) && ($user && $user->role === 'admin' && canUseBranches());
-    $hasOtherHrItems = tenant_has_module(['Attendance', 'Leaves', 'Payroll', 'Advance Pay', 'HR']);
     $showBranchInSettings = ($canMyBranchItem && !$hasOtherHrItems) || tenant_has_sub_module(['My Branch', 'my-branch', 'subbranch', 'sub-branch'], ['Settings', 'General Settings']);
 
+    $showHrSection = $hasOtherHrItems;
+    $showErpSection = $showErpSection || $showStaffInErp;
     $showSettingsSection = tenant_has_module(['General Settings', 'Tax Rates', 'Settings']) || $showBranchInSettings;
 @endphp
 <style>
@@ -407,6 +451,24 @@
                                             Vendors</span> <span class="menu-arrow"></span></a>
                                 </li>
                             @endif
+
+                            {{-- Staff (shown in ERP after Vendors when only Staff is in HR) --}}
+                            @if ($showStaffInErp && $canStaffItem)
+                                <li class="submenu sidebar-module">
+                                    <a href="javascript:void(0);">
+                                        <img src="{{ env('ImagePath') . '/admin/assets/img/icons/users1.svg' }}" alt="img">
+                                        <span>Staff</span> <span class="menu-arrow"></span>
+                                    </a>
+                                    <ul>
+                                        @if ($canAllStaff)
+                                            <li><a href="{{ route('staff.list') }}">All Staff</a></li>
+                                        @endif
+                                        @if ($canNewStaff)
+                                            <li><a href="{{ route('staff.add') }}">New Staff</a></li>
+                                        @endif
+                                    </ul>
+                                </li>
+                            @endif
                         </ul>
                     </li>
                 @endif
@@ -608,12 +670,8 @@
                             <span class="menu-arrow"></span>
                         </a>
                         <ul>
-                            {{-- Staff --}}
-                            @if(tenant_has_module('Staff') && app('hasPermission')(11, 'view'))
-                                @php
-                                    $canAllStaff = tenant_has_sub_module(['All Staff', 'all-staff'], 'Staff');
-                                    $canNewStaff = tenant_has_sub_module(['New Staff', 'new-staff'], 'Staff');
-                                @endphp
+                            {{-- Staff (only in HR if not moved to ERP) --}}
+                            @if(!$showStaffInErp && $canStaffItem)
                                 @if($canAllStaff || $canNewStaff)
                                     <li class="submenu sidebar-module">
                                         <a href="javascript:void(0);">
