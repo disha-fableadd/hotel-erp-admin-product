@@ -264,22 +264,28 @@
                       $('.profile-joining_date').text(formatDate(res.joining_date));
                       $('.profile-salary').text(getValue(res.salary));
 
+                      $('img[alt="Profile"]').on('error', function() {
+                          $(this).attr('src', '/admin/assets/img/customer/customer5.jpg');
+                      });
+
                       if (res.profile_image) {
+                          let cleanImg = String(res.profile_image).replace(/^\/+/, '').replace(/^storage\//, '');
                           $('img[alt="Profile"]').attr(
                               'src',
-                              `{{ env('ImagePath') . '/storage/' }}${res.profile_image}`
+                              `/storage/${cleanImg}`
                           );
                       } else {
                           $('img[alt="Profile"]').attr(
                               'src',
-                              `{{ env('ImagePath') . '/admin/assets/img/customer/customer5.jpg' }}`
+                              '/admin/assets/img/customer/customer5.jpg'
                           );
                       }
 
                       if (res.face_photo) {
+                          let cleanFace = String(res.face_photo).replace(/^\/+/, '').replace(/^storage\//, '');
                           $('.profile-face-photo').attr(
                               'src',
-                              `{{ env('ImagePath') . '/storage/' }}${res.face_photo}`
+                              `/storage/${cleanFace}`
                           ).show();
                           $('.profile-face-photo-text').hide();
                       } else {
