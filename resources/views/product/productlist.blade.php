@@ -1109,12 +1109,15 @@
                                     </a>
                                 `;
 
-                                let productImage = '{{ env('ImagePath') . 'admin/assets/img/product/noimage.png' }}';
-                                const ImagePath = "{{ env('ImagePath') . 'storage/' }}";
-                                if (product.images) {
+                                let defaultProductImage = '{{ image_path('admin/assets/img/product/noimage.png') }}';
+                                let productImage = defaultProductImage;
+                                if (product.image_url && Array.isArray(product.image_url) && product.image_url.length > 0) {
+                                    productImage = product.image_url[0];
+                                } else if (product.images) {
                                     let imagesArray = typeof product.images === "string" ? JSON.parse(product.images) : product.images;
                                     if (Array.isArray(imagesArray) && imagesArray.length > 0) {
-                                        productImage = `${ImagePath}${imagesArray[0]}`;
+                                        let cleanBase = "{{ rtrim(env('ImagePath') ?: config('app.url'), '/') }}";
+                                        productImage = `${cleanBase}/storage/${String(imagesArray[0]).replace(/^\/+/, '')}`;
                                     }
                                 }
 
@@ -1176,7 +1179,7 @@
                                 let mobileCard = `
                                     <div class="pl-m-card">
                                         <a href="/product-view/${product.id}" class="pl-m-img">
-                                            <img src="${productImage}" alt="" loading="lazy">
+                                            <img src="${productImage}" alt="" loading="lazy" onerror="this.onerror=null; this.src='${defaultProductImage}';">
                                         </a>
                                         <div class="pl-m-body">
                                             <div class="pl-m-top">
@@ -1202,7 +1205,7 @@
                                 let desktopHead = `
                                     <div class="pl-desktop-head" style="display: flex; align-items: center;">
                                         <a href="/product-view/${product.id}" class="product-img mb-1">
-                                            <img src="${productImage}" alt="product" style="max-width: 60px;">
+                                            <img src="${productImage}" alt="product" style="max-width: 60px;" onerror="this.onerror=null; this.src='${defaultProductImage}';">
                                         </a>
                                         <a href="/product-view/${product.id}" style="color: #1b2850; font-weight: 500; text-align: center; margin-left: 8px;">
                                             ${escapeHtmlText(productName)}

@@ -16,6 +16,11 @@ class TenantStorageController extends Controller
     {
         $normalizedPath = ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
 
+        // Strip leading storage/ if duplicated (e.g. storage/storage/...)
+        if (preg_match('#^storage[\\/](.*)$#i', $normalizedPath, $sm)) {
+            $normalizedPath = $sm[1];
+        }
+
         // Pattern 1: Direct tenant storage path: tenants/{id}/app/public/{subpath}
         if (preg_match('#^tenants[\\/](\d+)[\\/]app[\\/]public[\\/](.*)$#i', $normalizedPath, $matches)) {
             $tenantId = (int) $matches[1];
@@ -75,6 +80,34 @@ class TenantStorageController extends Controller
                     'Cache-Control' => 'private, max-age=86400',
                     'X-Content-Type-Options' => 'nosniff',
                 ]);
+            }
+        }
+
+        // Pattern 4: public/storage directory fallback
+        $publicStorage = realpath(public_path('storage'));
+        if ($publicStorage) {
+            $publicFile = realpath($publicStorage.DIRECTORY_SEPARATOR.$normalizedPath);
+            if ($publicFile && str_starts_with($publicFile, $publicStorage.DIRECTORY_SEPARATOR) && is_file($publicFile)) {
+                return response()->file($publicFile, [
+                    'Cache-Control' => 'private, max-age=86400',
+                    'X-Content-Type-Options' => 'nosniff',
+                ]);
+            }
+        }
+
+        // Graceful fallbacks for missing images so no broken image icons appear anywhere
+        $lowerPath = strtolower($normalizedPath);
+        if (str_contains($lowerPath, 'profile') || str_contains($lowerPath, 'avatar') || str_contains($lowerPath, 'customer') || str_contains($lowerPath, 'user')) {
+            $fallback = public_path('admin/assets/img/customer/customer5.jpg');
+            if (is_file($fallback)) {
+                return response()->file($fallback, ['Cache-Control' => 'no-cache']);
+            }
+        }
+
+        if (str_contains($lowerPath, 'product') || str_contains($lowerPath, 'category') || str_contains($lowerPath, 'brand')) {
+            $fallback = public_path('admin/assets/img/product/noimage.png');
+            if (is_file($fallback)) {
+                return response()->file($fallback, ['Cache-Control' => 'no-cache']);
             }
         }
 

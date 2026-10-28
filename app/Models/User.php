@@ -92,14 +92,12 @@ class User extends Authenticatable
     }
     public function getProfileImageUrlAttribute()
     {
-        $basePath = env('ImagePath', '/'); // default "/" if not set
-
         if ($this->profile_image) {
-            return url($basePath . 'storage/' . $this->profile_image);
+            return tenant_image_url($this->profile_image);
         }
 
         // fallback image
-        return url($basePath . 'admin/assets/img/customer/customer5.jpg');
+        return image_path('admin/assets/img/customer/customer5.jpg');
     }
 
     public function permissions()

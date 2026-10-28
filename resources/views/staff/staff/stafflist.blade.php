@@ -492,10 +492,10 @@
                                     `;
 
                                     // Image URL
-                                    let imageUrl = staff.profile_image ?
-                                        '{{ env('ImagePath') . '/storage/' }}' + staff
-                                        .profile_image :
-                                        '{{ env('ImagePath') . 'admin/assets/img/customer/customer5.jpg' }}';
+                                    let defaultStaffImage = '{{ image_path('admin/assets/img/customer/customer5.jpg') }}';
+                                    let imageUrl = staff.profile_image_url || (staff.profile_image ?
+                                        '{{ image_path('storage/') }}' + String(staff.profile_image).replace(/^\/+/, '') :
+                                        defaultStaffImage);
 
                                     // Prepare action buttons
                                     let actionButtons = `
@@ -525,7 +525,8 @@
                                                 <a href="javascript:void(0);" class="d-flex align-items-center">
                                                     <img src="${imageUrl}"
                                                         alt="staff"
-                                                        class="staff-image">
+                                                        class="staff-image"
+                                                        onerror="this.onerror=null; this.src='${defaultStaffImage}';">
                                                     <span class="staff-name">${staffName}</span>
                                                 </a>
 
@@ -801,10 +802,10 @@
                                 }
 
                                 staffs.forEach((staff) => {
-                                    let staffName = capitalizeWords(staff.name);
-                                    let imageUrl = staff.profile_image ?
-                                    '{{ env('ImagePath') . '/storage/' }}' + staff.profile_image :
-                                    '{{ env('ImagePath') . 'admin/assets/img/customer/customer5.jpg' }}';
+                                    let defaultStaffImage2 = '{{ image_path('admin/assets/img/customer/customer5.jpg') }}';
+                                    let imageUrl = staff.profile_image_url || (staff.profile_image ?
+                                        '{{ image_path('storage/') }}' + String(staff.profile_image).replace(/^\/+/, '') :
+                                        defaultStaffImage2);
  
  
 
@@ -845,7 +846,7 @@
                                     let firstColumn = `
         <div>
             <a href="javascript:void(0);" class="d-flex align-items-center">
-                <img src="${imageUrl}" alt="staff" class="staff-image">
+                <img src="${imageUrl}" alt="staff" class="staff-image" onerror="this.onerror=null; this.src='${defaultStaffImage2}';">
                 <span class="staff-name">${staffName}</span>
             </a>
             <div class="collapse mt-2 d-lg-none" id="details-${staff.id}">

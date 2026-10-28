@@ -76,26 +76,30 @@ class Product extends Model
     }
     public function getImageUrlAttribute()
     {
-        $basePath = env('ImagePath', '/'); // from .env
-        $images   = $this->images;
+        $images = $this->images;
 
-        // If images is JSON (array of images), decode it
         if ($images) {
             $decoded = json_decode($images, true);
 
             if (is_array($decoded)) {
-                // Return full URLs for each image
-                return array_map(function ($img) use ($basePath) {
-                    return url($basePath . 'storage/' . $img);
-                }, $decoded);
+                $flatImages = [];
+                array_walk_recursive($decoded, function($a) use (&$flatImages) { 
+                    if (is_string($a)) {
+                        $flatImages[] = $a; 
+                    }
+                });
+                
+                return array_map(function ($img) {
+                    return tenant_image_url($img);
+                }, array_filter($flatImages));
             }
 
-            // If it's just a single string
-            return url($basePath . 'storage/' . $images);
+            if (is_string($images)) {
+                return [tenant_image_url($images)];
+            }
         }
 
-        // Fallback image
-        return [url($basePath . 'admin/assets/img/product/noimage.png')];
+        return [image_path('admin/assets/img/product/noimage.png')];
     }
 
     public function product_inventory()
