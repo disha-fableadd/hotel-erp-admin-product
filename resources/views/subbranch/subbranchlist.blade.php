@@ -489,9 +489,10 @@
                 let tableBody = [];
 
                 branches.forEach(branch => {
-                    let profileImage = branch.profile_image ?
-                        imagePath + '/storage/' + branch.profile_image :
-                        imagePath + 'admin/assets/img/customer/customer5.jpg';
+                    let defaultBranchImage = '{{ image_path('admin/assets/img/customer/customer5.jpg') }}';
+                    let profileImage = branch.profile_image_url || (branch.profile_image ?
+                        '{{ image_path('storage/') }}' + String(branch.profile_image).replace(/^\/+/, '') :
+                        defaultBranchImage);
 
                     let branchName = capitalizeFirstLetter(branch.name);
                     let branchRole = capitalizeFirstLetter(branch.role);
@@ -543,7 +544,7 @@
                         `<div>
                             <div style="align-items: center;">
                                 <a href="/view-subbranch/${branch.id}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
-                                    <img src="${profileImage}" alt="Branch" class="branch-img">
+                                    <img src="${profileImage}" alt="Branch" class="branch-img" onerror="this.onerror=null; this.src='${defaultBranchImage}';">
                                     <span class="branch-name">${branchName}</span>
                                 </a>
                             </div>

@@ -74,30 +74,27 @@ class Setting extends Model
     // ✅ Full logo path
     public function getLogoUrlAttribute()
     {
-        $basePath = env('ImagePath', '/');
         if ($this->logo) {
-            return url($basePath . 'storage/' . $this->logo);
+            return tenant_image_url($this->logo);
         }
-        return url($basePath . 'admin/assets/img/no-logo.png'); // fallback
+        return image_path('admin/assets/img/no-logo.png'); // fallback
     }
 
     // ✅ Favicon URL
     public function getFaviconUrlAttribute()
     {
-        $basePath = env('ImagePath', '/');
         if ($this->favicon) {
-            return url($basePath . 'storage/' . $this->favicon);
+            return tenant_image_url($this->favicon);
         }
-        return url($basePath . 'admin/assets/img/no-favicon.png'); // fallback
+        return image_path('admin/assets/img/no-favicon.png'); // fallback
     }
 
     public function getQrCodeUrlAttribute()
     {
-        $basePath = env('ImagePath', '/');
         if ($this->qr_code) {
-            return url($basePath . 'storage/' . $this->qr_code);
+            return tenant_image_url($this->qr_code);
         }
-        return url($basePath . 'admin/assets/img/no-favicon.png'); // fallback
+        return image_path('admin/assets/img/no-favicon.png'); // fallback
     }
 
     protected static function boot()

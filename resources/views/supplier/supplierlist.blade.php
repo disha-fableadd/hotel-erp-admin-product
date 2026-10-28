@@ -352,9 +352,10 @@
                             `;
 
                             // Image URL
-                            let imageUrl = vendor.profile_image ? 
-                                '{{ env('ImagePath').'/storage/' }}' + vendor.profile_image :
-                                '{{ env('ImagePath').'admin/assets/img/customer/customer5.jpg' }}';
+                            let defaultVendorImage = '{{ image_path('admin/assets/img/customer/customer5.jpg') }}';
+                            let imageUrl = vendor.profile_image_url || (vendor.profile_image ? 
+                                '{{ image_path('storage/') }}' + String(vendor.profile_image).replace(/^\/+/, '') :
+                                defaultVendorImage);
 
                             // Prepare delete button conditionally
                             let deleteBtn = '';
@@ -410,7 +411,8 @@
                                         <a href="javascript:void(0);" class="d-flex align-items-center">
                                             <img src="${imageUrl}" 
                                                 alt="vendor" 
-                                                class="vendor-image">
+                                                class="vendor-image"
+                                                onerror="this.onerror=null; this.src='${defaultVendorImage}';">
                                             <span class="vendor-name truncated">${vendorName}</span>
                                         </a>
                                     </div>

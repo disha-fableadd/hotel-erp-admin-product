@@ -30,18 +30,14 @@
                         <div class="profile-top">
                             <div class="profile-content">
                                 <div class="profile-contentimg">
-                                    @if (isset($user->profile_image))
-                                        <img src="{{ env('ImagePath') . 'storage/' . $user->profile_image }}" alt="img"
-                                            id="blah">
-                                    @else
-                                        <img src="{{ env('ImagePath') . 'admin/assets/img/customer/customer5.jpg' }}"
-                                            alt="img" id="blah">
-                                    @endif
+                                    <img src="{{ !empty($user->profile_image) ? tenant_image_url($user->profile_image) : image_path('admin/assets/img/customer/customer5.jpg') }}" alt="img"
+                                        id="blah"
+                                        onerror="this.onerror=null; this.src='{{ image_path('admin/assets/img/customer/customer5.jpg') }}';">
 
                                     <div class="profileupload">
                                         <input type="file" name="profile_image" id="imgInp">
                                         <a href="javascript:void(0);">
-                                            <img src="{{ env('ImagePath') . 'admin/assets/img/icons/edit-set.svg' }}"
+                                            <img src="{{ image_path('admin/assets/img/icons/edit-set.svg') }}"
                                                 alt="img">
                                         </a>
                                     </div>

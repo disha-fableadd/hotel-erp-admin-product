@@ -171,12 +171,12 @@ $user = auth()->user();
         <div class="d-flex align-items-center header-search-container">
             <!-- Platform Orders Buttons -->
             <button id="zomatoHeaderBtn" class="btn btn-sm d-flex align-items-center justify-content-center platform-btn me-2 position-relative" onclick="openPlatformModal('Zomato')" style="display: none !important; height: 38px; background-color: #E23744; color: white; border: none; border-radius: 5px; padding: 0 15px; font-weight: 500; font-size: 14px; gap: 8px; box-shadow: 0 2px 6px rgba(226, 55, 68, 0.2);">
-                <img src="{{ env('ImagePath').'/admin/assets/img/product/zomato.png' }}" alt="Zomato" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover;">
+                <img src="{{ image_path('admin/assets/img/product/zomato.png') }}" alt="Zomato" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover;">
                 <span class="d-none d-md-inline">Zomato</span>
                 <span class="platform-badge d-none" id="zomatoBadgeCount">0</span>
             </button>
             <button id="swiggyHeaderBtn" class="btn btn-sm d-flex align-items-center justify-content-center platform-btn me-3 position-relative" onclick="openPlatformModal('Swiggy')" style="display: none !important; height: 38px; background-color: #FC8019; color: white; border: none; border-radius: 5px; padding: 0 15px; font-weight: 500; font-size: 14px; gap: 8px; box-shadow: 0 2px 6px rgba(252, 128, 25, 0.2);">
-                <img src="{{ env('ImagePath').'/admin/assets/img/product/swiggy.jpg' }}" alt="Swiggy" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover;">
+                <img src="{{ image_path('admin/assets/img/product/swiggy.jpg') }}" alt="Swiggy" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover;">
                 <span class="d-none d-md-inline">Swiggy</span>
                 <span class="platform-badge d-none" id="swiggyBadgeCount">0</span>
             </button>
@@ -405,16 +405,22 @@ $user = auth()->user();
 
         <li class="nav-item dropdown has-arrow main-drop">
             <a href="javascript:void(0);" class="dropdown-toggle nav-link userset" data-bs-toggle="dropdown">
-                <span class="user-img"><img
-                        src="{{ !empty($admin) && !empty($admin->profile_image) ? env('ImagePath').'/storage/' . $admin->profile_image : env('ImagePath').'/admin/assets/img/customer/customer5.jpg' }}"
-                        alt="">
-                    <span class="status online"></span></span>
+                <span class="user-img">
+                    <img src="{{ !empty($user->profile_image) ? tenant_image_url($user->profile_image) : (!empty($admin->profile_image) ? tenant_image_url($admin->profile_image) : image_path('admin/assets/img/customer/customer5.jpg')) }}"
+                        alt="User"
+                        style="width: 38px; height: 38px; object-fit: cover; border-radius: 50%;"
+                        onerror="this.onerror=null; this.src='{{ image_path('admin/assets/img/customer/customer5.jpg') }}';">
+                    <span class="status online"></span>
+                </span>
             </a>
             <div class="dropdown-menu menu-drop-user">
                 <div class="profilename">
                     <div class="profileset">
                         <span class="user-img">
-                            <img src="{{ !empty($user->profile_image) ? env('ImagePath').'/storage/' . $user->profile_image : env('ImagePath').'/admin/assets/img/customer/customer5.jpg' }}" alt="">
+                            <img src="{{ !empty($user->profile_image) ? tenant_image_url($user->profile_image) : (!empty($admin->profile_image) ? tenant_image_url($admin->profile_image) : image_path('admin/assets/img/customer/customer5.jpg')) }}"
+                                alt="User"
+                                style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%;"
+                                onerror="this.onerror=null; this.src='{{ image_path('admin/assets/img/customer/customer5.jpg') }}';">
                         </span>
                         <span class="status online"></span>
                         <div class="profilesets">
@@ -441,7 +447,7 @@ $user = auth()->user();
                     @endif
                     <hr class="m-0">
                     <a class="dropdown-item logout pb-0" href="{{ route('logout') }}">
-                        <img src="{{ env('ImagePath').'/admin/assets/img/icons/log-out.svg' }}" class="me-2" alt="img"> Logout
+                        <img src="{{ image_path('admin/assets/img/icons/log-out.svg') }}" class="me-2" alt="img"> Logout
                     </a>
                 </div>
 

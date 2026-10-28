@@ -24,14 +24,12 @@ class Brand extends Model
      // Accessor for full logo URL
     public function getLogoUrlAttribute()
     {
-        $basePath = env('ImagePath', '/'); // default "/" if not set
-
         if ($this->logo) {
-            return url($basePath . 'storage/' . $this->logo);
+            return tenant_image_url($this->logo);
         }
 
         // fallback logo image
-        return url($basePath . 'admin/assets/img/product/noimage.png');
+        return image_path('admin/assets/img/product/noimage.png');
     }
 
     protected static function boot()

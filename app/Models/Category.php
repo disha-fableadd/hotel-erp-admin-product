@@ -27,14 +27,12 @@ class Category extends Model
 
     public function getImageUrlAttribute()
     {
-        $basePath = env('ImagePath', '/'); // default "/" if not set
-
         if ($this->image) {
-            return url($basePath . 'storage/' . $this->image);
+            return tenant_image_url($this->image);
         }
 
         // fallback category image
-        return url($basePath . 'admin/assets/img/product/noimage.png');
+        return image_path('admin/assets/img/product/noimage.png');
     }
 
     protected static function boot()
