@@ -22,7 +22,7 @@
                 <div class="col-xl-4 col-sm-4">
                     <div class="card">
                         <div class="card-body profile-card pt-4 d-flex flex-column align-items-center">
-                            <img src="" alt="Profile" class="img-fluid rounded-circle border" style="width: 150px; height: 150px; object-fit: cover;" onerror="this.onerror=null;this.src='{{ rtrim(env('ImagePath'), '/') }}/admin/assets/img/customer/customer5.jpg';">
+                            <img src="" alt="Profile" class="img-fluid rounded-circle border" style="width: 150px; height: 150px; object-fit: cover;" onerror="this.onerror=null;this.src='{{ image_path('admin/assets/img/customer/customer5.jpg') }}';">
                             <!-- profile-img.jpg -->
                             <h5 class="mt-3"><span class="profile-name"></span></h5>
                             <p class="text-muted mb-0"><span class="profile-username"></span></p>
@@ -117,11 +117,10 @@
                 $('.profile-country').text(userDetail.country?.trim() || 'N/A');
                 $('.profile-city').text(userDetail.city?.trim() || 'N/A');
 
-                let imageBasePath = "{{ rtrim(env('ImagePath'), '/') }}";
-                let cleanUserImg = (user.profile_image || '').replace(/^\/+/, '');
-                let profileImage = cleanUserImg ?
-                    `${imageBasePath}/storage/${cleanUserImg}` :
-                    `${imageBasePath}/admin/assets/img/customer/customer5.jpg`;
+                let storageBase = "{{ image_path('storage') }}/";
+                let defaultImage = "{{ image_path('admin/assets/img/customer/customer5.jpg') }}";
+                let cleanUserImg = (user.profile_image || '').replace(/^\/+/, '').replace(/^storage\//, '');
+                let profileImage = cleanUserImg ? `${storageBase}${cleanUserImg}` : defaultImage;
 
                 $('img[alt="Profile"]').attr('src', profileImage);
             },

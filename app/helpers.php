@@ -6,7 +6,31 @@ if (! function_exists('image_path_base')) {
      */
     function image_path_base(): string
     {
-        return '/';
+        static $cached = null;
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        try {
+            if (function_exists('app') && app()->bound('config')) {
+                $configured = config('app.image_path');
+                if (is_string($configured) && $configured !== '') {
+                    return $cached = rtrim($configured, '/').'/';
+                }
+
+                $appUrl = config('app.url');
+                if (is_string($appUrl) && $appUrl !== '') {
+                    return $cached = rtrim($appUrl, '/').'/';
+                }
+            }
+        } catch (\Throwable) {
+            // Application not booted yet.
+        }
+
+        $raw = env('ImagePath') ?: env('IMAGE_PATH') ?: env('APP_URL', '');
+
+        return $cached = ($raw !== '' ? rtrim((string) $raw, '/').'/' : '/');
     }
 }
 

@@ -390,8 +390,8 @@
     <script>
         $(document).ready(function() {
             var authToken = localStorage.getItem("authToken");
-            const imagePath = "{{ rtrim(env('ImagePath'), '/') }}/";
-            const storageBasePath = "{{ rtrim(env('ImagePath'), '/') }}/storage/";
+            const imagePath = "{{ image_path('') }}";
+            const storageBasePath = "{{ image_path('storage') }}/";
 
             // Initialize DataTable
             var table = $('.datanew').DataTable({
