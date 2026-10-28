@@ -511,21 +511,30 @@
                             0; // You can calculate tax if required from tax_ids
                         const discount = sale.discount || 0;
 
-                        let imagePath = '';
-                        let imageBasePath = '{{ env('ImagePath') }}';
+                        let defaultProductImage = '{{ image_path('admin/assets/img/product/noimage.png') }}';
+                        let imagePath = defaultProductImage;
 
-                        try {
-                            const images = JSON.parse(product.images || '[]');
-
-                            if (Array.isArray(images) && images.length > 0 && images[0]) {
-                                imagePath = `${imageBasePath}/storage/${images[0]}`;
-                            } else {
-                                imagePath =
-                                    `${imageBasePath}/admin/assets/img/product/noimage.png`;
+                        if (product.image_url && Array.isArray(product.image_url) && product.image_url.length > 0 && product.image_url[0]) {
+                            imagePath = product.image_url[0];
+                        } else if (product.images) {
+                            let raw = product.images;
+                            if (typeof raw === 'string') {
+                                try {
+                                    raw = JSON.parse(raw);
+                                    if (typeof raw === 'string') {
+                                        raw = JSON.parse(raw);
+                                    }
+                                } catch (e) {}
                             }
-                        } catch (e) {
-                            imagePath =
-                                `${imageBasePath}/admin/assets/img/product/noimage.png`; // fallback
+                            let firstImg = Array.isArray(raw) ? raw[0] : raw;
+                            if (firstImg && typeof firstImg === 'string') {
+                                if (firstImg.startsWith('http://') || firstImg.startsWith('https://')) {
+                                    imagePath = firstImg;
+                                } else {
+                                    let cleanImg = firstImg.replace(/^\/+/, '').replace(/^storage\//, '');
+                                    imagePath = '{{ image_path('storage/') }}' + cleanImg;
+                                }
+                            }
                         }
 
                         const unitPrice = formatCurrency(item.price, response
@@ -539,7 +548,7 @@
                                 <tr class="details" style="border-bottom:1px solid #E9ECEF;">
                                    <td style="padding: 10px; vertical-align: top;">
                                         <a href="/product-view/${product.id || ''}" class="d-flex align-items-center text-decoration-none text-dark">
-                                            <img src="${imagePath}" alt="img" class="me-2" style="width:40px; height:40px;">
+                                            <img src="${imagePath}" alt="${product.name || 'product'}" class="me-2" style="width:40px; height:40px; object-fit: cover; border-radius: 4px;" onerror="this.onerror=null; this.src='${defaultProductImage}';">
                                             ${product.name || 'N/A'}
                                         </a>
                                     </td>

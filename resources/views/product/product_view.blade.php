@@ -178,17 +178,23 @@
 
 
 
-                images.forEach((img, i) => {
-                    const imagePath = "{{ env('ImagePath') }}";
+                const defaultProductNoImage = '{{ image_path('admin/assets/img/product/noimage.png') }}';
 
-                    let imgSrc = img.startsWith('/admin/assets/') || img.startsWith(
-                            'admin/assets') ?
-                        `${imagePath}${img}` :
-                        `${imagePath}/storage/${img}`;
+                images.forEach((img, i) => {
+                    let imgSrc = defaultProductNoImage;
+                    if (img && typeof img === 'string') {
+                        if (img.startsWith('http://') || img.startsWith('https://')) {
+                            imgSrc = img;
+                        } else if (img.startsWith('/admin/assets/') || img.startsWith('admin/assets')) {
+                            imgSrc = '{{ image_path() }}' + img.replace(/^\/+/, '');
+                        } else {
+                            imgSrc = '{{ image_path('storage/') }}' + img.replace(/^\/+/, '').replace(/^storage\//, '');
+                        }
+                    }
                     imageHTML += `
             <div class="carousel-item ${i === 0 ? 'active' : ''}">
                 <img src="${imgSrc}" class="d-block w-100 product-main-img rounded mb-3"
-                    onerror="this.onerror=null;this.src='/admin/assets/img/product/noimage.png';"
+                    onerror="this.onerror=null;this.src='${defaultProductNoImage}';"
                 >
             </div>
         `;

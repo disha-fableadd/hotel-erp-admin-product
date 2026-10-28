@@ -13,6 +13,12 @@ if (! function_exists('image_path_base')) {
         }
 
         try {
+            if (function_exists('request') && request() && request()->getHttpHost()) {
+                return $cached = rtrim(request()->getSchemeAndHttpHost() . request()->getBaseUrl(), '/') . '/';
+            }
+        } catch (\Throwable) {}
+
+        try {
             if (function_exists('app') && app()->bound('config')) {
                 $configured = config('app.image_path');
                 if (is_string($configured) && $configured !== '') {
@@ -475,7 +481,7 @@ if (! function_exists('tenant_image_url')) {
             $tenantId = null;
         }
 
-        $base = rtrim(config('app.url') ?: (env('ImagePath') ? rtrim(str_replace('/public', '', env('ImagePath')), '/') : ''), '/');
+        $base = rtrim(image_path_base(), '/');
 
         if ($tenantId) {
             return ($base ? $base : '') . '/storage/tenants/' . $tenantId . '/app/public/' . $relativePath;
