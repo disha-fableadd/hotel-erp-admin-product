@@ -364,7 +364,7 @@
                     <h4>All Staffs</h4>
                 </div>
                 <div class="page-btn">
-                    @if (app('hasPermission')(8, 'add'))
+                    @if (app('hasPermission')(11, 'add'))
                         @if (can_create_user())
                             <a href="{{ route('staff.add') }}" class="btn btn-added btn-sm">
                                 <img src="{{ env('ImagePath') . 'admin/assets/img/icons/plus.svg' }}" class="me-1" alt="img">New
@@ -802,12 +802,11 @@
                                 }
 
                                 staffs.forEach((staff) => {
+                                    let staffName = capitalizeWords(staff.name);
                                     let defaultStaffImage2 = '{{ image_path('admin/assets/img/customer/customer5.jpg') }}';
                                     let imageUrl = staff.profile_image_url || (staff.profile_image ?
                                         '{{ image_path('storage/') }}' + String(staff.profile_image).replace(/^\/+/, '') :
                                         defaultStaffImage2);
- 
- 
 
                                     let detailsToggle = `
                                         <a href="#details-${staff.id}" class="toggle-details" data-bs-toggle="collapse">
@@ -816,7 +815,7 @@
                                     `;
 
                                     let actionButtons = `
-                                    @if (app('hasPermission')(8, 'view'))
+                                    @if (app('hasPermission')(11, 'view'))
                                         <a class="me-2" href="/staff-view/${staff.id}">
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <path d="M12 9C11.206 9.00524 10.4459 9.32299 9.88447 9.88447C9.32299 10.4459 9.00524 11.206 9 12C9 13.642 10.358 15 12 15C13.641 15 15 13.642 15 12C15 10.359 13.641 9 12 9Z" fill="#092C4C"></path>
@@ -825,14 +824,14 @@
                                         </a>
                                         @endif
 
-                                        @if (app('hasPermission')(8, 'edit'))
+                                        @if (app('hasPermission')(11, 'edit'))
                                             <a class="me-2" href="/edit-staff/${staff.id}">
                                                 <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                     <path d="M15.045 5.401C15.423 5.023 15.631 4.521 15.631 3.987C15.631 3.453 15.423 2.951 15.045 2.573L13.459 0.987001C13.081 0.609001 12.579 0.401001 12.045 0.401001C11.511 0.401001 11.009 0.609001 10.632 0.986001L0 11.585V16H4.413L15.045 5.401ZM12.045 2.401L13.632 3.986L12.042 5.57L10.456 3.985L12.045 2.401ZM2 14V12.415L9.04 5.397L10.626 6.983L3.587 14H2ZM0 18H16V20H0V18Z" fill="#092C4C"></path>
                                                 </svg>
                                             </a>
                                         @endif
-                                            @if (app('hasPermission')(8, 'delete'))
+                                            @if (app('hasPermission')(11, 'delete'))
                                         <a class="me-2 confirm-text delete-staff" data-id="${staff.id}" href="javascript:void(0);">
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <path d="M5 20C5 20.5304 5.21071 21.0391 5.58579 21.4142C5.96086 21.7893 6.46957 22 7 22H17C17.5304 22 18.0391 21.7893 18.4142 21.4142C18.7893 21.0391 19 20.5304 19 20V8H21V6H17V4C17 3.46957 16.7893 2.96086 16.4142 2.58579C16.0391 2.21071 15.5304 2 15 2H9C8.46957 2 7.96086 2.21071 7.58579 2.58579C7.21071 2.96086 7 3.46957 7 4V6H3V8H5V20ZM9 4H15V6H9V4ZM8 8H17V20H7V8H8Z" fill="#092C4C"></path>
@@ -842,22 +841,30 @@
                                         @endif
                                     `;
 
-                                    // Build the main column with name, image and collapsible details
+                                    // Build the main column with name, image, username and collapsible details
                                     let firstColumn = `
         <div>
             <a href="javascript:void(0);" class="d-flex align-items-center">
                 <img src="${imageUrl}" alt="staff" class="staff-image" onerror="this.onerror=null; this.src='${defaultStaffImage2}';">
-                <span class="staff-name">${staffName}</span>
+                <div>
+                    <span class="staff-name">${staffName}</span>
+                    ${staff.username ? `<div class="mt-1"><span class="badge bg-light text-dark border" style="font-size: 11px; font-weight: 500;"><i class="fa fa-user me-1 text-primary"></i>${staff.username}</span></div>` : ''}
+                </div>
             </a>
             <div class="collapse mt-2 d-lg-none" id="details-${staff.id}">
                 <div class="collapse-details">
+                    ${staff.username ? `
+                    <div class="detail-item">
+                        <span class="detail-label">Username:</span>
+                        <span class="detail-value fw-bold text-primary">${staff.username}</span>
+                    </div>` : ''}
                     <div class="detail-item">
                         <span class="detail-label">Email:</span>
                         <span class="detail-value">${staff.email || 'N/A'}</span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">Email:</span>
-                        <span class="detail-value">${staff.role || 'N/A'}</span>
+                        <span class="detail-label">Role:</span>
+                        <span class="detail-value">${capitalizeWords(staff.role)}</span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Phone:</span>
@@ -872,7 +879,7 @@
                         <span class="detail-value">${staff.city || 'N/A'}</span>
                     </div>
                     <div class="mobile-actions">
-                        @if (app('hasPermission')(8, 'view'))
+                        @if (app('hasPermission')(11, 'view'))
                         <a href="/staff-view/${staff.id}">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M12 9C11.206 9.00524 10.4459 9.32299 9.88447 9.88447C9.32299 10.4459 9.00524 11.206 9 12C9 13.642 10.358 15 12 15C13.641 15 15 13.642 15 12C15 10.359 13.641 9 12 9Z" fill="#092C4C"></path>
@@ -880,14 +887,14 @@
                             </svg>
                         </a>
                         @endif
-                        @if (app('hasPermission')(8, 'edit'))
+                        @if (app('hasPermission')(11, 'edit'))
                         <a href="/edit-staff/${staff.id}">
                             <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M15.045 5.401C15.423 5.023 15.631 4.521 15.631 3.987C15.631 3.453 15.423 2.951 15.045 2.573L13.459 0.987001C13.081 0.609001 12.579 0.401001 12.045 0.401001C11.511 0.401001 11.009 0.609001 10.632 0.986001L0 11.585V16H4.413L15.045 5.401ZM12.045 2.401L13.632 3.986L12.042 5.57L10.456 3.985L12.045 2.401ZM2 14V12.415L9.04 5.397L10.626 6.983L3.587 14H2ZM0 18H16V20H0V18Z" fill="#092C4C"></path>
                             </svg>
                         </a>
                         @endif
-                        @if (app('hasPermission')(8, 'delete'))
+                        @if (app('hasPermission')(11, 'delete'))
                         <a class="delete-staff" data-id="${staff.id}" href="javascript:void(0);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M5 20C5 20.5304 5.21071 21.0391 5.58579 21.4142C5.96086 21.7893 6.46957 22 7 22H17C17.5304 22 18.0391 21.7893 18.4142 21.4142C18.7893 21.0391 19 20.5304 19 20V8H21V6H17V4C17 3.46957 16.7893 2.96086 16.4142 2.58579C16.0391 2.21071 15.5304 2 15 2H9C8.46957 2 7.96086 2.21071 7.58579 2.58579C7.21071 2.96086 7 3.46957 7 4V6H3V8H5V20ZM9 4H15V6H9V4ZM8 8H17V20H7V8H8Z" fill="#092C4C"></path>
@@ -903,7 +910,7 @@
                                     tableBody.push([
                                         firstColumn,
                                         staff.email || 'N/A',
-                                        staff.role || 'N/A',
+                                        capitalizeWords(staff.role),
                                         staff.phone || 'N/A',
                                         staff.country || 'N/A',
                                         staff.city || 'N/A',
