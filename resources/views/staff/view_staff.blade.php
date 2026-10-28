@@ -27,10 +27,12 @@
                       <div class="col-xl-4 col-sm-4">
                           <div class="card">
                               <div class="card-body profile-card pt-4 d-flex flex-column align-items-center">
-                                  <img src="" alt="Profile" class="img-fluid rounded-circle border"
-                                      style="width: 150px; height: 150px; object-fit: cover;">
+                                  <img src="/admin/assets/img/customer/customer5.jpg" alt="Profile" class="img-fluid rounded-circle border"
+                                      style="width: 150px; height: 150px; object-fit: cover;"
+                                      onerror="if(this.src && !this.src.includes('customer5.jpg')){this.src='/admin/assets/img/customer/customer5.jpg';}else{this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'150\' height=\'150\' viewBox=\'0 0 150 150\'><rect fill=\'%23f3f4f6\' width=\'150\' height=\'150\'/><circle cx=\'75\' cy=\'55\' r=\'28\' fill=\'%23d1d5db\'/><path d=\'M35 125 C35 95, 55 90, 75 90 C95 90, 115 95, 115 125 Z\' fill=\'%23d1d5db\'/></svg>';}">
                                   <!-- profile-img.jpg -->
                                   <h5 class="mt-3"><span class="profile-name"></span></h5>
+                                  <p class="text-muted mb-0 mt-1" style="font-size: 14px;"><i class="fas fa-user-tag me-1 text-warning"></i><span class="profile-username font-weight-bold"></span></p>
                                   <!-- <h4><span class="profile-role"></span></h4> -->
                               </div>
                           </div>
@@ -48,6 +50,11 @@
                                           <div class="row">
                                               <div class="col-lg-3 col-md-4 label">Name</div>
                                               <div class="col-lg-9 col-md-8"><span class="profile-name"></span></div>
+                                          </div>
+                                          <hr>
+                                          <div class="row">
+                                              <div class="col-lg-3 col-md-4 label">Username</div>
+                                              <div class="col-lg-9 col-md-8"><span class="profile-username font-weight-bold" style="color: #ff9f43;"></span></div>
                                           </div>
                                           <hr>
                                           <div class="row">
@@ -131,25 +138,26 @@
                   success: function(res) {
 
                       $('.profile-name').text(res.name ?? 'N/A');
+                      let staffUsername = res.username ? (res.username.startsWith('@') ? res.username : '@' + res.username) : 'N/A';
+                      $('.profile-username').text(staffUsername);
                       $('.profile-role').text(res.role ?? 'N/A');
                       $('.profile-email').text(res.email ?? 'N/A');
                       $('.profile-phone').text(res.phone ?? 'N/A');
-                      $('.profile-role').text(res.role ?? 'N/A');
                       $('.profile-address').text(res.address ?? 'N/A');
                       $('.profile-country').text(res.country ?? 'N/A');
                       $('.profile-city').text(res.city ?? 'N/A');
 
-                      if (res.profile_image) {
-                          $('img[alt="Profile"]').attr(
-                              'src',
-                              `{{ env('ImagePath') . '/storage/' }}${res.profile_image}`
-                          );
-                      } else {
-                          $('img[alt="Profile"]').attr(
-                              'src',
-                              `{{ env('ImagePath') . '/admin/assets/img/customer/customer5.jpg' }}`
-                          );
+                      let rawImg = res.profile_image_url || res.profile_image || '';
+                      let profileImage = window.resolveImageUrl ? window.resolveImageUrl(rawImg, '/admin/assets/img/customer/customer5.jpg') : null;
+                      if (!profileImage) {
+                          if (rawImg) {
+                              let clean = String(rawImg).replace(/^https?:\/\/[^\/]+/, '').replace(/^\/+/, '').replace(/^storage\//, '');
+                              profileImage = '/storage/' + clean;
+                          } else {
+                              profileImage = '/admin/assets/img/customer/customer5.jpg';
+                          }
                       }
+                      $('img[alt="Profile"]').attr('src', profileImage);
                       let permissionRows = '';
                       if (res.permissions && res.permissions.length > 0) {
                           res.permissions.forEach(function(perm) {

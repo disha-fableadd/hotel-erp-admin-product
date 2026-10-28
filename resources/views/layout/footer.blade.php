@@ -20,9 +20,59 @@
 <script src="{{ env('ImagePath').'/admin/assets/plugins/sweetalert/sweetalerts.min.js' }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 
+<script>
+    // Universal image path resolver for the entire ERP application
+    window.resolveImageUrl = function(src, fallback) {
+        fallback = fallback || '/admin/assets/img/customer/customer5.jpg';
+        if (!src) return fallback;
+        var s = String(src).trim();
+        if (!s || s === 'null' || s === 'undefined') return fallback;
 
+        // Strip localhost / 127.0.0.1 or app host
+        if (s.indexOf('127.0.0.1') !== -1 || s.indexOf('localhost') !== -1) {
+            s = s.replace(/^https?:\/\/[^\/]+/, '');
+        }
 
+        // If it's a full remote external URL (not storage/admin), keep it
+        if (s.indexOf('http://') === 0 || s.indexOf('https://') === 0) {
+            if (s.indexOf('/storage/') !== -1 || s.indexOf('/admin/assets/') !== -1) {
+                s = s.replace(/^https?:\/\/[^\/]+/, '');
+            } else {
+                return s;
+            }
+        }
 
+        s = s.replace(/^\/+/, '');
+        if (s.indexOf('storage/') === 0) {
+            return '/' + s;
+        }
+        if (s.indexOf('admin/assets/') === 0) {
+            return '/' + s;
+        }
+        return '/storage/' + s;
+    };
+
+    // Universal error listener (capture phase) to prevent any broken image icon anywhere
+    document.addEventListener('error', function(e) {
+        if (e.target && e.target.tagName === 'IMG') {
+            var img = e.target;
+            var step = parseInt(img.getAttribute('data-img-fallback-step') || '0', 10);
+            if (step === 0) {
+                img.setAttribute('data-img-fallback-step', '1');
+                var src = img.src || '';
+                var isIcon = src.indexOf('.svg') !== -1 || (img.className || '').indexOf('icon') !== -1;
+                if (!isIcon) {
+                    img.src = '/admin/assets/img/customer/customer5.jpg';
+                } else {
+                    img.setAttribute('data-img-fallback-step', '2');
+                }
+            } else if (step === 1) {
+                img.setAttribute('data-img-fallback-step', '2');
+                img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="%23f3f4f6" width="100" height="100"/><circle cx="50" cy="38" r="20" fill="%23d1d5db"/><path d="M20 85 C20 65, 35 60, 50 60 C65 60, 80 65, 80 85 Z" fill="%23d1d5db"/></svg>';
+            }
+        }
+    }, true);
+</script>
 
 <script>
     $(document).ready(function () {

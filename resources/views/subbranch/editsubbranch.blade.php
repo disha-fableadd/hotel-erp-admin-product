@@ -110,8 +110,7 @@
                         <div class="image-upload">
                             <input type="file" id="avatar-input" name="avatar">
                             <div class="image-uploads">
-                                <img src="{{ env('ImagePath') . '/admin/assets/img/icons/upload.svg' }}"
-                                    alt="Upload Icon">
+                                <img src="/admin/assets/img/icons/upload.svg" alt="Upload Icon" onerror="this.onerror=null; this.src='/admin/assets/img/icons/upload.svg';">
                                 <h4>Drag and drop a file to upload</h4>
                             </div>
                         </div>
@@ -120,7 +119,8 @@
                         <!-- Profile Image Preview -->
                         <div id="avatar-preview-container" style="display: none; margin-top: 10px;">
                             <img id="avatar-preview" src="" alt="Profile Image"
-                                style="max-width: 100px; border-radius: 8px;">
+                                style="max-width: 100px; border-radius: 8px;"
+                                onerror="this.onerror=null; this.src='/admin/assets/img/customer/customer5.jpg';">
                         </div>
                     </div>
                 </div>
@@ -170,10 +170,10 @@
                     $("#address").val(details.address || "");
 
                     // Show profile image if it exists
-                    if (customer.profile_image) {
-                         $("#avatar-preview").attr("src",
-                                `{{ env('ImagePath') . '/storage/' }}${customer.profile_image}`);
-                        // $("#avatar-preview").attr("src", `/storage/${customer.profile_image}`);
+                    let rawAvatar = customer.profile_image_url || customer.profile_image;
+                    if (rawAvatar) {
+                        let clean = (window.resolveImageUrl ? window.resolveImageUrl(rawAvatar) : ('/storage/' + String(rawAvatar).replace(/^https?:\/\/[^\/]+/, '').replace(/^\/+/, '').replace(/^storage\//, '')));
+                        $("#avatar-preview").attr("src", clean);
                         $("#avatar-preview-container").show();
                     } else {
                         $("#avatar-preview-container").hide();

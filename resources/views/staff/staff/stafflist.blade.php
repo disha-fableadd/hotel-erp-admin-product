@@ -492,10 +492,19 @@
                                     `;
 
                                     // Image URL
-                                    let defaultStaffImage = '{{ image_path('admin/assets/img/customer/customer5.jpg') }}';
-                                    let imageUrl = staff.profile_image_url || (staff.profile_image ?
-                                        '{{ image_path('storage/') }}' + String(staff.profile_image).replace(/^\/+/, '') :
-                                        defaultStaffImage);
+                                    let defaultStaffImage = '/admin/assets/img/customer/customer5.jpg';
+                                    let rawStaffImg = staff.profile_image_url || staff.profile_image || '';
+                                    let imageUrl = window.resolveImageUrl ? window.resolveImageUrl(rawStaffImg, defaultStaffImage) : null;
+                                    if (!imageUrl) {
+                                        if (rawStaffImg) {
+                                            let clean = String(rawStaffImg).replace(/^https?:\/\/[^\/]+/, '').replace(/^\/+/, '').replace(/^storage\//, '');
+                                            imageUrl = '/storage/' + clean;
+                                        } else {
+                                            imageUrl = defaultStaffImage;
+                                        }
+                                    }
+
+                                    let staffUsername = staff.username ? (staff.username.startsWith('@') ? staff.username : '@' + staff.username) : '';
 
                                     // Prepare action buttons
                                     let actionButtons = `
@@ -521,19 +530,24 @@
                                     tableBody.push([
                                         // Column 1: Staff Name with image AND collapsible details
                                         `<div>
-
-                                                <a href="javascript:void(0);" class="d-flex align-items-center">
-                                                    <img src="${imageUrl}"
-                                                        alt="staff"
-                                                        class="staff-image"
-                                                        onerror="this.onerror=null; this.src='${defaultStaffImage}';">
-                                                    <span class="staff-name">${staffName}</span>
-                                                </a>
-
+                                            <a href="/staff-view/${staff.id}" class="d-flex align-items-center text-decoration-none" style="color: inherit;">
+                                                <img src="${imageUrl}"
+                                                    alt="staff"
+                                                    class="staff-image"
+                                                    onerror="if(this.src && !this.src.includes('customer5.jpg')){this.src='${defaultStaffImage}';}else{this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'40\' height=\'40\' viewBox=\'0 0 40 40\'><rect fill=\'%23f3f4f6\' width=\'40\' height=\'40\'/><circle cx=\'20\' cy=\'15\' r=\'8\' fill=\'%23d1d5db\'/><path d=\'M10 34 C10 26, 15 24, 20 24 C25 24, 30 26, 30 34 Z\' fill=\'%23d1d5db\'/></svg>';}">
+                                                <div class="d-flex flex-column ms-2">
+                                                    <span class="staff-name font-weight-bold" style="color: #1b2850; font-size: 14px;">${staffName}</span>
+                                                    ${staffUsername ? `<small class="text-muted"><i class="fas fa-user-tag me-1 text-warning"></i>${staffUsername}</small>` : ''}
+                                                </div>
+                                            </a>
 
                                             <!-- Collapsible Details (visible only on mobile) -->
                                             <div class="collapse mt-2 d-lg-none" id="details-${staff.id}">
                                                 <div class="collapse-details">
+                                                    <div class="detail-item">
+                                                        <span class="detail-label">Username:</span>
+                                                        <span class="detail-value">${staffUsername || 'N/A'}</span>
+                                                    </div>
                                                     <div class="detail-item">
                                                         <span class="detail-label">Email:</span>
                                                         <span class="detail-value">${staff.email || 'N/A'}</span>
