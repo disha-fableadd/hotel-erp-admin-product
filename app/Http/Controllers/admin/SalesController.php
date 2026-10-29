@@ -626,12 +626,10 @@ class SalesController extends Controller
         $formattedAfterDiscount = $formatCurrency($afterDiscount);
         $formattedFinalTotal = $formatCurrency($finalTotal);
 
-        // âœ… Retrieve customer data
-        $customer = $sales->customer ? $sales->customer->toArray() : [
-            'name' => 'walk-in-customer',
-            'email' => '',
-            'phone' => '',
-            'address' => optional($user->userDetail)->address ?? '',
+        $customer = [
+            'name' => $sales->customer_name ?: ($user->name ?? 'Walk-in Customer'),
+            'email' => $user->email ?? '',
+            'phone' => $sales->customer_phone ?: ($user->phone ?? ''),
         ];
          $paidAmount = PaymentStore::where('order_id', $sales->id)
             ->where('isDeleted', 0)
@@ -651,12 +649,7 @@ class SalesController extends Controller
             'setting' => $setting,
             'orderItems' => $orderItems,
             'salesItems' => $orderItems,
-            'customer' => [
-                'name' => $user->name ?? 'walk-in-customer',
-                'email' => $user->email ?? '',
-                'phone' => $user->phone ?? '',
-                'address' => optional($user->userDetail)->address ?? 'arga',
-            ],
+            'customer' => $customer,
             'user' => $user ? $user->toArray() : null,
             'subtotal' => $formattedSubtotal,
             'discountPercent' => $discountPercent,
