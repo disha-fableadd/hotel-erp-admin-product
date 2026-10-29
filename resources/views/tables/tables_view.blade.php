@@ -459,13 +459,11 @@
             --tf-soft: #f8fafc;
             --tf-accent: #ff9f43;
             --tf-accent-deep: #ff821c;
-            background:
-                radial-gradient(circle at top right, rgba(255, 159, 67, 0.08), transparent 32%),
-                linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-            border: 1px solid var(--tf-line);
-            border-radius: 24px;
-            padding: 22px;
-            box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.35);
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            padding: 0;
+            box-shadow: none;
         }
 
         .tables-floor .page-header {
@@ -631,7 +629,7 @@
 
         .table-box.table-card {
             width: 100%;
-            min-height: 168px;
+            min-height: 186px;
             height: auto;
             border-radius: 20px;
             font-weight: 700;
@@ -753,6 +751,43 @@
             line-height: 1.25;
         }
 
+        .table-card__bill {
+            display: none;
+            margin: 8px auto 0;
+            padding: 6px 10px;
+            min-width: 88px;
+            max-width: 100%;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid rgba(22, 163, 74, 0.22);
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .table-card__bill.is-visible {
+            display: block;
+        }
+
+        .table-card__bill-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            opacity: 0.7;
+            margin-bottom: 2px;
+        }
+
+        .table-card__bill-total {
+            display: block;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #166534;
+            line-height: 1.2;
+        }
+
         .table-card__hint {
             margin-top: 4px;
             text-align: center;
@@ -761,6 +796,39 @@
             opacity: 0.65;
             position: relative;
             z-index: 1;
+        }
+
+        .table-card__reserve {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 4;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            border: 1px solid #fcd34d;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            color: #92400e;
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 8px 16px -12px rgba(146, 64, 14, 0.55);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .table-card__reserve i {
+            font-size: 11px;
+        }
+
+        .table-card__reserve:hover {
+            transform: translateY(-1px);
+            background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%);
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 10px 18px -10px rgba(255, 159, 67, 0.75);
         }
 
         .table-card__print {
@@ -786,6 +854,17 @@
             background: #0f172a;
             color: #fff;
             border-color: #0f172a;
+        }
+
+        @media (max-width: 767px) {
+            .table-card__reserve span {
+                display: none;
+            }
+
+            .table-card__reserve {
+                padding: 7px;
+                border-radius: 10px;
+            }
         }
 
         .table-icons {
@@ -842,11 +921,6 @@
         }
 
         @media (max-width: 767px) {
-            .tables-floor {
-                padding: 14px;
-                border-radius: 18px;
-            }
-
             .tables-floor .page-title h4 {
                 font-size: 1.25rem;
             }
@@ -857,8 +931,12 @@
             }
 
             .table-box.table-card {
-                min-height: 150px;
+                min-height: 168px;
                 border-radius: 16px;
+            }
+
+            .table-card__bill-total {
+                font-size: 13px;
             }
         }
     </style>
@@ -1495,24 +1573,20 @@
             tableOrderModal.show();
         }
 
-        document.addEventListener('click', function (e) {
-            const tableCard = e.target.closest('.table-box123');
-            if (!tableCard) return;
+        // Blank tables open dine-in directly (no choose-type modal).
+        // Reservation is started from the Reserve button on the card.
 
-            const status = (tableCard.dataset.tableStatus || '').toLowerCase();
-            if (status === 'blank') {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                window.pendingTableSelection = {
-                    tableId: tableCard.dataset.tableId,
-                    tableName: tableCard.dataset.tableName
-                };
-                tableTypeChoiceModalEl.querySelector('.js-choice-table-name').textContent = tableCard.dataset.tableName;
-                tableTypeChoiceModal.show();
-            }
-        }, true);
+        function formatTableBillAmount(amount) {
+            const firstTaxElement = $(".tax-value").first();
+            const currencySymbol = firstTaxElement.data("symbol") || '{{ $currency_symbol }}';
+            const currencyPosition = firstTaxElement.data("position") || '{{ $currency_position }}';
+            const value = parseFloat(amount);
+            if (isNaN(value)) return '';
+            const fixed = value.toFixed(2);
+            return currencyPosition === 'right' ? (fixed + currencySymbol) : (currencySymbol + fixed);
+        }
 
-        function updateTableCardStatus(tableId, statusClass, statusValue, orderId) {
+        function updateTableCardStatus(tableId, statusClass, statusValue, orderId, billTotal) {
             const $card = $(".table-box123[data-table-id='" + tableId + "']");
             if (!$card.length) return;
             const nextClass = statusClass || 'blank-table';
@@ -1520,6 +1594,9 @@
             const badgeLabel = nextStatus === 'running'
                 ? 'Occupied'
                 : (nextStatus === 'reserved' ? 'Reserved' : 'Available');
+            const hintText = nextStatus === 'running'
+                ? 'Tap to continue order'
+                : (nextStatus === 'reserved' ? 'Reserved · tap to dine-in' : 'Tap for dine-in');
 
             $card.removeClass('blank-table running-table reserved-table printed-table')
                 .addClass(nextClass)
@@ -1527,6 +1604,30 @@
                 .attr('data-table-status', nextStatus);
 
             $card.find('.table-card__badge').text(badgeLabel);
+            $card.find('.table-card__hint').text(hintText);
+
+            const $bill = $card.find('.table-card__bill');
+            if (nextStatus === 'running' && billTotal !== undefined && billTotal !== null && billTotal !== '') {
+                const formatted = formatTableBillAmount(billTotal);
+                $card.attr('data-bill-total', parseFloat(billTotal).toFixed(2));
+                $bill.addClass('is-visible');
+                $bill.find('.table-card__bill-total').text(formatted);
+            } else if (nextStatus !== 'running') {
+                $card.attr('data-bill-total', '');
+                $bill.removeClass('is-visible');
+                $bill.find('.table-card__bill-total').text('');
+            }
+
+            const $wrap = $card.closest('.table-card-wrap');
+            const tableName = $card.data('table-name') || $card.attr('data-table-name') || '';
+            $wrap.find('.js-reserve-table').remove();
+            if (nextStatus === 'blank' || nextStatus === 'available') {
+                $wrap.prepend(
+                    '<button type="button" class="table-card__reserve js-reserve-table" title="Reserve this table"' +
+                    ' data-table-id="' + tableId + '" data-table-name="' + String(tableName).replace(/"/g, '&quot;') + '">' +
+                    '<i class="fa-regular fa-calendar-check"></i><span>Reserve</span></button>'
+                );
+            }
         }
 
         function reserveSelectedTable(payload) {
@@ -1577,6 +1678,21 @@
             tableTypeChoiceModal = new bootstrap.Modal(tableTypeChoiceModalEl);
             reservationModal = new bootstrap.Modal(reservationModalEl);
 
+            function openReservationForTable(tableId, tableName) {
+                if (!tableId) return;
+                $('#reservationForm')[0].reset();
+                reservationModalEl.querySelector('.js-reservation-table-name').textContent = tableName || '';
+                $('#reservation_table_id').val(tableId);
+                if (tableTypeChoiceModal) tableTypeChoiceModal.hide();
+                reservationModal.show();
+            }
+
+            $(document).on('click', '.js-reserve-table', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openReservationForTable($(this).data('table-id'), $(this).data('table-name'));
+            });
+
             $(document).on('click', '.js-start-dinein', function () {
                 const pending = window.pendingTableSelection;
                 if (!pending) return;
@@ -1586,19 +1702,10 @@
             });
 
             $(document).on('click', '.js-start-reservation', function () {
-
-    const pending = window.pendingTableSelection;
-    if (!pending) return;
-
-    // Clear previous reservation data
-    $('#reservationForm')[0].reset();
-
-    reservationModalEl.querySelector('.js-reservation-table-name').textContent = pending.tableName;
-    $('#reservation_table_id').val(pending.tableId);
-
-    tableTypeChoiceModal.hide();
-    reservationModal.show();
-});
+                const pending = window.pendingTableSelection;
+                if (!pending) return;
+                openReservationForTable(pending.tableId, pending.tableName);
+            });
 
             $('#reservationForm').on('submit', function (e) {
                 e.preventDefault();
@@ -2561,7 +2668,13 @@
                         if (response.status) {
                             orderId = response.order_id;
                             if (window.selectedTableId) {
-                                updateTableCardStatus(window.selectedTableId, response.table_status_class || 'blank-table', response.table_status || 'blank', response.table_status_class === 'running-table' ? response.order_id : '');
+                                updateTableCardStatus(
+                                    window.selectedTableId,
+                                    response.table_status_class || 'blank-table',
+                                    response.table_status || 'blank',
+                                    response.table_status_class === 'running-table' ? response.order_id : '',
+                                    response.total_amount
+                                );
                             }
                             // Reset form
                             selectedItems.clear();
@@ -2767,7 +2880,13 @@
                         if (response.status) {
                             orderId = response.order_id;
                             if (window.selectedTableId) {
-                                updateTableCardStatus(window.selectedTableId, response.table_status_class || 'blank-table', response.table_status || 'blank', response.table_status_class === 'running-table' ? response.order_id : '');
+                                updateTableCardStatus(
+                                    window.selectedTableId,
+                                    response.table_status_class || 'blank-table',
+                                    response.table_status || 'blank',
+                                    response.table_status_class === 'running-table' ? response.order_id : '',
+                                    response.total_amount
+                                );
                             }
                             // Reset form
                             selectedItems.clear();
@@ -2968,7 +3087,13 @@
                         if (response.status) {
                             orderId = response.order_id;
                             if (window.selectedTableId) {
-                                updateTableCardStatus(window.selectedTableId, response.table_status_class || 'blank-table', response.table_status || 'blank', response.table_status_class === 'running-table' ? response.order_id : '');
+                                updateTableCardStatus(
+                                    window.selectedTableId,
+                                    response.table_status_class || 'blank-table',
+                                    response.table_status || 'blank',
+                                    response.table_status_class === 'running-table' ? response.order_id : '',
+                                    response.total_amount
+                                );
                             }
                             // Reset form
                             selectedItems.clear();

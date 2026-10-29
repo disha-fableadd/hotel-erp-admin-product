@@ -83,7 +83,10 @@ class TablesshowController extends Controller
 
 
         // ---- TABLE GROUPING LOGIC ----
-        $tables = Table_no::where(function($q) use ($branchIdToUse) {
+        $tables = Table_no::with(['order' => function ($q) {
+                $q->select('id', 'total_amount', 'table_status', 'isDeleted');
+            }])
+            ->where(function($q) use ($branchIdToUse) {
                 if (! empty($branchIdToUse)) {
                     $q->where('branch_id', $branchIdToUse);
                 }

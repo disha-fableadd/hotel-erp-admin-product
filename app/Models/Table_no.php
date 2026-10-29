@@ -54,4 +54,9 @@ class Table_no extends Model
             default => self::STATUS_BLANK,
         };
     }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class, 'order_id');
+    }
 }

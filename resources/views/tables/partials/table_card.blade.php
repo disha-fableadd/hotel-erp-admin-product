@@ -10,15 +10,37 @@
         'reserved' => 'Reserved',
         default => 'Available',
     };
+    $isAvailable = $statusKey === 'blank';
+    $isOccupied = $statusKey === 'running';
+    $billTotal = $isOccupied ? (float) optional($table->order)->total_amount : null;
+    $currencySymbol = $currencySymbol ?? ($currency_symbol ?? '₹');
+    $currencyPosition = $currencyPosition ?? ($currency_position ?? 'left');
+    $formattedBill = $billTotal !== null
+        ? ($currencyPosition === 'right'
+            ? number_format($billTotal, 2) . $currencySymbol
+            : $currencySymbol . number_format($billTotal, 2))
+        : '';
 @endphp
 
 <article class="table-card-wrap">
+    @if($isAvailable)
+        <button type="button"
+            class="table-card__reserve js-reserve-table"
+            title="Reserve this table"
+            data-table-id="{{ $table->id }}"
+            data-table-name="{{ $table->table_name }}">
+            <i class="fa-regular fa-calendar-check"></i>
+            <span>Reserve</span>
+        </button>
+    @endif
+
     <div class="table-box table-box123 table-card {{ $statusClass }}"
         data-table-id="{{ $table->id }}"
         data-order-id="{{ $table->order_id }}"
         data-table-name="{{ $table->table_name }}"
         data-table-type="{{ $table->table_type ?? '' }}"
-        data-table-status="{{ $table->resolved_status }}">
+        data-table-status="{{ $table->resolved_status }}"
+        data-bill-total="{{ $billTotal !== null ? number_format($billTotal, 2, '.', '') : '' }}">
 
         <div class="table-card__top">
             <span class="table-card__badge">{{ $statusLabel }}</span>
@@ -43,7 +65,13 @@
         </div>
 
         <div class="table-card__name">{{ $table->table_name }}</div>
-        <div class="table-card__hint">Tap to open</div>
+
+        <div class="table-card__bill {{ $isOccupied && $billTotal !== null ? 'is-visible' : '' }}">
+            <span class="table-card__bill-label">Bill</span>
+            <strong class="table-card__bill-total">{{ $formattedBill }}</strong>
+        </div>
+
+        <div class="table-card__hint">{{ $isAvailable ? 'Tap for dine-in' : ($statusKey === 'reserved' ? 'Reserved · tap to dine-in' : 'Tap to continue order') }}</div>
     </div>
 
     <a href="javascript:void(0);" class="print-table-order table-card__print"
