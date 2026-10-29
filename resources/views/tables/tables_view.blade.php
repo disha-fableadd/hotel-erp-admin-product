@@ -4,11 +4,11 @@
 
 @section('content')
     <style>
-        /* --- Modern Premium Styling --- */
+        /* --- Shared modal base --- */
         .modal-content {
             border: none !important;
             border-radius: 16px !important;
-            box-shadow: 0 25px 50px -12px rgba(209, 193, 193, 0.25) !important;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.28) !important;
             margin-top: 0rem !important;
             overflow: hidden;
         }
@@ -16,18 +16,18 @@
         .modal-header {
             background: #f8fafc;
             border-bottom: 1px solid #e2e8f0;
-            padding: 1.25rem 1.5rem;
+            padding: 1.1rem 1.35rem;
         }
 
         .modal-header .modal-title {
             font-weight: 700;
             color: #0f172a;
-            font-size: 1.25rem;
+            font-size: 1.15rem;
         }
 
         .modal-body {
-            background: #fdfdfd;
-            padding: 1.5rem;
+            background: #fff;
+            padding: 1.25rem;
         }
 
         .modal-lg {
@@ -36,6 +36,430 @@
 
         .modal-xl {
             max-width: 1200px !important;
+        }
+
+        /* ===== Table Order Modal (POS) ===== */
+        #tableOrderModal .modal-dialog {
+            max-width: 1180px !important;
+        }
+
+        #tableOrderModal .modal-content {
+            border-radius: 20px !important;
+            background: #f8fafc;
+        }
+
+        #tableOrderModal .modal-header {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 1.35rem;
+        }
+
+        #tableOrderModal .modal-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+        }
+
+        #tableOrderModal .table-order-kicker {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #ff9f43;
+        }
+
+        #tableOrderModal .modal-body {
+            background: #f8fafc;
+            padding: 1rem 1.15rem 1.15rem;
+        }
+
+        #tableOrderModal .table-order-layout {
+            align-items: stretch;
+        }
+
+        #tableOrderModal .tabs_wrapper {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 14px;
+            min-height: 560px;
+        }
+
+        #tableOrderModal .tabs_wrapper ul.tabs {
+            gap: 8px;
+            padding: 0 0 12px;
+            margin: 0 0 12px;
+            border-bottom: 1px solid #f1f5f9 !important;
+        }
+
+        #tableOrderModal .product-details {
+            background: #f8fafc;
+            padding: 8px 14px;
+            border-radius: 999px;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: none;
+        }
+
+        #tableOrderModal .product-details h6 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #475569 !important;
+        }
+
+        #tableOrderModal .tabs_wrapper ul.tabs li.active .product-details {
+            background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%);
+            border-color: transparent !important;
+            box-shadow: 0 8px 16px -10px rgba(255, 159, 67, 0.7);
+        }
+
+        #tableOrderModal .tabs_wrapper ul.tabs li.active .product-details h6 {
+            color: #fff !important;
+        }
+
+        #tableOrderModal .productset {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 12px 10px 14px;
+            margin-bottom: 12px;
+            box-shadow: none;
+            transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #tableOrderModal .productset:hover {
+            transform: translateY(-2px);
+            border-color: #fdba74;
+            box-shadow: 0 12px 24px -18px rgba(15, 23, 42, 0.35);
+        }
+
+        #tableOrderModal .productset.active,
+        #tableOrderModal .productset:has(.check-product i.selected) {
+            border-color: #ff9f43;
+            box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.12);
+        }
+
+        #tableOrderModal .productsetimgin {
+            height: 72px;
+            margin: 0 auto 8px;
+            background: #f8fafc;
+            border-radius: 10px;
+            object-fit: contain;
+        }
+
+        #tableOrderModal .productsetcontent {
+            padding: 0;
+        }
+
+        #tableOrderModal .productsetcontent h4 {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 2px;
+        }
+
+        #tableOrderModal .productsetcontent h6 {
+            font-size: 14px;
+            font-weight: 800;
+            color: #ff9f43;
+        }
+
+        #tableOrderModal .card-order {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            box-shadow: none;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #tableOrderModal .card-order > .card-body {
+            padding: 14px !important;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        #tableOrderModal .order-panel-title {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 10px;
+        }
+
+        #tableOrderModal .gst-header {
+            margin-bottom: 12px !important;
+        }
+
+        #tableOrderModal .gst-toggle {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            width: 100%;
+            background: #f1f5f9;
+            border-radius: 12px;
+            padding: 4px;
+        }
+
+        #tableOrderModal .custom-radio-label {
+            margin: 0 !important;
+            justify-content: center;
+            padding: 8px 10px;
+            border-radius: 9px;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #64748b;
+            background: transparent;
+            transition: all 0.15s ease;
+        }
+
+        #tableOrderModal .custom-radio-label:has(input:checked) {
+            background: #fff;
+            color: #0f172a;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+        }
+
+        #tableOrderModal .custom-radio-label input {
+            display: none;
+        }
+
+        #tableOrderModal .totalitem {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        #tableOrderModal .totalitem h4 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 700;
+            color: #334155;
+        }
+
+        #tableOrderModal .clear_items {
+            font-size: 12px;
+            font-weight: 700;
+            color: #ef4444 !important;
+            text-decoration: none;
+        }
+
+        #tableOrderModal .product-table {
+            min-height: 120px;
+            max-height: 220px;
+            overflow-y: auto;
+            padding-right: 2px;
+            margin-bottom: 8px;
+        }
+
+        #tableOrderModal .product-lists {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            list-style: none;
+            margin: 0 0 8px;
+            padding: 10px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+        }
+
+        #tableOrderModal .product-lists .productimg {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        #tableOrderModal .product-lists .productimgs img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #fff;
+        }
+
+        #tableOrderModal .product-lists h4 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: capitalize;
+        }
+
+        #tableOrderModal .select-group label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        #tableOrderModal #discount {
+            border-radius: 10px;
+            border-color: #e2e8f0;
+            height: 40px;
+            font-size: 14px;
+        }
+
+        #tableOrderModal .setvalue ul {
+            list-style: none;
+            margin: 10px 0 0;
+            padding: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+        }
+
+        #tableOrderModal .setvalue ul li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 6px 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        #tableOrderModal .setvalue ul li:last-child {
+            border-bottom: 0;
+        }
+
+        #tableOrderModal .setvalue ul li h5 {
+            margin: 0;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        #tableOrderModal .setvalue ul li h6 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        #tableOrderModal .setvalue ul li.total-value {
+            margin-top: 4px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 0;
+        }
+
+        #tableOrderModal .setvalue ul li.total-value h5,
+        #tableOrderModal .setvalue ul li.total-value h6 {
+            font-size: 14px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        #tableOrderModal .payment_panel {
+            margin-top: auto;
+            padding-top: 12px;
+        }
+
+        #tableOrderModal .setvaluecash ul {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            list-style: none;
+            margin: 0 0 10px;
+            padding: 0;
+        }
+
+        #tableOrderModal .setvaluecash ul li a {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            min-height: 54px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            color: #334155;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 8px;
+            text-decoration: none;
+        }
+
+        #tableOrderModal .paymentmethod.active {
+            background: #0f172a !important;
+            border-color: #0f172a !important;
+            color: #fff !important;
+        }
+
+        #tableOrderModal .paymentmethod.active svg {
+            fill: #fff;
+        }
+
+        #tableOrderModal .btn-totallabel,
+        #tableOrderModal .btn-totallabel_1,
+        #tableOrderModal .btn-totallabel_2 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            width: 100%;
+            margin: 0;
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%) !important;
+            color: #fff !important;
+            border: 0;
+            cursor: pointer;
+            box-shadow: 0 10px 20px -12px rgba(255, 159, 67, 0.8);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        #tableOrderModal .btn-totallabel:hover,
+        #tableOrderModal .btn-totallabel_1:hover,
+        #tableOrderModal .btn-totallabel_2:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 24px -12px rgba(255, 159, 67, 0.9);
+        }
+
+        #tableOrderModal .btn-totallabel h6,
+        #tableOrderModal .btn-totallabel_1 h6,
+        #tableOrderModal .btn-totallabel_2 h6,
+        #tableOrderModal .btn-totallabel h5,
+        #tableOrderModal .btn-totallabel_1 h5,
+        #tableOrderModal .btn-totallabel_2 h5 {
+            margin: 0;
+            color: #fff !important;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        #tableOrderModal .modal-order-edit {
+            gap: 8px;
+        }
+
+        #tableOrderModal .btn-totallabel_1,
+        #tableOrderModal .btn-totallabel_2 {
+            width: calc(50% - 4px) !important;
+        }
+
+        #tableOrderModal .btn-totallabel_2 {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+            box-shadow: 0 10px 20px -12px rgba(15, 23, 42, 0.55);
+        }
+
+        @media (max-width: 991px) {
+            #tableOrderModal .tabs_wrapper {
+                min-height: 0;
+            }
+
+            #tableOrderModal .product-table {
+                max-height: 180px;
+            }
         }
 
         /* Mobile Responsive Table for Order List Modal */
@@ -488,6 +912,24 @@
         .select-split .select-group .form-control:focus {
             border-color: var(--pos-primary);
             box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.2);
+        }
+
+        /* Total Section Button */
+        .btn-total-amount {
+            background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%) !important;
+            color: white !important;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 159, 67, 0.3);
+        }
+        .btn-total-amount:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 159, 67, 0.4);
         }
 
         /* Pricing Summary */
@@ -1009,22 +1451,25 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
             gap: 14px;
+            align-items: stretch;
         }
 
         .table-card-wrap {
             position: relative;
+            display: flex;
+            height: 100%;
         }
 
         .table-box.table-card {
             width: 100%;
-            min-height: 0;
-            height: auto;
+            min-height: 210px;
+            height: 100%;
             border-radius: 16px;
             font-weight: 600;
             display: flex;
             flex-direction: column;
             align-items: stretch;
-            justify-content: stretch;
+            justify-content: flex-start;
             position: relative;
             text-transform: none;
             cursor: pointer;
@@ -1190,12 +1635,13 @@
 
         .table-card__actions {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            align-items: stretch;
+            justify-content: stretch;
             gap: 8px;
             padding: 10px 12px;
             border-top: 1px solid #f1f5f9;
             background: #fafbfc;
+            margin-top: auto;
         }
 
         .table-card__action {
@@ -1203,6 +1649,10 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
+            flex: 1 1 auto;
+            width: 100%;
+            min-height: 36px;
+            padding: 8px 10px;
             border: 1px solid #e2e8f0;
             background: #fff;
             color: #334155;
@@ -1210,16 +1660,10 @@
             font-size: 12px;
             font-weight: 700;
             line-height: 1;
-            text-decoration: none;
+            text-decoration: none !important;
             cursor: pointer;
+            box-sizing: border-box;
             transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-        }
-
-        .table-card__action--reserve,
-        .table-card__action--print-full {
-            padding: 8px 10px;
-            flex: 1;
-            width: 100%;
         }
 
         .table-card__action--reserve:hover {
@@ -1228,20 +1672,7 @@
             color: #c2410c;
         }
 
-        .table-card__action--print {
-            width: 34px;
-            height: 34px;
-            flex: 0 0 34px;
-            padding: 0;
-        }
-
-        .table-card__action--print-full {
-            height: auto;
-            min-height: 34px;
-        }
-
-        .table-card__action--print:hover,
-        .table-card__action--print-full:hover {
+        .table-card__action--print:hover {
             background: #0f172a;
             border-color: #0f172a;
             color: #fff;
@@ -1249,7 +1680,7 @@
 
         .table-card__action-spacer {
             flex: 1;
-            min-height: 34px;
+            min-height: 36px;
         }
 
         .table-icons {
@@ -1313,10 +1744,6 @@
             .table-container {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 10px;
-            }
-
-            .table-card__action--reserve span {
-                display: none;
             }
 
             .table-card__bill-total {
@@ -1425,7 +1852,7 @@
         </div>
 
     <div class="modal fade" id="tableOrderModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
 
                 <div class="modal-header d-flex align-items-center justify-content-between">
@@ -1435,6 +1862,7 @@
                         </div>
                         <h5 class="modal-title m-0" style="font-weight: 800; color: #0f172a; font-size: 16px;">
                             <input type="hidden" name="table_id" id="table_id">
+                            <span class="table-order-kicker d-block" style="font-size: 11px; letter-spacing: 0.06em;">Dine In Order</span>
                             Table: <span class="badge bg-warning text-dark px-2 py-1 js-table-name ms-1" style="font-size: 13px; font-weight: 700;"></span>
                         </h5>
                     </div>
@@ -1442,7 +1870,7 @@
                 </div>
 
                 <div class="modal-body">
-                    <div class="row">
+                    <div class="row g-3 table-order-layout">
                     <div class="col-lg-7 col-sm-12 tabs_wrapper">
 
                         @php
@@ -1484,6 +1912,7 @@
 
                         <div class="card card-order">
                             <div class="card-body body_space">
+                                <div class="order-panel-title">Current Order</div>
                                 <div class="gst-header mb-3" style="display: flex; align-items: center; justify-content: space-between;">
                                     <div class="custom-gst-pill-group">
                                         <label class="custom-gst-pill">
@@ -1956,7 +2385,7 @@
                 );
             } else if (nextStatus === 'running') {
                 $actions.append(
-                    '<a href="javascript:void(0);" class="print-table-order table-card__action table-card__action--print table-card__action--print-full"' +
+                    '<a href="javascript:void(0);" class="print-table-order table-card__action table-card__action--print"' +
                     ' data-table_no_invoice="' + tableId + '" title="Print / view orders">' +
                     '<i class="fa-solid fa-print"></i><span>Print</span></a>'
                 );
@@ -2015,17 +2444,26 @@
 
             function openReservationForTable(tableId, tableName) {
                 if (!tableId) return;
-                $('#reservationForm')[0].reset();
-                reservationModalEl.querySelector('.js-reservation-table-name').textContent = tableName || '';
+                if ($('#reservationForm').length) {
+                    $('#reservationForm')[0].reset();
+                }
+                if (reservationModalEl) {
+                    reservationModalEl.querySelector('.js-reservation-table-name').textContent = tableName || '';
+                }
                 $('#reservation_table_id').val(tableId);
                 if (tableTypeChoiceModal) tableTypeChoiceModal.hide();
-                reservationModal.show();
+                if (tableOrderModal) tableOrderModal.hide();
+                if (reservationModal) {
+                    reservationModal.show();
+                }
             }
 
             $(document).on('click', '.js-reserve-table', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-                openReservationForTable($(this).data('table-id'), $(this).data('table-name'));
+                const tableId = $(this).attr('data-table-id') || $(this).data('table-id');
+                const tableName = $(this).attr('data-table-name') || $(this).data('table-name');
+                openReservationForTable(tableId, tableName);
             });
 
             $(document).on('click', '.js-start-dinein', function () {
@@ -2063,6 +2501,10 @@
 
             document.querySelectorAll('.table-box123').forEach(function (box) {
                 box.addEventListener('click', function (e) {
+                    // Reserve / Print live inside the card — don't open dine-in for those
+                    if (e.target.closest('.table-card__actions, .js-reserve-table, .print-table-order')) {
+                        return;
+                    }
 
                     const tableId = this.dataset.tableId;
                     const tableName = this.dataset.tableName;
@@ -2129,7 +2571,8 @@
 
             $(document).on("click", ".print-table-order", function (e) {
                 e.preventDefault();
-                let tableId = $(this).data("table_no_invoice");
+                e.stopPropagation();
+                let tableId = $(this).data("table_no_invoice") || $(this).attr("data-table_no_invoice");
 
                 $.ajax({
                     url: "/api/get_orders_invoice",

@@ -64,7 +64,7 @@
             </div>
         </div>
 
-        <div class="table-card__actions" onclick="event.stopPropagation();">
+        <div class="table-card__actions">
             @if($isAvailable)
                 <button type="button"
                     class="table-card__action table-card__action--reserve js-reserve-table"
@@ -76,7 +76,7 @@
                 </button>
             @elseif($isOccupied)
                 <a href="javascript:void(0);"
-                    class="print-table-order table-card__action table-card__action--print table-card__action--print-full"
+                    class="print-table-order table-card__action table-card__action--print"
                     data-table_no_invoice="{{ $table->id }}"
                     title="Print / view orders">
                     <i class="fa-solid fa-print"></i>
