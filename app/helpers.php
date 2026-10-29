@@ -488,3 +488,143 @@ if (! function_exists('tenant_image_url')) {
         return ($base ? $base : '') . '/storage/' . $relativePath;
     }
 }
+
+if (! function_exists('resolve_local_image_base64')) {
+    /**
+     * Resolve a stored relative path or URL to a base64 data URI for DomPDF rendering.
+     *
+     * @param string|null $relativePath
+     * @return string|null
+     */
+    function resolve_local_image_base64(?string $relativePath): ?string
+    {
+        $relativePath = trim((string) $relativePath);
+        if ($relativePath === '') {
+            return null;
+        }
+
+        $cleanPath = ltrim(preg_replace('#^https?://[^/]+/#', '', preg_replace('#^storage/#', '', preg_replace('#^public/#', '', $relativePath))), '/');
+
+        $candidates = [
+            storage_path('app/public/' . $cleanPath),
+            storage_path('app/public/qr_codes/' . basename($cleanPath)),
+            public_path('storage/' . $cleanPath),
+            public_path($cleanPath),
+            base_path('storage/app/public/' . $cleanPath),
+        ];
+
+        // Tenant paths if tenant active
+        $tenantId = null;
+        try {
+            if (function_exists('tenant')) {
+                $tenantId = tenant('id');
+            }
+            if (! $tenantId && function_exists('session') && session()->has('tenant_id')) {
+                $tenantId = (int) session('tenant_id');
+            }
+        } catch (\Throwable $e) {
+            $tenantId = null;
+        }
+
+        if ($tenantId) {
+            $candidates[] = base_path('storage/tenants/' . $tenantId . '/app/public/' . $cleanPath);
+            $candidates[] = base_path('storage/tenants/' . $tenantId . '/app/public/qr_codes/' . basename($cleanPath));
+        }
+
+        $tenantsBase = base_path('storage/tenants');
+        if (is_dir($tenantsBase)) {
+            $matched = glob($tenantsBase . '/*/app/public/' . $cleanPath);
+            if (!empty($matched)) {
+                $candidates[] = $matched[0];
+            }
+            $matched2 = glob($tenantsBase . '/*/app/public/qr_codes/' . basename($cleanPath));
+            if (!empty($matched2)) {
+                $candidates[] = $matched2[0];
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && is_file($candidate)) {
+                $mime = function_exists('mime_content_type') ? (@mime_content_type($candidate) ?: 'image/png') : 'image/png';
+                return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($candidate));
+            }
+        }
+
+        // Fallback: if starting with http/https or accessible via URL
+        $urlCandidates = [];
+        if (str_starts_with($relativePath, 'http://') || str_starts_with($relativePath, 'https://')) {
+            $urlCandidates[] = $relativePath;
+        }
+        if (function_exists('tenant_image_url')) {
+            $urlCandidates[] = tenant_image_url($relativePath);
+        }
+
+        foreach ($urlCandidates as $url) {
+            try {
+                $ctx = stream_context_create(['http' => ['timeout' => 3]]);
+                $data = @file_get_contents($url, false, $ctx);
+                if ($data) {
+                    $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                    $mime = $finfo->buffer($data) ?: 'image/png';
+                    return 'data:' . $mime . ';base64,' . base64_encode($data);
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        return null;
+    }
+}
+
+if (! function_exists('make_thermal_invoice_pdf')) {
+    /**
+     * Build a thermal invoice PDF whose page height matches content (minimal blank tail).
+     *
+     * @param  string  $view
+     * @param  array  $data
+     * @param  int|iterable  $itemCountOrItems
+     * @param  float  $widthPt
+     * @return \Barryvdh\DomPDF\PDF
+     */
+    function make_thermal_invoice_pdf(string $view, array $data, $itemCountOrItems = 1, float $widthPt = 226.77)
+    {
+        $options = [
+            'isHtml5ParserEnabled' => true,
+            'defaultFont' => 'DejaVu Sans',
+        ];
+
+        // Pass 1: render on a tall canvas and measure the body frame height.
+        $probe = \Barryvdh\DomPDF\Facade\Pdf::loadView($view, $data)
+            ->setPaper([0, 0, $widthPt, 4000], 'portrait')
+            ->setOptions($options);
+
+        $dompdf = $probe->getDomPDF();
+        $measuredHeight = 0.0;
+        $dompdf->setCallbacks([
+            [
+                'event' => 'end_frame',
+                'f' => function ($frame, $canvas, $fontMetrics) use (&$measuredHeight) {
+                    $node = $frame->get_node();
+                    if ($node && strtolower((string) $node->nodeName) === 'body') {
+                        $box = $frame->get_padding_box();
+                        $measuredHeight = max($measuredHeight, (float) ($box['h'] ?? 0));
+                    }
+                },
+            ],
+        ]);
+        $dompdf->render();
+
+        if ($measuredHeight > 40) {
+            // Small pad so the last line is not clipped; avoid large blank feed.
+            $heightPt = min(8000, max(100, $measuredHeight + 15));
+        } else {
+            $itemCount = is_countable($itemCountOrItems) ? count($itemCountOrItems) : max(1, (int) $itemCountOrItems);
+            $hasQr = !empty($data['setting']->qr_code) || !empty($data['sales']->custom_qr_code);
+            $heightMm = 45 + ($itemCount * 7.5) + ($hasQr ? 35 : 0) + 30;
+            $heightPt = max(100, $heightMm * 2.83465);
+        }
+
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView($view, $data)
+            ->setPaper([0, 0, $widthPt, $heightPt], 'portrait')
+            ->setOptions($options);
+    }
+}

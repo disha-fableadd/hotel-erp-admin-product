@@ -560,7 +560,7 @@ class SalesController extends Controller
     //     return $pdf->stream('invoice_' . $view_id . '.pdf');
     // }
 
-    public function salse_invoice_pdf($id)
+    public function salse_invoice_pdf(Request $request, $id)
     {
         $view_id = $id;
         $sales = Order::find($view_id);
@@ -640,6 +640,10 @@ class SalesController extends Controller
         // âœ… Pending amount (single source of truth)
         $pendingAmount = $sales->remaining_amount ?? 0;
 
+        $allPayments = PaymentStore::where('order_id', $sales->id)
+            ->where('isDeleted', 0)
+            ->get();
+
         // âœ… Prepare data for view
         $pdfData = [
             'view_id' => $view_id,
@@ -663,22 +667,20 @@ class SalesController extends Controller
             'taxDetails1' => $taxDetails,
             'paidAmount'             => $paidAmount,
             'pendingAmount'          => $pendingAmount,
-            
+            'allPayments'            => $allPayments,
         ];
 
-        // ✅ Choose PDF view based on setting
-        $viewName = (isset($setting->invoice_size) && $setting->invoice_size === 'small') 
+        $useSmallInvoice = $request->query('size') === 'small'
+            || (isset($setting->invoice_size) && $setting->invoice_size === 'small');
+
+        $viewName = $useSmallInvoice
             ? 'sales.salse-invoice-small-pdf' 
             : 'sales.salse-invoice-pdf';
 
-        // ✅ Generate PDF
-        $pdf = PDF::loadView($viewName, $pdfData);
-
-        // ✅ Adjust paper size for small thermal printing
-        if (isset($setting->invoice_size) && $setting->invoice_size === 'small') {
-            // 88mm width, 200mm height
-            $pdf->setPaper([0, 0, 249.45, 566.93], 'portrait');
+        if ($useSmallInvoice) {
+            $pdf = make_thermal_invoice_pdf($viewName, $pdfData, $orderItems, 226.77);
         } else {
+            $pdf = PDF::loadView($viewName, $pdfData);
             $pdf->setPaper('A4', 'portrait');
         }
         return $pdf->stream('invoice_' . $view_id . '.pdf');
