@@ -1,4 +1,4 @@
-﻿@extends('layout.app')
+@extends('layout.app')
 
 @section('title', 'Tables View')
 
@@ -88,230 +88,609 @@
             }
         }
 
-        .setvaluecash ul li a {
-            border: 1px solid #e9ecef;
-            color: #000;
-            font-size: 11px;
-            font-weight: 600;
-            min-height: 59px;
-            border-radius: 5px;
-            padding: 8px 7px;
+        /* =========================================================
+           HOTEL POS THEME VARIABLES & CORE STYLES
+           ========================================================= */
+        :root {
+            --pos-primary: #ff9f43;
+            --pos-primary-hover: #ff8510;
+            --pos-primary-light: #fffaf5;
+            --pos-primary-soft: #fff5eb;
+            --pos-dark: #1b2850;
+            --pos-slate: #0f172a;
+            --pos-body: #334155;
+            --pos-muted: #64748b;
+            --pos-border: #e2e8f0;
+            --pos-bg-card: #ffffff;
+            --pos-bg-subtle: #f8fafc;
         }
 
         .disabled-product {
-            opacity: 0.6;
+            opacity: 0.55;
             pointer-events: none;
+            filter: grayscale(0.6);
         }
 
         /* --- Category Tabs (Premium Pill Design) --- */
         .tabs_wrapper {
             overflow: visible;
         }
-
         .tabs_wrapper ul.tabs {
             display: flex;
             flex-wrap: nowrap;
             overflow-x: auto;
             overflow-y: visible;
             gap: 10px;
-            padding: 6px 4px 10px 4px;
+            padding: 4px 2px 14px 2px;
             margin: 0 0 16px 0;
             list-style: none;
-            /* Custom slim scrollbar ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â visible but styled */
             scrollbar-width: thin;
-            scrollbar-color: #ff9f43 #f1f5f9;
+            scrollbar-color: var(--pos-primary) #f1f5f9;
         }
-
-        /* Chrome/Safari custom scrollbar */
         .tabs_wrapper ul.tabs::-webkit-scrollbar {
             height: 4px;
             display: block;
         }
-
         .tabs_wrapper ul.tabs::-webkit-scrollbar-track {
             background: #f1f5f9;
             border-radius: 99px;
         }
-
         .tabs_wrapper ul.tabs::-webkit-scrollbar-thumb {
-            background: #ff9f43;
+            background: var(--pos-primary);
             border-radius: 99px;
         }
-
-        .tabs_wrapper ul.tabs::-webkit-scrollbar-thumb:hover {
-            background: #ff821c;
-        }
-
         .tabs_wrapper ul.tabs li {
             flex: 0 0 auto;
             cursor: pointer;
             transition: transform 0.2s ease;
             width: max-content !important;
         }
-        
         .tabs_wrapper ul.tabs li:active {
-            transform: scale(0.95);
+            transform: scale(0.96);
         }
-
         .product-details {
-            background: #f1f5f9;
+            background: #ffffff;
             padding: 8px 20px;
-            border-radius: 50px;
-            border: 1px solid #e2e8f0 !important;
+            border-radius: 30px;
+            border: 1.5px solid var(--pos-border) !important;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             width: max-content !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
         }
-
         .product-details h6 {
-            font-size: 14.5px;
-            font-weight: 600;
-            color: #475569;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--pos-slate) !important;
             margin: 0;
             white-space: nowrap;
+            letter-spacing: 0.2px;
         }
-
         .tabs_wrapper ul.tabs li:hover .product-details {
-            background: #e2e8f0;
-            border-color: #cbd5e1 !important;
+            border-color: var(--pos-primary) !important;
+            color: var(--pos-primary);
+            background: var(--pos-primary-light);
+            transform: translateY(-2px);
         }
-
         .tabs_wrapper ul.tabs li.active .product-details {
-            background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%);
+            background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%) !important;
             border-color: transparent !important;
-            box-shadow: 0 6px 12px rgba(255, 159, 67, 0.35);
+            box-shadow: 0 4px 12px rgba(255, 159, 67, 0.35);
         }
-
         .tabs_wrapper ul.tabs li.active .product-details h6 {
             color: #ffffff !important;
         }
-        
-        /* --- Product Card (Sleek Glassmorphic) --- */
+
+        /* --- Product Card (Modern Hotel Food Card Design) --- */
         .productset {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
+            border: 1.5px solid #e9ecef;
             border-radius: 12px;
-            padding: 12px;
+            padding: 12px 10px;
             margin-bottom: 16px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
             text-align: center;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
-
         .productset:hover {
+            border-color: var(--pos-primary);
             transform: translateY(-4px);
-            box-shadow: 0 12px 20px -8px rgba(0,0,0,0.15);
-            border-color: #cbd5e1;
+            box-shadow: 0 8px 20px rgba(255, 159, 67, 0.18);
         }
-
         .productset.active {
-            border-color: #ff9f43;
-            box-shadow: 0 0 0 2px rgba(255, 159, 67, 0.2);
+            border-color: var(--pos-primary);
+            box-shadow: 0 0 0 2px rgba(255, 159, 67, 0.25);
         }
-
-        .productsetimgin {
-            height: 85px;
-            width: 100%;
-            object-fit: contain;
-            border-radius: 8px;
+        .productset .productsetimg {
             background: #f8fafc;
-            padding: 8px;
-            margin-bottom: 10px;
-            transition: transform 0.3s ease;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            min-height: 90px;
         }
-        
+        .productsetimgin {
+            max-height: 75px;
+            max-width: 100%;
+            object-fit: contain;
+            transition: transform 0.25s ease;
+            margin: 0 auto;
+            display: block;
+        }
         .productset:hover .productsetimgin {
-            transform: scale(1.05);
+            transform: scale(1.06);
         }
-
-        .productsetcontent {
-            padding: 0.5rem;
-        }
-
-        .productsetcontent h4 {
-            font-size: 15px;
+        .productset .productsetimg h6 {
+            position: absolute;
+            bottom: 4px;
+            right: 6px;
+            font-size: 10px;
             font-weight: 700;
-            color: #0f172a;
-            margin-bottom: 6px;
+            color: var(--pos-muted);
+            background: rgba(255, 255, 255, 0.85);
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin: 0;
+        }
+        .productsetcontent h4 {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--pos-slate);
+            margin: 4px 0 2px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
+        .product-category-subtitle {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--pos-muted);
+            text-transform: capitalize;
+            margin-bottom: 4px;
+        }
         .productsetcontent h6 {
-            font-size: 15px;
+            font-size: 14.5px;
             font-weight: 800;
-            color: #ff9f43;
+            color: var(--pos-primary);
             margin: 0;
+        }
+        .productsetbtn button {
+            display: none;
         }
 
         /* --- Order Panel --- */
         .card-order {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--pos-border);
+            border-radius: 14px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
             overflow: hidden;
         }
-
         .card-order .card-body {
-            padding: 1.5rem;
+            padding: 1.25rem;
         }
 
-        /* GST Radio Styling */
-        .custom-radio-label {
-            font-weight: 600;
-            color: #475569;
-            font-size: 14px;
+        /* Segmented GST Pill Switch */
+        .custom-gst-pill-group {
+            display: inline-flex;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 99px;
+            gap: 4px;
+            border: 1px solid var(--pos-border);
+        }
+        .custom-gst-pill {
+            position: relative;
+            margin: 0;
             cursor: pointer;
+        }
+        .custom-gst-pill input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .custom-gst-pill span {
+            display: inline-block;
+            padding: 6px 16px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--pos-muted);
+            border-radius: 99px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .custom-gst-pill input[type="radio"]:checked + span {
+            background: #ffffff;
+            color: var(--pos-primary);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            font-weight: 700;
+        }
+
+        /* Total Items Header */
+        .totalitem {
             display: flex;
             align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            margin-bottom: 8px;
+            border-bottom: 1px dashed var(--pos-border);
+        }
+        .totalitem h4 {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--pos-slate);
+            margin: 0;
+        }
+        .totalitem .clear_items {
+            font-size: 12px;
+            font-weight: 600;
+            color: #ef4444;
+            text-decoration: none;
+            padding: 3px 10px;
+            border-radius: 6px;
+            background: #fee2e2;
+            transition: all 0.2s ease;
+        }
+        .totalitem .clear_items:hover {
+            background: #fecaca;
+            color: #dc2626;
+        }
+
+        /* Cart Table & Lists */
+        .product-table {
+            max-height: 220px;
+            overflow-y: auto;
+            padding-right: 4px;
+            margin-bottom: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--pos-primary) #f1f5f9;
+        }
+        .product-lists {
+            display: flex !important;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            background: #ffffff;
+            border: 1px solid var(--pos-border);
+            border-radius: 10px;
+            list-style: none;
+            transition: all 0.2s ease;
             gap: 8px;
         }
-        
-        .custom-radio-label input[type="radio"] {
-            accent-color: #ff9f43;
-            width: 18px;
-            height: 18px;
+        .product-lists:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
         }
-
-        /* Total Section Button */
-        .btn-total-amount {
-            background: linear-gradient(135deg, #1b2850 0%, #0f172a 100%) !important;
-            color: white !important;
+        .product-lists > li:first-child {
+            flex: 1;
+            min-width: 0;
+        }
+        .product-lists .productimg {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .product-lists .productimgs img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+        }
+        .product-lists .productcontet h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--pos-slate);
+            margin: 0 0 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .product-lists .increment-decrement .input-groups {
+            display: inline-flex;
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid var(--pos-border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .product-lists .increment-decrement .button {
+            width: 22px;
+            height: 22px;
             border: none;
-            border-radius: 12px;
-            padding: 16px;
-            width: 100%;
-            font-size: 16px;
+            background: transparent;
+            color: var(--pos-slate);
             font-weight: 700;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(27, 40, 80, 0.2);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .product-lists .increment-decrement .button:hover {
+            background: var(--pos-primary);
+            color: #ffffff;
+        }
+        .product-lists .increment-decrement .quantity-field {
+            width: 30px;
+            height: 22px;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--pos-slate);
+        }
+        .product-lists li.quantity_type {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--pos-muted);
+            background: #f1f5f9;
+            padding: 3px 6px;
+            border-radius: 4px;
+        }
+        .product-lists li.price {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--pos-primary);
+            min-width: 50px;
+            text-align: right;
+        }
+        .product-lists .remove-item {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            background: #fee2e2;
+            color: #ef4444;
+            transition: all 0.2s ease;
+        }
+        .product-lists .remove-item:hover {
+            background: #ef4444;
+            color: #ffffff;
+        }
+        .product-lists .remove-item img {
+            width: 13px;
+            height: 13px;
         }
 
-        .btn-total-amount:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(27, 40, 80, 0.3);
+        /* Discount Input */
+        .select-split .select-group label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--pos-slate);
+            margin-bottom: 3px;
+            display: block;
+        }
+        .select-split .select-group .form-control {
+            border: 1.5px solid var(--pos-border);
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+        .select-split .select-group .form-control:focus {
+            border-color: var(--pos-primary);
+            box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.2);
         }
 
+        /* Pricing Summary */
+        .setvalue {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--pos-border);
+            margin: 8px 0 12px;
+        }
+        .setvalue ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .setvalue ul li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 12.5px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        .setvalue ul li:last-child {
+            border-bottom: none;
+        }
+        .setvalue ul li h5 {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--pos-muted);
+            margin: 0;
+        }
+        .setvalue ul li h6 {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--pos-slate);
+            margin: 0;
+        }
+        .setvalue ul li.total-value {
+            border-top: 1.5px solid var(--pos-border);
+            border-bottom: none;
+            margin-top: 5px;
+            padding-top: 6px;
+        }
+        .setvalue ul li.total-value h5 {
+            font-size: 13.5px;
+            font-weight: 800;
+            color: var(--pos-slate);
+        }
+        .setvalue ul li.total-value h6 {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--pos-primary);
+        }
+
+        /* Payment Methods Grid */
         .payment_panel {
-            /* position: fixed; */
             bottom: 0;
             background-color: white;
-            /* width: 27.5%; */
+            z-index: 10;
+        }
+        .setvaluecash ul {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+        .setvaluecash ul li {
+            margin: 0;
+            padding: 0;
+        }
+        .setvaluecash ul li a.paymentmethod {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            border: 1.5px solid var(--pos-border);
+            background: #ffffff;
+            color: var(--pos-slate);
+            font-size: 11px;
+            font-weight: 700;
+            min-height: 54px;
+            border-radius: 8px;
+            padding: 6px 4px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+        .setvaluecash ul li a.paymentmethod:hover {
+            border-color: var(--pos-primary);
+            background: var(--pos-primary-light);
+            color: var(--pos-primary);
+            transform: translateY(-2px);
+        }
+        .setvaluecash ul li a.paymentmethod.active {
+            background: var(--pos-dark) !important;
+            border-color: var(--pos-dark) !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 10px rgba(27, 40, 80, 0.3);
+        }
+        .setvaluecash ul li a.paymentmethod.active i {
+            color: #ffffff !important;
+        }
+        .setvaluecash ul li a.paymentmethod.active svg {
+            fill: #ffffff !important;
         }
 
-        .body_space {
-            /*margin-bottom: 2rem;*/
+        /* Action Buttons */
+        .btn-totallabel {
+            background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%) !important;
+            color: #ffffff !important;
+            border: none;
+            border-radius: 12px;
+            padding: 13px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            margin-top: 12px;
+            box-shadow: 0 4px 14px rgba(255, 159, 67, 0.35);
+            transition: all 0.25s ease;
+        }
+        .btn-totallabel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 159, 67, 0.45);
+        }
+        .btn-totallabel h6 {
+            color: #ffffff !important;
+            font-size: 14.5px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 0.3px;
+        }
+        .btn-totallabel h5 {
+            color: #ffffff !important;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            font-size: 16px;
         }
 
-        .paymentmethod.active {
-            background-color: #1b2850;
+        .btn-totallabel_1 {
+            background: linear-gradient(135deg, #1b2850 0%, #0f172a 100%) !important;
+            color: #ffffff !important;
+            border: none;
+            border-radius: 10px;
+            padding: 11px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(27, 40, 80, 0.25);
+            transition: all 0.25s ease;
+        }
+        .btn-totallabel_1:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(27, 40, 80, 0.35);
+        }
+        .btn-totallabel_1 h6 {
+            color: #ffffff !important;
+            font-size: 13.5px;
+            font-weight: 700;
+            margin: 0;
+        }
+        .btn-totallabel_1 h5 {
+            color: #ffffff !important;
+            margin: 0;
+        }
+
+        .btn-totallabel_2 {
+            background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%) !important;
+            color: #ffffff !important;
+            border: none;
+            border-radius: 10px;
+            padding: 11px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(255, 159, 67, 0.35);
+            transition: all 0.25s ease;
+        }
+        .btn-totallabel_2:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(255, 159, 67, 0.45);
+        }
+        .btn-totallabel_2 h6 {
+            color: #ffffff !important;
+            font-size: 13.5px;
+            font-weight: 700;
+            margin: 0;
+        }
+        .btn-totallabel_2 h5 {
+            color: #ffffff !important;
+            margin: 0;
+        }
+
+        .search_custom_product {
+            width: 100%;
+        }    background-color: #1b2850;
             color: #ffffff;
         }
 
@@ -1049,11 +1428,16 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
 
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <input type="hidden" name="table_id" id="table_id">
-                        Table: <span class="js-table-name"></span>
-                    </h5>
+                <div class="modal-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="width: 34px; height: 34px; border-radius: 8px; background: rgba(255,159,67,0.15); display: flex; align-items: center; justify-content: center; color: #ff9f43; font-size: 16px;">
+                            <i class="fas fa-utensils"></i>
+                        </div>
+                        <h5 class="modal-title m-0" style="font-weight: 800; color: #0f172a; font-size: 16px;">
+                            <input type="hidden" name="table_id" id="table_id">
+                            Table: <span class="badge bg-warning text-dark px-2 py-1 js-table-name ms-1" style="font-size: 13px; font-weight: 700;"></span>
+                        </h5>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
@@ -1100,18 +1484,15 @@
 
                         <div class="card card-order">
                             <div class="card-body body_space">
-                                <div class="gst-header mb-2"
-                                    style="display: flex; align-items: center; justify-content: space-between;">
-                                    <div class="d-flex">
-                                        <label class="custom-radio-label" style="margin-right: 1rem;">
-                                            <input type="radio" name="gst_option" id="without_gst" value="without"
-                                                checked />
-                                            Without GST
+                                <div class="gst-header mb-3" style="display: flex; align-items: center; justify-content: space-between;">
+                                    <div class="custom-gst-pill-group">
+                                        <label class="custom-gst-pill">
+                                            <input type="radio" name="gst_option" id="without_gst" value="without" checked />
+                                            <span>Without GST</span>
                                         </label>
-
-                                        <label class="custom-radio-label">
+                                        <label class="custom-gst-pill">
                                             <input type="radio" name="gst_option" id="with_gst" value="with" />
-                                            With GST
+                                            <span>With GST</span>
                                         </label>
                                     </div>
                                 </div>
@@ -1246,84 +1627,48 @@
                                             <ul>
                                                 <li class="d-none">
                                                     <a href="javascript:void(0);" class="paymentmethod">
-                                                        <input type="radio" name="payment_method" value="pending" checked
-                                                            hidden>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                            fill="#1b2850" class="bi bi-cash" viewBox="0 0 16 16">
-                                                            <path d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4" />
-                                                            <path
-                                                                d="M0 4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm3 0a2 2 0 0 1-2 2v4a2 2 0 0 1 2 2h10a2 2 0 0 1 2-2V6a2 2 0 0 1-2-2z" />
-                                                        </svg>
-                                                        Pay Later
+                                                        <input type="radio" name="payment_method" value="pending" checked hidden>
+                                                        <i class="fas fa-history" style="font-size: 15px; margin-bottom: 3px;"></i>
+                                                        <span>Pay Later</span>
                                                     </a>
                                                 </li>
                                                 <li>
                                                     <a href="javascript:void(0);" class="paymentmethod">
                                                         <input type="radio" name="payment_method" value="cash" hidden>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                            fill="#1b2850" class="bi bi-cash" viewBox="0 0 16 16">
-                                                            <path d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4" />
-                                                            <path
-                                                                d="M0 4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm3 0a2 2 0 0 1-2 2v4a2 2 0 0 1 2 2h10a2 2 0 0 1 2-2V6a2 2 0 0 1-2-2z" />
-                                                        </svg>
-                                                        Cash
+                                                        <i class="fas fa-money-bill-wave" style="font-size: 15px; margin-bottom: 3px;"></i>
+                                                        <span>Cash</span>
                                                     </a>
                                                 </li>
                                                 <li>
                                                     <a href="javascript:void(0);" class="paymentmethod">
                                                         <input type="radio" name="payment_method" value="debit card" hidden>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                            fill="#1b2850" class="bi bi-credit-card" viewBox="0 0 16 16">
-                                                            <path
-                                                                d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v1h14V4a1 1 0 0 0-1-1zm13 4H1v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1z" />
-                                                            <path
-                                                                d="M2 10a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z" />
-                                                        </svg>
-                                                        Debit
+                                                        <i class="fas fa-credit-card" style="font-size: 15px; margin-bottom: 3px;"></i>
+                                                        <span>Debit</span>
                                                     </a>
                                                 </li>
                                                 <li>
                                                     <a href="javascript:void(0);" class="paymentmethod">
-                                                        <input type="radio" name="payment_method" value="cash+online"
-                                                            hidden>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                            fill="#1b2850" class="bi bi-cash" viewBox="0 0 16 16">
-                                                            <path d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4" />
-                                                            <path
-                                                                d="M0 4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm3 0a2 2 0 0 1-2 2v4a2 2 0 0 1 2 2h10a2 2 0 0 1 2-2V6a2 2 0 0 1-2-2z" />
-                                                        </svg>
-                                                        Cash+Online
+                                                        <input type="radio" name="payment_method" value="cash+online" hidden>
+                                                        <i class="fas fa-money-check-alt" style="font-size: 15px; margin-bottom: 3px;"></i>
+                                                        <span>Cash+Online</span>
                                                     </a>
                                                 </li>
-
                                                 <li>
                                                     <a href="javascript:void(0);" class="paymentmethod">
                                                         <input type="radio" name="payment_method" value="scan" hidden>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                            fill="#1b2850" class="bi bi-qr-code-scan" viewBox="0 0 16 16">
-                                                            <path
-                                                                d="M0 .5A.5.5 0 0 1 .5 0h3a.5.5 0 0 1 0 1H1v2.5a.5.5 0 0 1-1 0zm12 0a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-1 0V1h-2.5a.5.5 0 0 1-.5-.5M.5 12a.5.5 0 0 1 .5.5V15h2.5a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5v-3a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1 0-1H15v-2.5a.5.5 0 0 1 .5-.5M4 4h1v1H4z" />
-                                                            <path d="M7 2H2v5h5zM3 3h3v3H3zm2 8H4v1h1z" />
-                                                            <path d="M7 9H2v5h5zm-4 1h3v3H3zm8-6h1v1h-1z" />
-                                                            <path
-                                                                d="M9 2h5v5H9zm1 1v3h3V3zM8 8v2h1v1H8v1h2v-2h1v2h1v-1h2v-1h-3V8zm2 2H9V9h1zm4 2h-1v1h-2v1h3zm-4 2v-1H8v1z" />
-                                                            <path d="M12 9h2V8h-2z" />
-                                                        </svg>
-                                                        Scan
+                                                        <i class="fas fa-qrcode" style="font-size: 15px; margin-bottom: 3px;"></i>
+                                                        <span>Scan</span>
                                                     </a>
                                                 </li>
-
                                             </ul>
                                             <div id="cashOnlineBox" style="display:none; margin-top:10px;">
-                                                <div class="form-group">
-                                                    <label>Cash Amount</label>
-                                                    <input type="number" class="form-control" id="cashAmount"
-                                                        placeholder="Enter Cash Amount" placeholder="0">
+                                                <div class="form-group mb-2">
+                                                    <label style="font-size: 12px; font-weight: 600; color: #64748b;">Cash Amount</label>
+                                                    <input type="number" class="form-control form-control-sm" id="cashAmount" placeholder="Enter Cash Amount">
                                                 </div>
                                                 <div class="form-group">
-                                                    <label>Online Amount</label>
-                                                    <input type="number" class="form-control" id="onlineAmount"
-                                                        placeholder="Enter Online Amount" value="0" readonly>
+                                                    <label style="font-size: 12px; font-weight: 600; color: #64748b;">Online Amount</label>
+                                                    <input type="number" class="form-control form-control-sm" id="onlineAmount" placeholder="Enter Online Amount" value="0" readonly>
                                                 </div>
                                             </div>
                                             <span class="error_peymentmethod"></span>
@@ -1331,36 +1676,17 @@
 
                                         <div class="btn-totallabel">
                                             <h6>Total Amount : 00.00$</h6>
-                                            <h5> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                    fill="currentColor" class="bi bi-arrow-right" viewBox="0 0 16 16"
-                                                    style="margin-bottom: 0.1rem;">
-                                                    <path fill-rule="evenodd"
-                                                        d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8" />
-                                                </svg></h5>
+                                            <h5><i class="fas fa-arrow-right"></i></h5>
                                         </div>
 
-                                        <div class="modal-order-edit"
-                                            style="display: flex; justify-content: space-between;">
-                                            <div class="btn-totallabel_1" data-order_update_id="" style="width: 48%;">
-                                                <h6>Update Order </h6>
-                                                <h5> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                        fill="currentColor" class="bi bi-arrow-right" viewBox="0 0 16 16"
-                                                        style="margin-bottom: 0.1rem;">
-                                                        <path fill-rule="evenodd"
-                                                            d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8">
-                                                        </path>
-                                                    </svg></h5>
+                                        <div class="modal-order-edit" style="display: flex; justify-content: space-between; gap: 8px; margin-top: 10px;">
+                                            <div class="btn-totallabel_1" data-order_update_id="" style="width: 49%;">
+                                                <h6>Update Order</h6>
+                                                <h5><i class="fas fa-check"></i></h5>
                                             </div>
-                                            <div class="btn-totallabel_2" data-order_payment_update_id=""
-                                                style="width: 48%;">
+                                            <div class="btn-totallabel_2" data-order_payment_update_id="" style="width: 49%;">
                                                 <h6>Checkout</h6>
-                                                <h5> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                        fill="currentColor" class="bi bi-arrow-right" viewBox="0 0 16 16"
-                                                        style="margin-bottom: 0.1rem;">
-                                                        <path fill-rule="evenodd"
-                                                            d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8">
-                                                        </path>
-                                                    </svg></h5>
+                                                <h5><i class="fas fa-arrow-right"></i></h5>
                                             </div>
                                         </div>
 
@@ -2106,25 +2432,23 @@
                         }
 
                         productsHtml += `
-                                                    <div class="col-lg-3 col-sm-6 d-flex position-relative">
-                                                        <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" style="position: relative;">
+                                                    <div class="col-lg-4 col-md-6 col-sm-6 d-flex position-relative">
+                                                        <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" data-quantity_type_id="${product.quantity_type_id || ''}" style="position: relative;">
                                                             ${outOfStockBadge}
                                                             <div class="productsetimg">
                                                                 <img src="${productImage}" alt="${product.name}" class="productsetimgin">
                                                                 <h6>Qty: ${product.quantity || '0'}</h6>
                                                             </div>
-                                                            <div class="productsetcontent" style="padding: 0.5rem;">
-                                                                <h4 style="font-size: 14px; font-weight: 700; color: #1e293b; margin: 0 0 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                    ${product.name}
-                                                                </h4>
+                                                            <div class="productsetcontent">
+                                                                <h4>${product.name}</h4>
                                                                 <h1 class="d-none">${product.categoryId || 'Uncategorized'}</h1>
                                                                 <h2 class="d-none">${product.quantity_type || 'pcs'}</h2>
                                                                 <h3 class="d-none">${product.quantity_type_id || 'pcs'}</h3>
 
-                                                                <div style="font-size: 12px; color: #64748b; font-weight: 500; text-transform: capitalize; margin-bottom: 6px;">
+                                                                <div class="product-category-subtitle">
                                                                     ${product.category_name || 'Uncategorized'}
                                                                 </div>
-                                                                <h6 style="font-size: 15px; font-weight: 800; color: #ff9f43; margin: 0;">${displayPrice}</h6>
+                                                                <h6>${displayPrice}</h6>
                                                             </div>
                                                             <div class="productsetbtn">
                                                                 <button class="btn btn-added" ${addButtonDisabled}>+ Add</button>
