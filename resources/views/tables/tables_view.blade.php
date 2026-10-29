@@ -1272,6 +1272,29 @@
         var reservationModalEl = document.getElementById('reservationModal');
         var reservationModal = null;
 
+        function applyRunningTableOrderResponse(response, salse_id, modalInstance) {
+            if (typeof window.hydrateCartFromOrderItems === 'function') {
+                window.hydrateCartFromOrderItems(response.order_items || []);
+            }
+
+            if (response.sales && response.sales.gst_option == 'with_gst') {
+                $(`input[name="gst_option"][value="with"]`).prop("checked", true).trigger('change');
+            } else {
+                $(`input[name="gst_option"][value="without"]`).prop("checked", true).trigger('change');
+            }
+            if (response.sales && response.sales.discount !== null && response.sales.discount !== undefined) {
+                $('#discount').val(response.sales.discount).trigger('input');
+            }
+
+            $('.btn-totallabel').hide();
+            $('.btn-totallabel_1').css('display', 'flex');
+            $('.btn-totallabel_1').attr('data-order_update_id', salse_id);
+            $('.btn-totallabel_2').attr('data-order_payment_update_id', salse_id);
+            $('.btn-totallabel_2').css('display', 'flex');
+            $('.setvaluecash').show();
+            (modalInstance || tableOrderModal).show();
+        }
+
         function openDineInFlow(tableId, tableName, tableCard) {
             window.selectedTableId = tableId;
             window.selectedTableName = tableName;
@@ -1281,6 +1304,10 @@
 
             if (tableCard && tableCard.classList.contains("running-table")) {
                 const salse_id = tableCard.getAttribute('data-order-id');
+                if (!salse_id) {
+                    console.error("Running table has no order id");
+                    return;
+                }
                 $.ajax({
                     url: `/api/getsalseById/${salse_id}`,
                     type: "GET",
@@ -1288,27 +1315,7 @@
                     data: { selectedSubAdminId: selectedSubAdminId },
                     headers: { "Authorization": "Bearer " + authToken },
                     success: function (response) {
-                        response.order_items.forEach(function (item) {
-                            let productId = item.product.id;
-                            let quantity = item.quantity;
-                            $('.productset[data-id="' + productId + '"]').attr("data-selected-qty", quantity);
-                            $('.productset[data-id="' + productId + '"]').trigger('click');
-                        });
-                        if (response.sales.gst_option == 'with_gst') {
-                            $(`input[name="gst_option"][value="with"]`).prop("checked", true).trigger('change');
-                        } else {
-                            $(`input[name="gst_option"][value="without"]`).prop("checked", true).trigger('change');
-                        }
-                        if (response.sales.discount !== null) {
-                            $('#discount').val(response.sales.discount).trigger('input');
-                        }
-                        $('.btn-totallabel').hide();
-                        $('.btn-totallabel_1').css('display', 'flex');
-                        $('.btn-totallabel_1').attr('data-order_update_id', salse_id);
-                        $('.btn-totallabel_2').attr('data-order_payment_update_id', salse_id);
-                        $('.btn-totallabel_2').css('display', 'flex');
-                        $('.setvaluecash').show();
-                        tableOrderModal.show();
+                        applyRunningTableOrderResponse(response, salse_id, tableOrderModal);
                     },
                     error: function (xhr, status, error) {
                         console.error("Error fetching sales details:", error);
@@ -1343,60 +1350,6 @@
                 tableTypeChoiceModal.show();
             }
         }, true);
-
-        function openDineInFlow(tableId, tableName, tableCard) {
-            window.selectedTableId = tableId;
-            window.selectedTableName = tableName;
-
-            tableOrderModalEl.querySelector('.js-table-name').textContent = tableName;
-            document.getElementById('table_id').value = tableId;
-
-            if (tableCard.classList.contains("running-table")) {
-                const salse_id = tableCard.getAttribute('data-order-id');
-                $.ajax({
-                    url: `/api/getsalseById/${salse_id}`,
-                    type: "GET",
-                    dataType: "json",
-                    data: { selectedSubAdminId: selectedSubAdminId },
-                    headers: { "Authorization": "Bearer " + authToken },
-                    success: function (response) {
-                        response.order_items.forEach(function (item) {
-                            let productId = item.product.id;
-                            let quantity = item.quantity;
-                            $('.productset[data-id="' + productId + '"]').attr("data-selected-qty", quantity);
-                            $('.productset[data-id="' + productId + '"]').trigger('click');
-                        });
-                        if (response.sales.gst_option == 'with_gst') {
-                            $(`input[name="gst_option"][value="with"]`).prop("checked", true).trigger('change');
-                        } else {
-                            $(`input[name="gst_option"][value="without"]`).prop("checked", true).trigger('change');
-                        }
-                        if (response.sales.discount !== null) {
-                            $('#discount').val(response.sales.discount).trigger('input');
-                        }
-                        $('.btn-totallabel').hide();
-                        $('.btn-totallabel_1').css('display', 'flex');
-                        $('.btn-totallabel_1').attr('data-order_update_id', salse_id);
-                        $('.btn-totallabel_2').attr('data-order_payment_update_id', salse_id);
-                        $('.btn-totallabel_2').css('display', 'flex');
-                        $('.setvaluecash').show();
-                        tableOrderModal.show();
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("Error fetching sales details:", error);
-                    }
-                });
-            } else {
-                $('.clear_items').trigger('click');
-                $('.btn-totallabel').show();
-                $('.btn-totallabel_1').hide();
-                $('.btn-totallabel_2').hide();
-                $('.setvaluecash').hide();
-                $('input[name="gst_option"]').prop("checked", false).trigger('change');
-                $('#discount').val("").trigger('input');
-                tableOrderModal.show();
-            }
-        }
 
         function updateTableCardStatus(tableId, statusClass, statusValue, orderId) {
             const $card = $(".table-box123[data-table-id='" + tableId + "']");
@@ -1512,52 +1465,22 @@
                     // Check class first
                     if (this.classList.contains("running-table")) {
                         const salse_id = this.getAttribute('data-order-id');
+                        if (!salse_id) {
+                            console.error("Running table has no order id");
+                            return;
+                        }
                         $.ajax({
                             url: `/api/getsalseById/${salse_id}`,
                             type: "GET",
                             dataType: "json",
                             data: {
-                                selectedSubAdminId: selectedSubAdminId // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ fixed object syntax
+                                selectedSubAdminId: selectedSubAdminId
                             },
                             headers: {
                                 "Authorization": "Bearer " + authToken,
                             },
                             success: function (response) {
-                                console.log(response);
-
-                                response.order_items.forEach(function (item) {
-
-                                    let productId = item.product.id; // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â pick product id from response
-                                    let quantity = item.quantity;  // <-- real quantity from API
-
-                                    // Store quantity temporarily on the div before triggering click
-                                    $('.productset[data-id="' + productId + '"]').attr("data-selected-qty", quantity);
-
-                                    // Trigger the click
-                                    $('.productset[data-id="' + productId + '"]').trigger('click');
-
-                                });
-                                if (response.sales.gst_option == 'with_gst') {
-                                    console.log(response.sales.gst_option);
-
-                                    $(`input[name="gst_option"][value="with"]`).prop("checked", true).trigger('change');
-                                } else {
-                                    $(`input[name="gst_option"][value="without"]`).prop("checked", true).trigger('change');
-
-                                }
-                                if (response.sales.discount !== null) {
-
-                                    $('#discount').val(response.sales.discount).trigger('input');
-                                }
-                                $('.btn-totallabel').hide();
-                                $('.btn-totallabel_1').css('display', 'flex');
-                                $('.btn-totallabel_1').attr('data-order_update_id', salse_id);
-                                $('.btn-totallabel_2').attr('data-order_payment_update_id', salse_id);
-                                $('.btn-totallabel_2').css('display', 'flex');
-                                // $('.setvaluecash').css('display', 'flex');
-                                $('.setvaluecash').show();
-
-                                modal.show();
+                                applyRunningTableOrderResponse(response, salse_id, modal);
                             },
                             error: function (xhr, status, error) {
                                 console.error("Error fetching sales details:", error);
@@ -1681,7 +1604,79 @@
                 return position === 'right' ? amount + symbol : symbol + amount;
             }
 
+            function resolveProductImage(imageValue) {
+                let productImage = '{{ env("ImagePath") . "/admin/assets/img/product/noimage.png" }}';
+                if (!imageValue) {
+                    return productImage;
+                }
+                try {
+                    let cleanImageString = String(imageValue).replace(/\\/g, '');
+                    cleanImageString = cleanImageString.replace(/^"(.*)"$/, '$1');
+                    let imageBasePath = "{{ rtrim(env('ImagePath'), '/') }}";
+                    if (cleanImageString.startsWith('[')) {
+                        let imagesArray = JSON.parse(cleanImageString);
+                        if (Array.isArray(imagesArray) && imagesArray.length > 0) {
+                            productImage = `${imageBasePath}/storage/${imagesArray[0]}`;
+                        }
+                    } else {
+                        productImage = `${imageBasePath}/storage/${cleanImageString}`;
+                    }
+                } catch (e) {
+                    productImage = '{{ env("ImagePath") . "/admin/assets/img/product/noimage.png" }}';
+                }
+                return productImage;
+            }
 
+            // Load existing table order items into cart from API data.
+            // Do NOT rely on .productset clicks — only the active category is in the DOM.
+            window.hydrateCartFromOrderItems = function (orderItems) {
+                if (typeof selectedItems === 'undefined' || !selectedItems) {
+                    selectedItems = new Map();
+                }
+                selectedItems.clear();
+                $(".check-product i").removeClass("selected");
+
+                const firstTaxElement = $(".tax-value").first();
+                const currencySymbol = firstTaxElement.data("symbol") || '{{ $currency_symbol }}';
+                const currencyPosition = firstTaxElement.data("position") || '{{ $currency_position }}';
+
+                (orderItems || []).forEach(function (item) {
+                    const product = item.product;
+                    if (!product || !product.id) {
+                        return;
+                    }
+
+                    const productId = product.id;
+                    const qtyType = item.quantity_type;
+                    const qtyTypeName = (qtyType && qtyType.quantity_type)
+                        ? qtyType.quantity_type
+                        : (product.quantity_type || 'pcs');
+                    const qtyTypeId = (qtyType && qtyType.id)
+                        ? qtyType.id
+                        : (product.quantity_type_id || null);
+                    const priceNum = parseFloat(item.price != null ? item.price : product.price) || 0;
+                    const availableStock = (parseInt(product.quantity, 10) || 0) + (parseInt(item.quantity, 10) || 0);
+
+                    selectedItems.set(productId, {
+                        id: productId,
+                        productId: productId,
+                        categoryId: item.category_id || product.category_id || '',
+                        name: product.name || 'Item',
+                        price: formatCurrency(priceNum.toFixed(2), currencySymbol, currencyPosition),
+                        image: resolveProductImage(product.image),
+                        code: product.product_code || 'PT001',
+                        quantity_type: qtyTypeName,
+                        quantity_type_id: qtyTypeId,
+                        quantity_type123: qtyTypeId,
+                        quantity: parseInt(item.quantity, 10) || 1,
+                        stock: availableStock > 0 ? availableStock : 9999
+                    });
+
+                    $('.productset[data-id="' + productId + '"] .check-product i').addClass('selected');
+                });
+
+                updateTotalItems();
+            };
 
             function loadProductsByCategory(categoryId) {
 
@@ -2093,36 +2088,49 @@
 
                 //});
                 var uniqueId = productId;
-                var apiQty = parseInt($product.attr("data-selected-qty"));
+                var apiQtyAttr = $product.attr("data-selected-qty");
+                var apiQty = apiQtyAttr !== undefined && apiQtyAttr !== null && apiQtyAttr !== ''
+                    ? parseInt(apiQtyAttr, 10)
+                    : NaN;
 
-if (selectedItems.has(uniqueId)) {
+                if (!isNaN(apiQty) && apiQty > 0) {
+                    // Restoring quantity from an existing order — set exact qty, do not increment
+                    selectedItems.set(uniqueId, {
+                        id: uniqueId,
+                        productId: productId,
+                        categoryId: categoryId,
+                        name: productName,
+                        price: productPrice,
+                        image: productImage,
+                        code: productCode,
+                        quantity_type: quantity_type,
+                        quantity_type_id: quantity_type_id,
+                        quantity_type123: quantity_type123,
+                        quantity: apiQty,
+                        stock: productStock
+                    });
+                } else if (selectedItems.has(uniqueId)) {
+                    let item = selectedItems.get(uniqueId);
+                    item.quantity += 1;
+                    selectedItems.set(uniqueId, item);
+                } else {
+                    selectedItems.set(uniqueId, {
+                        id: uniqueId,
+                        productId: productId,
+                        categoryId: categoryId,
+                        name: productName,
+                        price: productPrice,
+                        image: productImage,
+                        code: productCode,
+                        quantity_type: quantity_type,
+                        quantity_type_id: quantity_type_id,
+                        quantity_type123: quantity_type123,
+                        quantity: 1,
+                        stock: productStock
+                    });
+                }
 
-    let item = selectedItems.get(uniqueId);
-
-    item.quantity += 1;
-
-    selectedItems.set(uniqueId, item);
-
-} else {
-
-    selectedItems.set(uniqueId, {
-        id: uniqueId,
-        productId: productId,
-        categoryId: categoryId,
-        name: productName,
-        price: productPrice,
-        image: productImage,
-        code: productCode,
-        quantity_type: quantity_type,
-        quantity_type_id: quantity_type_id,
-        quantity_type123: quantity_type123,
-        quantity: apiQty || 1,
-        stock: productStock
-    });
-
-}
-
-$product.removeAttr("data-selected-qty");
+                $product.removeAttr("data-selected-qty");
                 $checkIcon.addClass("selected");
                 updateTotalItems();
             });

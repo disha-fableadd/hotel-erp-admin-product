@@ -387,6 +387,86 @@ class SalesController extends Controller
             'total' => 'required|numeric|min:0',
         ]);
 
+        // Safely cast table_id before starting a transaction
+        $tableNoInt = null;
+        if (!empty($request->table_id) && is_numeric($request->table_id)) {
+            $tableNoInt = (int) $request->table_id;
+        }
+
+        // If this table already has an active running order, merge new items into it
+        // instead of creating a second order (which would hide the first items on the table).
+        if ($tableNoInt) {
+            $existingActiveOrderId = Order::where('table_no', $tableNoInt)
+                ->where('isDeleted', 0)
+                ->where('table_status', 1)
+                ->orderByDesc('id')
+                ->value('id');
+
+            if ($existingActiveOrderId) {
+                $mergedByProduct = [];
+
+                foreach (OrderItem::where('order_id', $existingActiveOrderId)->get() as $old) {
+                    $mergedByProduct[$old->product_id] = [
+                        'product_id' => $old->product_id,
+                        'quantity' => (int) $old->quantity,
+                        'quantity_type_id' => $old->quantity_type_id,
+                        'quantity_type123' => $old->quantity_type_id,
+                        'categoryId' => $old->category_id,
+                        'price' => (float) $old->price,
+                        'total' => (float) $old->total_amount,
+                    ];
+                }
+
+                foreach ($request->items ?? [] as $item) {
+                    $pid = $item['product_id'] ?? null;
+                    if (!$pid) {
+                        continue;
+                    }
+
+                    if (isset($mergedByProduct[$pid])) {
+                        $mergedByProduct[$pid]['quantity'] += (int) $item['quantity'];
+                        $mergedByProduct[$pid]['total'] = $mergedByProduct[$pid]['quantity'] * $mergedByProduct[$pid]['price'];
+                    } else {
+                        $price = (float) ($item['price'] ?? 0);
+                        $qty = (int) ($item['quantity'] ?? 0);
+                        $mergedByProduct[$pid] = [
+                            'product_id' => $pid,
+                            'quantity' => $qty,
+                            'quantity_type_id' => $item['quantity_type_id'] ?? null,
+                            'quantity_type123' => $item['quantity_type123'] ?? null,
+                            'categoryId' => $item['categoryId'] ?? null,
+                            'price' => $price,
+                            'total' => (float) ($item['total'] ?? ($price * $qty)),
+                        ];
+                    }
+                }
+
+                $mergedItems = array_values($mergedByProduct);
+                $mergedSubtotal = array_sum(array_map(static fn ($row) => (float) $row['total'], $mergedItems));
+                $discountPct = (float) ($request->discount ?? 0);
+                $discountAmount = $mergedSubtotal * ($discountPct / 100);
+                $mergedTotal = $mergedSubtotal - $discountAmount;
+
+                // Keep tax contribution from the request totals when GST is applied
+                $requestSubtotal = (float) ($request->subtotal ?? 0);
+                $requestTotal = (float) ($request->total ?? 0);
+                if ($requestSubtotal > 0 && $requestTotal > $requestSubtotal) {
+                    $taxRatio = ($requestTotal - ($requestSubtotal * (1 - ($discountPct / 100)))) / max($requestSubtotal, 0.01);
+                    $mergedTotal = ($mergedSubtotal - $discountAmount) + ($mergedSubtotal * max($taxRatio, 0));
+                }
+
+                $request->merge([
+                    'update_id' => $existingActiveOrderId,
+                    'items' => $mergedItems,
+                    'subtotal' => $mergedSubtotal,
+                    'total' => round($mergedTotal, 2),
+                    'table_checkout' => $request->table_checkout ?? '',
+                ]);
+
+                return $this->update_sale_order($request);
+            }
+        }
+
         DB::beginTransaction();
         $userData = Auth::guard('api')->user();
         $userRole = $userData->role;
@@ -502,13 +582,6 @@ class SalesController extends Controller
             } else {
                 $remain = $request->total;
                 $payment_status = 'pending';
-            }
-
-            // Safely cast table_id to integer — prevents "Incorrect integer value" SQL error
-            // when a non-numeric value is accidentally sent (e.g. a table name string)
-            $tableNoInt = null;
-            if (!empty($request->table_id) && is_numeric($request->table_id)) {
-                $tableNoInt = (int) $request->table_id;
             }
 
             // Create order
@@ -1427,13 +1500,14 @@ class SalesController extends Controller
             ? $sales->created_at->format('Y-m-d h:i A')
             : null;
         // Fetch order items with product & include date
-        $orderItems = OrderItem::where('order_id', $id)
+            $orderItems = OrderItem::where('order_id', $id)
             ->with('product', 'quantityType')
             ->get()
             ->map(function ($item) {
                 return [
                     'id' => $item->id,
                     'product' => $item->product,
+                    'category_id' => $item->category_id,
                     'quantity' => $item->quantity,
                     'quantity_type' => $item->quantityType,
                     'price' => $item->price,
