@@ -443,138 +443,353 @@
         }
 
         .content {
-            margin: 30px 0px !important;
+            margin: 20px 0 !important;
         }
 
         .page-wrapper {
-            padding: 25px;
+            padding: 20px;
         }
 
-        /* Title */
-        .page-title h2 {
-            font-size: 26px;
-            font-weight: 700;
-            color: #333;
+        /* ===== Tables Floor — modern seating board ===== */
+        .tables-floor {
+            --tf-ink: #0f172a;
+            --tf-muted: #64748b;
+            --tf-line: #e2e8f0;
+            --tf-surface: #ffffff;
+            --tf-soft: #f8fafc;
+            --tf-accent: #ff9f43;
+            --tf-accent-deep: #ff821c;
+            background:
+                radial-gradient(circle at top right, rgba(255, 159, 67, 0.08), transparent 32%),
+                linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid var(--tf-line);
+            border-radius: 24px;
+            padding: 22px;
+            box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.35);
         }
 
-        /* --- Premium Status Legend --- */
+        .tables-floor .page-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+            padding-bottom: 0;
+            border-bottom: 0;
+        }
+
+        .tables-floor .page-title h4 {
+            margin: 0;
+            font-size: 1.55rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--tf-ink);
+        }
+
+        .tables-floor .page-title p {
+            margin: 6px 0 0;
+            color: var(--tf-muted);
+            font-size: 0.92rem;
+            font-weight: 500;
+        }
+
+        .tables-floor .btn-added {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, var(--tf-accent) 0%, var(--tf-accent-deep) 100%) !important;
+            border: 0 !important;
+            border-radius: 12px !important;
+            padding: 10px 16px !important;
+            font-weight: 700 !important;
+            box-shadow: 0 10px 22px -12px rgba(255, 159, 67, 0.8);
+        }
+
+        .tables-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid var(--tf-line);
+            border-radius: 16px;
+            backdrop-filter: blur(8px);
+        }
+
         .legend {
             display: flex;
-            gap: 16px;
-            margin-bottom: 25px;
-            margin-top: 10px;
+            gap: 10px;
+            margin: 0;
             flex-wrap: wrap;
         }
 
         .legend span {
-            padding: 8px 22px;
-            border-radius: 50px;
-            font-size: 13.5px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 12.5px;
             font-weight: 700;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            gap: 8px;
             border: 1px solid transparent;
+            box-shadow: none;
             cursor: default;
         }
-        
-        .legend span:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.05);
+
+        .legend span::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.85;
         }
 
-        /* Modern Status Colors (Applied to Legend and Tables) */
         .blank-table {
-            background: #f1f5f9;
+            background: #f8fafc;
             color: #475569;
             border-color: #e2e8f0;
         }
 
         .running-table {
-            background: #dcfce7;
+            background: linear-gradient(160deg, #ecfdf5 0%, #d1fae5 100%);
             color: #166534;
-            border-color: #bbf7d0;
+            border-color: #86efac;
         }
 
         .reserved-table,
         .printed-table {
-            background: #fef9c3;
-            color: #854d0e;
-            border-color: #fef08a;
+            background: linear-gradient(160deg, #fffbeb 0%, #fef3c7 100%);
+            color: #92400e;
+            border-color: #fcd34d;
         }
 
         .kot-table {
             background: #9BD4FF;
         }
 
-        /* Section Title */
-        .section-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin: 20px 0 10px;
-            color: #444;
+        .tables-zone {
+            margin-bottom: 22px;
         }
 
-        /* Table Container */
-        .table-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
-            gap: 15px;
-            /* width: 100%; */
+        .tables-zone:last-child {
+            margin-bottom: 0;
         }
 
-        
-
-        /* Table Box */
-        .table-box {
-            /* width: 120px; */
-            width: 100%;
-            height: 110px;
-            border-radius: 14px;
-            font-weight: 700;
+        .tables-zone__head {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #334155;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            border-radius: 4px;
+            background: linear-gradient(135deg, var(--tf-accent), var(--tf-accent-deep));
+            box-shadow: 0 0 0 4px rgba(255, 159, 67, 0.15);
+        }
+
+        .tables-zone__count {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--tf-muted);
+            background: #fff;
+            border: 1px solid var(--tf-line);
+            border-radius: 999px;
+            padding: 4px 10px;
+        }
+
+        .table-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+            gap: 16px;
+        }
+
+        .table-card-wrap {
             position: relative;
-            text-transform: capitalize;
-            cursor: pointer;
-
-            /* modern card feel */
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.12);
-            border: 1px solid #e5e5e5;
-            transition: transform .2s, box-shadow .2s;
         }
 
-        /* Hover Effect */
-        .table-box:hover {
-            transform: scale(1.05);
-            box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.18);
-        }
-
-        .table-box span {
-            font-size: 15px;
-        }
-
-        /* Icons under table */
-        .table-icons {
-            position: absolute;
-            bottom: -10px;
+        .table-box.table-card {
             width: 100%;
+            min-height: 168px;
+            height: auto;
+            border-radius: 20px;
+            font-weight: 700;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+            position: relative;
+            text-transform: none;
+            cursor: pointer;
+            padding: 14px 14px 18px;
+            border: 1.5px solid transparent;
+            box-shadow: 0 10px 28px -18px rgba(15, 23, 42, 0.35);
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+            overflow: hidden;
+        }
+
+        .table-box.table-card::after {
+            content: "";
+            position: absolute;
+            inset: auto -20% -35% auto;
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.06;
+            pointer-events: none;
+        }
+
+        .table-box.table-card:hover {
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 18px 34px -18px rgba(15, 23, 42, 0.4);
+        }
+
+        .table-box.table-card.blank-table:hover {
+            border-color: #cbd5e1;
+        }
+
+        .table-box.table-card.running-table {
+            box-shadow: 0 14px 30px -16px rgba(22, 163, 74, 0.45);
+            animation: tablePulse 2.4s ease-in-out infinite;
+        }
+
+        .table-box.table-card.running-table:hover {
+            border-color: #4ade80;
+        }
+
+        .table-box.table-card.reserved-table:hover {
+            border-color: #fbbf24;
+        }
+
+        @keyframes tablePulse {
+            0%, 100% { box-shadow: 0 14px 30px -16px rgba(22, 163, 74, 0.35); }
+            50% { box-shadow: 0 16px 36px -12px rgba(22, 163, 74, 0.55); }
+        }
+
+        .table-card__top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .table-card__badge {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            color: inherit;
+        }
+
+        .table-card__signals {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .table-card__signal {
+            width: 22px;
+            height: 22px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.75);
+            font-size: 10px;
+        }
+
+        .table-card__visual {
+            width: 54px;
+            height: 54px;
+            margin: 4px auto 10px;
+            color: inherit;
+            opacity: 0.88;
+            position: relative;
+            z-index: 1;
+        }
+
+        .table-card__visual svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .table-card__name {
             text-align: center;
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: inherit;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 1;
+            line-height: 1.25;
         }
 
-        .table-icons i {
-            margin: 0 5px;
-            opacity: .85;
-            font-size: 14px;
+        .table-card__hint {
+            margin-top: 4px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            opacity: 0.65;
+            position: relative;
+            z-index: 1;
         }
 
-        .table-icons .print-table-order {
-            background: white;
-            padding: 8px;
-            border-radius: 10px;
-            border: 1px solid #9c9c9c;
+        .table-card__print {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            z-index: 3;
+            width: 34px;
+            height: 34px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            color: #0f172a;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 8px 16px -10px rgba(15, 23, 42, 0.45);
+            transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+        }
+
+        .table-card__print:hover {
+            transform: translateY(-2px);
+            background: #0f172a;
+            color: #fff;
+            border-color: #0f172a;
+        }
+
+        .table-icons {
+            display: none;
         }
 
         .print-btn {
@@ -619,12 +834,32 @@
             margin-bottom: 1rem;
         }
 
-        /* Prevent massive empty gap in order summary */
         .product-table {
             height: auto !important;
             min-height: 80px;
             max-height: 40vh;
             overflow-y: auto;
+        }
+
+        @media (max-width: 767px) {
+            .tables-floor {
+                padding: 14px;
+                border-radius: 18px;
+            }
+
+            .tables-floor .page-title h4 {
+                font-size: 1.25rem;
+            }
+
+            .table-container {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
+            }
+
+            .table-box.table-card {
+                min-height: 150px;
+                border-radius: 16px;
+            }
         }
     </style>
 
@@ -649,157 +884,83 @@
             };
         @endphp
 
-        <div class="page-header">
-            <div class="page-title">
-                <h4>Table Seating Arrangement</h4>
-            </div>
-            <div class="page-btn">
-            @if (app('hasPermission')(2, 'add'))
-            <a href="{{ route('sales.add') }}" class="btn btn-sm btn-added"><img
-                    src="{{ env('ImagePath') . 'admin/assets/img/icons/plus.svg' }}" alt="img" class="me-1">Take Away</a>
-            @endif
-        </div>
-        </div>
-        
-
-        <!-- Status Legend -->
-        <div class="legend">
-            <span class="blank-table">Blank Table</span>
-            <span class="running-table">Running Table</span>
-            <span class="reserved-table">Reserved Table</span>
-        </div>
-
-        {{-- ========================= A/C SECTION ========================= --}}
-        @if(isset($tables['AC']) && $tables['AC']->count())
-            <div class="section-title">A/C</div>
-            <div class="table-container">
-
-                @foreach($tables['AC'] as $table)
-                    @php
-                        $statusClass = $tableStatusClass($table);
-                    @endphp
-
-                    <div class="position-relative table-box">
-
-
-                        <div class="table-box table-box123 {{ $statusClass }}" data-table-id="{{ $table->id }}"
-                            data-order-id="{{ $table->order_id }}" data-table-name="{{ $table->table_name }}" data-table-type="{{ $table->table_type }}" data-table-status="{{ $table->resolved_status }}">
-                            <span>{{ $table->table_name }}</span>
-
-
-                        </div>
-                        <div class="table-icons">
-                            @if($table->has_bell ?? false)
-                                <i class="fa-solid fa-bell"></i>
-                            @endif
-
-                            @if($table->has_food ?? false)
-                                <i class="fa-solid fa-utensils"></i>
-                            @endif
-
-
-                            {{-- Always show print button --}}
-                            <a class="print-table-order" data-table_no_invoice="{{ $table->id }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="#092C4C" viewBox="0 0 24 24">
-                                    <path
-                                        d="M19 7V4a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h2v3h12v-3h2a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1h-2zM7 4h10v3H7V4zm10 16H7v-4h10v4zm3-6a1 1 0 0 1-1 1h-2v-2H7v2H5a1 1 0 0 1-1-1V9h16v5z">
-                                    </path>
-                                </svg>
-                            </a>
-
-
-                        </div>
-                    </div>
-
-                @endforeach
-            </div>
-        @endif
-
-
-        {{-- ========================= NON A/C SECTION ========================= --}}
-        @if(isset($tables['Non AC']) && $tables['Non AC']->count())
-            <div class="section-title">Non A/C</div>
-            <div class="table-container">
-
-                @foreach($tables['Non AC'] as $table)
-                    @php
-                        $statusClass = $tableStatusClass($table);
-                    @endphp
-
-                    <div class="position-relative">
-
-                        <div class="table-box table-box123 {{ $statusClass }}" data-table-id="{{ $table->id }}"
-                            data-order-id="{{ $table->order_id }}" data-table-name="{{ $table->table_name }}" data-table-status="{{ $table->resolved_status }}">
-                            <span>{{ $table->table_name }}</span>
-
-
-
-                        </div>
-                        <div class="table-icons">
-                            @if($table->has_bell ?? false) <i class="fa-solid fa-bell"></i> @endif
-                            @if($table->has_food ?? false) <i class="fa-solid fa-utensils"></i> @endif
-                            @if($table->has_print ?? false) <i class="fa-solid fa-print"></i> @endif
-
-
-                            {{-- Always show print button --}}
-                            <a class="print-table-order" data-table_no_invoice="{{ $table->id }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="#092C4C" viewBox="0 0 24 24">
-                                    <path
-                                        d="M19 7V4a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h2v3h12v-3h2a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1h-2zM7 4h10v3H7V4zm10 16H7v-4h10v4zm3-6a1 1 0 0 1-1 1h-2v-2H7v2H5a1 1 0 0 1-1-1V9h16v5z">
-                                    </path>
-                                </svg>
-                            </a>
-
-                        </div>
-                    </div>
-
-                @endforeach
-
-            </div>
-        @endif
-
-
-        {{-- ========================= Premium SECTION ========================= --}}
-        @if(isset($tables['Premium']) && $tables['Premium']->count())
-                <div class="section-title">Premium</div>
-                <div class="table-container">
-
-                    @foreach($tables['Premium'] as $table)
-                    @php
-                        $statusClass = $tableStatusClass($table);
-                    @endphp
-                        <div class="position-relative">
-
-                            <div class="table-box table-box123 {{ $statusClass }}" data-table-id="{{ $table->id }}"
-                                data-order-id="{{ $table->order_id }}" data-table-name="{{ $table->table_name }}" data-table-status="{{ $table->resolved_status }}">
-                                <span>{{ $table->table_name }}</span>
-
-
-                            </div>
-                            <div class="table-icons">
-                                @if($table->has_bell ?? false) <i class="fa-solid fa-bell"></i> @endif
-                                @if($table->has_food ?? false) <i class="fa-solid fa-utensils"></i> @endif
-                                @if($table->has_print ?? false) <i class="fa-solid fa-print"></i> @endif
-
-
-                                {{-- Always show print button --}}
-                                <a class="print-table-order" data-table_no_invoice="{{ $table->id }}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="#092C4C" viewBox="0 0 24 24">
-                                        <path
-                                            d="M19 7V4a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h2v3h12v-3h2a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1h-2zM7 4h10v3H7V4zm10 16H7v-4h10v4zm3-6a1 1 0 0 1-1 1h-2v-2H7v2H5a1 1 0 0 1-1-1V9h16v5z">
-                                        </path>
-                                    </svg>
-                                </a>
-
-                            </div>
-                        </div>
-
-                    @endforeach
-
+        <div class="tables-floor">
+            <div class="page-header">
+                <div class="page-title">
+                    <h4>Table Seating Arrangement</h4>
+                    <p>Select a table to start dine-in, continue a running bill, or reserve a seat.</p>
+                </div>
+                <div class="page-btn">
+                    @if (app('hasPermission')(2, 'add'))
+                        <a href="{{ route('sales.add') }}" class="btn btn-sm btn-added">
+                            <img src="{{ env('ImagePath') . 'admin/assets/img/icons/plus.svg' }}" alt="" class="me-1">Take Away
+                        </a>
+                    @endif
                 </div>
             </div>
-        @endif
 
+            <div class="tables-toolbar">
+                <div class="legend">
+                    <span class="blank-table">Available</span>
+                    <span class="running-table">Occupied</span>
+                    <span class="reserved-table">Reserved</span>
+                </div>
+            </div>
+
+            {{-- ========================= A/C SECTION ========================= --}}
+            @if(isset($tables['AC']) && $tables['AC']->count())
+                <section class="tables-zone">
+                    <div class="tables-zone__head">
+                        <h5 class="section-title">A/C</h5>
+                        <span class="tables-zone__count">{{ $tables['AC']->count() }} tables</span>
+                    </div>
+                    <div class="table-container">
+                        @foreach($tables['AC'] as $table)
+                            @include('tables.partials.table_card', [
+                                'table' => $table,
+                                'statusClass' => $tableStatusClass($table),
+                            ])
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
+            {{-- ========================= NON A/C SECTION ========================= --}}
+            @if(isset($tables['Non AC']) && $tables['Non AC']->count())
+                <section class="tables-zone">
+                    <div class="tables-zone__head">
+                        <h5 class="section-title">Non A/C</h5>
+                        <span class="tables-zone__count">{{ $tables['Non AC']->count() }} tables</span>
+                    </div>
+                    <div class="table-container">
+                        @foreach($tables['Non AC'] as $table)
+                            @include('tables.partials.table_card', [
+                                'table' => $table,
+                                'statusClass' => $tableStatusClass($table),
+                            ])
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
+            {{-- ========================= Premium SECTION ========================= --}}
+            @if(isset($tables['Premium']) && $tables['Premium']->count())
+                <section class="tables-zone">
+                    <div class="tables-zone__head">
+                        <h5 class="section-title">Premium</h5>
+                        <span class="tables-zone__count">{{ $tables['Premium']->count() }} tables</span>
+                    </div>
+                    <div class="table-container">
+                        @foreach($tables['Premium'] as $table)
+                            @include('tables.partials.table_card', [
+                                'table' => $table,
+                                'statusClass' => $tableStatusClass($table),
+                            ])
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+        </div>
 
     <div class="modal fade" id="tableOrderModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -1354,10 +1515,18 @@
         function updateTableCardStatus(tableId, statusClass, statusValue, orderId) {
             const $card = $(".table-box123[data-table-id='" + tableId + "']");
             if (!$card.length) return;
+            const nextClass = statusClass || 'blank-table';
+            const nextStatus = (statusValue || 'blank').toLowerCase();
+            const badgeLabel = nextStatus === 'running'
+                ? 'Occupied'
+                : (nextStatus === 'reserved' ? 'Reserved' : 'Available');
+
             $card.removeClass('blank-table running-table reserved-table printed-table')
-                .addClass(statusClass || 'blank-table')
+                .addClass(nextClass)
                 .attr('data-order-id', orderId || '')
-                .attr('data-table-status', statusValue || 'blank');
+                .attr('data-table-status', nextStatus);
+
+            $card.find('.table-card__badge').text(badgeLabel);
         }
 
         function reserveSelectedTable(payload) {
