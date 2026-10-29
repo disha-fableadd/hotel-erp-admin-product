@@ -40,21 +40,20 @@
 
         /* ===== Table Order Modal (POS) ===== */
         #tableOrderModal .modal-dialog {
-            max-width: 1200px !important;
-            margin: 1rem auto;
+            max-width: 1180px !important;
+            margin: 1.25rem auto;
         }
 
         #tableOrderModal .modal-content {
-            border-radius: 18px !important;
-            background: #ffffff;
-            max-height: calc(100vh - 2rem);
+            border-radius: 16px !important;
+            background: #fff;
+            overflow: hidden;
         }
 
         #tableOrderModal .modal-header {
-            background: #ffffff;
+            background: #fff;
             border-bottom: 1px solid #eef2f7;
-            padding: 0.9rem 1.15rem;
-            flex-shrink: 0;
+            padding: 0.85rem 1.1rem;
         }
 
         #tableOrderModal .table-order-kicker {
@@ -67,53 +66,51 @@
         }
 
         #tableOrderModal .modal-body {
-            background: #f4f6f9;
-            padding: 12px !important;
-            overflow: hidden;
+            background: #f5f7fb !important;
+            padding: 14px !important;
+            overflow: visible !important;
+            display: block !important;
         }
 
         #tableOrderModal .table-order-layout {
-            align-items: stretch;
+            align-items: flex-start !important;
             margin: 0 !important;
-            height: min(78vh, 720px);
+            min-height: 0 !important;
+            height: auto !important;
         }
 
         #tableOrderModal .table-order-layout > [class*="col-"] {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
+            height: auto !important;
+            display: block;
         }
 
+        /* Left: menu */
         #tableOrderModal .tabs_wrapper {
-            background: #ffffff;
+            background: #fff;
             border: 1px solid #e8edf3;
             border-radius: 14px;
-            padding: 12px;
-            min-height: 0 !important;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            padding: 14px;
+            min-height: 520px;
+            height: auto !important;
+            overflow: visible !important;
         }
 
         #tableOrderModal .tabs_wrapper ul.tabs {
             gap: 8px;
-            padding: 0 0 10px !important;
-            margin: 0 0 10px !important;
+            padding: 0 0 12px !important;
+            margin: 0 0 14px !important;
             border-bottom: 1px solid #f1f5f9 !important;
-            flex-shrink: 0;
         }
 
         #tableOrderModal .tabs_container {
-            flex: 1;
-            overflow-y: auto;
-            min-height: 0;
-            padding-right: 2px;
+            overflow: visible !important;
+            min-height: 280px;
+            padding: 4px 2px 8px;
         }
 
         #tableOrderModal .product-details {
             background: #f8fafc;
-            padding: 7px 14px;
+            padding: 8px 14px;
             border-radius: 999px;
             border: 1px solid #e2e8f0 !important;
             box-shadow: none;
@@ -128,7 +125,7 @@
         #tableOrderModal .tabs_wrapper ul.tabs li.active .product-details {
             background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%);
             border-color: transparent !important;
-            box-shadow: 0 6px 14px -8px rgba(255, 159, 67, 0.75);
+            box-shadow: 0 6px 14px -8px rgba(255, 159, 67, 0.7);
         }
 
         #tableOrderModal .tabs_wrapper ul.tabs li.active .product-details h6 {
@@ -136,34 +133,47 @@
         }
 
         #tableOrderModal .tabs_container .row {
-            --bs-gutter-x: 0.65rem;
-            --bs-gutter-y: 0.65rem;
+            --bs-gutter-x: 0.75rem;
+            --bs-gutter-y: 0.75rem;
         }
 
         #tableOrderModal .productset {
             background: #fff;
             border: 1px solid #e8edf3;
             border-radius: 12px;
-            padding: 10px 8px 12px;
+            padding: 12px 10px;
             margin-bottom: 0;
             box-shadow: none;
-            height: 100%;
-            transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            height: auto;
+            min-height: 150px;
+            overflow: visible;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         #tableOrderModal .productset:hover {
-            transform: translateY(-2px);
+            transform: none;
             border-color: #fdba74;
-            box-shadow: 0 10px 20px -16px rgba(15, 23, 42, 0.35);
+            box-shadow: 0 8px 18px -14px rgba(15, 23, 42, 0.3);
+        }
+
+        #tableOrderModal .productset .productsetimg {
+            min-height: 70px !important;
+            margin-bottom: 6px;
         }
 
         #tableOrderModal .productsetimgin {
-            height: 64px !important;
-            margin: 0 auto 6px !important;
+            height: 70px !important;
+            max-height: 70px !important;
+            margin: 0 auto !important;
             background: #f8fafc;
             border-radius: 10px;
             object-fit: contain;
             max-width: 100%;
+            transform: none !important;
+        }
+
+        #tableOrderModal .productset:hover .productsetimgin {
+            transform: none !important;
         }
 
         #tableOrderModal .productsetcontent {
@@ -174,34 +184,41 @@
             font-size: 13px !important;
             font-weight: 700 !important;
             color: #0f172a !important;
-            margin-bottom: 2px !important;
+            margin: 0 0 2px !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         #tableOrderModal .productsetcontent h6 {
-            font-size: 13.5px !important;
+            font-size: 14px !important;
             font-weight: 800 !important;
             color: #ff9f43 !important;
+            margin: 0 !important;
         }
 
+        /* Right: order panel */
         #tableOrderModal .card-order {
-            background: #ffffff;
+            background: #fff;
             border: 1px solid #e8edf3;
             border-radius: 14px;
             box-shadow: none;
-            height: 100%;
+            height: auto !important;
+            min-height: 520px;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: visible !important;
             margin: 0;
         }
 
         #tableOrderModal .card-order > .card-body.body_space {
-            padding: 12px !important;
+            padding: 14px !important;
             display: flex;
             flex-direction: column;
+            gap: 0;
             flex: 1;
             min-height: 0;
-            overflow: hidden;
+            overflow: visible !important;
         }
 
         #tableOrderModal .order-panel-title {
@@ -211,42 +228,43 @@
             text-transform: uppercase;
             color: #94a3b8;
             margin-bottom: 8px;
-            flex-shrink: 0;
         }
 
         #tableOrderModal .gst-header {
-            margin-bottom: 10px !important;
-            flex-shrink: 0;
+            margin-bottom: 12px !important;
+            position: relative;
+            z-index: 1;
         }
 
         #tableOrderModal .custom-gst-pill-group {
-            width: 100%;
-            display: grid;
+            width: 100% !important;
+            display: grid !important;
             grid-template-columns: 1fr 1fr;
             gap: 0;
             background: #f1f5f9;
             border-radius: 10px;
             padding: 3px;
+            border: 1px solid #e2e8f0;
         }
 
         #tableOrderModal .custom-gst-pill {
             margin: 0;
             cursor: pointer;
+            width: 100%;
         }
 
         #tableOrderModal .custom-gst-pill span {
-            display: flex;
+            display: flex !important;
             align-items: center;
             justify-content: center;
             width: 100%;
-            padding: 8px 6px;
+            padding: 9px 8px;
             border-radius: 8px;
             font-size: 12px;
             font-weight: 700;
             color: #64748b;
             background: transparent;
             border: 0;
-            transition: all 0.15s ease;
         }
 
         #tableOrderModal .custom-gst-pill input[type="radio"]:checked + span {
@@ -256,22 +274,25 @@
         }
 
         #tableOrderModal .order-scroll {
-            flex: 1;
+            flex: 1 1 auto;
             min-height: 0;
-            overflow-y: auto;
-            padding-right: 2px;
+            overflow: visible !important;
+            padding: 0;
+            margin: 0;
         }
 
         #tableOrderModal .totalitem {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 8px;
+            margin: 0 0 10px;
+            position: relative;
+            z-index: 0;
         }
 
         #tableOrderModal .totalitem h4 {
             margin: 0;
-            font-size: 12.5px;
+            font-size: 13px;
             font-weight: 700;
             color: #334155;
         }
@@ -284,37 +305,73 @@
         }
 
         #tableOrderModal .product-table {
-            min-height: 70px !important;
-            max-height: none !important;
+            min-height: 64px !important;
+            max-height: 180px !important;
             height: auto !important;
-            overflow: visible !important;
-            margin-bottom: 8px;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            margin: 0 0 12px;
+            padding: 2px 0;
         }
 
         #tableOrderModal .product-lists {
             display: flex !important;
-            align-items: center;
+            flex-direction: row !important;
+            align-items: center !important;
             justify-content: space-between;
             gap: 8px;
             list-style: none;
-            margin: 0 0 8px;
-            padding: 8px 10px;
+            margin: 0 0 8px !important;
+            padding: 10px !important;
             background: #f8fafc;
             border: 1px solid #e8edf3;
             border-radius: 10px;
+            overflow: visible !important;
+            min-height: 58px;
+        }
+
+        #tableOrderModal .product-lists > li {
+            overflow: visible !important;
+        }
+
+        #tableOrderModal .product-lists .productimg {
+            display: flex !important;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        #tableOrderModal .product-lists .productimgs img {
+            width: 38px !important;
+            height: 38px !important;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #fff;
+            border: 1px solid #eef2f7;
+        }
+
+        #tableOrderModal .product-lists .productcontet h4 {
+            font-size: 12.5px !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            margin: 0 0 4px !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 110px;
         }
 
         #tableOrderModal .select-group label {
-            font-size: 11.5px;
+            font-size: 12px;
             font-weight: 700;
             color: #64748b;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
         }
 
         #tableOrderModal #discount {
             border-radius: 9px;
             border: 1px solid #e2e8f0;
-            height: 36px;
+            height: 38px;
             font-size: 13px;
             padding: 6px 10px;
         }
@@ -322,15 +379,16 @@
         #tableOrderModal .error_discount {
             font-size: 11px;
             display: block;
-            margin-top: 3px;
+            margin-top: 4px;
+            min-height: 14px;
         }
 
         #tableOrderModal .setvalue {
             background: #f8fafc;
             border: 1px solid #e8edf3;
             border-radius: 10px;
-            padding: 8px 10px;
-            margin: 8px 0 0;
+            padding: 10px 12px;
+            margin: 10px 0 0;
         }
 
         #tableOrderModal .setvalue ul {
@@ -346,7 +404,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            padding: 5px 0;
+            padding: 6px 0;
             border-bottom: 1px dashed #e2e8f0;
         }
 
@@ -387,53 +445,86 @@
             color: #ff9f43;
         }
 
+        /* Payment + actions */
         #tableOrderModal .payment_panel {
-            margin-top: 10px;
-            padding-top: 10px;
+            margin-top: 14px !important;
+            padding-top: 12px !important;
             border-top: 1px solid #eef2f7;
-            flex-shrink: 0;
             background: #fff;
-            position: relative !important;
+            position: static !important;
             width: 100% !important;
             bottom: auto !important;
-            z-index: 2;
+            left: auto !important;
+            z-index: 1 !important;
         }
 
         #tableOrderModal .setvaluecash {
-            margin-bottom: 8px;
+            margin-bottom: 12px !important;
         }
 
         #tableOrderModal .setvaluecash ul {
             display: grid !important;
-            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-            gap: 6px !important;
-            list-style: none;
-            margin: 0 0 8px;
-            padding: 0;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            list-style: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        #tableOrderModal .setvaluecash ul li {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100%;
         }
 
         #tableOrderModal .setvaluecash ul li a,
         #tableOrderModal .setvaluecash ul li a.paymentmethod {
             display: flex !important;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 3px;
-            min-height: 48px !important;
-            border-radius: 9px !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 8px !important;
+            width: 100%;
+            min-height: 42px !important;
+            border-radius: 10px !important;
             border: 1px solid #e2e8f0 !important;
             background: #fff !important;
             color: #334155 !important;
-            font-size: 10.5px !important;
-            font-weight: 700;
-            padding: 6px 4px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            padding: 8px 12px !important;
             text-decoration: none !important;
             box-shadow: none !important;
+            transform: none !important;
+        }
+
+        #tableOrderModal .setvaluecash ul li a i {
+            width: 16px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        #tableOrderModal .setvaluecash ul li a span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #tableOrderModal .setvaluecash ul li a.paymentmethod:hover {
+            border-color: #fdba74 !important;
+            background: #fff7ed !important;
+            color: #c2410c !important;
+            transform: none !important;
         }
 
         #tableOrderModal .setvaluecash ul li a.paymentmethod.active {
             background: #0f172a !important;
             border-color: #0f172a !important;
+            color: #fff !important;
+        }
+
+        #tableOrderModal .setvaluecash ul li a.paymentmethod.active i {
             color: #fff !important;
         }
 
@@ -446,7 +537,7 @@
             gap: 10px;
             width: 100% !important;
             margin: 0 !important;
-            padding: 12px 14px !important;
+            padding: 13px 14px !important;
             border-radius: 11px !important;
             background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%) !important;
             color: #fff !important;
@@ -473,6 +564,12 @@
             margin-top: 0 !important;
         }
 
+        #tableOrderModal .btn-totallabel_1,
+        #tableOrderModal .btn-totallabel_2 {
+            flex: 1 1 0;
+            width: auto !important;
+        }
+
         #tableOrderModal .btn-totallabel_1 {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
             box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.55) !important;
@@ -483,22 +580,13 @@
         }
 
         @media (max-width: 991px) {
-            #tableOrderModal .table-order-layout {
-                height: auto;
-                max-height: none;
+            #tableOrderModal .tabs_wrapper,
+            #tableOrderModal .card-order {
+                min-height: 0;
             }
 
-            #tableOrderModal .table-order-layout > [class*="col-"] {
-                height: auto;
-            }
-
-            #tableOrderModal .tabs_wrapper {
-                min-height: 280px;
-                max-height: 360px;
-            }
-
-            #tableOrderModal .modal-body {
-                overflow-y: auto;
+            #tableOrderModal .product-table {
+                max-height: 160px !important;
             }
         }
 
@@ -1203,12 +1291,26 @@
         }
 
         @media screen and (max-width: 768px) {
+            /* Keep payment actions in-flow inside table order modal */
+            #tableOrderModal .payment_panel {
+                position: static !important;
+                width: 100% !important;
+                margin-left: 0 !important;
+                bottom: auto !important;
+            }
+
             .payment_panel {
                 position: fixed;
                 bottom: 50px;
                 background-color: white;
                 width: 80%;
                 margin-left: -6px;
+            }
+
+            #tableOrderModal .payment_panel {
+                position: static !important;
+                width: 100% !important;
+                margin-left: 0 !important;
             }
 
             .productset {
@@ -1895,7 +1997,7 @@
         </div>
 
     <div class="modal fade" id="tableOrderModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
 
                 <div class="modal-header d-flex align-items-center justify-content-between">
@@ -2035,9 +2137,26 @@
                                                 <input type="hidden" name="price_after_discount" value="0.00" class="tax-hidden">
                                             </li>
                                             @foreach ($taxRates as $tax)
-                                                <li class="taxList">
-                                                    <h5>{{ $tax->tax_name }} ({{ $tax->tax_rate }}%) Tax</h5>
-                                                    <h6 class="tax-value" data-rate="{{ $tax->tax_rate }}"
+                                                @php
+                                                    $taxNameUpper = strtoupper(trim($tax->tax_name));
+                                                    // Dine-in is intra-state: default CGST + SGST only (not IGST / GST slabs)
+                                                    $isDefaultTax = in_array($taxNameUpper, ['CGST', 'SGST'], true);
+                                                @endphp
+                                                <li class="taxList {{ $isDefaultTax ? 'tax-active' : '' }}"
+                                                    data-tax-id="{{ $tax->id }}"
+                                                    data-tax-name="{{ $tax->tax_name }}">
+                                                    <h5>
+                                                        <label class="tax-select-label mb-0 d-flex align-items-center gap-1" style="cursor:pointer;font-weight:inherit;">
+                                                            <input type="checkbox"
+                                                                   class="tax-select-checkbox"
+                                                                   value="{{ $tax->id }}"
+                                                                   {{ $isDefaultTax ? 'checked' : '' }}
+                                                                   style="accent-color:#ff9f43;margin:0;">
+                                                            <span>{{ $tax->tax_name }} ({{ $tax->tax_rate }}%) Tax</span>
+                                                        </label>
+                                                    </h5>
+                                                    <h6 class="tax-value" data-id="{{ $tax->id }}"
+                                                        data-rate="{{ $tax->tax_rate }}"
                                                         data-symbol="{{ $currency_symbol }}"
                                                         data-position="{{ $currency_position }}">
                                                         @if ($currency_position === 'right')
@@ -2048,6 +2167,11 @@
                                                     </h6>
                                                 </li>
                                             @endforeach
+                                            <li class="tax-edit-row" style="display:none;list-style:none;border:0;padding:0 0 6px;">
+                                                <a href="javascript:void(0);" id="toggleTaxPicker" style="font-size:12px;color:#ff9f43;font-weight:600;text-decoration:none;">
+                                                    Change taxes
+                                                </a>
+                                            </li>
                                             <li class="total-value">
                                                 <h5>Total</h5>
                                                 <h6>
@@ -2926,6 +3050,31 @@
                 }
             }
 
+            function collectSelectedTaxes() {
+                let taxes = [];
+                const gstOption = $("input[name='gst_option']:checked").val();
+                if (gstOption !== "with") {
+                    return taxes;
+                }
+                $(".taxList").each(function () {
+                    if (!$(this).find(".tax-select-checkbox").is(":checked")) {
+                        return;
+                    }
+                    const taxEl = $(this).find(".tax-value");
+                    const taxName = String($(this).data("tax-name") || "").trim();
+                    const taxAmount = parseFloat($(this).find("h6").text().replace(/[^0-9.]/g, "")) || 0;
+                    const taxRate = parseFloat(taxEl.data("rate")) || 0;
+                    const taxId = parseInt(taxEl.data("id") || $(this).data("tax-id"), 10) || null;
+                    taxes.push({
+                        tax_id: taxId,
+                        tax_name: taxName,
+                        rate: taxRate,
+                        amount: taxAmount
+                    });
+                });
+                return taxes;
+            }
+
             function calculateTotals() {
                 const firstTaxElement = $(".tax-value").first();
                 const currencySymbol = firstTaxElement.data("symbol") || '{{ $currency_symbol }}'; // fallback
@@ -2956,28 +3105,38 @@
                     const gstOption = $("input[name='gst_option']:checked").val();
 
                     if (gstOption === "with") {
+                        // Only apply taxes the user selected (default: CGST + SGST)
                         $(".taxList").each(function () {
-                            const taxRate = parseFloat($(this).find(".tax-value").data("rate")) / 100;
-
-                            // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ Tax on price after discount
-                            const taxAmount = priceAfterDiscount * taxRate;
-
-                            const taxEl = $(this).find(".tax-value");
+                            const $row = $(this);
+                            const taxEl = $row.find(".tax-value");
                             const symbol = taxEl.data("symbol") || currencySymbol;
                             const position = taxEl.data("position") || currencyPosition;
+                            const isSelected = $row.find(".tax-select-checkbox").is(":checked");
 
-                            taxEl.html(formatCurrency(taxAmount.toFixed(2), symbol, position));
-                            $(this).show();
-
-                            totalTax += taxAmount;
+                            if (isSelected) {
+                                const taxRate = parseFloat(taxEl.data("rate")) / 100;
+                                const taxAmount = priceAfterDiscount * taxRate;
+                                taxEl.html(formatCurrency(taxAmount.toFixed(2), symbol, position));
+                                $row.addClass("tax-active");
+                                totalTax += taxAmount;
+                            } else {
+                                taxEl.html(formatCurrency("0.00", symbol, position));
+                                $row.removeClass("tax-active");
+                            }
                         });
+                        if (typeof refreshTaxRowsVisibility === "function") {
+                            refreshTaxRowsVisibility();
+                        }
                     } else {
                         // Hide and reset tax values if GST = without
                         $(".taxList")
-                            .hide()
+                            .removeClass("tax-active")
                             .find(".tax-value")
                             .html(formatCurrency("0.00", currencySymbol, currencyPosition));
                         totalTax = 0;
+                        if (typeof refreshTaxRowsVisibility === "function") {
+                            refreshTaxRowsVisibility();
+                        }
                     }
 
                     // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ Final total (price after discount + tax + shipping)
@@ -3294,16 +3453,74 @@
                     calculateTotals();
                 }
             });
-            $(document).on("change", "input[name='gst_option']", function () {
-                let gstOption = $("input[name='gst_option']:checked").val();
+            let taxPickerOpen = false;
 
-                if (gstOption === "with") {
-                    $(".taxList").show();
-                } else {
+            function refreshTaxRowsVisibility() {
+                const gstOption = $("input[name='gst_option']:checked").val();
+                if (gstOption !== "with") {
                     $(".taxList").hide();
+                    $(".tax-edit-row").hide();
+                    taxPickerOpen = false;
+                    $("#toggleTaxPicker").text("Change taxes");
+                    return;
                 }
 
+                $(".tax-edit-row").show();
+                $(".taxList").each(function () {
+                    const selected = $(this).find(".tax-select-checkbox").is(":checked");
+                    if (taxPickerOpen || selected) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
+
+            $(document).on("change", "input[name='gst_option']", function () {
+                refreshTaxRowsVisibility();
                 calculateTotals(); // recalc totals with/without tax
+            });
+
+            $(document).on("click", "#toggleTaxPicker", function (e) {
+                e.preventDefault();
+                taxPickerOpen = !taxPickerOpen;
+                $(this).text(taxPickerOpen ? "Done" : "Change taxes");
+                refreshTaxRowsVisibility();
+            });
+
+            // Allow toggling which taxes apply when GST is on
+            $(document).on("change", ".tax-select-checkbox", function () {
+                const name = String($(this).closest(".taxList").data("tax-name") || "").toUpperCase().trim();
+                const checked = $(this).is(":checked");
+
+                // Keep CGST/SGST vs IGST vs GST-slab mutually exclusive
+                if (checked) {
+                    if (name === "CGST" || name === "SGST") {
+                        $(".taxList").each(function () {
+                            const n = String($(this).data("tax-name") || "").toUpperCase().trim();
+                            if (n === "IGST" || n.indexOf("GST ") === 0) {
+                                $(this).find(".tax-select-checkbox").prop("checked", false);
+                            }
+                        });
+                    } else if (name === "IGST") {
+                        $(".taxList").each(function () {
+                            const n = String($(this).data("tax-name") || "").toUpperCase().trim();
+                            if (n === "CGST" || n === "SGST" || n.indexOf("GST ") === 0) {
+                                $(this).find(".tax-select-checkbox").prop("checked", false);
+                            }
+                        });
+                    } else if (name.indexOf("GST") === 0) {
+                        $(".taxList").each(function () {
+                            const n = String($(this).data("tax-name") || "").toUpperCase().trim();
+                            if (n === "CGST" || n === "SGST" || n === "IGST" || (n.indexOf("GST ") === 0 && n !== name)) {
+                                $(this).find(".tax-select-checkbox").prop("checked", false);
+                            }
+                        });
+                    }
+                }
+
+                refreshTaxRowsVisibility();
+                calculateTotals();
             });
 
             $(".btn-totallabel").click(function (event) {
@@ -3382,41 +3599,9 @@
                     });
                 });
 
-                // Prepare tax data
-                // let taxes = [];
-                // $(".taxList").each(function () {
-
-                //     const taxName = $(this).find("h5").text().replace(" Tax", "");
-                //     const taxAmount = parseFloat($(this).find("h6").text().replace(/[^0-9.]/g, ""));
-
-
-                //     const taxRate = parseFloat($(this).find(".tax-value").data("rate"));
-                //     taxes.push({
-                //         tax_name: taxName,
-                //         rate: taxRate,
-                //         amount: taxAmount
-                //     });
-                // });
-                // Prepare tax data
-                let taxes = [];
+                // Prepare tax data — only selected taxes (default CGST + SGST)
+                let taxes = collectSelectedTaxes();
                 let gstOption = $("input[name='gst_option']:checked").val();
-
-                if (gstOption === "with") {
-                    $(".taxList").each(function () {
-                        const taxName = $(this).find("h5").text().replace(" Tax", "");
-                        const taxAmount = parseFloat($(this).find("h6").text().replace(/[^0-9.]/g,
-                            "")) || 0;
-                        const taxRate = parseFloat($(this).find(".tax-value").data("rate")) || 0;
-
-                        taxes.push({
-                            tax_name: taxName,
-                            rate: taxRate,
-                            amount: taxAmount
-                        });
-                    });
-                } else {
-                    taxes = []; // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ explicitly empty when "without GST"
-                }
 
 
                 let cash = parseFloat($("#cashAmount").val()) || 0;
@@ -3593,41 +3778,9 @@
                     });
                 });
 
-                // Prepare tax data
-                // let taxes = [];
-                // $(".taxList").each(function () {
-
-                //     const taxName = $(this).find("h5").text().replace(" Tax", "");
-                //     const taxAmount = parseFloat($(this).find("h6").text().replace(/[^0-9.]/g, ""));
-
-
-                //     const taxRate = parseFloat($(this).find(".tax-value").data("rate"));
-                //     taxes.push({
-                //         tax_name: taxName,
-                //         rate: taxRate,
-                //         amount: taxAmount
-                //     });
-                // });
-                // Prepare tax data
-                let taxes = [];
+                // Prepare tax data — only selected taxes (default CGST + SGST)
+                let taxes = collectSelectedTaxes();
                 let gstOption = $("input[name='gst_option']:checked").val();
-
-                if (gstOption === "with") {
-                    $(".taxList").each(function () {
-                        const taxName = $(this).find("h5").text().replace(" Tax", "");
-                        const taxAmount = parseFloat($(this).find("h6").text().replace(/[^0-9.]/g,
-                            "")) || 0;
-                        const taxRate = parseFloat($(this).find(".tax-value").data("rate")) || 0;
-
-                        taxes.push({
-                            tax_name: taxName,
-                            rate: taxRate,
-                            amount: taxAmount
-                        });
-                    });
-                } else {
-                    taxes = []; // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ explicitly empty when "without GST"
-                }
 
 
                 let cash = parseFloat($("#cashAmount").val()) || 0;
@@ -3799,41 +3952,9 @@
                     });
                 });
 
-                // Prepare tax data
-                // let taxes = [];
-                // $(".taxList").each(function () {
-
-                //     const taxName = $(this).find("h5").text().replace(" Tax", "");
-                //     const taxAmount = parseFloat($(this).find("h6").text().replace(/[^0-9.]/g, ""));
-
-
-                //     const taxRate = parseFloat($(this).find(".tax-value").data("rate"));
-                //     taxes.push({
-                //         tax_name: taxName,
-                //         rate: taxRate,
-                //         amount: taxAmount
-                //     });
-                // });
-                // Prepare tax data
-                let taxes = [];
+                // Prepare tax data — only selected taxes (default CGST + SGST)
+                let taxes = collectSelectedTaxes();
                 let gstOption = $("input[name='gst_option']:checked").val();
-
-                if (gstOption === "with") {
-                    $(".taxList").each(function () {
-                        const taxName = $(this).find("h5").text().replace(" Tax", "");
-                        const taxAmount = parseFloat($(this).find("h6").text().replace(/[^0-9.]/g,
-                            "")) || 0;
-                        const taxRate = parseFloat($(this).find(".tax-value").data("rate")) || 0;
-
-                        taxes.push({
-                            tax_name: taxName,
-                            rate: taxRate,
-                            amount: taxAmount
-                        });
-                    });
-                } else {
-                    taxes = []; // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ explicitly empty when "without GST"
-                }
 
 
                 let cash = parseFloat($("#cashAmount").val()) || 0;
