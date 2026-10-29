@@ -545,8 +545,14 @@
         #tableOrderModal .btn-totallabel_2 h5 {
             margin: 0 !important;
             color: #fff !important;
-            font-size: 13.5px !important;
+            font-size: 13px !important;
             font-weight: 800 !important;
+            white-space: nowrap;
+        }
+
+        #tableOrderModal .btn-totallabel_1 h6,
+        #tableOrderModal .btn-totallabel_2 h6 {
+            font-size: 12.5px !important;
         }
 
         #tableOrderModal .modal-order-edit {
@@ -2207,11 +2213,11 @@
 
                                     <div class="modal-order-edit" style="display: none;">
                                         <div class="btn-totallabel_1" data-order_update_id="" style="width: 49%;">
-                                            <h6>Update Order</h6>
+                                            <h6>Update · {{ $currency_symbol }}0.00</h6>
                                             <h5><i class="fas fa-check"></i></h5>
                                         </div>
                                         <div class="btn-totallabel_2" data-order_payment_update_id="" style="width: 49%;">
-                                            <h6>Checkout</h6>
+                                            <h6>Checkout · {{ $currency_symbol }}0.00</h6>
                                             <h5><i class="fas fa-arrow-right"></i></h5>
                                         </div>
                                     </div>
@@ -3093,8 +3099,10 @@
                     $("input[name='price_after_discount']").val(priceAfterDiscount.toFixed(2));
 
                     $(".total-value h6").html(formatCurrency(total.toFixed(2), currencySymbol, currencyPosition));
-                    $(".btn-totallabel h6").html('Total Amount : ' + formatCurrency(total.toFixed(2),
-                        currencySymbol, currencyPosition));
+                    const payableText = formatCurrency(total.toFixed(2), currencySymbol, currencyPosition);
+                    $(".btn-totallabel h6").html('Place Order · ' + payableText);
+                    $(".btn-totallabel_1 h6").html('Update · ' + payableText);
+                    $(".btn-totallabel_2 h6").html('Checkout · ' + payableText);
                     $("input[name='total']").val(total.toFixed(2));
                     $("#onlineAmount").val(total.toFixed(2));
                 } else {
@@ -3103,8 +3111,10 @@
                     $(".discount-amount").html(formatCurrency("0.00", currencySymbol, currencyPosition));
                     $(".price-after-discount").html(formatCurrency("0.00", currencySymbol, currencyPosition));
                     $(".total-value h6").html(formatCurrency("0.00", currencySymbol, currencyPosition));
-                    $(".btn-totallabel h6").html('Total Amount : ' + formatCurrency("0.00", currencySymbol,
-                        currencyPosition));
+                    const zeroPayable = formatCurrency("0.00", currencySymbol, currencyPosition);
+                    $(".btn-totallabel h6").html('Place Order · ' + zeroPayable);
+                    $(".btn-totallabel_1 h6").html('Update · ' + zeroPayable);
+                    $(".btn-totallabel_2 h6").html('Checkout · ' + zeroPayable);
 
                     $("input[name='discount_amount']").val("0.00");
                     $("input[name='price_after_discount']").val("0.00");
