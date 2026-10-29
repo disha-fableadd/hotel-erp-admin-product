@@ -400,7 +400,7 @@
         }
 
         #tableOrderModal .setvaluecash {
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
         #tableOrderModal .setvaluecash::before {
@@ -408,98 +408,115 @@
             display: block;
             font-size: 11px;
             font-weight: 700;
+            letter-spacing: 0.02em;
             color: #64748b;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         #tableOrderModal .setvaluecash ul {
             display: grid !important;
-            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             gap: 8px !important;
             list-style: none !important;
             margin: 0 !important;
             padding: 0 !important;
-            align-items: stretch;
+            width: 100% !important;
         }
 
         #tableOrderModal .setvaluecash ul li {
             margin: 0 !important;
             padding: 0 !important;
-            min-width: 0;
-            height: 100%;
+            width: 100% !important;
+            min-width: 0 !important;
         }
 
         #tableOrderModal .setvaluecash ul li a,
         #tableOrderModal .setvaluecash ul li a.paymentmethod {
             display: flex !important;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-            width: 100%;
-            height: 58px !important;
-            min-height: 58px !important;
-            max-height: 58px !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 10px !important;
+            width: 100% !important;
+            height: 44px !important;
+            min-height: 44px !important;
             border-radius: 10px !important;
             border: 1.5px solid #e2e8f0 !important;
             background: #ffffff !important;
-            color: #334155 !important;
-            font-size: 11px !important;
+            color: #0f172a !important;
+            font-size: 13px !important;
             font-weight: 700 !important;
-            line-height: 1.15 !important;
-            padding: 8px 4px !important;
+            line-height: 1.2 !important;
+            padding: 0 12px !important;
             text-decoration: none !important;
-            text-align: center;
+            text-align: left !important;
             box-shadow: none !important;
             transform: none !important;
-            box-sizing: border-box;
-            white-space: nowrap;
-            overflow: hidden;
+            box-sizing: border-box !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
         }
 
         #tableOrderModal .setvaluecash ul li a.paymentmethod i,
         #tableOrderModal .setvaluecash ul li a.paymentmethod svg {
-            font-size: 15px !important;
-            width: 16px;
-            height: 16px;
-            flex-shrink: 0;
-            color: inherit !important;
+            font-size: 14px !important;
+            width: 28px !important;
+            height: 28px !important;
+            min-width: 28px !important;
+            border-radius: 8px;
+            background: #f1f5f9;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0 !important;
+            color: #475569 !important;
             fill: currentColor !important;
+            margin: 0 !important;
         }
 
         #tableOrderModal .setvaluecash ul li a.paymentmethod span {
-            display: block;
-            max-width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-size: 10.5px !important;
+            display: inline-block !important;
+            max-width: none !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            white-space: nowrap !important;
+            font-size: 12.5px !important;
             font-weight: 700 !important;
             color: inherit !important;
         }
 
         #tableOrderModal .setvaluecash ul li a.paymentmethod:hover {
-            border-color: #ff9f43 !important;
+            border-color: #fdba74 !important;
             background: #fff7ed !important;
-            color: #c2410c !important;
+            color: #9a3412 !important;
             transform: none !important;
         }
 
+        #tableOrderModal .setvaluecash ul li a.paymentmethod:hover i {
+            background: #ffedd5 !important;
+            color: #c2410c !important;
+        }
+
         #tableOrderModal .setvaluecash ul li a.paymentmethod.active {
-            background: #0f172a !important;
-            border-color: #0f172a !important;
-            color: #ffffff !important;
-            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2) !important;
+            background: #fff7ed !important;
+            border-color: #ff9f43 !important;
+            color: #9a3412 !important;
+            box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.15) !important;
             transform: none !important;
         }
 
         #tableOrderModal .setvaluecash ul li a.paymentmethod.active i,
         #tableOrderModal .setvaluecash ul li a.paymentmethod.active span {
+            color: #c2410c !important;
+        }
+
+        #tableOrderModal .setvaluecash ul li a.paymentmethod.active i {
+            background: #ff9f43 !important;
             color: #ffffff !important;
         }
 
         #tableOrderModal .setvaluecash ul li a.paymentmethod.active svg {
-            fill: #ffffff !important;
+            fill: #c2410c !important;
         }
 
         #tableOrderModal .btn-totallabel,
@@ -2152,21 +2169,21 @@
                                                 <a href="javascript:void(0);" class="paymentmethod">
                                                     <input type="radio" name="payment_method" value="debit card" hidden>
                                                     <i class="fas fa-credit-card"></i>
-                                                    <span>Debit</span>
+                                                    <span>Debit Card</span>
                                                 </a>
                                             </li>
                                             <li>
-                                                <a href="javascript:void(0);" class="paymentmethod" title="Cash + Online">
+                                                <a href="javascript:void(0);" class="paymentmethod">
                                                     <input type="radio" name="payment_method" value="cash+online" hidden>
                                                     <i class="fas fa-money-check-alt"></i>
-                                                    <span>Cash+UPI</span>
+                                                    <span>Cash + Online</span>
                                                 </a>
                                             </li>
                                             <li>
                                                 <a href="javascript:void(0);" class="paymentmethod">
                                                     <input type="radio" name="payment_method" value="scan" hidden>
                                                     <i class="fas fa-qrcode"></i>
-                                                    <span>Scan</span>
+                                                    <span>Scan / UPI</span>
                                                 </a>
                                             </li>
                                         </ul>
