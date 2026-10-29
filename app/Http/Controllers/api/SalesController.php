@@ -864,11 +864,10 @@ class SalesController extends Controller
                                     'pendingAmount' => $pendingAmount,
                                 ];
 
-                                $viewName = (isset($shopSetting->invoice_size) && $shopSetting->invoice_size === 'small') ? 'sales.salse-invoice-small-pdf' : 'sales.salse-invoice-pdf';
-                                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($viewName, $pdfData);
                                 if (isset($shopSetting->invoice_size) && $shopSetting->invoice_size === 'small') {
-                                    $pdf->setPaper([0, 0, 249.45, 566.93], 'portrait');
+                                    $pdf = make_thermal_invoice_pdf($viewName, $pdfData, $orderItems ?? 1, 226.77);
                                 } else {
+                                    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($viewName, $pdfData);
                                     $pdf->setPaper('A4', 'portrait');
                                 }
                                 $pdfContent = $pdf->output();
@@ -2455,14 +2454,11 @@ class SalesController extends Controller
             ? 'sales.salse-invoice-small-pdf' 
             : 'sales.salse-invoice-pdf';
 
-        // ✅ Generate PDF
-        $pdf = PDF::loadView($viewName, $pdfData);
-
-        // ✅ Adjust paper size for small thermal printing
+        // ✅ Generate PDF with content-matching height for thermal bills
         if (isset($setting->invoice_size) && $setting->invoice_size === 'small') {
-            // 88mm width, 200mm height
-            $pdf->setPaper([0, 0, 249.45, 566.93], 'portrait');
+            $pdf = make_thermal_invoice_pdf($viewName, $pdfData, $orderItems ?? 1, 226.77);
         } else {
+            $pdf = PDF::loadView($viewName, $pdfData);
             $pdf->setPaper('A4', 'portrait');
         }
 

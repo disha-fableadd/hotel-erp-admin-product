@@ -5,15 +5,18 @@
     <meta charset="utf-8">
     <style>
         @page {
-            size: 88mm 200mm;
             margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         html,
         body {
             margin: 0;
             padding: 0;
-            width: 80mm;
+            width: 100%;
             background: #fff;
             -webkit-print-color-adjust: exact;
         }
@@ -21,15 +24,33 @@
         body {
             font-family: 'DejaVu Sans', monospace;
             font-size: 8px;
-            line-height: 1.2;
+            line-height: 1.25;
             color: #000;
         }
 
         .invoice-wrapper {
-            width: 80mm;
-            padding: 4mm;
+            width: 100%;
+            padding: 2mm 3mm 4mm 3mm;
             box-sizing: border-box;
-            overflow: hidden;
+        }
+
+        .payment-mode-line {
+            font-size: 8px;
+            font-weight: bold;
+            text-align: center;
+            margin: 6px 0 4px 0;
+        }
+
+        .inv-qr {
+            margin: 6px 0 4px 0;
+            text-align: center;
+        }
+
+        .inv-qr img {
+            width: 75px;
+            height: 75px;
+            display: inline-block;
+            margin-top: 2px;
         }
 
         table {
@@ -314,8 +335,58 @@
             @endif
         </table>
 
-        <div class="footer text-center uppercase bold">
-            {{ $setting->footer_text ?? 'Thank You! Visit Again..' }}
+        @php
+            $payMode = !empty($sales->payment_method) ? ucfirst($sales->payment_method) : '';
+            if ($payMode === '' && isset($allPayments) && count($allPayments) > 0) {
+                $mList = [];
+                foreach ($allPayments as $p) {
+                    $m = trim((string)($p->payment_type ?? $p->payment_mode ?? ''));
+                    if ($m !== '' && !in_array($m, $mList, true)) { $mList[] = ucfirst($m); }
+                }
+                $payMode = implode(', ', $mList);
+            }
+            if ($payMode === '') {
+                $payMode = ($paidAmount >= $grandTotal && $grandTotal > 0) ? 'Fully' : ($paidAmount > 0 ? 'Partially' : 'Due');
+            }
+
+            $qrBase64 = null;
+            $rawQr = $sales->custom_qr_code ?? ($setting->qr_code ?? null);
+            if (!empty($rawQr)) {
+                if (function_exists('resolve_local_image_base64')) {
+                    $qrBase64 = resolve_local_image_base64($rawQr);
+                }
+                if (!$qrBase64) {
+                    $cleanQr = ltrim(preg_replace('#^https?://[^/]+/#', '', preg_replace('#^storage/#', '', preg_replace('#^public/#', '', trim($rawQr)))), '/');
+                    $cands = [
+                        storage_path('app/public/' . $cleanQr),
+                        storage_path('app/public/qr_codes/' . basename($cleanQr)),
+                        public_path('storage/' . $cleanQr),
+                        public_path($cleanQr),
+                    ];
+                    foreach ($cands as $c) {
+                        if (file_exists($c) && is_file($c)) {
+                            $mime = function_exists('mime_content_type') ? (@mime_content_type($c) ?: 'image/png') : 'image/png';
+                            $qrBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($c));
+                            break;
+                        }
+                    }
+                }
+            }
+        @endphp
+
+        <div class="payment-mode-line">
+            Payment Mode: {{ $payMode }} : Rs {{ number_format($paidAmount, 2) }}
+        </div>
+
+        @if (!empty($qrBase64))
+            <div class="inv-qr">
+                <div class="bold" style="font-size: 8px; margin-bottom: 2px;">Scan QR to Pay Bill:</div>
+                <img src="{{ $qrBase64 }}" alt="QR Code">
+            </div>
+        @endif
+
+        <div class="footer text-center bold">
+            {{ !empty($setting->footer_text) ? $setting->footer_text : 'Thanks for business with us!' }}
         </div>
     </div>
 </body>

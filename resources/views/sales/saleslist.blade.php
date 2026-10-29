@@ -926,6 +926,24 @@
     }
 
     /* ===== Action Dropdown ===== */
+    #order-table .order-print-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        margin-right: 4px;
+        padding: 0;
+        color: #495057;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        text-decoration: none;
+    }
+    #order-table .order-print-btn:hover {
+        color: #212529;
+        background: #f1f3f5;
+    }
     .action-dropdown-wrap {
         position: relative;
         display: inline-block;
@@ -2858,7 +2876,7 @@
                         invoiceBtnHtml = `<a class="dd-item" href="/sales-invoice/${order.id}">
                             <span class="dd-icon"><i class="fas fa-file-download" style="color:#6f42c1"></i></span> Invoice
                         </a>
-                        <a class="dd-item" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id});">
+                        <a class="dd-item" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');">
                             <span class="dd-icon"><i class="fas fa-print" style="color:#495057"></i></span> Print Invoice
                         </a>`;
                         @endif
@@ -2884,7 +2902,7 @@
                         }
 
                         let quickBtns = `
-                            <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id});" title="Print">
+                            <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');" title="Print">
                                 <i class="fas fa-print"></i>
                             </a>
                             <button type="button" class="btn sl-m-only sl-m-share" data-order-id="${order.id}" title="Share">
@@ -2896,6 +2914,9 @@
                         `;
 
                         let actionBtns = `
+                            <a class="order-print-btn" href="/sales/invoice/pdf/${order.id}?size=small" target="_blank" rel="noopener" title="Print small receipt">
+                                <i class="fas fa-print"></i>
+                            </a>
                             ${quickBtns}
                             <div class="action-dropdown-wrap">
                                 <button class="ellipsis-btn action-ellipsis-btn" type="button" title="Actions"><i class="fa-solid fa-ellipsis"></i></button>
@@ -3454,7 +3475,7 @@
             invBtnHtml2 = `<a class="dd-item" href="/sales-invoice/${order.id}">
                 <span class="dd-icon"><i class="fas fa-file-download" style="color:#6f42c1"></i></span> Invoice
             </a>
-            <a class="dd-item" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id});">
+            <a class="dd-item" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');">
                 <span class="dd-icon"><i class="fas fa-print" style="color:#495057"></i></span> Print Invoice
             </a>`;
             @endif
@@ -3467,7 +3488,7 @@
                 @endif
             }
             let quickBtns2 = `
-                <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id});" title="Print">
+                <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');" title="Print">
                     <i class="fas fa-print"></i>
                 </a>
                 <button type="button" class="btn sl-m-only sl-m-share" data-order-id="${order.id}" title="Share">
@@ -3478,6 +3499,9 @@
                 </a>
             `;
             let actionBtns = `
+                <a class="order-print-btn" href="/sales/invoice/pdf/${order.id}?size=small" target="_blank" rel="noopener" title="Print small receipt">
+                    <i class="fas fa-print"></i>
+                </a>
                 ${quickBtns2}
                 <div class="action-dropdown-wrap">
                     <button class="ellipsis-btn action-ellipsis-btn" type="button" title="Actions"><i class="fa-solid fa-ellipsis"></i></button>
@@ -3614,7 +3638,7 @@
             invBtnHtml3 = `<a class="dd-item" href="/sales-invoice/${order.id}">
                 <span class="dd-icon"><i class="fas fa-file-download" style="color:#6f42c1"></i></span> Invoice
             </a>
-            <a class="dd-item" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id});">
+            <a class="dd-item" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');">
                 <span class="dd-icon"><i class="fas fa-print" style="color:#495057"></i></span> Print Invoice
             </a>`;
             @endif
@@ -3627,7 +3651,7 @@
                 @endif
             }
             let quickBtns3 = `
-                <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id});" title="Print">
+                <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');" title="Print">
                     <i class="fas fa-print"></i>
                 </a>
                 <button type="button" class="btn sl-m-only sl-m-share" data-order-id="${order.id}" title="Share">
@@ -3638,6 +3662,9 @@
                 </a>
             `;
             let actionBtns = `
+                <a class="order-print-btn" href="/sales/invoice/pdf/${order.id}?size=small" target="_blank" rel="noopener" title="Print small receipt">
+                    <i class="fas fa-print"></i>
+                </a>
                 ${quickBtns3}
                 <div class="action-dropdown-wrap">
                     <button class="ellipsis-btn action-ellipsis-btn" type="button" title="Actions"><i class="fa-solid fa-ellipsis"></i></button>
