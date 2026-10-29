@@ -10,47 +10,60 @@
 
         * {
             box-sizing: border-box;
+            -webkit-box-sizing: border-box;
         }
 
-        html,
-        body {
+        html, body {
             margin: 0;
             padding: 0;
             width: 100%;
+            max-width: 100%;
             background: #fff;
             -webkit-print-color-adjust: exact;
         }
 
         body {
-            font-family: 'DejaVu Sans', monospace;
-            font-size: 8px;
-            line-height: 1.25;
-            color: #000;
-        }
-
-        .invoice-wrapper {
-            width: 100%;
-            padding: 4mm;
-            box-sizing: border-box;
-        }
-
-        .payment-mode-line {
+            font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
             font-size: 8px;
             font-weight: bold;
-            text-align: center;
-            margin: 6px 0 4px 0;
+            color: #000;
+            margin: 0 auto;
+            padding: 2mm 0 4mm 0;
+            width: 94%;
+            max-width: 94%;
+            line-height: 1.25;
         }
 
-        .inv-qr {
-            margin: 6px 0 4px 0;
-            text-align: center;
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+        .uppercase { text-transform: uppercase; }
+
+        .shop-name {
+            margin: 0;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            line-height: 1.3;
         }
 
-        .inv-qr img {
-            width: 75px;
-            height: 75px;
-            display: inline-block;
-            margin-top: 2px;
+        .shop-phone {
+            margin: 1px 0 0 0;
+            font-size: 7.5px;
+            font-weight: normal;
+            line-height: 1.3;
+        }
+
+        .inv-title {
+            margin: 4px 0;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+            padding: 2px 0;
+            text-align: center;
         }
 
         table {
@@ -59,370 +72,330 @@
             table-layout: fixed;
         }
 
-        th,
-        td {
-            overflow-wrap: break-word;
-            word-wrap: break-word;
-        }
-
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .text-left { text-align: left; }
-        .bold { font-weight: bold; }
-        .uppercase { text-transform: uppercase; }
-
-        .company-name {
-            font-size: 13px;
-            margin-bottom: 2px;
-            display: block;
-        }
-
-        .company-info {
-            font-size: 8px;
-            margin-bottom: 5px;
-            line-height: 1.3;
-        }
-
-        .invoice-title {
-            font-size: 11px;
-            border-top: 1px dashed #000;
-            border-bottom: 1px dashed #000;
-            margin: 8px 0;
-            padding: 4px 0;
-        }
-
-        .info-table {
-            margin-bottom: 8px;
-        }
-
-        .info-table td {
-            font-size: 8px;
-            padding: 1px 0;
+        td, th {
             vertical-align: top;
+            word-wrap: break-word;
+            overflow: hidden;
         }
-
-        .info-table td:first-child { width: 30%; }
-        .info-table td:last-child { width: 70%; }
 
         .item-table {
-            margin-bottom: 5px;
+            margin-top: 4px;
         }
 
         .item-table th {
             font-size: 8px;
+            font-weight: bold;
+            text-align: left;
             border-bottom: 1px solid #000;
-            padding: 5px 0;
-            text-transform: uppercase;
+            padding: 2px 1px;
         }
 
         .item-table td {
-            padding: 5px 0;
-            vertical-align: top;
             font-size: 8px;
+            padding: 1px 1px;
+        }
+
+        .name-row td {
+            padding-top: 3px;
+            padding-bottom: 0;
+        }
+
+        .c-no { width: 7%; }
+        .c-name { width: 45%; }
+        .c-sub { font-weight: normal; font-size: 7px; }
+        .c-price { width: 24%; text-align: right; }
+        .c-amt { width: 24%; text-align: right; }
+
+        .item-name {
+            font-weight: bold;
             word-wrap: break-word;
         }
 
-        .item-table th:first-child, .item-table td:first-child { width: 52%; }
-        .item-table th:nth-child(2), .item-table td:nth-child(2) { width: 16%; text-align: center; }
-        .item-table th:last-child, .item-table td:last-child { width: 32%; text-align: right; }
-
-        .totals-table td {
-            padding: 2px 0;
-            font-size: 9px;
-        }
-        .totals-table td:first-child { width: 62%; }
-        .totals-table td:last-child { width: 38%; }
-
-        .grand-total table td:first-child { width: 55%; }
-        .grand-total table td:last-child { width: 45%; }
-
-        .grand-total {
-            border-top: 1px double #000;
-            border-bottom: 1px double #000;
-            font-size: 11px;
-            margin: 6px 0;
-            padding: 5px 0;
+        .item-extra {
+            font-size: 7px;
+            font-weight: normal;
+            color: #333;
         }
 
-        .footer {
-            margin-top: 15px;
+        .sum-table {
+            margin-top: 4px;
+            border-top: 1px solid #000;
+        }
+
+        .sum-table td {
+            font-size: 8.5px;
+            padding: 1.5px 0;
+            font-weight: bold;
+        }
+
+        .inv-qr {
+            text-align: center;
+            margin-top: 5px;
+            margin-bottom: 3px;
             font-size: 8px;
-            border-top: 1px dashed #000;
-            padding-top: 10px;
+            font-weight: bold;
         }
 
-        .divider {
-            border-top: 1px dashed #000;
-            margin: 6px 0;
+        .inv-qr img {
+            width: 70px;
+            height: 70px;
+            margin-top: 2px;
+            display: inline-block;
+        }
+
+        .terms {
+            margin-top: 6px;
+            font-size: 8px;
+            font-weight: bold;
+            text-align: center;
         }
     </style>
 </head>
-
 <body>
-    <div class="invoice-wrapper">
-        <div class="text-center">
-            <span class="company-name bold uppercase">{{ $setting->name ?? '' }}</span>
-            <div class="company-info">
-                {{ $setting->address ?? '' }}<br>
-                Ph: {{ $setting->phone ?? '' }} | GST: {{ $setting->gst_num ?? '' }}
+@php
+    $subTotal = 0;
+    $totalQty = 0;
+    foreach ($orderItems as $item) {
+        $subTotal += (float) ($item->total_amount ?? ($item->price * $item->quantity));
+        $totalQty += (float) ($item->quantity ?? 1);
+    }
+
+    $labourTotal = 0;
+    if (isset($labourItems)) {
+        foreach ($labourItems as $labour) {
+            $labourTotal += ((float) $labour->price) * ((float) $labour->qty);
+            $totalQty += (float) $labour->qty;
+        }
+    }
+
+    $discountPercent = (float) ($sales->discount ?? 0);
+    $storedDiscount = (float) ($sales->discount_amount ?? 0);
+    $totalDiscount = $storedDiscount > 0 ? $storedDiscount : (($discountPercent / 100) * $subTotal);
+
+    $totalGst = 0;
+    if (!empty($taxDetails1)) {
+        foreach ($taxDetails1 as $t) {
+            $totalGst += (float) ($t['amount'] ?? 0);
+        }
+    } else {
+        foreach ($orderItems as $item) {
+            $totalGst += (float) ($item->product_gst_total ?? 0);
+        }
+    }
+
+    $shippingCharge = (float) ($sales->shipping ?? 0);
+    $afterDiscount = max(0, $subTotal - $totalDiscount);
+    $calcGrandTotal = $afterDiscount + $totalGst + $labourTotal + $shippingCharge;
+    $grandTotal = isset($sales->total_amount) ? (float) $sales->total_amount : $calcGrandTotal;
+    $paidAmount = (float) ($paidAmount ?? 0);
+    $pendingAmount = max(0, (float) ($pendingAmount ?? ($grandTotal - $paidAmount)));
+    $totalQtyFormatted = fmod($totalQty, 1.0) == 0.0 ? number_format($totalQty, 0) : number_format($totalQty, 2);
+
+    $payMode = !empty($sales->payment_method) ? ucfirst($sales->payment_method) : '';
+    if ($payMode === '' && isset($allPayments) && count($allPayments) > 0) {
+        $mList = [];
+        foreach ($allPayments as $p) {
+            $m = trim((string) ($p->payment_type ?? $p->payment_mode ?? ''));
+            if ($m !== '' && !in_array($m, $mList, true)) { $mList[] = ucfirst($m); }
+        }
+        $payMode = implode(', ', $mList);
+    }
+    if ($payMode === '') {
+        $payMode = ($paidAmount >= $grandTotal && $grandTotal > 0) ? 'Fully' : ($paidAmount > 0 ? 'Partially' : 'Due');
+    }
+
+    $logoBase64 = null;
+    if (!empty($setting->logo) && function_exists('resolve_local_image_base64')) {
+        $logoBase64 = resolve_local_image_base64($setting->logo);
+    }
+
+    $qrBase64 = null;
+    $rawQr = $sales->custom_qr_code ?? ($setting->qr_code ?? null);
+    if (!empty($rawQr)) {
+        if (function_exists('resolve_local_image_base64')) {
+            $qrBase64 = resolve_local_image_base64($rawQr);
+        }
+        if (!$qrBase64) {
+            $cleanQr = ltrim(preg_replace('#^https?://[^/]+/#', '', preg_replace('#^storage/#', '', preg_replace('#^public/#', '', trim($rawQr)))), '/');
+            $cands = [
+                storage_path('app/public/' . $cleanQr),
+                storage_path('app/public/qr_codes/' . basename($cleanQr)),
+                public_path('storage/' . $cleanQr),
+                public_path($cleanQr),
+                base_path('storage/app/public/' . $cleanQr),
+            ];
+            foreach ($cands as $c) {
+                if (file_exists($c) && is_file($c)) {
+                    $mime = function_exists('mime_content_type') ? (@mime_content_type($c) ?: 'image/png') : 'image/png';
+                    $qrBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($c));
+                    break;
+                }
+            }
+        }
+    }
+
+    $thanks = trim((string) ($setting->footer_text ?? ''));
+    if ($thanks === '') {
+        $thanks = 'Thanks for business with us!';
+    }
+
+    $custName = !empty($customer['name']) ? $customer['name'] : '';
+    if (in_array(strtolower($custName), ['walk-in', 'walk-in-customer', 'default-customer', 'walk-in customer'])) {
+        $custName = '';
+    }
+    $custPhone = !empty($customer['phone']) ? $customer['phone'] : '';
+@endphp
+
+    <div class="text-center">
+        @if (!empty($logoBase64))
+            <div style="margin-bottom: 2px;">
+                <img src="{{ $logoBase64 }}" style="max-height: 28px; width: auto; max-width: 80%; display: inline-block;" alt="Logo">
             </div>
-        </div>
-
-        <div class="invoice-title text-center bold uppercase">
-            Tax Invoice
-        </div>
-
-        <table class="info-table">
-            <tr>
-                <td>Bill No:</td>
-                <td class="bold text-right">{{ $sales->order_number ?? $view_id }}</td>
-            </tr>
-            <tr>
-                <td>Date:</td>
-                <td class="text-right">{{ date('d-m-Y H:i', strtotime($sales->created_at)) }}</td>
-            </tr>
-            @if (!empty($customer['name']))
-                <tr>
-                    <td>Customer:</td>
-                    <td class="text-right bold">{{ $customer['name'] }}</td>
-                </tr>
-            @endif
-            @if (!empty($customer['phone']))
-                <tr>
-                    <td>Phone:</td>
-                    <td class="text-right">{{ $customer['phone'] }}</td>
-                </tr>
-            @endif
-            @if (!empty($customer['email']))
-                <tr>
-                    <td>Email:</td>
-                    <td class="text-right">{{ $customer['email'] }}</td>
-                </tr>
-            @endif
-        </table>
-
-        @php
-            $subTotal = $orderItems->sum(function ($item) {
-                return (float) ($item->total_amount ?? ($item->price * $item->quantity));
-            });
-            $discountPercent = (float) ($sales->discount ?? 0);
-            $storedDiscount = (float) ($sales->discount_amount ?? 0);
-            $totalDiscount = $storedDiscount > 0
-                ? $storedDiscount
-                : (($discountPercent / 100) * $subTotal);
-            $totalGst = 0;
-            $labourTotal = 0;
-
-            if (!empty($taxDetails1)) {
-                foreach ($taxDetails1 as $taxDetail) {
-                    $totalGst += (float) ($taxDetail['amount'] ?? 0);
-                }
-            } else {
-                foreach ($orderItems as $item) {
-                    $totalGst += (float) ($item->product_gst_total ?? 0);
-                }
-            }
-
-            if (isset($labourItems)) {
-                foreach ($labourItems as $labour) {
-                    $labourTotal += $labour->price * $labour->qty;
-                }
-            }
-
-            $shippingCharge = (float) ($sales->shipping ?? 0);
-            
-            $baseSubtotal = $subTotal;
-            $afterDiscount = max(0, $baseSubtotal - $totalDiscount);
-            $calculatedGrandTotal = $afterDiscount + $totalGst + $labourTotal + $shippingCharge;
-            $grandTotal = isset($sales->total_amount) ? (float) $sales->total_amount : $calculatedGrandTotal;
-            $paidAmount = (float) ($paidAmount ?? 0);
-            $pendingAmount = max(0, (float) ($pendingAmount ?? ($grandTotal - $paidAmount)));
-            $currencySymbol = $setting->currency_symbol ?? '₹';
-            $currencyPosition = $setting->currency_position ?? 'left';
-            $formatMoney = function ($amount) use ($currencySymbol, $currencyPosition) {
-                $formatted = number_format((float) $amount, 2);
-                return $currencyPosition === 'right'
-                    ? $formatted . $currencySymbol
-                    : $currencySymbol . $formatted;
-            };
-        @endphp
-
-        <table class="item-table">
-            <thead>
-                <tr>
-                    <th class="text-left">Item</th>
-                    <th class="text-center">Qty</th>
-                    <th class="text-right">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($orderItems as $item)
-                    @php $amount = $item->total_amount ?? ($item->price * $item->quantity); @endphp
-                    <tr>
-                        <td class="text-left">
-                            {{ $item->product->name ?? 'Product' }}
-                        </td>
-                        <td class="text-center">{{ $item->quantity }}</td>
-                        <td class="text-right">{{ $formatMoney($amount) }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-
-        @if ($labourTotal > 0)
-            <div class="divider"></div>
-            <table class="item-table">
-                <thead>
-                    <tr>
-                        <th class="text-left">Labour Item</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-right">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($labourItems as $labour)
-                        <tr>
-                            <td class="text-left">{{ $labour->labourItem->item_name }}</td>
-                            <td class="text-center">{{ $labour->qty }}</td>
-                            <td class="text-right">{{ $formatMoney($labour->price * $labour->qty) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
         @endif
+        <h3 class="shop-name">{{ $setting->name ?? '' }}</h3>
+        <p class="shop-phone">
+            @if (!empty($setting->address)) {{ $setting->address }}<br> @endif
+            @if (!empty($setting->phone)) Ph: {{ $setting->phone }} @endif
+            @if (!empty($setting->gst_num)) | GST: {{ $setting->gst_num }} @endif
+        </p>
+        <div class="inv-title">TAX INVOICE</div>
+    </div>
 
-        <div class="divider"></div>
+    <table>
+        <tr>
+            <td class="text-left" style="width: 50%;">
+                Bill No: {{ $sales->order_number ?? $view_id }}<br>
+                @php
+                    $displayTable = $tableName ?? (!empty($tableNo) ? ('Table #' . $tableNo) : (!empty($sales->table_no) ? ('Table #' . $sales->table_no) : ''));
+                @endphp
+                @if (!empty($displayTable))
+                    Table: {{ $displayTable }}<br>
+                @endif
+                @if ($custName !== '')
+                    Customer: {{ $custName }}<br>
+                @endif
+                @if ($custPhone !== '')
+                    Phone: {{ $custPhone }}<br>
+                @endif
+            </td>
+            <td class="text-right" style="width: 50%;">
+                Date: {{ date('d/m/Y', strtotime($sales->created_at)) }}<br>
+                Time: {{ date('h:i A', strtotime($sales->created_at)) }}
+            </td>
+        </tr>
+    </table>
 
-        <table class="totals-table">
+    <table class="item-table">
+        <thead>
             <tr>
-                <td class="text-left">Subtotal</td>
-                <td class="text-right">{{ $formatMoney($baseSubtotal) }}</td>
+                <th class="c-no">#</th>
+                <th class="c-name">Item Name<br><span class="c-sub">Quantity</span></th>
+                <th class="c-price">Price</th>
+                <th class="c-amt">Amount</th>
             </tr>
-            @if ($totalDiscount > 0)
-                <tr>
-                    <td class="text-left">Discount</td>
-                    <td class="text-right">-{{ $formatMoney($totalDiscount) }}</td>
-                </tr>
-                <tr>
-                    <td class="text-left">Price After Discount</td>
-                    <td class="text-right">{{ $formatMoney($afterDiscount) }}</td>
-                </tr>
-            @endif
-            @if ($totalGst > 0)
-                <tr>
-                    <td class="text-left">Tax (GST)</td>
-                    <td class="text-right">{{ $formatMoney($totalGst) }}</td>
-                </tr>
-            @endif
-            @if ($labourTotal > 0)
-                <tr>
-                    <td class="text-left">Labour Charges</td>
-                    <td class="text-right">{{ $formatMoney($labourTotal) }}</td>
-                </tr>
-            @endif
-            @if ($shippingCharge > 0)
-                <tr>
-                    <td class="text-left">Shipping</td>
-                    <td class="text-right">{{ $formatMoney($shippingCharge) }}</td>
-                </tr>
-            @endif
-        </table>
-
-        <div class="grand-total bold">
-            <table width="100%">
-                <tr>
-                    <td class="text-left uppercase">Grand Total</td>
-                    <td class="text-right">{{ $formatMoney($grandTotal) }}</td>
-                </tr>
-            </table>
-        </div>
-
-        <table class="totals-table">
-            @if(isset($allPayments) && count($allPayments) > 0)
-                @foreach($allPayments as $index => $payment)
-                <tr>
-                    <td class="text-left">
-                        @if($index === 0 && count($allPayments) > 1)
-                            Advance Paid
-                        @else
-                            Paid Amount
-                        @endif
+        </thead>
+        <tbody>
+            @foreach ($orderItems as $index => $item)
+                @php
+                    $qty = (float) $item->quantity;
+                    $qtyLabel = fmod($qty, 1.0) == 0.0 ? number_format($qty, 0) : number_format($qty, 2);
+                    $unit = $item->quantityType->name ?? ($item->product->unit->short_name ?? ($item->product->unit ?? 'Pcs'));
+                    $pName = $item->product->name ?? 'Product';
+                    $price = (float) $item->price;
+                    $lineTotal = (float) ($item->total_amount ?? ($price * $qty));
+                    $sku = $item->product->SKU ?? ($item->product->barcode ?? '');
+                @endphp
+                <tr class="name-row">
+                    <td class="c-no">{{ $index + 1 }}</td>
+                    <td class="item-name" colspan="3">
+                        {{ $pName }}
+                        {{-- @if (!empty($sku))
+                            <br><span class="item-extra">{{ $sku }}</span>
+                        @endif --}}
                     </td>
-                    <td class="text-right">{{ $formatMoney($payment->payment_amount) }}</td>
                 </tr>
-                @endforeach
-            @else
                 <tr>
-                    <td class="text-left">Paid Amount</td>
-                    <td class="text-right">{{ $formatMoney($paidAmount) }}</td>
+                    <td></td>
+                    <td class="c-name">{{ $qtyLabel }} {{ $unit }}</td>
+                    <td class="c-price">{{ number_format($price, 2) }}</td>
+                    <td class="c-amt">{{ number_format($lineTotal, 2) }}</td>
                 </tr>
+            @endforeach
+            @if (isset($labourItems) && count($labourItems) > 0)
+                @foreach ($labourItems as $lIndex => $labour)
+                    @php
+                        $lQty = (float) $labour->qty;
+                        $lQtyLabel = fmod($lQty, 1.0) == 0.0 ? number_format($lQty, 0) : number_format($lQty, 2);
+                        $lPrice = (float) $labour->price;
+                        $lAmt = $lPrice * $lQty;
+                    @endphp
+                    <tr class="name-row">
+                        <td class="c-no">{{ count($orderItems) + $lIndex + 1 }}</td>
+                        <td class="item-name" colspan="3">{{ $labour->labourItem->item_name ?? 'Labour' }}</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td class="c-name">{{ $lQtyLabel }}</td>
+                        <td class="c-price">{{ number_format($lPrice, 2) }}</td>
+                        <td class="c-amt">{{ number_format($lAmt, 2) }}</td>
+                    </tr>
+                @endforeach
             @endif
-            @if ($pendingAmount > 0)
-                <tr class="bold">
-                    <td class="text-left">Balance Due</td>
-                    <td class="text-right">{{ $formatMoney($pendingAmount) }}</td>
-                </tr>
-            @endif
-        </table>
+        </tbody>
+    </table>
 
-        @php
-            $payMode = '';
-            if (isset($allPayments) && count($allPayments) > 0) {
-                $mList = [];
-                foreach ($allPayments as $p) {
-                    $m = trim((string) ($p->payment_method ?? ''));
-                    $label = ucwords(str_replace(['_', '-'], ' ', $m));
-                    if ($m !== '' && !in_array($label, $mList, true)) { $mList[] = $label; }
-                }
-                $payMode = implode(', ', $mList);
-            }
-            if ($payMode === '' && !empty($sales->payment_method) && strtolower($sales->payment_method) !== 'pending') {
-                $payMode = ucwords(str_replace(['_', '-'], ' ', $sales->payment_method));
-            }
-            if ($payMode === '') {
-                $payMode = $paidAmount > 0 ? 'Paid' : 'Due';
-            }
-
-            $qrBase64 = null;
-            $rawQr = $sales->custom_qr_code ?? ($setting->qr_code ?? null);
-            if (!empty($rawQr)) {
-                if (function_exists('resolve_local_image_base64')) {
-                    $qrBase64 = resolve_local_image_base64($rawQr);
-                }
-                if (!$qrBase64) {
-                    $cleanQr = ltrim(preg_replace('#^https?://[^/]+/#', '', preg_replace('#^storage/#', '', preg_replace('#^public/#', '', trim($rawQr)))), '/');
-                    $cands = [
-                        storage_path('app/public/' . $cleanQr),
-                        storage_path('app/public/qr_codes/' . basename($cleanQr)),
-                        public_path('storage/' . $cleanQr),
-                        public_path($cleanQr),
-                    ];
-                    foreach ($cands as $c) {
-                        if (file_exists($c) && is_file($c)) {
-                            $mime = function_exists('mime_content_type') ? (@mime_content_type($c) ?: 'image/png') : 'image/png';
-                            $qrBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($c));
-                            break;
-                        }
-                    }
-                }
-            }
-        @endphp
-
-        <div class="payment-mode-line">
-            Payment Mode: {{ $payMode }} : {{ $formatMoney($paidAmount) }}
-        </div>
-
-        @if (!empty($qrBase64))
-            <div class="inv-qr">
-                <div class="bold" style="font-size: 8px; margin-bottom: 2px;">Scan QR to Pay Bill:</div>
-                <img src="{{ $qrBase64 }}" alt="QR Code">
-            </div>
+    <table class="sum-table">
+        <tr>
+            <td class="text-left">Total: {{ $totalQtyFormatted }}</td>
+            <td class="text-right">{{ number_format($subTotal + $labourTotal, 2) }}</td>
+        </tr>
+        @if ($totalDiscount > 0)
+            <tr>
+                <td class="text-left">Discount @if($discountPercent > 0)({{ rtrim(rtrim(number_format($discountPercent, 2), '0'), '.') }}%)@endif</td>
+                <td class="text-right">-{{ number_format($totalDiscount, 2) }}</td>
+            </tr>
         @endif
+        @if ($totalGst > 0)
+            <tr>
+                <td class="text-left">Tax (GST)</td>
+                <td class="text-right">{{ number_format($totalGst, 2) }}</td>
+            </tr>
+        @endif
+        @if ($shippingCharge > 0)
+            <tr>
+                <td class="text-left">Shipping</td>
+                <td class="text-right">{{ number_format($shippingCharge, 2) }}</td>
+            </tr>
+        @endif
+        <tr>
+            <td class="text-left">Total</td>
+            <td class="text-right">: {{ number_format($grandTotal, 2) }}</td>
+        </tr>
+        <tr>
+            <td class="text-left">Received</td>
+            <td class="text-right">: {{ number_format($paidAmount, 2) }}</td>
+        </tr>
+        @if ($pendingAmount > 0)
+            <tr>
+                <td class="text-left">Balance Due</td>
+                <td class="text-right">: {{ number_format($pendingAmount, 2) }}</td>
+            </tr>
+        @endif
+    </table>
 
-        <div class="footer text-center bold">
-            {{ !empty($setting->footer_text) ? $setting->footer_text : 'Thanks for business with us!' }}
+    <div class="text-center bold" style="margin: 5px 0 3px 0; font-size: 8px;">
+        Payment Mode: {{ $payMode }} : Rs {{ number_format($paidAmount, 2) }}
+    </div>
+
+    @if (!empty($qrBase64))
+        <div class="inv-qr">
+            <div style="margin-bottom: 2px;">Scan QR to Pay Bill:</div>
+            <img src="{{ $qrBase64 }}" alt="UPI QR">
         </div>
+    @endif
+
+    <div class="terms">
+        <div>{{ $thanks }}</div>
     </div>
 </body>
-
 </html>

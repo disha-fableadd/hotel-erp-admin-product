@@ -3898,7 +3898,7 @@
                             // Open the bill PDF in a new tab right away (before toast)
                             var billOrderId = response.order_id || orderId;
                             if (billOrderId) {
-                                window.open('/table/bill/' + billOrderId, '_blank');
+                                window.open('/sales/invoice/pdf/' + billOrderId + '?size=small', '_blank');
                             }
                             Swal.fire({
                                 toast: true,
