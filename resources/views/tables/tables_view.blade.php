@@ -96,12 +96,91 @@
             overflow: hidden;
         }
 
+        #tableOrderModal .table-order-menu-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            margin: 0 0 10px !important;
+            padding: 0 0 10px !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+        }
+
         #tableOrderModal .tabs_wrapper ul.tabs {
             gap: 8px;
-            padding: 0 0 10px !important;
-            margin: 0 0 10px !important;
-            border-bottom: 1px solid #f1f5f9 !important;
-            flex-shrink: 0;
+            padding: 0 !important;
+            margin: 0 !important;
+            border-bottom: none !important;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        #tableOrderModal .table-order-product-search {
+            position: relative;
+            flex: 0 0 210px;
+            max-width: 42%;
+        }
+
+        #tableOrderModal .table-order-product-search input {
+            height: 36px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 999px;
+            padding: 0 34px 0 36px;
+            background: #f8fafc;
+            color: #334155;
+            box-shadow: none;
+        }
+
+        #tableOrderModal .table-order-product-search input:focus {
+            background: #fff;
+            border-color: #ff9f43;
+            box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.15);
+            outline: none;
+        }
+
+        #tableOrderModal .table-order-product-search .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 15px;
+            height: 15px;
+            opacity: 0.55;
+            pointer-events: none;
+        }
+
+        #tableOrderModal .table-order-product-search .clear-product-search {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 0;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 16px;
+            line-height: 1;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        #tableOrderModal .table-order-product-search.has-value .clear-product-search {
+            display: inline-flex;
+        }
+
+        #tableOrderModal .product-search-empty {
+            display: none;
+            width: 100%;
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
+            padding: 28px 12px;
         }
 
         #tableOrderModal .tabs_container {
@@ -583,6 +662,15 @@
             #tableOrderModal .tabs_wrapper {
                 min-height: 280px;
                 max-height: 360px;
+            }
+
+            #tableOrderModal .table-order-menu-toolbar {
+                flex-wrap: wrap;
+            }
+
+            #tableOrderModal .table-order-product-search {
+                flex: 1 1 100%;
+                max-width: 100%;
             }
 
             #tableOrderModal .modal-body {
@@ -2008,24 +2096,36 @@
                             $hasProducts = false; // start as false
                         @endphp
 
-                        <ul class="tabs border-0 mb-4">
-                            @foreach ($categories as $cat)
-                                @php
-                                    $availableProducts = $cat->products->where('quantity', '>', 0);
-                                @endphp
-
-                                @if ($availableProducts->count() > 0)
+                        <div class="table-order-menu-toolbar">
+                            <ul class="tabs border-0 mb-0">
+                                @foreach ($categories as $cat)
                                     @php
-                                        $hasProducts = true; // at least one product exists
+                                        $availableProducts = $cat->products->where('quantity', '>', 0);
                                     @endphp
-                                    <li id="{{ $cat->id }}">
-                                        <div class="product-details">
-                                            <h6 style="text-transform: capitalize; color: #000;">{{ $cat->name }}</h6>
-                                        </div>
-                                    </li>
-                                @endif
-                            @endforeach
-                        </ul>   
+
+                                    @if ($availableProducts->count() > 0)
+                                        @php
+                                            $hasProducts = true; // at least one product exists
+                                        @endphp
+                                        <li id="{{ $cat->id }}">
+                                            <div class="product-details">
+                                                <h6 style="text-transform: capitalize; color: #000;">{{ $cat->name }}</h6>
+                                            </div>
+                                        </li>
+                                    @endif
+                                @endforeach
+                            </ul>
+                            <div class="table-order-product-search">
+                                <img class="search-icon"
+                                    src="{{ env('ImagePath') . '/admin/assets/img/icons/search.svg' }}"
+                                    alt="">
+                                <input type="text" id="tableProductSearch"
+                                    class="form-control"
+                                    placeholder="Search product..."
+                                    autocomplete="off">
+                                <button type="button" class="clear-product-search" aria-label="Clear search">&times;</button>
+                            </div>
+                        </div>
 
                         @if (!$hasProducts)
                             <div class="product-details text-center">
@@ -2886,6 +2986,8 @@
                     // Check if content already loaded
                     if ($tabContent.find('.productset').length === 0) {
                         loadProductsByCategory(categoryId);
+                    } else {
+                        applyTableProductSearch();
                     }
                 } else {
 
@@ -3008,11 +3110,60 @@
                 var $tabContent = $('.tab_content[data-tab="' + categoryId + '"]');
                 if ($tabContent.length) {
                     $tabContent.html('<div class="row">' + productsHtml + '</div>');
-
+                    applyTableProductSearch();
                 } else {
 
                 }
             }
+
+            function applyTableProductSearch() {
+                var $input = $('#tableProductSearch');
+                if (!$input.length) {
+                    return;
+                }
+
+                var query = ($input.val() || '').toString().trim().toLowerCase();
+                var $wrap = $input.closest('.table-order-product-search');
+                $wrap.toggleClass('has-value', query.length > 0);
+
+                var $activeTab = $('#tableOrderModal .tab_content.active');
+                if (!$activeTab.length) {
+                    return;
+                }
+
+                var $cards = $activeTab.find('.productset').closest('[class*="col-"]');
+                var visibleCount = 0;
+
+                $cards.each(function () {
+                    var name = ($(this).find('.productsetcontent h4').first().text() || '').toLowerCase();
+                    var match = !query || name.indexOf(query) !== -1;
+                    $(this).toggle(match);
+                    if (match) {
+                        visibleCount++;
+                    }
+                });
+
+                var $empty = $activeTab.find('.product-search-empty');
+                if (!$empty.length) {
+                    $activeTab.append('<div class="product-search-empty">No products match your search</div>');
+                    $empty = $activeTab.find('.product-search-empty');
+                }
+
+                if (query && $cards.length > 0 && visibleCount === 0) {
+                    $empty.show();
+                } else {
+                    $empty.hide();
+                }
+            }
+
+            $(document).on('input', '#tableProductSearch', function () {
+                applyTableProductSearch();
+            });
+
+            $(document).on('click', '.clear-product-search', function (e) {
+                e.preventDefault();
+                $('#tableProductSearch').val('').trigger('input').focus();
+            });
 
             function calculateTotals() {
                 const firstTaxElement = $(".tax-value").first();
