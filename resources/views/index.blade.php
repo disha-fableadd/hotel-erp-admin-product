@@ -757,7 +757,109 @@
     }
 }
     </style>
+    {{-- ===== Dashboard Filter Dropdown (ERP style) ===== --}}
+    <style>
+        .db-filter-wrap {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .db-filter-select-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .db-filter-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #ff9f43;
+            pointer-events: none;
+            z-index: 1;
+        }
+        #dashboardFilterSelect {
+            appearance: none;
+            -webkit-appearance: none;
+            border: 2px solid #ff9f43;
+            border-radius: 6px;
+            padding: 7px 34px 7px 32px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            background: #fff;
+            cursor: pointer;
+            outline: none;
+            min-width: 140px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        #dashboardFilterSelect:focus {
+            border-color: #e68a35;
+            box-shadow: 0 0 0 3px rgba(255,159,67,0.15);
+        }
+        .db-filter-chevron {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #ff9f43;
+        }
+        /* Loading overlay for filter */
+        #dashFilterLoader {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.45);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        #dashFilterLoader.active { display: flex; }
+        .db-filter-spinner {
+            width: 44px; height: 44px;
+            border: 4px solid #f0f0f0;
+            border-top-color: #ff9f43;
+            border-radius: 50%;
+            animation: db-spin 0.7s linear infinite;
+        }
+        @keyframes db-spin { to { transform: rotate(360deg); } }
+        /* Highlight numbers when filter applied */
+        .dash-filter-updated {
+            animation: db-highlight 0.5s ease;
+        }
+        @keyframes db-highlight {
+            0%   { opacity: 0.4; transform: scale(0.96); }
+            100% { opacity: 1;   transform: scale(1); }
+        }
+    </style>
+
+    {{-- Filter Loader Overlay --}}
+    <div id="dashFilterLoader">
+        <div class="db-filter-spinner"></div>
+    </div>
+
     <div class="content db-page">
+        {{-- Filter Row --}}
+        <div class="db-filter-wrap">
+            <div class="db-filter-select-wrap">
+                <span class="db-filter-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                </span>
+                <select id="dashboardFilterSelect" title="Filter dashboard data by date range">
+                    <option value="all">All</option>
+                    <option value="today">Today</option>
+                    <option value="this_week">This Week</option>
+                    <option value="this_month">This Month</option>
+                    <option value="this_year">This Year</option>
+                </select>
+                <span class="db-filter-chevron">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+            </div>
+        </div>
+
         <div class="row dashboard-widgets-row">
             @if ($showErpTotalSales && in_array($role, ['inventory-manager', 'admin', 'sub-admin', 'sales-manager']))
                 <div class="col-lg col-md-4 col-sm-6 col-12">
@@ -767,7 +869,7 @@
                                 <i data-feather="camera" style="color: #ff9f43; width: 24px; height: 24px;"></i>
                             </div>
                             <div style="width: 100%; overflow: hidden;">
-                                <h4 class="top-stat-amount" style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px;">
+                                <h4 class="top-stat-amount" id="totalSales" style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px;">
                                     @if ($currencyPosition === 'left'){{ $currencySymbol }}@endif{{ number_format($totalSalesAmount, 2) }}@if ($currencyPosition === 'right'){{ $currencySymbol }}@endif
                                 </h4>
                                 <h6 class="top-stat-label" style="color: #667085; font-size: 13px; font-weight: 600; margin: 0;">Total Sales Amount</h6>
@@ -796,7 +898,7 @@
                                 <i data-feather="shopping-bag" style="color: #ff9f43; width: 24px; height: 24px;"></i>
                             </div>
                             <div style="width: 100%; overflow: hidden;">
-                                <h4 class="top-stat-amount" style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px;">
+                                <h4 class="top-stat-amount" id="totalPurchase" style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px;">
                                     @if ($currencyPosition === 'left'){{ $currencySymbol }}@endif{{ number_format($totalPurchaseAmount, 2) }}@if ($currencyPosition === 'right'){{ $currencySymbol }}@endif
                                 </h4>
                                 <h6 class="top-stat-label" style="color: #667085; font-size: 13px; font-weight: 600; margin: 0;">Total Purchase Amount</h6>
@@ -813,7 +915,7 @@
                                 <i data-feather="arrow-down-circle" style="color: #00cfe8; width: 24px; height: 24px;"></i>
                             </div>
                             <div style="width: 100%; overflow: hidden;">
-                                <h4 class="top-stat-amount" style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px;">
+                                <h4 class="top-stat-amount" id="totalExpense" style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px;">
                                     @if ($currencyPosition === 'left'){{ $currencySymbol }}@endif{{ number_format($totalExpenseAmount, 2) }}@if ($currencyPosition === 'right'){{ $currencySymbol }}@endif
                                 </h4>
                                 <h6 class="top-stat-label" style="color: #667085; font-size: 13px; font-weight: 600; margin: 0;">Total Expense Amount</h6>
@@ -845,7 +947,7 @@
                             <div style="position: absolute; top: 15px; right: 15px;">
                                 <i data-feather="file-text" style="color: #28c76f; width: 20px; height: 20px;"></i>
                             </div>
-                            <h4 style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px; margin-top: 10px;">{{ $salesInvoiceCount ?? 0 }}</h4>
+                            <h4 id="salesInvoiceCount" style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px; margin-top: 10px;">{{ $salesInvoiceCount ?? 0 }}</h4>
                             <h6 style="font-size: 13px; font-weight: 600; color: #667085; margin: 0;">Sales Invoice</h6>
                         </div>
                     </a>
@@ -858,7 +960,7 @@
                             <div style="position: absolute; top: 15px; right: 15px;">
                                 <i data-feather="file" style="color: #1e1e2d; width: 20px; height: 20px;"></i>
                             </div>
-                            <h4 style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px; margin-top: 10px;">{{ $purchaseInvoiceCount ?? 0 }}</h4>
+                            <h4 id="purchaseInvoiceCount" style="font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 5px; margin-top: 10px;">{{ $purchaseInvoiceCount ?? 0 }}</h4>
                             <h6 style="font-size: 13px; font-weight: 600; color: #667085; margin: 0;">Purchase Invoice</h6>
                         </div>
                     </a>
@@ -1894,52 +1996,107 @@
         });
     </script>
     <script>
-        $(document).ready(function() {
-            var authToken = localStorage.getItem("authToken");
-            const selectedSubAdminId = localStorage.getItem('selectedSubAdminId');
-            let url = "{{ url('/api/dashboard-api') }}";
+        // ============================================================
+        //  Dashboard Filter – API-driven live update
+        // ============================================================
+        (function () {
+            var authToken        = localStorage.getItem('authToken');
+            var selectedSubAdminId = localStorage.getItem('selectedSubAdminId');
+            var currencySymbol   = '{{ $currencySymbol }}';
+            var currencyPosition = '{{ $currencyPosition }}';
+            var baseUrl          = '{{ url("/api/dashboard-api") }}';
+            var currentFilter    = 'all';
 
-            if (selectedSubAdminId) {
-                url += `?selectedSubAdminId=${selectedSubAdminId}`;
+            // Format a number like the backend does: 1,23,456.78  (using JS toLocaleString)
+            function fmt(val) {
+                var n = parseFloat(val) || 0;
+                return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
-            $.ajax({
-                url: url,
-                method: "GET",
-                headers: {
-                    "Authorization": "Bearer " + authToken,
-                },
-                dataType: "json",
-                success: function(response) {
-                    console.log("Branch:", response.branch_id);
-                    if (response.status) {
-                        console.log(response.data);
 
-                    // Example: Update totals
-                    $('#totalPurchase').text(response.data.totals.purchase);
-                    $('#totalSales').text(response.data.totals.sales);
-                    $('#totalExpense').text(response.data.totals.expense);
-                }
-            },
-            error: function(xhr) {
-                console.error(xhr.responseText);
+            // Format with currency symbol
+            function fmtCurrency(val) {
+                var s = fmt(val);
+                return currencyPosition === 'left' ? currencySymbol + s : s + currencySymbol;
+            }
+
+            // Animate element with highlight
+            function flashUpdate(el, newText) {
+                if (!el) return;
+                el.textContent = newText;
+                el.classList.remove('dash-filter-updated');
+                void el.offsetWidth; // reflow
+                el.classList.add('dash-filter-updated');
+            }
+
+            function buildUrl(filter) {
+                var url = baseUrl;
+                var params = [];
+                if (selectedSubAdminId) params.push('selectedSubAdminId=' + selectedSubAdminId);
+                if (filter && filter !== 'all') params.push('filter=' + filter);
+                if (params.length) url += '?' + params.join('&');
+                return url;
+            }
+
+            function loadDashboard(filter) {
+                // Show loader
+                var loader = document.getElementById('dashFilterLoader');
+                if (loader) loader.classList.add('active');
+
+                $.ajax({
+                    url: buildUrl(filter),
+                    method: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + authToken },
+                    dataType: 'json',
+                    success: function (response) {
+                        if (loader) loader.classList.remove('active');
+                        if (!response.status) return;
+
+                        var d = response.data;
+
+                        // --- Totals ---
+                        flashUpdate(document.getElementById('totalSales'),    fmtCurrency(d.totals.sales));
+                        flashUpdate(document.getElementById('totalPurchase'), fmtCurrency(d.totals.purchase));
+                        flashUpdate(document.getElementById('totalExpense'),  fmtCurrency(d.totals.expense));
+
+                        // --- Counts ---
+                        flashUpdate(document.getElementById('salesInvoiceCount'),    d.counts.salesInvoices);
+                        flashUpdate(document.getElementById('purchaseInvoiceCount'), d.counts.purchaseInvoices);
+                    },
+                    error: function (xhr) {
+                        if (loader) loader.classList.remove('active');
+                        console.error('Dashboard filter API error:', xhr.responseText);
+                    }
+                });
+            }
+
+            // On DOM ready – wire up the filter select
+            $(document).ready(function () {
+                // Initial load
+                loadDashboard('all');
+
+                // Filter change
+                $('#dashboardFilterSelect').on('change', function () {
+                    currentFilter = $(this).val();
+                    loadDashboard(currentFilter);
+                });
+            });
+
+        }());
+
+        // Update Platform Order Counts on Dashboard Load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof dummyPlatformData !== 'undefined') {
+                const zomatoCount = dummyPlatformData['Zomato'] ? dummyPlatformData['Zomato'].length : 0;
+                const swiggyCount = dummyPlatformData['Swiggy'] ? dummyPlatformData['Swiggy'].length : 0;
+
+                const zEl = document.getElementById('dashZomatoCount');
+                if (zEl) zEl.textContent = zomatoCount;
+
+                const sEl = document.getElementById('dashSwiggyCount');
+                if (sEl) sEl.textContent = swiggyCount;
             }
         });
-    });
-
-    // Update Platform Order Counts on Dashboard Load
-    document.addEventListener('DOMContentLoaded', () => {
-        if (typeof dummyPlatformData !== 'undefined') {
-            const zomatoCount = dummyPlatformData['Zomato'] ? dummyPlatformData['Zomato'].length : 0;
-            const swiggyCount = dummyPlatformData['Swiggy'] ? dummyPlatformData['Swiggy'].length : 0;
-            
-            const zEl = document.getElementById('dashZomatoCount');
-            if (zEl) zEl.textContent = zomatoCount;
-            
-            const sEl = document.getElementById('dashSwiggyCount');
-            if (sEl) sEl.textContent = swiggyCount;
-        }
-    });
-</script>
+    </script>
 @endpush
 
 <!-- Debug: Show data status -->

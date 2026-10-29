@@ -632,7 +632,7 @@
                             @endif
                         </div> -->
                         <div class="login-logo">
-                            <img src="{{ $imagePath . '/admin/assets/img/Fablead_ERP_2048x1024.png' }}"
+                            <img src="{{ $imagePath . '/admin/assets/img/Fablead_ERP_2048x1024.webp' }}"
                                 alt="Fablead ERP Logo" class="logo-img">
                         </div>
                         <div class="login-userheading">
