@@ -30,6 +30,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
     <link rel="stylesheet" href="{{ asset('admin/assets/css/style.css') }}?v={{ time() }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap">
 
     {{-- Detect Bootstrap CSS 404 and activate CDN --}}
     <script>
@@ -63,6 +66,31 @@
             box-sizing: border-box;
         }
 
+        body.account-page,
+        body.account-page h1,
+        body.account-page h2,
+        body.account-page h3,
+        body.account-page h4,
+        body.account-page h5,
+        body.account-page h6,
+        body.account-page p,
+        body.account-page a,
+        body.account-page button,
+        body.account-page input,
+        body.account-page select,
+        body.account-page textarea,
+        body.account-page label,
+        body.account-page table,
+        body.account-page th,
+        body.account-page td {
+            font-family: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        }
+
+        body.account-page strong,
+        body.account-page b {
+            font-weight: 700 !important;
+        }
+
         html {
             height: 100%;
         }
@@ -80,7 +108,7 @@
             /* overflow-y: auto; */
             overflow: hidden;
             color: var(--auth-secondary);
-            font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+            font-family: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background:
                 radial-gradient(circle at 0% 68%, rgba(247, 147, 58, .10) 0 0, transparent 168px),
                 radial-gradient(circle at 100% 78%, rgba(247, 147, 58, .12) 0 0, transparent 198px),
