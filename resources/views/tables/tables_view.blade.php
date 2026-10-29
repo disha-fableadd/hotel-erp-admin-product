@@ -40,206 +40,238 @@
 
         /* ===== Table Order Modal (POS) ===== */
         #tableOrderModal .modal-dialog {
-            max-width: 1180px !important;
+            max-width: 1200px !important;
+            margin: 1rem auto;
         }
 
         #tableOrderModal .modal-content {
-            border-radius: 20px !important;
-            background: #f8fafc;
+            border-radius: 18px !important;
+            background: #ffffff;
+            max-height: calc(100vh - 2rem);
         }
 
         #tableOrderModal .modal-header {
             background: #ffffff;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 1rem 1.35rem;
-        }
-
-        #tableOrderModal .modal-title {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            font-size: 1.2rem;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            color: #0f172a;
+            border-bottom: 1px solid #eef2f7;
+            padding: 0.9rem 1.15rem;
+            flex-shrink: 0;
         }
 
         #tableOrderModal .table-order-kicker {
-            font-size: 11px;
-            font-weight: 700;
+            font-size: 10px;
+            font-weight: 800;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             color: #ff9f43;
+            line-height: 1.2;
         }
 
         #tableOrderModal .modal-body {
-            background: #f8fafc;
-            padding: 1rem 1.15rem 1.15rem;
+            background: #f4f6f9;
+            padding: 12px !important;
+            overflow: hidden;
         }
 
         #tableOrderModal .table-order-layout {
             align-items: stretch;
+            margin: 0 !important;
+            height: min(78vh, 720px);
+        }
+
+        #tableOrderModal .table-order-layout > [class*="col-"] {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         #tableOrderModal .tabs_wrapper {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 14px;
-            min-height: 560px;
-        }
-
-        #tableOrderModal .tabs_wrapper ul.tabs {
-            gap: 8px;
-            padding: 0 0 12px;
-            margin: 0 0 12px;
-            border-bottom: 1px solid #f1f5f9 !important;
-        }
-
-        #tableOrderModal .product-details {
-            background: #f8fafc;
-            padding: 8px 14px;
-            border-radius: 999px;
-            border: 1px solid #e2e8f0 !important;
-            box-shadow: none;
-        }
-
-        #tableOrderModal .product-details h6 {
-            font-size: 13px;
-            font-weight: 700;
-            color: #475569 !important;
-        }
-
-        #tableOrderModal .tabs_wrapper ul.tabs li.active .product-details {
-            background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%);
-            border-color: transparent !important;
-            box-shadow: 0 8px 16px -10px rgba(255, 159, 67, 0.7);
-        }
-
-        #tableOrderModal .tabs_wrapper ul.tabs li.active .product-details h6 {
-            color: #fff !important;
-        }
-
-        #tableOrderModal .productset {
-            background: #fff;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #e8edf3;
             border-radius: 14px;
-            padding: 12px 10px 14px;
-            margin-bottom: 12px;
-            box-shadow: none;
-            transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        #tableOrderModal .productset:hover {
-            transform: translateY(-2px);
-            border-color: #fdba74;
-            box-shadow: 0 12px 24px -18px rgba(15, 23, 42, 0.35);
-        }
-
-        #tableOrderModal .productset.active,
-        #tableOrderModal .productset:has(.check-product i.selected) {
-            border-color: #ff9f43;
-            box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.12);
-        }
-
-        #tableOrderModal .productsetimgin {
-            height: 72px;
-            margin: 0 auto 8px;
-            background: #f8fafc;
-            border-radius: 10px;
-            object-fit: contain;
-        }
-
-        #tableOrderModal .productsetcontent {
-            padding: 0;
-        }
-
-        #tableOrderModal .productsetcontent h4 {
-            font-size: 13.5px;
-            font-weight: 700;
-            color: #0f172a;
-            margin-bottom: 2px;
-        }
-
-        #tableOrderModal .productsetcontent h6 {
-            font-size: 14px;
-            font-weight: 800;
-            color: #ff9f43;
-        }
-
-        #tableOrderModal .card-order {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            box-shadow: none;
+            padding: 12px;
+            min-height: 0 !important;
             height: 100%;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
-        #tableOrderModal .card-order > .card-body {
-            padding: 14px !important;
+        #tableOrderModal .tabs_wrapper ul.tabs {
+            gap: 8px;
+            padding: 0 0 10px !important;
+            margin: 0 0 10px !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            flex-shrink: 0;
+        }
+
+        #tableOrderModal .tabs_container {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            padding-right: 2px;
+        }
+
+        #tableOrderModal .product-details {
+            background: #f8fafc;
+            padding: 7px 14px;
+            border-radius: 999px;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: none;
+        }
+
+        #tableOrderModal .product-details h6 {
+            font-size: 12.5px !important;
+            font-weight: 700 !important;
+            color: #475569 !important;
+        }
+
+        #tableOrderModal .tabs_wrapper ul.tabs li.active .product-details {
+            background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%);
+            border-color: transparent !important;
+            box-shadow: 0 6px 14px -8px rgba(255, 159, 67, 0.75);
+        }
+
+        #tableOrderModal .tabs_wrapper ul.tabs li.active .product-details h6 {
+            color: #fff !important;
+        }
+
+        #tableOrderModal .tabs_container .row {
+            --bs-gutter-x: 0.65rem;
+            --bs-gutter-y: 0.65rem;
+        }
+
+        #tableOrderModal .productset {
+            background: #fff;
+            border: 1px solid #e8edf3;
+            border-radius: 12px;
+            padding: 10px 8px 12px;
+            margin-bottom: 0;
+            box-shadow: none;
+            height: 100%;
+            transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #tableOrderModal .productset:hover {
+            transform: translateY(-2px);
+            border-color: #fdba74;
+            box-shadow: 0 10px 20px -16px rgba(15, 23, 42, 0.35);
+        }
+
+        #tableOrderModal .productsetimgin {
+            height: 64px !important;
+            margin: 0 auto 6px !important;
+            background: #f8fafc;
+            border-radius: 10px;
+            object-fit: contain;
+            max-width: 100%;
+        }
+
+        #tableOrderModal .productsetcontent {
+            padding: 0 !important;
+        }
+
+        #tableOrderModal .productsetcontent h4 {
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            margin-bottom: 2px !important;
+        }
+
+        #tableOrderModal .productsetcontent h6 {
+            font-size: 13.5px !important;
+            font-weight: 800 !important;
+            color: #ff9f43 !important;
+        }
+
+        #tableOrderModal .card-order {
+            background: #ffffff;
+            border: 1px solid #e8edf3;
+            border-radius: 14px;
+            box-shadow: none;
+            height: 100%;
             display: flex;
             flex-direction: column;
-            height: 100%;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        #tableOrderModal .card-order > .card-body.body_space {
+            padding: 12px !important;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
         }
 
         #tableOrderModal .order-panel-title {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 800;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             color: #94a3b8;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
         }
 
         #tableOrderModal .gst-header {
-            margin-bottom: 12px !important;
+            margin-bottom: 10px !important;
+            flex-shrink: 0;
         }
 
-        #tableOrderModal .gst-toggle {
+        #tableOrderModal .custom-gst-pill-group {
+            width: 100%;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            width: 100%;
+            gap: 0;
             background: #f1f5f9;
-            border-radius: 12px;
-            padding: 4px;
+            border-radius: 10px;
+            padding: 3px;
         }
 
-        #tableOrderModal .custom-radio-label {
-            margin: 0 !important;
+        #tableOrderModal .custom-gst-pill {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        #tableOrderModal .custom-gst-pill span {
+            display: flex;
+            align-items: center;
             justify-content: center;
-            padding: 8px 10px;
-            border-radius: 9px;
-            font-size: 12.5px;
+            width: 100%;
+            padding: 8px 6px;
+            border-radius: 8px;
+            font-size: 12px;
             font-weight: 700;
             color: #64748b;
             background: transparent;
+            border: 0;
             transition: all 0.15s ease;
         }
 
-        #tableOrderModal .custom-radio-label:has(input:checked) {
+        #tableOrderModal .custom-gst-pill input[type="radio"]:checked + span {
             background: #fff;
             color: #0f172a;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
         }
 
-        #tableOrderModal .custom-radio-label input {
-            display: none;
+        #tableOrderModal .order-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding-right: 2px;
         }
 
         #tableOrderModal .totalitem {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         #tableOrderModal .totalitem h4 {
             margin: 0;
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 700;
             color: #334155;
         }
@@ -252,102 +284,94 @@
         }
 
         #tableOrderModal .product-table {
-            min-height: 120px;
-            max-height: 220px;
-            overflow-y: auto;
-            padding-right: 2px;
+            min-height: 70px !important;
+            max-height: none !important;
+            height: auto !important;
+            overflow: visible !important;
             margin-bottom: 8px;
         }
 
         #tableOrderModal .product-lists {
-            display: flex;
+            display: flex !important;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
+            gap: 8px;
             list-style: none;
             margin: 0 0 8px;
-            padding: 10px;
+            padding: 8px 10px;
             background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-        }
-
-        #tableOrderModal .product-lists .productimg {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: 0;
-        }
-
-        #tableOrderModal .product-lists .productimgs img {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            object-fit: cover;
-            background: #fff;
-        }
-
-        #tableOrderModal .product-lists h4 {
-            margin: 0;
-            font-size: 13px;
-            font-weight: 700;
-            color: #0f172a;
-            text-transform: capitalize;
+            border: 1px solid #e8edf3;
+            border-radius: 10px;
         }
 
         #tableOrderModal .select-group label {
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 700;
             color: #64748b;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
         #tableOrderModal #discount {
+            border-radius: 9px;
+            border: 1px solid #e2e8f0;
+            height: 36px;
+            font-size: 13px;
+            padding: 6px 10px;
+        }
+
+        #tableOrderModal .error_discount {
+            font-size: 11px;
+            display: block;
+            margin-top: 3px;
+        }
+
+        #tableOrderModal .setvalue {
+            background: #f8fafc;
+            border: 1px solid #e8edf3;
             border-radius: 10px;
-            border-color: #e2e8f0;
-            height: 40px;
-            font-size: 14px;
+            padding: 8px 10px;
+            margin: 8px 0 0;
         }
 
         #tableOrderModal .setvalue ul {
             list-style: none;
-            margin: 10px 0 0;
-            padding: 12px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            border: 0;
         }
 
         #tableOrderModal .setvalue ul li {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-            padding: 6px 0;
+            gap: 10px;
+            padding: 5px 0;
             border-bottom: 1px dashed #e2e8f0;
         }
 
-        #tableOrderModal .setvalue ul li:last-child {
+        #tableOrderModal .setvalue ul li:last-child,
+        #tableOrderModal .setvalue ul li.error-message-container {
             border-bottom: 0;
         }
 
         #tableOrderModal .setvalue ul li h5 {
             margin: 0;
-            font-size: 12.5px;
+            font-size: 12px;
             font-weight: 600;
             color: #64748b;
         }
 
         #tableOrderModal .setvalue ul li h6 {
             margin: 0;
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 700;
             color: #0f172a;
         }
 
         #tableOrderModal .setvalue ul li.total-value {
-            margin-top: 4px;
-            padding-top: 10px;
+            margin-top: 2px;
+            padding-top: 8px;
             border-top: 1px solid #e2e8f0;
             border-bottom: 0;
         }
@@ -359,45 +383,58 @@
             color: #0f172a;
         }
 
+        #tableOrderModal .setvalue ul li.total-value h6 {
+            color: #ff9f43;
+        }
+
         #tableOrderModal .payment_panel {
-            margin-top: auto;
-            padding-top: 12px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eef2f7;
+            flex-shrink: 0;
+            background: #fff;
+            position: relative !important;
+            width: 100% !important;
+            bottom: auto !important;
+            z-index: 2;
+        }
+
+        #tableOrderModal .setvaluecash {
+            margin-bottom: 8px;
         }
 
         #tableOrderModal .setvaluecash ul {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 8px;
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 6px !important;
             list-style: none;
-            margin: 0 0 10px;
+            margin: 0 0 8px;
             padding: 0;
         }
 
-        #tableOrderModal .setvaluecash ul li a {
-            display: flex;
+        #tableOrderModal .setvaluecash ul li a,
+        #tableOrderModal .setvaluecash ul li a.paymentmethod {
+            display: flex !important;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 4px;
-            min-height: 54px;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-            background: #fff;
-            color: #334155;
-            font-size: 11px;
+            gap: 3px;
+            min-height: 48px !important;
+            border-radius: 9px !important;
+            border: 1px solid #e2e8f0 !important;
+            background: #fff !important;
+            color: #334155 !important;
+            font-size: 10.5px !important;
             font-weight: 700;
-            padding: 8px;
-            text-decoration: none;
+            padding: 6px 4px !important;
+            text-decoration: none !important;
+            box-shadow: none !important;
         }
 
-        #tableOrderModal .paymentmethod.active {
+        #tableOrderModal .setvaluecash ul li a.paymentmethod.active {
             background: #0f172a !important;
             border-color: #0f172a !important;
             color: #fff !important;
-        }
-
-        #tableOrderModal .paymentmethod.active svg {
-            fill: #fff;
         }
 
         #tableOrderModal .btn-totallabel,
@@ -407,23 +444,15 @@
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            width: 100%;
-            margin: 0;
-            padding: 14px 16px;
-            border-radius: 12px;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 12px 14px !important;
+            border-radius: 11px !important;
             background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%) !important;
             color: #fff !important;
-            border: 0;
+            border: 0 !important;
             cursor: pointer;
-            box-shadow: 0 10px 20px -12px rgba(255, 159, 67, 0.8);
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        #tableOrderModal .btn-totallabel:hover,
-        #tableOrderModal .btn-totallabel_1:hover,
-        #tableOrderModal .btn-totallabel_2:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 14px 24px -12px rgba(255, 159, 67, 0.9);
+            box-shadow: 0 8px 18px -10px rgba(255, 159, 67, 0.85) !important;
         }
 
         #tableOrderModal .btn-totallabel h6,
@@ -432,33 +461,44 @@
         #tableOrderModal .btn-totallabel h5,
         #tableOrderModal .btn-totallabel_1 h5,
         #tableOrderModal .btn-totallabel_2 h5 {
-            margin: 0;
+            margin: 0 !important;
             color: #fff !important;
-            font-size: 14px;
-            font-weight: 800;
+            font-size: 13.5px !important;
+            font-weight: 800 !important;
         }
 
         #tableOrderModal .modal-order-edit {
-            gap: 8px;
+            display: flex;
+            gap: 8px !important;
+            margin-top: 0 !important;
         }
 
-        #tableOrderModal .btn-totallabel_1,
-        #tableOrderModal .btn-totallabel_2 {
-            width: calc(50% - 4px) !important;
-        }
-
-        #tableOrderModal .btn-totallabel_2 {
+        #tableOrderModal .btn-totallabel_1 {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
-            box-shadow: 0 10px 20px -12px rgba(15, 23, 42, 0.55);
+            box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.55) !important;
+        }
+
+        #tableOrderModal .btn-totallabel_2 {
+            background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%) !important;
         }
 
         @media (max-width: 991px) {
-            #tableOrderModal .tabs_wrapper {
-                min-height: 0;
+            #tableOrderModal .table-order-layout {
+                height: auto;
+                max-height: none;
             }
 
-            #tableOrderModal .product-table {
-                max-height: 180px;
+            #tableOrderModal .table-order-layout > [class*="col-"] {
+                height: auto;
+            }
+
+            #tableOrderModal .tabs_wrapper {
+                min-height: 280px;
+                max-height: 360px;
+            }
+
+            #tableOrderModal .modal-body {
+                overflow-y: auto;
             }
         }
 
@@ -1132,7 +1172,10 @@
 
         .search_custom_product {
             width: 100%;
-        }    background-color: #1b2850;
+        }
+
+        .paymentmethod.active {
+            background-color: #1b2850;
             color: #ffffff;
         }
 
@@ -1913,7 +1956,7 @@
                         <div class="card card-order">
                             <div class="card-body body_space">
                                 <div class="order-panel-title">Current Order</div>
-                                <div class="gst-header mb-3" style="display: flex; align-items: center; justify-content: space-between;">
+                                <div class="gst-header mb-2">
                                     <div class="custom-gst-pill-group">
                                         <label class="custom-gst-pill">
                                             <input type="radio" name="gst_option" id="without_gst" value="without" checked />
@@ -1925,66 +1968,42 @@
                                         </label>
                                     </div>
                                 </div>
-                                <div class="row">
 
-                                    <div class="col-lg-12">
-                                        <div
-                                            class="header-search d-flex align-items-center position-relative me-3 mb-3 search_custom_product d-none">
-                                            <!-- Search Icon -->
-                                            <img src="{{ env('ImagePath') . '/admin/assets/img/icons/search.svg' }}"
-                                                alt="Search"
-                                                style="position: absolute; left: 12px; width: 18px; height: 18px; z-index: 10; opacity: 0.6;">
-
-                                            <!-- Input Field -->
-                                            <input type="text" id="customerSearch1"
-                                                class="form-control form-control-sm rounded px-3 ps-5"
-                                                placeholder="Search..." autocomplete="off"
-                                                style="height: 38px; font-size: 14px;">
-
-                                            <!-- Search Results -->
-                                            <div id="searchResults1"
-                                                class="list-group bg-white position-absolute rounded shadow mt-1 w-100"
-                                                style="z-index: 1050; max-height: 300px; overflow-y: auto; display: none; top: 100%; left: 0;">
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <!-- Customer Name -->
-
-                                        </div>
+                                <div class="header-search position-relative search_custom_product d-none">
+                                    <img src="{{ env('ImagePath') . '/admin/assets/img/icons/search.svg' }}"
+                                        alt="Search"
+                                        style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; opacity: 0.55;">
+                                    <input type="text" id="customerSearch1"
+                                        class="form-control form-control-sm rounded px-3 ps-5"
+                                        placeholder="Search..." autocomplete="off"
+                                        style="height: 36px; font-size: 13px;">
+                                    <div id="searchResults1"
+                                        class="list-group bg-white position-absolute rounded shadow mt-1 w-100"
+                                        style="z-index: 1050; max-height: 240px; overflow-y: auto; display: none; top: 100%; left: 0;">
                                     </div>
                                 </div>
 
-                                <div class="split-card">
-
-                                </div>
-                                <div class="card-body pt-0">
+                                <div class="order-scroll">
                                     <div class="totalitem">
-                                        <h4>Total items : 4</h4>
+                                        <h4>Total items : 0</h4>
                                         <a href="javascript:void(0);" class="clear_items">Clear all</a>
                                     </div>
-                                    <div class="product-table">
+                                    <div class="product-table"></div>
 
-                                    </div>
-                                </div>
-                                <div class="split-card">
-                                </div>
-                                <div class="card-body pt-0 pb-2 body_space_two">
-                                    <div class="col-lg-12">
-                                        <div class="select-split ">
-                                            <div class="select-group w-100">
-                                                <label for="discount">Discount (%)</label>
-                                                <input type="number" class="form-control" placeholder="Discount %"
-                                                    name="discount" id="discount">
-                                                <span class="error_discount"></span>
-                                            </div>
+                                    <div class="select-split">
+                                        <div class="select-group w-100">
+                                            <label for="discount">Discount (%)</label>
+                                            <input type="number" class="form-control" placeholder="0"
+                                                name="discount" id="discount">
+                                            <span class="error_discount"></span>
                                         </div>
                                     </div>
+
                                     <div class="setvalue">
                                         <ul>
                                             <li>
-
                                                 <h5>Subtotal</h5>
-                                                <h6 style="color: green;">
+                                                <h6 style="color: #16a34a;">
                                                     @if ($currency_position === 'right')
                                                         <span class="subtotal-value">0.00</span>{{ $currency_symbol }}
                                                     @else
@@ -1993,7 +2012,6 @@
                                                 </h6>
                                                 <input type="hidden" name="subtotal" value="" class="tax-hidden">
                                             </li>
-
                                             <li>
                                                 <h5>Discount Amount</h5>
                                                 <h6 class="discount-amount">
@@ -2005,7 +2023,6 @@
                                                 </h6>
                                                 <input type="hidden" name="discount_amount" value="0.00" class="tax-hidden">
                                             </li>
-
                                             <li>
                                                 <h5>Price After Discount</h5>
                                                 <h6 class="price-after-discount">
@@ -2015,10 +2032,8 @@
                                                         {{ $currency_symbol }}<span>0.00</span>
                                                     @endif
                                                 </h6>
-                                                <input type="hidden" name="price_after_discount" value="0.00"
-                                                    class="tax-hidden">
+                                                <input type="hidden" name="price_after_discount" value="0.00" class="tax-hidden">
                                             </li>
-
                                             @foreach ($taxRates as $tax)
                                                 <li class="taxList">
                                                     <h5>{{ $tax->tax_name }} ({{ $tax->tax_rate }}%) Tax</h5>
@@ -2033,7 +2048,6 @@
                                                     </h6>
                                                 </li>
                                             @endforeach
-
                                             <li class="total-value">
                                                 <h5>Total</h5>
                                                 <h6>
@@ -2045,80 +2059,79 @@
                                                 </h6>
                                                 <input type="hidden" name="total" value="" class="tax-hidden">
                                             </li>
-
                                             <li class="error-message-container">
                                                 <span class="error_total" style="color:red; display:none;"></span>
                                             </li>
                                         </ul>
                                     </div>
-                                    <div class="payment_panel">
-                                        <div class="setvaluecash">
-                                            <ul>
-                                                <li class="d-none">
-                                                    <a href="javascript:void(0);" class="paymentmethod">
-                                                        <input type="radio" name="payment_method" value="pending" checked hidden>
-                                                        <i class="fas fa-history" style="font-size: 15px; margin-bottom: 3px;"></i>
-                                                        <span>Pay Later</span>
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="javascript:void(0);" class="paymentmethod">
-                                                        <input type="radio" name="payment_method" value="cash" hidden>
-                                                        <i class="fas fa-money-bill-wave" style="font-size: 15px; margin-bottom: 3px;"></i>
-                                                        <span>Cash</span>
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="javascript:void(0);" class="paymentmethod">
-                                                        <input type="radio" name="payment_method" value="debit card" hidden>
-                                                        <i class="fas fa-credit-card" style="font-size: 15px; margin-bottom: 3px;"></i>
-                                                        <span>Debit</span>
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="javascript:void(0);" class="paymentmethod">
-                                                        <input type="radio" name="payment_method" value="cash+online" hidden>
-                                                        <i class="fas fa-money-check-alt" style="font-size: 15px; margin-bottom: 3px;"></i>
-                                                        <span>Cash+Online</span>
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="javascript:void(0);" class="paymentmethod">
-                                                        <input type="radio" name="payment_method" value="scan" hidden>
-                                                        <i class="fas fa-qrcode" style="font-size: 15px; margin-bottom: 3px;"></i>
-                                                        <span>Scan</span>
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                            <div id="cashOnlineBox" style="display:none; margin-top:10px;">
-                                                <div class="form-group mb-2">
-                                                    <label style="font-size: 12px; font-weight: 600; color: #64748b;">Cash Amount</label>
-                                                    <input type="number" class="form-control form-control-sm" id="cashAmount" placeholder="Enter Cash Amount">
-                                                </div>
-                                                <div class="form-group">
-                                                    <label style="font-size: 12px; font-weight: 600; color: #64748b;">Online Amount</label>
-                                                    <input type="number" class="form-control form-control-sm" id="onlineAmount" placeholder="Enter Online Amount" value="0" readonly>
-                                                </div>
-                                            </div>
-                                            <span class="error_peymentmethod"></span>
-                                        </div>
+                                </div>
 
-                                        <div class="btn-totallabel">
-                                            <h6>Total Amount : 00.00$</h6>
+                                <div class="payment_panel">
+                                    <div class="setvaluecash">
+                                        <ul>
+                                            <li class="d-none">
+                                                <a href="javascript:void(0);" class="paymentmethod">
+                                                    <input type="radio" name="payment_method" value="pending" checked hidden>
+                                                    <i class="fas fa-history"></i>
+                                                    <span>Pay Later</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="javascript:void(0);" class="paymentmethod">
+                                                    <input type="radio" name="payment_method" value="cash" hidden>
+                                                    <i class="fas fa-money-bill-wave"></i>
+                                                    <span>Cash</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="javascript:void(0);" class="paymentmethod">
+                                                    <input type="radio" name="payment_method" value="debit card" hidden>
+                                                    <i class="fas fa-credit-card"></i>
+                                                    <span>Debit</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="javascript:void(0);" class="paymentmethod">
+                                                    <input type="radio" name="payment_method" value="cash+online" hidden>
+                                                    <i class="fas fa-money-check-alt"></i>
+                                                    <span>Cash+Online</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="javascript:void(0);" class="paymentmethod">
+                                                    <input type="radio" name="payment_method" value="scan" hidden>
+                                                    <i class="fas fa-qrcode"></i>
+                                                    <span>Scan</span>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                        <div id="cashOnlineBox" style="display:none; margin-top:8px;">
+                                            <div class="form-group mb-2">
+                                                <label style="font-size: 12px; font-weight: 600; color: #64748b;">Cash Amount</label>
+                                                <input type="number" class="form-control form-control-sm" id="cashAmount" placeholder="Enter Cash Amount">
+                                            </div>
+                                            <div class="form-group">
+                                                <label style="font-size: 12px; font-weight: 600; color: #64748b;">Online Amount</label>
+                                                <input type="number" class="form-control form-control-sm" id="onlineAmount" placeholder="Enter Online Amount" value="0" readonly>
+                                            </div>
+                                        </div>
+                                        <span class="error_peymentmethod"></span>
+                                    </div>
+
+                                    <div class="btn-totallabel">
+                                        <h6>Place Order · ₹0.00</h6>
+                                        <h5><i class="fas fa-arrow-right"></i></h5>
+                                    </div>
+
+                                    <div class="modal-order-edit" style="display: none;">
+                                        <div class="btn-totallabel_1" data-order_update_id="" style="width: 49%;">
+                                            <h6>Update Order</h6>
+                                            <h5><i class="fas fa-check"></i></h5>
+                                        </div>
+                                        <div class="btn-totallabel_2" data-order_payment_update_id="" style="width: 49%;">
+                                            <h6>Checkout</h6>
                                             <h5><i class="fas fa-arrow-right"></i></h5>
                                         </div>
-
-                                        <div class="modal-order-edit" style="display: flex; justify-content: space-between; gap: 8px; margin-top: 10px;">
-                                            <div class="btn-totallabel_1" data-order_update_id="" style="width: 49%;">
-                                                <h6>Update Order</h6>
-                                                <h5><i class="fas fa-check"></i></h5>
-                                            </div>
-                                            <div class="btn-totallabel_2" data-order_payment_update_id="" style="width: 49%;">
-                                                <h6>Checkout</h6>
-                                                <h5><i class="fas fa-arrow-right"></i></h5>
-                                            </div>
-                                        </div>
-
                                     </div>
                                 </div>
                             </div>
@@ -2286,10 +2299,9 @@
             }
 
             $('.btn-totallabel').hide();
-            $('.btn-totallabel_1').css('display', 'flex');
-            $('.btn-totallabel_1').attr('data-order_update_id', salse_id);
-            $('.btn-totallabel_2').attr('data-order_payment_update_id', salse_id);
-            $('.btn-totallabel_2').css('display', 'flex');
+            $('.modal-order-edit').css('display', 'flex');
+            $('.btn-totallabel_1').css('display', 'flex').attr('data-order_update_id', salse_id);
+            $('.btn-totallabel_2').css('display', 'flex').attr('data-order_payment_update_id', salse_id);
             $('.setvaluecash').show();
             (modalInstance || tableOrderModal).show();
         }
@@ -2324,7 +2336,8 @@
             }
 
             $('.clear_items').trigger('click');
-            $('.btn-totallabel').show();
+            $('.btn-totallabel').css('display', 'flex');
+            $('.modal-order-edit').hide();
             $('.btn-totallabel_1').hide();
             $('.btn-totallabel_2').hide();
             $('.setvaluecash').hide();
@@ -2541,7 +2554,8 @@
                         });
                     } else {
                         $('.clear_items').trigger('click');
-                        $('.btn-totallabel').show();
+                        $('.btn-totallabel').css('display', 'flex');
+                        $('.modal-order-edit').hide();
                         $('.btn-totallabel_1').hide();
                         $('.btn-totallabel_2').hide();
                         $('.setvaluecash').hide();
