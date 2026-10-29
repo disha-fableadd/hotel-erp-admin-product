@@ -24,11 +24,12 @@
         /* Container Layout */
         .page-header {
             background: #ffffff;
-            border-radius: 10px;
-            padding: 12px 18px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+            border-radius: 8px;
+            padding: 6px 14px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
             border: 1px solid var(--pos-border);
-            margin-bottom: 16px;
+            margin-bottom: 8px;
+            min-height: 42px;
         }
         .pos-back-btn {
             display: inline-flex;
@@ -37,19 +38,20 @@
             border: 1.5px solid var(--pos-primary);
             background: var(--pos-primary);
             color: #ffffff !important;
-            border-radius: 8px;
-            padding: 6px 16px;
-            font-size: 13px;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 12px;
             font-weight: 600;
+            height: 30px;
             transition: all 0.2s ease;
-            box-shadow: 0 2px 6px rgba(255, 159, 67, 0.3);
+            box-shadow: 0 2px 6px rgba(255, 159, 67, 0.25);
             text-decoration: none;
         }
         .pos-back-btn:hover {
             background: var(--pos-primary-hover);
             border-color: var(--pos-primary-hover);
             transform: translateX(-2px);
-            box-shadow: 0 4px 10px rgba(255, 159, 67, 0.4);
+            box-shadow: 0 4px 10px rgba(255, 159, 67, 0.35);
         }
 
         /* --- Category Tabs (Pill Style - Fixed Width & No Scrollbar) --- */
@@ -269,22 +271,28 @@
         .card.card-order {
             background: #ffffff;
             border: 1px solid var(--pos-border);
-            border-radius: 14px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
             position: sticky;
-            top: 15px;
+            top: 10px;
             overflow: visible;
         }
         .card.card-order .card-body {
-            padding: 16px 18px;
+            padding: 10px 12px !important;
+        }
+        .card.card-order .card-body .card-body {
+            padding: 0 !important;
+        }
+        .split-card {
+            display: none !important;
         }
 
         /* Segmented GST Control */
         .custom-gst-pill-group {
             display: inline-flex;
             background: #f1f5f9;
-            padding: 3px;
-            border-radius: 30px;
+            padding: 2px;
+            border-radius: 20px;
             border: 1px solid var(--pos-border);
         }
         .custom-gst-btn {
@@ -296,9 +304,9 @@
         }
         .custom-gst-btn span {
             display: inline-block;
-            padding: 5px 14px;
-            border-radius: 25px;
-            font-size: 12.5px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 11.5px;
             font-weight: 600;
             color: #64748b;
             transition: all 0.2s ease;
@@ -307,7 +315,7 @@
         .custom-gst-btn input:checked + span {
             background-color: #ffffff;
             color: #1e293b;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
             font-weight: 700;
         }
 
@@ -316,39 +324,41 @@
             background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%);
             color: #ffffff !important;
             font-weight: 600;
-            border-radius: 8px;
-            padding: 6px 15px;
-            font-size: 13px;
-            box-shadow: 0 2px 8px rgba(255, 159, 67, 0.3);
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 12px;
+            box-shadow: 0 2px 6px rgba(255, 159, 67, 0.25);
             border: none;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             transition: all 0.2s ease;
             text-decoration: none;
+            height: 30px;
         }
         .dine-in-btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(255, 159, 67, 0.4);
+            box-shadow: 0 4px 10px rgba(255, 159, 67, 0.35);
         }
 
         /* Search Bar */
         .search_custom_product {
             width: 100%;
+            margin-bottom: 6px !important;
         }
         .pos-search-input {
-            height: 40px !important;
-            border-radius: 8px !important;
-            border: 1.5px solid var(--pos-border) !important;
-            padding-left: 38px !important;
-            font-size: 13.5px !important;
+            height: 32px !important;
+            border-radius: 6px !important;
+            border: 1px solid #cbd5e1 !important;
+            padding-left: 32px !important;
+            font-size: 12px !important;
             background: var(--pos-bg-subtle) !important;
             transition: all 0.2s ease !important;
         }
         .pos-search-input:focus {
             background: #ffffff !important;
             border-color: var(--pos-primary) !important;
-            box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.15) !important;
+            box-shadow: 0 0 0 2px rgba(255, 159, 67, 0.15) !important;
         }
 
         /* Customer Section & Details Box */
@@ -356,57 +366,108 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 8px;
+            margin-top: 4px;
+            margin-bottom: 4px;
+            padding: 0 2px;
         }
         .pos-order-badge {
-            background: var(--pos-primary-light);
-            border: 1.5px solid var(--pos-primary);
-            border-radius: 8px;
-            padding: 4px 10px;
-            font-size: 12px;
+            background: #fff7ed;
+            border: 1px solid #ffedd5;
+            border-radius: 14px;
+            padding: 2px 8px;
+            font-size: 11px;
             font-weight: 700;
             color: var(--pos-primary);
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
         }
         .pos-order-label {
-            color: #888;
+            color: #9a3412;
             font-weight: 500;
-            font-size: 11px;
+            font-size: 10.5px;
         }
         .pos-order-val {
             color: var(--pos-primary);
             font-weight: 700;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.2px;
         }
 
         .customer-details-box {
-            border: 1.5px solid var(--pos-primary);
-            border-radius: 10px;
-            padding: 12px 14px;
-            background: #ffffff;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 8px rgba(255, 159, 67, 0.06);
+            border: 1.5px solid var(--pos-primary) !important;
+            border-radius: 8px !important;
+            padding: 6px 10px 6px !important;
+            background: #ffffff !important;
+            margin-bottom: 6px !important;
+            box-shadow: 0 1px 4px rgba(255, 159, 67, 0.08) !important;
+        }
+        .customer-details-box .row.g-2 {
+            --bs-gutter-y: 6px !important;
+            --bs-gutter-x: 8px !important;
+            margin: 0 !important;
+        }
+        .customer-details-box .col-6 {
+            padding-left: 4px !important;
+            padding-right: 4px !important;
+        }
+        .customer-details-box .select-split {
+            margin-bottom: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+        .customer-details-box .select-group {
+            margin-bottom: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
         }
         .customer-details-box label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #334155;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            color: #475569 !important;
+            margin-bottom: 2px !important;
+            line-height: 1.2 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+        }
+        .customer-details-box label i {
+            font-size: 11px !important;
         }
         .customer-details-box .form-control,
         .customer-details-box .select2-container .select2-selection--single {
             border-radius: 6px !important;
-            font-size: 13px !important;
-            height: 38px !important;
-            border-color: #cbd5e1 !important;
+            font-size: 12px !important;
+            height: 31px !important;
+            min-height: 31px !important;
+            max-height: 31px !important;
+            padding: 2px 8px !important;
+            border: 1px solid #cbd5e1 !important;
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+        }
+        .customer-details-box .select2-container--default .select2-selection--single {
+            border: 1px solid #cbd5e1 !important;
         }
         .customer-details-box .select2-container .select2-selection--single .select2-selection__rendered {
-            line-height: 36px !important;
-            font-size: 13px !important;
+            line-height: 29px !important;
+            font-size: 12px !important;
+            padding-left: 2px !important;
+            padding-right: 20px !important;
+            color: #1e293b !important;
+        }
+        .customer-details-box .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 29px !important;
+            top: 1px !important;
+            right: 4px !important;
+        }
+        .customer-details-box span[class^="error_"] {
+            display: none;
+            font-size: 10px !important;
+            line-height: 1 !important;
+            margin-top: 1px !important;
+        }
+        .customer-details-box span[class^="error_"]:not(:empty) {
+            display: block !important;
         }
 
         /* Items List Header */
@@ -414,21 +475,21 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 10px 0;
+            padding: 6px 0 !important;
             border-top: 1px dashed var(--pos-border);
             border-bottom: 1px dashed var(--pos-border);
-            margin-bottom: 10px;
+            margin-bottom: 6px !important;
         }
         .totalitem h4 {
-            font-size: 14px;
-            font-weight: 700;
+            font-size: 12.5px !important;
+            font-weight: 700 !important;
             color: #1e293b;
             margin: 0;
         }
         .clear_items {
             color: #ef4444 !important;
             font-weight: 600;
-            font-size: 13px;
+            font-size: 12px !important;
             text-decoration: none;
             transition: opacity 0.2s;
         }
@@ -582,135 +643,177 @@
 
         /* Totals / Financial Rows */
         .body_space_two {
-            padding-top: 6px;
+            padding-top: 4px !important;
+        }
+        .body_space_two .select-split {
+            margin-bottom: 4px !important;
+        }
+        .body_space_two label {
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            margin-bottom: 2px !important;
+            color: #475569 !important;
+        }
+        #discount {
+            height: 31px !important;
+            min-height: 31px !important;
+            font-size: 12px !important;
+            padding: 3px 8px !important;
+            border-radius: 6px !important;
         }
         .setvalue ul {
             list-style: none;
             padding: 0;
-            margin: 10px 0;
+            margin: 4px 0 !important;
         }
         .setvalue ul li {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 4px 0;
-            font-size: 13px;
+            padding: 2.5px 0 !important;
+            font-size: 12.5px !important;
         }
         .setvalue ul li h5 {
-            font-size: 13px;
+            font-size: 12px !important;
             font-weight: 500;
             color: var(--pos-muted);
             margin: 0;
         }
         .setvalue ul li h6 {
-            font-size: 13.5px;
+            font-size: 12.5px !important;
             font-weight: 600;
             color: #1e293b;
             margin: 0;
         }
         .setvalue ul li.total-value {
             border-top: 1.5px solid var(--pos-border);
-            padding-top: 8px;
-            margin-top: 6px;
+            padding-top: 6px !important;
+            margin-top: 4px !important;
         }
         .setvalue ul li.total-value h5 {
-            font-size: 15px;
+            font-size: 14px !important;
             font-weight: 700;
             color: #1e293b;
         }
         .setvalue ul li.total-value h6 {
-            font-size: 18px;
+            font-size: 15px !important;
             font-weight: 800;
-            color: #10b981;
+            color: #10b981 !important;
         }
 
-        /* --- Payment Methods (Image 3 Grid Style) --- */
+        /* --- Payment Methods (Modern Compact Cards) --- */
         .payment_panel {
-            margin-top: 14px;
-            padding-top: 12px;
+            margin-top: 4px !important;
+            padding-top: 6px !important;
             border-top: 1px dashed var(--pos-border);
         }
         .payment_panel_header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 8px;
+            margin-bottom: 6px !important;
         }
         .payment_panel_title {
-            font-size: 12.5px;
-            font-weight: 700;
-            color: #1e293b;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            color: #334155 !important;
             display: inline-flex;
             align-items: center;
             gap: 6px;
         }
         .setvaluecash {
             display: block !important;
+            margin: 0 0 6px !important;
         }
         .setvaluecash ul {
             display: grid !important;
-            grid-template-columns: repeat(5, 1fr) !important;
-            gap: 8px !important;
+            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+            gap: 6px !important;
             list-style: none !important;
             padding: 0 !important;
-            margin: 6px 0 10px !important;
+            margin: 0 !important;
+            width: 100% !important;
         }
         .setvaluecash ul li {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
             padding: 0 !important;
             margin: 0 !important;
+            list-style: none !important;
         }
-        .setvaluecash ul li a {
+        .setvaluecash ul li a,
+        .setvaluecash ul li a.paymentmethod {
             border: 1.5px solid #e2e8f0 !important;
             background: #ffffff !important;
-            color: #334155 !important;
-            font-size: 11.5px !important;
-            font-weight: 700 !important;
-            min-height: 58px !important;
-            border-radius: 10px !important;
-            padding: 8px 4px !important;
+            color: #475569 !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            min-height: 48px !important;
+            height: 48px !important;
+            border-radius: 8px !important;
+            padding: 4px 2px !important;
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 4px !important;
+            gap: 3px !important;
             text-decoration: none !important;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
             cursor: pointer !important;
             width: 100% !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+            text-align: center !important;
+            box-sizing: border-box !important;
+            user-select: none !important;
         }
-        .setvaluecash ul li a i {
-            font-size: 17px !important;
-            margin-bottom: 2px !important;
+        .setvaluecash ul li a i,
+        .setvaluecash ul li a.paymentmethod i {
+            font-size: 15px !important;
+            margin: 0 !important;
             display: block !important;
             color: #64748b !important;
-            transition: all 0.2s ease !important;
+            transition: color 0.2s ease !important;
         }
-        .setvaluecash ul li a:hover {
-            border-color: var(--pos-primary) !important;
-            color: var(--pos-primary) !important;
+        .setvaluecash ul li a span,
+        .setvaluecash ul li a.paymentmethod span {
+            font-size: 10.5px !important;
+            font-weight: 600 !important;
+            line-height: 1.1 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            max-width: 100% !important;
+            display: block !important;
+            color: inherit !important;
+        }
+        .setvaluecash ul li a:hover,
+        .setvaluecash ul li a.paymentmethod:hover {
+            border-color: #ff9f43 !important;
+            color: #ff9f43 !important;
             background: #fffaf5 !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 4px 12px rgba(255, 159, 67, 0.2) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 3px 8px rgba(255, 159, 67, 0.15) !important;
         }
-        .setvaluecash ul li a:hover i {
-            color: var(--pos-primary) !important;
+        .setvaluecash ul li a:hover i,
+        .setvaluecash ul li a.paymentmethod:hover i {
+            color: #ff9f43 !important;
         }
-        .paymentmethod.active {
+        .setvaluecash ul li a.paymentmethod.active {
             border-color: #1b2850 !important;
             background: #1b2850 !important;
             color: #ffffff !important;
-            font-weight: 700 !important;
-            box-shadow: 0 4px 14px rgba(27, 40, 80, 0.3) !important;
+            box-shadow: 0 3px 10px rgba(27, 40, 80, 0.25) !important;
             transform: translateY(-1px) !important;
         }
-        .paymentmethod.active i {
+        .setvaluecash ul li a.paymentmethod.active i {
             color: #ffffff !important;
         }
-        .paymentmethod.active span {
+        .setvaluecash ul li a.paymentmethod.active span {
             color: #ffffff !important;
+            font-weight: 700 !important;
         }
-        .paymentmethod.active svg {
+        .setvaluecash ul li a.paymentmethod.active svg {
             fill: #ffffff !important;
         }
 
@@ -718,43 +821,44 @@
         .btn-totallabel {
             background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%) !important;
             color: #ffffff !important;
-            border-radius: 10px !important;
-            padding: 14px 20px !important;
+            border-radius: 8px !important;
+            padding: 10px 16px !important;
+            min-height: 44px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: space-between !important;
             cursor: pointer !important;
-            box-shadow: 0 6px 18px rgba(255, 159, 67, 0.35) !important;
+            box-shadow: 0 4px 14px rgba(255, 159, 67, 0.3) !important;
             transition: all 0.2s ease !important;
-            margin-top: 12px !important;
+            margin-top: 6px !important;
             border: none !important;
         }
         .btn-totallabel:hover {
-            box-shadow: 0 8px 24px rgba(255, 159, 67, 0.45) !important;
-            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 18px rgba(255, 159, 67, 0.4) !important;
+            transform: translateY(-1px) !important;
         }
         .btn-totallabel h6 {
-            font-size: 15px !important;
+            font-size: 13.5px !important;
             font-weight: 700 !important;
             color: #ffffff !important;
             margin: 0 !important;
             letter-spacing: 0.3px !important;
         }
         .btn-totallabel h5 {
-            font-size: 15px !important;
+            font-size: 13.5px !important;
             font-weight: 700 !important;
             color: #ffffff !important;
             margin: 0 !important;
             display: flex !important;
             align-items: center !important;
-            gap: 8px !important;
+            gap: 6px !important;
         }
         .btn-totallabel h5 svg {
             fill: #ffffff !important;
             transition: transform 0.2s ease !important;
         }
         .btn-totallabel:hover h5 svg {
-            transform: translateX(4px) !important;
+            transform: translateX(3px) !important;
         }
 
         /* Mobile adjustments */
@@ -776,8 +880,8 @@
         <div class="content">
         <div class="page-header d-flex justify-content-between align-items-center">
             <div class="page-title d-flex align-items-center gap-2 m-0">
-                <i class="fas fa-utensils" style="color: var(--pos-primary); font-size: 20px;"></i>
-                <h4 style="margin-bottom: 0; font-weight: 700; color: #1e293b; font-size: 18px;">Add Order</h4>
+                <i class="fas fa-utensils" style="color: var(--pos-primary); font-size: 17px;"></i>
+                <h4 style="margin-bottom: 0; font-weight: 700; color: #1e293b; font-size: 16px;">Add Order</h4>
             </div>
             <div class="d-flex align-items-center">
                 <a href="{{ route('sales.list') }}" class="pos-back-btn">
@@ -828,7 +932,7 @@
 
                 <div class="card card-order">
                     <div class="card-body body_space">
-                        <div class="gst-header mb-3"
+                        <div class="gst-header mb-2"
                             style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div class="custom-gst-pill-group">
                                 <label class="custom-gst-btn">
@@ -851,7 +955,7 @@
                         </div>
 
                         <!-- Product Search Bar -->
-                        <div class="header-search position-relative mb-3 search_custom_product">
+                        <div class="header-search position-relative mb-2 search_custom_product">
                             <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; pointer-events: none; z-index: 5;"></i>
                             <input type="text" id="customerSearch1"
                                 class="form-control pos-search-input" placeholder="Search dishes, drinks, items..."
@@ -939,9 +1043,6 @@
                             //     document.getElementById('customer_phone').value = phone || '';
                             // });
                         </script>
-                        <div class="split-card">
-
-                        </div>
                         <div class="card-body pt-0">
                             <div class="totalitem">
                                 <h4>Total items : 4</h4>
@@ -950,8 +1051,6 @@
                             <div class="product-table">
 
                             </div>
-                        </div>
-                        <div class="split-card">
                         </div>
                         <div class="card-body pt-0 pb-2 body_space_two">
                             <div class="row">
