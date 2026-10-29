@@ -190,6 +190,34 @@
             padding-right: 2px;
         }
 
+        #tableOrderModal .tabs_container .tab_content {
+            display: none;
+        }
+
+        #tableOrderModal .tabs_container .tab_content.active {
+            display: block;
+        }
+
+        #tableOrderModal .tabs_container.is-searching {
+            display: none;
+        }
+
+        #tableOrderModal #tableProductSearchResults {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            padding-right: 2px;
+            display: none;
+        }
+
+        #tableOrderModal #tableProductSearchResults.is-visible {
+            display: block;
+        }
+
+        #tableOrderModal .product-card-col.product-search-hidden {
+            display: none !important;
+        }
+
         #tableOrderModal .product-details {
             background: #f8fafc;
             padding: 7px 14px;
@@ -214,7 +242,8 @@
             color: #fff !important;
         }
 
-        #tableOrderModal .tabs_container .row {
+        #tableOrderModal .tabs_container .row,
+        #tableOrderModal #tableProductSearchResults .row {
             --bs-gutter-x: 0.65rem;
             --bs-gutter-y: 0.65rem;
         }
@@ -2138,6 +2167,7 @@
                         <div class="tabs_container">
 
                         </div>
+                        <div id="tableProductSearchResults" aria-live="polite"></div>
                     </div>
                     <div class="col-lg-5 col-sm-12 ">
 
@@ -2934,9 +2964,18 @@
                 updateTotalItems();
             };
 
-            function loadProductsByCategory(categoryId) {
+            var tableOrderProductsCache = {};
+            var tableOrderProductCurrency = {
+                symbol: '{{ $currency_symbol }}',
+                position: '{{ $currency_position }}'
+            };
+            var tableProductSearchTimer = null;
+            var tableProductSearchRequestId = 0;
 
-                $.ajax({
+            function loadProductsByCategory(categoryId, options) {
+                options = options || {};
+
+                return $.ajax({
                     url: "/api/getProductsByCategory/" + categoryId,
                     type: "GET",
                     dataType: "json",
@@ -2944,26 +2983,58 @@
                         "Authorization": "Bearer " + authToken,
                     },
                     success: function (response) {
-                        const currencySymbol = response.currency_symbol || 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹';
-                        const currencyPosition = response.currency_position || 'left';
+                        const currencySymbol = response.currency_symbol || tableOrderProductCurrency.symbol || '₹';
+                        const currencyPosition = response.currency_position || tableOrderProductCurrency.position || 'left';
+                        tableOrderProductCurrency.symbol = currencySymbol;
+                        tableOrderProductCurrency.position = currencyPosition;
 
+                        var products = (response.status && Array.isArray(response.data)) ? response.data : [];
+                        tableOrderProductsCache[String(categoryId)] = products;
 
-                        if (response.status) {
-                            renderProducts(response.data, categoryId, currencySymbol, currencyPosition);
-                        } else {
-                            renderProducts([], categoryId, currencySymbol, currencyPosition);
+                        if (!options.skipRender) {
+                            renderProducts(products, categoryId, currencySymbol, currencyPosition);
                         }
                     },
                     error: function (xhr, status, error) {
-
-                        renderProducts([], categoryId);
+                        tableOrderProductsCache[String(categoryId)] = [];
+                        if (!options.skipRender) {
+                            renderProducts([], categoryId);
+                        }
                     }
                 });
+            }
+
+            function ensureAllCategoryProductsLoaded() {
+                var categoryIds = [];
+                $('#tableOrderModal .tabs li').each(function () {
+                    var id = $(this).attr('id');
+                    if (id) {
+                        categoryIds.push(String(id));
+                    }
+                });
+
+                var pending = categoryIds.filter(function (id) {
+                    return !Object.prototype.hasOwnProperty.call(tableOrderProductsCache, id);
+                });
+
+                if (!pending.length) {
+                    return $.Deferred().resolve().promise();
+                }
+
+                var requests = pending.map(function (id) {
+                    return loadProductsByCategory(id, { skipRender: true });
+                });
+
+                return $.when.apply($, requests);
             }
 
             $(".tabs li").click(function () {
                 var categoryId = $(this).attr('id');
 
+                // Category browse mode — clear product search
+                $('#tableProductSearch').val('');
+                $('.table-order-product-search').removeClass('has-value');
+                exitTableProductSearchMode();
 
                 // Remove active class from all tabs and tab contents
                 $(".tabs li").removeClass('active');
@@ -2986,8 +3057,6 @@
                     // Check if content already loaded
                     if ($tabContent.find('.productset').length === 0) {
                         loadProductsByCategory(categoryId);
-                    } else {
-                        applyTableProductSearch();
                     }
                 } else {
 
@@ -3079,7 +3148,7 @@
                         }
 
                         productsHtml += `
-                                                    <div class="col-lg-4 col-md-6 col-sm-6 d-flex position-relative">
+                                                    <div class="col-lg-4 col-md-6 col-sm-6 d-flex position-relative product-card-col">
                                                         <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" data-quantity_type_id="${product.quantity_type_id || ''}" style="position: relative;">
                                                             ${outOfStockBadge}
                                                             <div class="productsetimg">
@@ -3110,10 +3179,31 @@
                 var $tabContent = $('.tab_content[data-tab="' + categoryId + '"]');
                 if ($tabContent.length) {
                     $tabContent.html('<div class="row">' + productsHtml + '</div>');
-                    applyTableProductSearch();
                 } else {
 
                 }
+            }
+
+            function exitTableProductSearchMode() {
+                $('#tableOrderModal .tabs_container').removeClass('is-searching');
+                $('#tableProductSearchResults').removeClass('is-visible').empty();
+            }
+
+            function getAllCachedProducts() {
+                var all = [];
+                var seen = {};
+
+                Object.keys(tableOrderProductsCache).forEach(function (categoryId) {
+                    (tableOrderProductsCache[categoryId] || []).forEach(function (product) {
+                        var key = String(product.id);
+                        if (!seen[key]) {
+                            seen[key] = true;
+                            all.push(product);
+                        }
+                    });
+                });
+
+                return all;
             }
 
             function applyTableProductSearch() {
@@ -3126,43 +3216,74 @@
                 var $wrap = $input.closest('.table-order-product-search');
                 $wrap.toggleClass('has-value', query.length > 0);
 
-                var $activeTab = $('#tableOrderModal .tab_content.active');
-                if (!$activeTab.length) {
+                if (!query) {
+                    exitTableProductSearchMode();
                     return;
                 }
 
-                var $cards = $activeTab.find('.productset').closest('[class*="col-"]');
-                var visibleCount = 0;
+                var requestId = ++tableProductSearchRequestId;
+                var $results = $('#tableProductSearchResults');
+                $results.addClass('is-visible').html(
+                    '<div class="product-search-empty" style="display:block;">Searching products...</div>'
+                );
+                $('#tableOrderModal .tabs_container').addClass('is-searching');
 
-                $cards.each(function () {
-                    var name = ($(this).find('.productsetcontent h4').first().text() || '').toLowerCase();
-                    var match = !query || name.indexOf(query) !== -1;
-                    $(this).toggle(match);
-                    if (match) {
-                        visibleCount++;
+                ensureAllCategoryProductsLoaded().always(function () {
+                    if (requestId !== tableProductSearchRequestId) {
+                        return;
                     }
+
+                    var currentQuery = ($input.val() || '').toString().trim().toLowerCase();
+                    if (!currentQuery) {
+                        exitTableProductSearchMode();
+                        return;
+                    }
+
+                    var matched = getAllCachedProducts().filter(function (product) {
+                        var name = (product.name || '').toString().toLowerCase();
+                        var categoryName = (product.category_name || '').toString().toLowerCase();
+                        return name.indexOf(currentQuery) !== -1 || categoryName.indexOf(currentQuery) !== -1;
+                    });
+
+                    if (!matched.length) {
+                        $results.html('<div class="product-search-empty" style="display:block;">No products match your search</div>');
+                        return;
+                    }
+
+                    // Reuse renderProducts card markup into a temporary tab, then move HTML
+                    var tempTabId = 'search-results-temp';
+                    var $temp = $('.tab_content[data-tab="' + tempTabId + '"]');
+                    if (!$temp.length) {
+                        $temp = $('<div class="tab_content" data-tab="' + tempTabId + '" style="display:none;"></div>');
+                        $('#tableOrderModal .tabs_container').append($temp);
+                    }
+
+                    renderProducts(
+                        matched,
+                        tempTabId,
+                        tableOrderProductCurrency.symbol,
+                        tableOrderProductCurrency.position
+                    );
+
+                    $results.html($temp.html());
+                    $temp.remove();
                 });
-
-                var $empty = $activeTab.find('.product-search-empty');
-                if (!$empty.length) {
-                    $activeTab.append('<div class="product-search-empty">No products match your search</div>');
-                    $empty = $activeTab.find('.product-search-empty');
-                }
-
-                if (query && $cards.length > 0 && visibleCount === 0) {
-                    $empty.show();
-                } else {
-                    $empty.hide();
-                }
             }
 
             $(document).on('input', '#tableProductSearch', function () {
-                applyTableProductSearch();
+                clearTimeout(tableProductSearchTimer);
+                tableProductSearchTimer = setTimeout(function () {
+                    applyTableProductSearch();
+                }, 250);
             });
 
             $(document).on('click', '.clear-product-search', function (e) {
                 e.preventDefault();
-                $('#tableProductSearch').val('').trigger('input').focus();
+                clearTimeout(tableProductSearchTimer);
+                $('#tableProductSearch').val('');
+                $('.table-order-product-search').removeClass('has-value');
+                exitTableProductSearchMode();
+                $('#tableProductSearch').focus();
             });
 
             function calculateTotals() {
