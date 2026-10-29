@@ -211,7 +211,8 @@
         }
 
         #tableOrderModal #tableProductSearchResults.is-visible {
-            display: block;
+            display: block !important;
+            min-height: 160px;
         }
 
         #tableOrderModal .product-card-col.product-search-hidden {
@@ -2890,27 +2891,74 @@
                 return position === 'right' ? amount + symbol : symbol + amount;
             }
 
+            function escapeHtmlAttr(value) {
+                return String(value == null ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
             function resolveProductImage(imageValue) {
-                let productImage = '{{ env("ImagePath") . "/admin/assets/img/product/noimage.png" }}';
-                if (!imageValue) {
-                    return productImage;
+                var fallback = '{{ env("ImagePath") . "/admin/assets/img/product/noimage.png" }}';
+                var imageBasePath = "{{ rtrim(env('ImagePath'), '/') }}";
+                if (imageValue == null || imageValue === '') {
+                    return fallback;
                 }
+
                 try {
-                    let cleanImageString = String(imageValue).replace(/\\/g, '');
-                    cleanImageString = cleanImageString.replace(/^"(.*)"$/, '$1');
-                    let imageBasePath = "{{ rtrim(env('ImagePath'), '/') }}";
-                    if (cleanImageString.startsWith('[')) {
-                        let imagesArray = JSON.parse(cleanImageString);
-                        if (Array.isArray(imagesArray) && imagesArray.length > 0) {
-                            productImage = `${imageBasePath}/storage/${imagesArray[0]}`;
+                    var path = imageValue;
+
+                    // Unwrap nested arrays: ["a.jpg"] or [["a.jpg"]]
+                    while (Array.isArray(path)) {
+                        if (!path.length) {
+                            return fallback;
                         }
-                    } else {
-                        productImage = `${imageBasePath}/storage/${cleanImageString}`;
+                        path = path[0];
                     }
+
+                    if (typeof path !== 'string') {
+                        path = String(path);
+                    }
+
+                    var clean = path.replace(/\\/g, '').trim();
+                    clean = clean.replace(/^["']+|["']+$/g, '');
+
+                    if (clean.charAt(0) === '[') {
+                        var parsed = JSON.parse(clean);
+                        while (Array.isArray(parsed)) {
+                            if (!parsed.length) {
+                                return fallback;
+                            }
+                            parsed = parsed[0];
+                        }
+                        clean = String(parsed || '').replace(/\\/g, '').trim()
+                            .replace(/^["']+|["']+$/g, '');
+                    }
+
+                    if (!clean || clean === 'null' || clean === 'undefined') {
+                        return fallback;
+                    }
+
+                    // Already a full URL or data URI
+                    if (/^https?:\/\//i.test(clean) || clean.indexOf('data:') === 0) {
+                        return clean;
+                    }
+
+                    // Avoid duplicating storage/ or absolute admin asset paths
+                    if (clean.indexOf('/storage/') !== -1 || clean.indexOf('admin/assets/') !== -1) {
+                        if (/^https?:\/\//i.test(clean) || clean.charAt(0) === '/') {
+                            return clean;
+                        }
+                        return imageBasePath.replace(/\/$/, '') + '/' + clean.replace(/^\//, '');
+                    }
+
+                    clean = clean.replace(/^\/?storage\//, '');
+                    return imageBasePath + '/storage/' + clean;
                 } catch (e) {
-                    productImage = '{{ env("ImagePath") . "/admin/assets/img/product/noimage.png" }}';
+                    return fallback;
                 }
-                return productImage;
             }
 
             // Load existing table order items into cart from API data.
@@ -2949,7 +2997,7 @@
                         categoryId: item.category_id || product.category_id || '',
                         name: product.name || 'Item',
                         price: formatCurrency(priceNum.toFixed(2), currencySymbol, currencyPosition),
-                        image: resolveProductImage(product.image),
+                        image: resolveProductImage(product.images || product.image || product.image_url),
                         code: product.product_code || 'PT001',
                         quantity_type: qtyTypeName,
                         quantity_type_id: qtyTypeId,
@@ -3005,6 +3053,7 @@
             }
 
             function ensureAllCategoryProductsLoaded() {
+                var deferred = $.Deferred();
                 var categoryIds = [];
                 $('#tableOrderModal .tabs li').each(function () {
                     var id = $(this).attr('id');
@@ -3018,14 +3067,21 @@
                 });
 
                 if (!pending.length) {
-                    return $.Deferred().resolve().promise();
+                    deferred.resolve();
+                    return deferred.promise();
                 }
 
-                var requests = pending.map(function (id) {
-                    return loadProductsByCategory(id, { skipRender: true });
+                var completed = 0;
+                pending.forEach(function (id) {
+                    loadProductsByCategory(id, { skipRender: true }).always(function () {
+                        completed += 1;
+                        if (completed >= pending.length) {
+                            deferred.resolve();
+                        }
+                    });
                 });
 
-                return $.when.apply($, requests);
+                return deferred.promise();
             }
 
             $(".tabs li").click(function () {
@@ -3095,29 +3151,7 @@
                 } else {
                     products.forEach(function (product) {
                         // Default image
-                        let productImage = '{{ env("ImagePath") . "/admin/assets/img/product/noimage.png" }}';
-
-                        // Handle different image formats
-                        if (product.image) {
-                            try {
-                                // Clean the image string
-                                let cleanImageString = product.image.replace(/\\/g, '');
-                                cleanImageString = cleanImageString.replace(/^"(.*)"$/, '$1');
-
-                                let imageBasePath = "{{ rtrim(env('ImagePath'), '/') }}"; // safe trailing slash removal
-
-                                if (cleanImageString.startsWith('[')) {
-                                    let imagesArray = JSON.parse(cleanImageString);
-                                    if (Array.isArray(imagesArray) && imagesArray.length > 0) {
-                                        productImage = `${imageBasePath}/storage/${imagesArray[0]}`;
-                                    }
-                                } else {
-                                    productImage = `${imageBasePath}/storage/${cleanImageString}`;
-                                }
-                            } catch (e) {
-                                productImage = '{{ env("ImagePath") . "/admin/assets/img/product/noimage.png" }}';
-                            }
-                        }
+                        var productImage = resolveProductImage(product.image || product.images || product.image_url);
 
                         // Format price
                         let price = parseFloat(product.price || 0).toFixed(2);
@@ -3147,22 +3181,26 @@
                             addButtonDisabled = 'disabled'; // disable button
                         }
 
+                        var safeName = escapeHtmlAttr(product.name);
+                        var safeCategory = escapeHtmlAttr(product.category_name || 'Uncategorized');
+                        var safeImage = escapeHtmlAttr(productImage);
+
                         productsHtml += `
                                                     <div class="col-lg-4 col-md-6 col-sm-6 d-flex position-relative product-card-col">
                                                         <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" data-quantity_type_id="${product.quantity_type_id || ''}" style="position: relative;">
                                                             ${outOfStockBadge}
                                                             <div class="productsetimg">
-                                                                <img src="${productImage}" alt="${product.name}" class="productsetimgin">
+                                                                <img src="${safeImage}" alt="${safeName}" class="productsetimgin">
                                                                 <h6>Qty: ${product.quantity || '0'}</h6>
                                                             </div>
                                                             <div class="productsetcontent">
-                                                                <h4>${product.name}</h4>
+                                                                <h4>${safeName}</h4>
                                                                 <h1 class="d-none">${product.categoryId || 'Uncategorized'}</h1>
                                                                 <h2 class="d-none">${product.quantity_type || 'pcs'}</h2>
                                                                 <h3 class="d-none">${product.quantity_type_id || 'pcs'}</h3>
 
                                                                 <div class="product-category-subtitle">
-                                                                    ${product.category_name || 'Uncategorized'}
+                                                                    ${safeCategory}
                                                                 </div>
                                                                 <h6>${displayPrice}</h6>
                                                             </div>
@@ -3182,6 +3220,8 @@
                 } else {
 
                 }
+
+                return productsHtml;
             }
 
             function exitTableProductSearchMode() {
@@ -3206,6 +3246,39 @@
                 return all;
             }
 
+            function buildProductsGridHtml(products, currencySymbol, currencyPosition) {
+                if (!products || !products.length) {
+                    return '<div class="product-search-empty" style="display:block;">No products match your search</div>';
+                }
+
+                var tempId = 'search-results-temp';
+                var $temp = $('.tab_content[data-tab="' + tempId + '"]');
+                if (!$temp.length) {
+                    $temp = $('<div class="tab_content" data-tab="' + tempId + '" style="display:none !important;"></div>');
+                    $('body').append($temp);
+                }
+
+                var html = renderProducts(products, tempId, currencySymbol, currencyPosition);
+                $temp.remove();
+
+                if (html) {
+                    return '<div class="row">' + html + '</div>';
+                }
+                return '<div class="product-search-empty" style="display:block;">No products match your search</div>';
+            }
+
+            function filterProductsByQuery(products, query) {
+                var q = (query || '').toString().trim().toLowerCase();
+                if (!q) {
+                    return products || [];
+                }
+                return (products || []).filter(function (product) {
+                    var name = (product.name || '').toString().toLowerCase();
+                    var categoryName = (product.category_name || '').toString().toLowerCase();
+                    return name.indexOf(q) !== -1 || categoryName.indexOf(q) !== -1;
+                });
+            }
+
             function applyTableProductSearch() {
                 var $input = $('#tableProductSearch');
                 if (!$input.length) {
@@ -3223,59 +3296,50 @@
 
                 var requestId = ++tableProductSearchRequestId;
                 var $results = $('#tableProductSearchResults');
-                $results.addClass('is-visible').html(
-                    '<div class="product-search-empty" style="display:block;">Searching products...</div>'
-                );
                 $('#tableOrderModal .tabs_container').addClass('is-searching');
+                $results.addClass('is-visible');
+
+                // Show whatever we already have cached immediately
+                var quickMatches = filterProductsByQuery(getAllCachedProducts(), query);
+                if (quickMatches.length) {
+                    $results.html(buildProductsGridHtml(
+                        quickMatches,
+                        tableOrderProductCurrency.symbol,
+                        tableOrderProductCurrency.position
+                    ));
+                } else {
+                    $results.html(
+                        '<div class="product-search-empty" style="display:block;">Searching products...</div>'
+                    );
+                }
 
                 ensureAllCategoryProductsLoaded().always(function () {
                     if (requestId !== tableProductSearchRequestId) {
                         return;
                     }
 
-                    var currentQuery = ($input.val() || '').toString().trim().toLowerCase();
+                    var currentQuery = ($('#tableProductSearch').val() || '').toString().trim().toLowerCase();
                     if (!currentQuery) {
                         exitTableProductSearchMode();
                         return;
                     }
 
-                    var matched = getAllCachedProducts().filter(function (product) {
-                        var name = (product.name || '').toString().toLowerCase();
-                        var categoryName = (product.category_name || '').toString().toLowerCase();
-                        return name.indexOf(currentQuery) !== -1 || categoryName.indexOf(currentQuery) !== -1;
-                    });
-
-                    if (!matched.length) {
-                        $results.html('<div class="product-search-empty" style="display:block;">No products match your search</div>');
-                        return;
-                    }
-
-                    // Reuse renderProducts card markup into a temporary tab, then move HTML
-                    var tempTabId = 'search-results-temp';
-                    var $temp = $('.tab_content[data-tab="' + tempTabId + '"]');
-                    if (!$temp.length) {
-                        $temp = $('<div class="tab_content" data-tab="' + tempTabId + '" style="display:none;"></div>');
-                        $('#tableOrderModal .tabs_container').append($temp);
-                    }
-
-                    renderProducts(
+                    var matched = filterProductsByQuery(getAllCachedProducts(), currentQuery);
+                    $results.html(buildProductsGridHtml(
                         matched,
-                        tempTabId,
                         tableOrderProductCurrency.symbol,
                         tableOrderProductCurrency.position
-                    );
-
-                    $results.html($temp.html());
-                    $temp.remove();
+                    ));
                 });
             }
 
-            $(document).on('input', '#tableProductSearch', function () {
-                clearTimeout(tableProductSearchTimer);
-                tableProductSearchTimer = setTimeout(function () {
-                    applyTableProductSearch();
-                }, 250);
-            });
+            $(document).off('input.tableProductSearch keyup.tableProductSearch search.tableProductSearch', '#tableProductSearch')
+                .on('input.tableProductSearch keyup.tableProductSearch search.tableProductSearch', '#tableProductSearch', function () {
+                    clearTimeout(tableProductSearchTimer);
+                    tableProductSearchTimer = setTimeout(function () {
+                        applyTableProductSearch();
+                    }, 150);
+                });
 
             $(document).on('click', '.clear-product-search', function (e) {
                 e.preventDefault();
@@ -3407,15 +3471,18 @@
 
                 selectedItems.forEach(function (item) {
 
+                    var safeCartImage = escapeHtmlAttr(resolveProductImage(item.image));
+                    var safeCartName = escapeHtmlAttr(item.name);
+
                     productHtml += `
                                         <ul class="product-lists">
                                             <li>
                                                 <div class="productimg">
                                                     <div class="productimgs">
-                                                        <img src="${item.image}" alt="${item.name}">
+                                                        <img src="${safeCartImage}" alt="${safeCartName}">
                                                     </div>
                                                     <div class="productcontet">
-                                                        <h4 style="text-transform: capitalize;">${item.name}
+                                                        <h4 style="text-transform: capitalize;">${safeCartName}
                                                             <a href="javascript:void(0);" class="ms-2 edit-item" data-id="${item.id}">
                                                                 <img src="{{ env('ImagePath') . '/admin/assets/img/icons/edit-5.svg' }}" alt="edit">
                                                             </a>
@@ -3454,7 +3521,7 @@
                 var quantity_type = $product.find(".productsetcontent h2").text().trim();
                 var quantity_type123 = $product.find(".productsetcontent h3").text().trim();
 
-                var productImage = $product.find("img").attr("src");
+                var productImage = resolveProductImage($product.find("img.productsetimgin").attr("src") || $product.find("img").first().attr("src"));
                 var productCode = "PT001";
                 var $checkIcon = $product.find(".check-product i");
                 var productStock = parseInt($product.data("stock")); // assuming data-stock is set
@@ -3492,7 +3559,7 @@
                 var quantity_type = $product.find(".productsetcontent h2").text().trim();
                 var quantity_type123 = $product.find(".productsetcontent h3").text().trim();
 
-                var productImage = $product.find("img").attr("src");
+                var productImage = resolveProductImage($product.find("img.productsetimgin").attr("src") || $product.find("img").first().attr("src"));
                 var productCode = "PT001";
                 var $checkIcon = $product.find(".check-product i");
                 var productStock = parseInt($product.data("stock")); // assuming data-stock is set
