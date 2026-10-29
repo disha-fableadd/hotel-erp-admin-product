@@ -278,12 +278,13 @@ class PurchaseController extends Controller
                     }
                 }
                 $vendor = User::create([
-                    'name'       => $request->vendor_id,
-                    'phone'      => $request->vendor_phone ?? null,
-                    'role'       => 'vendor',
-                    'status'     => $request->status,
-                    'branch_id'  => $userBranchId ?? $userId,
-                    'created_by' => $userId,
+                    'name'           => $request->vendor_id,
+                    'phone'          => $request->vendor_phone ?? null,
+                    'role'           => 'vendor',
+                    'status'         => 1,
+                    'account_status' => $request->status,
+                    'branch_id'      => $userBranchId ?? $userId,
+                    'created_by'     => $userId,
                 ]);
                 $vendor_id = $vendor->id;
 
@@ -320,7 +321,9 @@ class PurchaseController extends Controller
                         'name'          => $product['id'],
                         // 'category_id'   => $category_id,
                         'price'         => $product['price'],
+                        'purchase_price' => $product['price'],
                         'quantity'      => $product['quantity'],
+                        'hsn_code'       => $product['hsn_code'] ?? null,
                         'quantity_type_id'      => $product['quantity_type_id'],
                         'vendor_id'     => $vendor_id,
                         'availablility' => 'in_stock',
@@ -337,6 +340,7 @@ class PurchaseController extends Controller
                             'quantity'    => $existingProduct->quantity + $product['quantity'],
                             'quantity_type_id'      => $product['quantity_type_id'],
                             // 'category_id' => $category_id,
+                            'purchase_price' => $product['price'],
                         ]);
                         $product_id = $existingProduct->id;
                     }

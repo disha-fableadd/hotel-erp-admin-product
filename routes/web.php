@@ -242,8 +242,8 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
 
     //settings
     Route::get('/setting', [SettingController::class, 'generalsettings'])->name('setting.generalsettings');
-Route::get('/settings/smtp', [SmtpSettingController::class, 'index'])
-    ->name('setting.smtpsettings');
+    Route::get('/settings/smtp', [SmtpSettingController::class, 'index'])
+        ->name('setting.smtpsettings');
     Route::get('/setting/facebook-app-configuration', [SettingController::class, 'facebookappconfiguration'])->name('setting.facebookappconfiguration');
 
     // GST Export
@@ -300,6 +300,8 @@ Route::get('/settings/smtp', [SmtpSettingController::class, 'index'])
     Route::get('/print-purchase/{id}', [PurchaseController::class, 'printPurchase'])->name('purchase.print');
     Route::get('/purchase-order-report', [PurchaseController::class, 'purchase_order_report'])->name('purchase.orderreport');
     Route::get('/import-purchase', [PurchaseController::class, 'import_purchase'])->name('purchase.import');
+    Route::get('/ai-purchase-bill', [\App\Http\Controllers\admin\PurchaseAiBillController::class, 'index'])->name('purchase.ai-bill');
+    Route::post('/ai-purchase-bill/parse', [\App\Http\Controllers\admin\PurchaseAiBillController::class, 'parse'])->name('purchase.ai-bill.parse');
     Route::get('/purchase-report', [PurchaseController::class, 'purchase_report'])->name('purchase.report');
     // Route::get('/purchase-details', [PurchaseController::class, 'purchase_details'])->name('purchase.details');
     Route::get('/purchase-details', [PurchaseController::class, 'purchaseDetails'])->name('purchase.details');
@@ -359,7 +361,7 @@ Route::get('/settings/smtp', [SmtpSettingController::class, 'index'])
     Route::get('/edit-expense-type/{num}', [ExpenseTypeController::class, 'edit_expense_type'])->name('expensetype.edit');
 
 
-  // Bank
+    // Bank
     Route::get('/banks', [BankMasterController::class, 'bank_list'])->name('banks.index');
     Route::get('/banks/create', [BankMasterController::class, 'bank_create'])->name('banks.create');
     Route::get('/edit-bank/{num}', [BankMasterController::class, 'edit_bank'])->name('banks.edit');
@@ -370,7 +372,7 @@ Route::get('/settings/smtp', [SmtpSettingController::class, 'index'])
     Route::get('/bankbook', [TransactionController::class, 'bankBook'])->name('transaction.bankbook');
     Route::get('/cashbook', [TransactionController::class, 'cashBook'])->name('transaction.cashbook');
 
-      // credit note items
+    // credit note items
     Route::get('/credit-note-items', [CreditNoteItemController::class, 'index'])->name('credit-notes-items.index');
     Route::get('/credit-note-items/create', [CreditNoteItemController::class, 'create'])->name('credit-notes-items.create');
     Route::get('/view-credit-note-items/{id}', [CreditNoteItemController::class, 'show'])->name('credit-notes-items.show');
@@ -583,9 +585,9 @@ Route::get('/settings/smtp', [SmtpSettingController::class, 'index'])
     });
 
     // omsai-ERP style staff check-in / check-out (web session, GPS capture)
-    Route::get('/staff/check-status',  [AttendanceeController::class, 'staffCheckStatus'])->name('staff.checkstatus');
-    Route::post('/staff/check-in',     [AttendanceeController::class, 'staffCheckIn'])->name('staff.checkin');
-    Route::post('/staff/check-out',    [AttendanceeController::class, 'staffCheckOut'])->name('staff.checkout');
+    Route::get('/staff/check-status', [AttendanceeController::class, 'staffCheckStatus'])->name('staff.checkstatus');
+    Route::post('/staff/check-in', [AttendanceeController::class, 'staffCheckIn'])->name('staff.checkin');
+    Route::post('/staff/check-out', [AttendanceeController::class, 'staffCheckOut'])->name('staff.checkout');
 
     // Backward-compatible URLs used inside the legacy attendance UI
     Route::get('/attendence', [AttendanceeController::class, 'display'])->name('attendence.manage');
