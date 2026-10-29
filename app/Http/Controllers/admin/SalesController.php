@@ -787,7 +787,7 @@ class SalesController extends Controller
             'tableNo'                => $tableNo,
         ];
 
-        $pdf = Pdf::loadView('tables.salse-invoice-pdf', $pdfData);
+        $pdf = make_thermal_invoice_pdf('sales.salse-invoice-small-pdf', $pdfData, $orderItems, 226.77);
         return $pdf->stream('table-bill-' . $view_id . '.pdf');
     }
 
