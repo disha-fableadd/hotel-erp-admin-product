@@ -52,38 +52,35 @@
             box-shadow: 0 4px 10px rgba(255, 159, 67, 0.4);
         }
 
-        /* --- Category Tabs (Pill Style) --- */
+        /* --- Category Tabs (Pill Style - Fixed Width & No Scrollbar) --- */
         .tabs_wrapper {
             overflow: visible;
         }
         .tabs_wrapper ul.tabs {
-            display: flex;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            gap: 10px;
-            padding: 4px 2px 14px;
-            margin: 0 0 14px 0;
-            list-style: none;
-            scrollbar-width: thin;
-            scrollbar-color: var(--pos-primary) #f1f5f9;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            gap: 10px !important;
+            padding: 4px 2px 14px !important;
+            margin: 0 0 14px 0 !important;
+            list-style: none !important;
+            width: 100% !important;
+            overflow-x: auto !important;
+            scrollbar-width: none !important; /* Hide scrollbar */
         }
         .tabs_wrapper ul.tabs::-webkit-scrollbar {
-            height: 4px;
-        }
-        .tabs_wrapper ul.tabs::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 99px;
-        }
-        .tabs_wrapper ul.tabs::-webkit-scrollbar-thumb {
-            background: var(--pos-primary);
-            border-radius: 99px;
+            display: none !important; /* Hide scrollbar */
+            height: 0px !important;
         }
         .tabs_wrapper ul.tabs li {
-            flex: 0 0 auto;
-            cursor: pointer;
-            white-space: nowrap;
-            padding: 0;
-            transition: transform 0.2s ease;
+            width: auto !important;
+            max-width: max-content !important;
+            flex: 0 0 auto !important;
+            cursor: pointer !important;
+            white-space: nowrap !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            transition: transform 0.2s ease !important;
         }
         .tabs_wrapper ul.tabs li:active {
             transform: scale(0.96);
@@ -98,6 +95,7 @@
             justify-content: center;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            width: auto !important;
             min-width: max-content;
         }
         .product-details h6 {
@@ -198,18 +196,35 @@
         .productset:hover .productsetimgin {
             transform: scale(1.06);
         }
-        .productset .productsetimg h6 {
-            position: absolute;
-            bottom: 6px;
-            right: 6px;
-            background: rgba(15, 23, 42, 0.72);
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 12px;
-            margin: 0;
-            backdrop-filter: blur(4px);
+        .productset .productsetimg h6,
+        .productset:hover .productsetimg h6 {
+            position: absolute !important;
+            top: 8px !important;
+            right: 8px !important;
+            bottom: auto !important;
+            left: auto !important;
+            width: auto !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            transform: none !important;
+            background: rgba(15, 23, 42, 0.78) !important;
+            color: #ffffff !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            padding: 3px 8px !important;
+            border-radius: 6px !important;
+            margin: 0 !important;
+            line-height: 1.2 !important;
+            z-index: 5 !important;
+            backdrop-filter: blur(4px) !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+            transition: all 0.2s ease !important;
+        }
+        .productset:hover .productsetimg h6 {
+            background: #ff9f43 !important;
+            color: #ffffff !important;
+            transform: scale(1.04) !important;
         }
         .productsetcontent {
             padding: 4px 2px 2px;
@@ -611,7 +626,23 @@
 
         /* --- Payment Methods (Image 3 Grid Style) --- */
         .payment_panel {
-            margin-top: 10px;
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--pos-border);
+        }
+        .payment_panel_header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .payment_panel_title {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #1e293b;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         .setvaluecash {
             display: block !important;
@@ -622,57 +653,65 @@
             gap: 8px !important;
             list-style: none !important;
             padding: 0 !important;
-            margin: 12px 0 6px !important;
+            margin: 6px 0 10px !important;
         }
         .setvaluecash ul li {
             padding: 0 !important;
             margin: 0 !important;
         }
         .setvaluecash ul li a {
-            border: 1.5px solid var(--pos-border) !important;
-            background: var(--pos-bg-subtle) !important;
-            color: #475569 !important;
-            font-size: 11px !important;
-            font-weight: 600 !important;
-            min-height: 52px !important;
-            border-radius: 8px !important;
-            padding: 6px 4px !important;
+            border: 1.5px solid #e2e8f0 !important;
+            background: #ffffff !important;
+            color: #334155 !important;
+            font-size: 11.5px !important;
+            font-weight: 700 !important;
+            min-height: 58px !important;
+            border-radius: 10px !important;
+            padding: 8px 4px !important;
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 3px !important;
+            gap: 4px !important;
             text-decoration: none !important;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
             cursor: pointer !important;
             width: 100% !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
         }
         .setvaluecash ul li a i {
-            font-size: 15px !important;
+            font-size: 17px !important;
             margin-bottom: 2px !important;
             display: block !important;
-            color: inherit !important;
-        }
-        .setvaluecash ul li a svg {
-            width: 16px !important;
-            height: 16px !important;
-            fill: currentColor !important;
+            color: #64748b !important;
+            transition: all 0.2s ease !important;
         }
         .setvaluecash ul li a:hover {
             border-color: var(--pos-primary) !important;
             color: var(--pos-primary) !important;
-            background: var(--pos-primary-light) !important;
+            background: #fffaf5 !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(255, 159, 67, 0.2) !important;
+        }
+        .setvaluecash ul li a:hover i {
+            color: var(--pos-primary) !important;
         }
         .paymentmethod.active {
-            border-color: var(--pos-primary) !important;
-            background: var(--pos-primary-soft) !important;
-            color: var(--pos-primary) !important;
+            border-color: #1b2850 !important;
+            background: #1b2850 !important;
+            color: #ffffff !important;
             font-weight: 700 !important;
-            box-shadow: 0 4px 10px rgba(255, 159, 67, 0.22) !important;
+            box-shadow: 0 4px 14px rgba(27, 40, 80, 0.3) !important;
             transform: translateY(-1px) !important;
         }
+        .paymentmethod.active i {
+            color: #ffffff !important;
+        }
+        .paymentmethod.active span {
+            color: #ffffff !important;
+        }
         .paymentmethod.active svg {
-            fill: var(--pos-primary) !important;
+            fill: #ffffff !important;
         }
 
         /* --- Bottom Order Button Bar (Image 3 Style) --- */
@@ -680,19 +719,19 @@
             background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%) !important;
             color: #ffffff !important;
             border-radius: 10px !important;
-            padding: 12px 20px !important;
+            padding: 14px 20px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: space-between !important;
             cursor: pointer !important;
             box-shadow: 0 6px 18px rgba(255, 159, 67, 0.35) !important;
             transition: all 0.2s ease !important;
-            margin-top: 14px !important;
+            margin-top: 12px !important;
             border: none !important;
         }
         .btn-totallabel:hover {
             box-shadow: 0 8px 24px rgba(255, 159, 67, 0.45) !important;
-            transform: translateY(-1px) !important;
+            transform: translateY(-2px) !important;
         }
         .btn-totallabel h6 {
             font-size: 15px !important;
@@ -1042,41 +1081,46 @@
                             {{-- Default hidden type = takeaway so API still receives a value --}}
                             <input type="radio" name="type" value="takeaway" checked hidden>
                             <div class="payment_panel">
+                                <div class="payment_panel_header">
+                                    <span class="payment_panel_title">
+                                        <i class="fas fa-wallet" style="color: var(--pos-primary);"></i> Payment Method
+                                    </span>
+                                </div>
                                 <div class="setvaluecash">
                                     <ul>
                                         <li>
-                                            <a href="javascript:void(0);" class="paymentmethod">
-                                                <input type="radio" name="payment_method" value="pending" hidden>
+                                            <a href="javascript:void(0);" class="paymentmethod active">
+                                                <input type="radio" name="payment_method" value="pending" checked hidden>
                                                 <i class="fas fa-history"></i>
-                                                Pay Later
+                                                <span>Pay Later</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a href="javascript:void(0);" class="paymentmethod">
                                                 <input type="radio" name="payment_method" value="cash" hidden>
                                                 <i class="fas fa-money-bill-wave"></i>
-                                                Cash
+                                                <span>Cash</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a href="javascript:void(0);" class="paymentmethod">
                                                 <input type="radio" name="payment_method" value="debit card" hidden>
                                                 <i class="fas fa-credit-card"></i>
-                                                Debit
+                                                <span>Debit</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a href="javascript:void(0);" class="paymentmethod">
                                                 <input type="radio" name="payment_method" value="cash+online" hidden>
                                                 <i class="fas fa-money-check-alt"></i>
-                                                Cash+Online
+                                                <span>Cash+Online</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a href="javascript:void(0);" class="paymentmethod">
                                                 <input type="radio" name="payment_method" value="scan" hidden>
                                                 <i class="fas fa-qrcode"></i>
-                                                Scan
+                                                <span>Scan</span>
                                             </a>
                                         </li>
                                     </ul>
@@ -2709,7 +2753,18 @@
             });
             $(".select2-fixed").select2({
                 minimumResultsForSearch: -1 // fixed options chhe, tethi search box nathi joito — remove this line if search joiye
-            })
+            }).on('change', function() {
+                if ($(this).attr('id') === 'order_type_select') {
+                    $('#orderTypeBadge').text($(this).val() || 'Delivery');
+                }
+            });
+
+            $(document).on('change', '#order_type_select', function() {
+                $('#orderTypeBadge').text($(this).val() || 'Delivery');
+            });
+            if ($('#order_type_select').length && $('#order_type_select').val()) {
+                $('#orderTypeBadge').text($('#order_type_select').val());
+            }
             
             // Trigger change to populate phone if default customer is selected
             setTimeout(function() {
