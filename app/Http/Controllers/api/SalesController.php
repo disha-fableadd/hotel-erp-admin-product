@@ -70,60 +70,6 @@ class SalesController extends Controller
         ];
     }
 
-    /**
-     * Resolve selected tax IDs from the request payload.
-     * Prefer explicit tax_id; fall back to matching tax_name for the branch.
-     */
-    private function resolveTaxIdsFromRequest($taxRows, $branchIdToUse): array
-    {
-        if (empty($taxRows) || ! is_array($taxRows)) {
-            return [];
-        }
-
-        $ids = [];
-        foreach ($taxRows as $taxRow) {
-            if (! empty($taxRow['tax_id']) && is_numeric($taxRow['tax_id'])) {
-                $ids[] = (int) $taxRow['tax_id'];
-                continue;
-            }
-
-            $rawName = trim((string) ($taxRow['tax_name'] ?? ''));
-            if ($rawName === '') {
-                continue;
-            }
-
-            // Strip trailing "(5.00%)" style suffixes from UI labels
-            $name = trim(preg_replace('/\s*\([\d.]+%\)\s*$/', '', $rawName));
-
-            $foundId = TaxRate::where('branch_id', $branchIdToUse)
-                ->where('status', 'active')
-                ->where('isDeleted', 0)
-                ->where(function ($q) use ($name) {
-                    $q->where('tax_name', $name)
-                        ->orWhere('tax_name', 'like', $name . '%');
-                })
-                ->value('id');
-
-            if ($foundId) {
-                $ids[] = (int) $foundId;
-            }
-        }
-
-        // Keep only IDs that still exist for this branch
-        if (empty($ids)) {
-            return [];
-        }
-
-        return TaxRate::where('branch_id', $branchIdToUse)
-            ->where('status', 'active')
-            ->where('isDeleted', 0)
-            ->whereIn('id', array_values(array_unique($ids)))
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
-    }
-
     // public function getAllSales(Request $request)
     // {
     //     $settings = DB::table('settings')->first();
@@ -548,9 +494,10 @@ class SalesController extends Controller
 
             $taxJson = json_encode([]); // default blank array
 
-            if ($request->has('tax') && ! empty($request->tax)) {
-                // Persist only the taxes selected on the bill (e.g. CGST + SGST)
-                $taxJson = json_encode($this->resolveTaxIdsFromRequest($request->tax, $branchIdToUse));
+            if ($request->has('tax') && !empty($request->tax)) {
+                // Just get active tax IDs
+                $TaxRateIds = TaxRate::where('status', 'active')->where('isDeleted', 0)->where('branch_id', $branchIdToUse)->pluck('id')->toArray();
+                $taxJson = json_encode($TaxRateIds);
             }
 
             // Resolve customer ID
@@ -1159,10 +1106,15 @@ class SalesController extends Controller
                 }
             }
 
-            // Prepare tax JSON like insert — only selected taxes
+            // Prepare tax JSON like insert
             $taxJson = json_encode([]);
-            if ($request->has('tax') && ! empty($request->tax)) {
-                $taxJson = json_encode($this->resolveTaxIdsFromRequest($request->tax, $branchIdToUse));
+            if ($request->has('tax') && !empty($request->tax)) {
+                $TaxRateIds = TaxRate::where('status', 'active')
+                    ->where('isDeleted', 0)
+                    ->where('branch_id', $branchIdToUse)
+                    ->pluck('id')
+                    ->toArray();
+                $taxJson = json_encode($TaxRateIds);
             }
 
             if ($request->payment_method != 'pending') {
