@@ -30,7 +30,7 @@
 
         .invoice-wrapper {
             width: 100%;
-            padding: 2mm 3mm 4mm 3mm;
+            padding: 4mm;
             box-sizing: border-box;
         }
 
@@ -56,6 +56,13 @@
         table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th,
+        td {
+            overflow-wrap: break-word;
+            word-wrap: break-word;
         }
 
         .text-center { text-align: center; }
@@ -91,7 +98,11 @@
         .info-table td {
             font-size: 8px;
             padding: 1px 0;
+            vertical-align: top;
         }
+
+        .info-table td:first-child { width: 30%; }
+        .info-table td:last-child { width: 70%; }
 
         .item-table {
             margin-bottom: 5px;
@@ -111,14 +122,19 @@
             word-wrap: break-word;
         }
 
-        .item-table th:first-child, .item-table td:first-child { width: 55%; }
-        .item-table th:nth-child(2), .item-table td:nth-child(2) { width: 15%; text-align: center; }
-        .item-table th:last-child, .item-table td:last-child { width: 30%; text-align: right; }
+        .item-table th:first-child, .item-table td:first-child { width: 52%; }
+        .item-table th:nth-child(2), .item-table td:nth-child(2) { width: 16%; text-align: center; }
+        .item-table th:last-child, .item-table td:last-child { width: 32%; text-align: right; }
 
         .totals-table td {
             padding: 2px 0;
             font-size: 9px;
         }
+        .totals-table td:first-child { width: 62%; }
+        .totals-table td:last-child { width: 38%; }
+
+        .grand-total table td:first-child { width: 55%; }
+        .grand-total table td:last-child { width: 45%; }
 
         .grand-total {
             border-top: 1px double #000;
@@ -158,18 +174,26 @@
 
         <table class="info-table">
             <tr>
-                <td width="35%">Bill No:</td>
-                <td class="bold text-right">{{ $sales->order_number }}</td>
+                <td>Bill No:</td>
+                <td class="bold text-right">{{ $sales->order_number ?? $view_id }}</td>
             </tr>
             <tr>
                 <td>Date:</td>
                 <td class="text-right">{{ date('d-m-Y H:i', strtotime($sales->created_at)) }}</td>
             </tr>
-            <tr>
-                <td>Customer:</td>
-                <td class="text-right bold">{{ $customer['name'] ?? 'Walk-in' }}</td>
-            </tr>
-            @if (isset($customer['email']) && $customer['email'] != 'Walk-in')
+            @if (!empty($customer['name']))
+                <tr>
+                    <td>Customer:</td>
+                    <td class="text-right bold">{{ $customer['name'] }}</td>
+                </tr>
+            @endif
+            @if (!empty($customer['phone']))
+                <tr>
+                    <td>Phone:</td>
+                    <td class="text-right">{{ $customer['phone'] }}</td>
+                </tr>
+            @endif
+            @if (!empty($customer['email']))
                 <tr>
                     <td>Email:</td>
                     <td class="text-right">{{ $customer['email'] }}</td>
@@ -178,16 +202,25 @@
         </table>
 
         @php
-            $subTotal = 0;
-            $totalDiscount = 0;
+            $subTotal = $orderItems->sum(function ($item) {
+                return (float) ($item->total_amount ?? ($item->price * $item->quantity));
+            });
+            $discountPercent = (float) ($sales->discount ?? 0);
+            $storedDiscount = (float) ($sales->discount_amount ?? 0);
+            $totalDiscount = $storedDiscount > 0
+                ? $storedDiscount
+                : (($discountPercent / 100) * $subTotal);
             $totalGst = 0;
             $labourTotal = 0;
 
-            foreach ($orderItems as $item) {
-                $lineTotal = $item->price * $item->quantity;
-                $subTotal += $lineTotal;
-                $totalDiscount += (float) ($item->discount_amount ?? 0);
-                $totalGst += (float) ($item->product_gst_total ?? 0);
+            if (!empty($taxDetails1)) {
+                foreach ($taxDetails1 as $taxDetail) {
+                    $totalGst += (float) ($taxDetail['amount'] ?? 0);
+                }
+            } else {
+                foreach ($orderItems as $item) {
+                    $totalGst += (float) ($item->product_gst_total ?? 0);
+                }
             }
 
             if (isset($labourItems)) {
@@ -198,23 +231,20 @@
 
             $shippingCharge = (float) ($sales->shipping ?? 0);
             
-            // Subtotal is already exclusive of GST
             $baseSubtotal = $subTotal;
-            
-            // Calculate order-level discount
-            $orderDiscountPercent = $sales->discount ?? 0;
-            $orderDiscountAmount = ($orderDiscountPercent / 100) * $baseSubtotal;
-            
-            // Total discount is item discount + order discount
-            $totalDiscount += $orderDiscountAmount;
-
-            // Calculate after discount (on base subtotal)
-            $afterDiscount = $baseSubtotal - $totalDiscount;
-            
+            $afterDiscount = max(0, $baseSubtotal - $totalDiscount);
             $calculatedGrandTotal = $afterDiscount + $totalGst + $labourTotal + $shippingCharge;
             $grandTotal = isset($sales->total_amount) ? (float) $sales->total_amount : $calculatedGrandTotal;
             $paidAmount = (float) ($paidAmount ?? 0);
-            $pendingAmount = $grandTotal - $paidAmount;
+            $pendingAmount = max(0, (float) ($pendingAmount ?? ($grandTotal - $paidAmount)));
+            $currencySymbol = $setting->currency_symbol ?? '₹';
+            $currencyPosition = $setting->currency_position ?? 'left';
+            $formatMoney = function ($amount) use ($currencySymbol, $currencyPosition) {
+                $formatted = number_format((float) $amount, 2);
+                return $currencyPosition === 'right'
+                    ? $formatted . $currencySymbol
+                    : $currencySymbol . $formatted;
+            };
         @endphp
 
         <table class="item-table">
@@ -227,13 +257,13 @@
             </thead>
             <tbody>
                 @foreach ($orderItems as $item)
-                    @php $amount = $item->price * $item->quantity; @endphp
+                    @php $amount = $item->total_amount ?? ($item->price * $item->quantity); @endphp
                     <tr>
                         <td class="text-left">
                             {{ $item->product->name ?? 'Product' }}
                         </td>
                         <td class="text-center">{{ $item->quantity }}</td>
-                        <td class="text-right">{{ number_format($amount, 2) }}</td>
+                        <td class="text-right">{{ $formatMoney($amount) }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -254,7 +284,7 @@
                         <tr>
                             <td class="text-left">{{ $labour->labourItem->item_name }}</td>
                             <td class="text-center">{{ $labour->qty }}</td>
-                            <td class="text-right">{{ number_format($labour->price * $labour->qty, 2) }}</td>
+                            <td class="text-right">{{ $formatMoney($labour->price * $labour->qty) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -266,34 +296,34 @@
         <table class="totals-table">
             <tr>
                 <td class="text-left">Subtotal</td>
-                <td class="text-right">{{ number_format($baseSubtotal, 2) }}</td>
+                <td class="text-right">{{ $formatMoney($baseSubtotal) }}</td>
             </tr>
             @if ($totalDiscount > 0)
                 <tr>
                     <td class="text-left">Discount</td>
-                    <td class="text-right">-{{ number_format($totalDiscount, 2) }}</td>
+                    <td class="text-right">-{{ $formatMoney($totalDiscount) }}</td>
                 </tr>
                 <tr>
                     <td class="text-left">Price After Discount</td>
-                    <td class="text-right">{{ number_format($afterDiscount, 2) }}</td>
+                    <td class="text-right">{{ $formatMoney($afterDiscount) }}</td>
                 </tr>
             @endif
             @if ($totalGst > 0)
                 <tr>
                     <td class="text-left">Tax (GST)</td>
-                    <td class="text-right">{{ number_format($totalGst, 2) }}</td>
+                    <td class="text-right">{{ $formatMoney($totalGst) }}</td>
                 </tr>
             @endif
             @if ($labourTotal > 0)
                 <tr>
                     <td class="text-left">Labour Charges</td>
-                    <td class="text-right">{{ number_format($labourTotal, 2) }}</td>
+                    <td class="text-right">{{ $formatMoney($labourTotal) }}</td>
                 </tr>
             @endif
             @if ($shippingCharge > 0)
                 <tr>
                     <td class="text-left">Shipping</td>
-                    <td class="text-right">{{ number_format($shippingCharge, 2) }}</td>
+                    <td class="text-right">{{ $formatMoney($shippingCharge) }}</td>
                 </tr>
             @endif
         </table>
@@ -302,7 +332,7 @@
             <table width="100%">
                 <tr>
                     <td class="text-left uppercase">Grand Total</td>
-                    <td class="text-right">₹{{ number_format($grandTotal, 2) }}</td>
+                    <td class="text-right">{{ $formatMoney($grandTotal) }}</td>
                 </tr>
             </table>
         </div>
@@ -318,35 +348,39 @@
                             Paid Amount
                         @endif
                     </td>
-                    <td class="text-right">{{ number_format($payment->payment_amount, 2) }}</td>
+                    <td class="text-right">{{ $formatMoney($payment->payment_amount) }}</td>
                 </tr>
                 @endforeach
             @else
                 <tr>
                     <td class="text-left">Paid Amount</td>
-                    <td class="text-right">{{ number_format($paidAmount, 2) }}</td>
+                    <td class="text-right">{{ $formatMoney($paidAmount) }}</td>
                 </tr>
             @endif
             @if ($pendingAmount > 0)
                 <tr class="bold">
                     <td class="text-left">Balance Due</td>
-                    <td class="text-right">{{ number_format($pendingAmount, 2) }}</td>
+                    <td class="text-right">{{ $formatMoney($pendingAmount) }}</td>
                 </tr>
             @endif
         </table>
 
         @php
-            $payMode = !empty($sales->payment_method) ? ucfirst($sales->payment_method) : '';
-            if ($payMode === '' && isset($allPayments) && count($allPayments) > 0) {
+            $payMode = '';
+            if (isset($allPayments) && count($allPayments) > 0) {
                 $mList = [];
                 foreach ($allPayments as $p) {
-                    $m = trim((string)($p->payment_type ?? $p->payment_mode ?? ''));
-                    if ($m !== '' && !in_array($m, $mList, true)) { $mList[] = ucfirst($m); }
+                    $m = trim((string) ($p->payment_method ?? ''));
+                    $label = ucwords(str_replace(['_', '-'], ' ', $m));
+                    if ($m !== '' && !in_array($label, $mList, true)) { $mList[] = $label; }
                 }
                 $payMode = implode(', ', $mList);
             }
+            if ($payMode === '' && !empty($sales->payment_method) && strtolower($sales->payment_method) !== 'pending') {
+                $payMode = ucwords(str_replace(['_', '-'], ' ', $sales->payment_method));
+            }
             if ($payMode === '') {
-                $payMode = ($paidAmount >= $grandTotal && $grandTotal > 0) ? 'Fully' : ($paidAmount > 0 ? 'Partially' : 'Due');
+                $payMode = $paidAmount > 0 ? 'Paid' : 'Due';
             }
 
             $qrBase64 = null;
@@ -375,7 +409,7 @@
         @endphp
 
         <div class="payment-mode-line">
-            Payment Mode: {{ $payMode }} : Rs {{ number_format($paidAmount, 2) }}
+            Payment Mode: {{ $payMode }} : {{ $formatMoney($paidAmount) }}
         </div>
 
         @if (!empty($qrBase64))
