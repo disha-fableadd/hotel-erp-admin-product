@@ -4,15 +4,496 @@
 
     @section('content')
     <style>
-        /* .setvaluecash{
-            display: block !important;
-        } */
-        .setvaluecash {
-            display: block !important;
+        /* =========================================================
+           MODERN HOTEL ERP POS DESIGN SYSTEM (Main-ERP Inspired)
+           ========================================================= */
+        :root {
+            --pos-primary: #ff9f43;
+            --pos-primary-hover: #ff8510;
+            --pos-primary-light: #fffaf5;
+            --pos-primary-soft: #fff5eb;
+            --pos-dark: #1b2850;
+            --pos-slate: #0f172a;
+            --pos-body: #334155;
+            --pos-muted: #64748b;
+            --pos-border: #e2e8f0;
+            --pos-bg-card: #ffffff;
+            --pos-bg-subtle: #f8fafc;
         }
-        .select-split1{
-            display: block;
+
+        /* Container Layout */
+        .page-header {
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 12px 18px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--pos-border);
+            margin-bottom: 16px;
         }
+        .pos-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1.5px solid var(--pos-primary);
+            background: var(--pos-primary);
+            color: #ffffff !important;
+            border-radius: 8px;
+            padding: 6px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(255, 159, 67, 0.3);
+            text-decoration: none;
+        }
+        .pos-back-btn:hover {
+            background: var(--pos-primary-hover);
+            border-color: var(--pos-primary-hover);
+            transform: translateX(-2px);
+            box-shadow: 0 4px 10px rgba(255, 159, 67, 0.4);
+        }
+
+        /* --- Category Tabs (Pill Style) --- */
+        .tabs_wrapper {
+            overflow: visible;
+        }
+        .tabs_wrapper ul.tabs {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            gap: 10px;
+            padding: 4px 2px 14px;
+            margin: 0 0 14px 0;
+            list-style: none;
+            scrollbar-width: thin;
+            scrollbar-color: var(--pos-primary) #f1f5f9;
+        }
+        .tabs_wrapper ul.tabs::-webkit-scrollbar {
+            height: 4px;
+        }
+        .tabs_wrapper ul.tabs::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 99px;
+        }
+        .tabs_wrapper ul.tabs::-webkit-scrollbar-thumb {
+            background: var(--pos-primary);
+            border-radius: 99px;
+        }
+        .tabs_wrapper ul.tabs li {
+            flex: 0 0 auto;
+            cursor: pointer;
+            white-space: nowrap;
+            padding: 0;
+            transition: transform 0.2s ease;
+        }
+        .tabs_wrapper ul.tabs li:active {
+            transform: scale(0.96);
+        }
+        .product-details {
+            background: #ffffff;
+            padding: 8px 20px;
+            border-radius: 30px;
+            border: 1.5px solid var(--pos-border) !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            min-width: max-content;
+        }
+        .product-details h6 {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #475569;
+            margin: 0;
+            text-align: center;
+            white-space: nowrap;
+            transition: color 0.2s ease;
+        }
+        .tabs_wrapper ul.tabs li:hover .product-details {
+            border-color: var(--pos-primary) !important;
+            background: var(--pos-primary-light);
+        }
+        .tabs_wrapper ul.tabs li:hover .product-details h6 {
+            color: var(--pos-primary);
+        }
+        .tabs_wrapper ul.tabs li.active .product-details {
+            background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%) !important;
+            border-color: transparent !important;
+            box-shadow: 0 4px 12px rgba(255, 159, 67, 0.35);
+            transform: translateY(-1px);
+        }
+        .tabs_wrapper ul.tabs li.active .product-details h6 {
+            color: #ffffff !important;
+            font-weight: 700;
+        }
+
+        .tabs_container {
+            max-height: calc(100vh - 220px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 4px;
+            padding-bottom: 20px;
+        }
+        .tabs_container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .tabs_container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .tabs_container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .tabs_container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* --- Food / Product Card --- */
+        .productset {
+            background: #ffffff;
+            border: 1.5px solid #edf2f7;
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+            text-align: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            height: calc(100% - 16px);
+            overflow: hidden;
+        }
+        .productset:hover {
+            transform: translateY(-3px);
+            border-color: var(--pos-primary);
+            box-shadow: 0 8px 24px rgba(255, 159, 67, 0.18);
+        }
+        .productset.active {
+            border-color: var(--pos-primary);
+            box-shadow: 0 0 0 2px rgba(255, 159, 67, 0.25);
+        }
+        .productset .productsetimg {
+            background: var(--pos-bg-subtle);
+            border-radius: 10px;
+            height: 115px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+        .productsetimgin {
+            max-height: 95px;
+            max-width: 95px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            margin: 0 auto;
+            transition: transform 0.3s ease;
+        }
+        .productset:hover .productsetimgin {
+            transform: scale(1.06);
+        }
+        .productset .productsetimg h6 {
+            position: absolute;
+            bottom: 6px;
+            right: 6px;
+            background: rgba(15, 23, 42, 0.72);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin: 0;
+            backdrop-filter: blur(4px);
+        }
+        .productsetcontent {
+            padding: 4px 2px 2px;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .productsetcontent h4 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 2px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .productsetcontent h5 {
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 500;
+            text-transform: capitalize;
+            margin: 0 0 4px;
+        }
+        .productsetcontent h6 {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--pos-primary);
+            margin: auto 0 0;
+            display: inline-block;
+        }
+        .productsetbtn button {
+            display: none;
+        }
+        .disabled-product {
+            opacity: 0.55;
+            pointer-events: none;
+            filter: grayscale(40%);
+        }
+
+        /* --- Right Order / Billing Card --- */
+        .card.card-order {
+            background: #ffffff;
+            border: 1px solid var(--pos-border);
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            position: sticky;
+            top: 15px;
+            overflow: visible;
+        }
+        .card.card-order .card-body {
+            padding: 16px 18px;
+        }
+
+        /* Segmented GST Control */
+        .custom-gst-pill-group {
+            display: inline-flex;
+            background: #f1f5f9;
+            padding: 3px;
+            border-radius: 30px;
+            border: 1px solid var(--pos-border);
+        }
+        .custom-gst-btn {
+            margin: 0;
+            cursor: pointer;
+        }
+        .custom-gst-btn input {
+            display: none;
+        }
+        .custom-gst-btn span {
+            display: inline-block;
+            padding: 5px 14px;
+            border-radius: 25px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .custom-gst-btn input:checked + span {
+            background-color: #ffffff;
+            color: #1e293b;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            font-weight: 700;
+        }
+
+        /* Dine In Button */
+        .dine-in-btn {
+            background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%);
+            color: #ffffff !important;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 6px 15px;
+            font-size: 13px;
+            box-shadow: 0 2px 8px rgba(255, 159, 67, 0.3);
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        .dine-in-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 159, 67, 0.4);
+        }
+
+        /* Search Bar */
+        .search_custom_product {
+            width: 100%;
+        }
+        .pos-search-input {
+            height: 40px !important;
+            border-radius: 8px !important;
+            border: 1.5px solid var(--pos-border) !important;
+            padding-left: 38px !important;
+            font-size: 13.5px !important;
+            background: var(--pos-bg-subtle) !important;
+            transition: all 0.2s ease !important;
+        }
+        .pos-search-input:focus {
+            background: #ffffff !important;
+            border-color: var(--pos-primary) !important;
+            box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.15) !important;
+        }
+
+        /* Customer Section & Details Box */
+        .customer-section-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .pos-order-badge {
+            background: var(--pos-primary-light);
+            border: 1.5px solid var(--pos-primary);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--pos-primary);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .pos-order-label {
+            color: #888;
+            font-weight: 500;
+            font-size: 11px;
+        }
+        .pos-order-val {
+            color: var(--pos-primary);
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .customer-details-box {
+            border: 1.5px solid var(--pos-primary);
+            border-radius: 10px;
+            padding: 12px 14px;
+            background: #ffffff;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(255, 159, 67, 0.06);
+        }
+        .customer-details-box label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+        }
+        .customer-details-box .form-control,
+        .customer-details-box .select2-container .select2-selection--single {
+            border-radius: 6px !important;
+            font-size: 13px !important;
+            height: 38px !important;
+            border-color: #cbd5e1 !important;
+        }
+        .customer-details-box .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 36px !important;
+            font-size: 13px !important;
+        }
+
+        /* Items List Header */
+        .totalitem {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-top: 1px dashed var(--pos-border);
+            border-bottom: 1px dashed var(--pos-border);
+            margin-bottom: 10px;
+        }
+        .totalitem h4 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0;
+        }
+        .clear_items {
+            color: #ef4444 !important;
+            font-weight: 600;
+            font-size: 13px;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+        .clear_items:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+
+        /* Cart Product Table Rows */
+        .product-table {
+            max-height: 220px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            padding-right: 4px;
+        }
+        .product-table::-webkit-scrollbar {
+            width: 4px;
+        }
+        .product-table::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .product-lists {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 6px;
+            border-bottom: 1px solid #f1f5f9;
+            list-style: none;
+            margin: 0;
+            gap: 8px;
+        }
+        .product-lists:hover {
+            background: var(--pos-bg-subtle);
+            border-radius: 8px;
+        }
+        .productimg {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+        .productimgs {
+            width: 42px;
+            height: 42px;
+            border-radius: 8px;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .productimgs img {
+            max-width: 38px;
+            max-height: 38px;
+            object-fit: contain;
+        }
+        .productcontet {
+            flex: 1;
+            min-width: 0;
+        }
+        .productcontet h4 {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0 0 4px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .product-lists .price {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--pos-primary);
+            white-space: nowrap;
+        }
+
+        /* Modern Steppers */
         .increment-decrement {
             display: flex;
             align-items: center;
@@ -20,393 +501,248 @@
         .increment-decrement .input-groups {
             display: inline-flex !important;
             align-items: center !important;
-            border: 1px solid #e9ecef !important;
-            border-radius: 4px !important;
+            border: 1px solid var(--pos-border) !important;
+            border-radius: 8px !important;
             overflow: hidden !important;
-            width: 100px !important;
-            height: 35px !important;
-            background: #fff !important;
+            width: 86px !important;
+            height: 30px !important;
+            background: #ffffff !important;
         }
         .increment-decrement .input-groups .button-minus,
         .increment-decrement .input-groups .button-plus {
-            width: 30px !important;
+            width: 26px !important;
             height: 100% !important;
             border: none !important;
-            background: #f8f9fa !important;
-            font-weight: bold !important;
+            background: #f1f5f9 !important;
+            font-weight: 700 !important;
             cursor: pointer !important;
             padding: 0 !important;
             text-align: center !important;
-            line-height: 33px !important;
-            font-size: 16px !important;
-            color: #1b2850 !important;
+            line-height: 28px !important;
+            font-size: 14px !important;
+            color: #1e293b !important;
+            transition: background 0.2s;
+        }
+        .increment-decrement .input-groups .button-minus:hover,
+        .increment-decrement .input-groups .button-plus:hover {
+            background: #e2e8f0 !important;
+            color: var(--pos-primary) !important;
         }
         .increment-decrement .input-groups .quantity-field {
-            width: 40px !important;
+            width: 34px !important;
             height: 100% !important;
             border: none !important;
-            border-left: 1px solid #e9ecef !important;
-            border-right: 1px solid #e9ecef !important;
+            border-left: 1px solid var(--pos-border) !important;
+            border-right: 1px solid var(--pos-border) !important;
             text-align: center !important;
             padding: 0 !important;
-            font-size: 14px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
             color: #000 !important;
-            background: #fff !important;
+            background: #ffffff !important;
+        }
+        .price-field {
+            width: 60px !important;
+            height: 30px !important;
+            border-radius: 6px !important;
+            border: 1px solid var(--pos-border) !important;
+            padding: 2px 6px !important;
+            font-size: 12px !important;
+            margin-left: 6px !important;
+            font-weight: 600 !important;
+        }
+        .confirm-text.remove-item {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            color: #ef4444;
+            transition: background 0.2s;
+        }
+        .confirm-text.remove-item:hover {
+            background: #fee2e2;
+        }
+
+        /* Totals / Financial Rows */
+        .body_space_two {
+            padding-top: 6px;
+        }
+        .setvalue ul {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+        }
+        .setvalue ul li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 13px;
+        }
+        .setvalue ul li h5 {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--pos-muted);
+            margin: 0;
+        }
+        .setvalue ul li h6 {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0;
+        }
+        .setvalue ul li.total-value {
+            border-top: 1.5px solid var(--pos-border);
+            padding-top: 8px;
+            margin-top: 6px;
+        }
+        .setvalue ul li.total-value h5 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .setvalue ul li.total-value h6 {
+            font-size: 18px;
+            font-weight: 800;
+            color: #10b981;
+        }
+
+        /* --- Payment Methods (Image 3 Grid Style) --- */
+        .payment_panel {
+            margin-top: 10px;
+        }
+        .setvaluecash {
+            display: block !important;
+        }
+        .setvaluecash ul {
+            display: grid !important;
+            grid-template-columns: repeat(5, 1fr) !important;
+            gap: 8px !important;
+            list-style: none !important;
+            padding: 0 !important;
+            margin: 12px 0 6px !important;
+        }
+        .setvaluecash ul li {
+            padding: 0 !important;
+            margin: 0 !important;
         }
         .setvaluecash ul li a {
-            border: 1px solid #e9ecef;
-            color: #000;
-            font-size: 12px;
-            font-weight: 600;
-            min-height: 59px;
-            border-radius: 5px;
-            padding: 8px 7px;
+            border: 1.5px solid var(--pos-border) !important;
+            background: var(--pos-bg-subtle) !important;
+            color: #475569 !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            min-height: 52px !important;
+            border-radius: 8px !important;
+            padding: 6px 4px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 3px !important;
+            text-decoration: none !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            cursor: pointer !important;
+            width: 100% !important;
         }
-
-        .setvaluecash1 ul li a {
-            border: 1px solid #e9ecef;
-            color: #000;
-            font-size: 12px;
-            font-weight: 600;
-            min-height: 59px;
-            border-radius: 5px;
-            padding: 8px 7px;
+        .setvaluecash ul li a i {
+            font-size: 15px !important;
+            margin-bottom: 2px !important;
+            display: block !important;
+            color: inherit !important;
         }
-
-        .disabled-product {
-            opacity: 0.6;
-            pointer-events: none;
-            /* disables clicking inside */
+        .setvaluecash ul li a svg {
+            width: 16px !important;
+            height: 16px !important;
+            fill: currentColor !important;
         }
-
+        .setvaluecash ul li a:hover {
+            border-color: var(--pos-primary) !important;
+            color: var(--pos-primary) !important;
+            background: var(--pos-primary-light) !important;
+        }
         .paymentmethod.active {
-            /* background-color: #1b2850; */
-            color: white;
-            /* border-radius: 5px; */
+            border-color: var(--pos-primary) !important;
+            background: var(--pos-primary-soft) !important;
+            color: var(--pos-primary) !important;
+            font-weight: 700 !important;
+            box-shadow: 0 4px 10px rgba(255, 159, 67, 0.22) !important;
+            transform: translateY(-1px) !important;
         }
-
-        .typemethod.active {
-            /* background-color: #1b2850; */
-            color: white;
-            /* border-radius: 5px; */
-        }
-
-        .paymentmethod.active:hover {
-            /* background-color: white; */
-            color: white;
-            /* Dark text for contrast */
-            /* border: 1px solid #1b2850; */
-            /* Optional: border to define shape */
-        }
-
-        .typemethod.active:hover {
-            /* background-color: white; */
-            color: white;
-            /* Dark text for contrast */
-            /* border: 1px solid #1b2850; */
-            /* Optional: border to define shape */
-        }
-
-        .tabs_wrapper ul.tabs {
-            display: flex;
-            overflow-x: auto;
-            gap: 10px;
-            padding: 0;
-            margin: 0;
-            list-style: none;
-            scrollbar-width: thin;
-            width: auto;
-            scrollbar-color: #ff9f43 #f1f1f1;
-        }
-
-        .tabs_wrapper ul.tabs::-webkit-scrollbar {
-            display: none;
-        }
-
-        .tabs_wrapper ul.tabs li {
-            flex: 0 0 auto;
-            cursor: pointer;
-            white-space: nowrap;
-            width: auto;
-            /* ðŸ‘ˆ Prevent tab name from wrapping */
-            padding: 0;
-        }
-
-        .product-details {
-            background: #fff;
-            padding: 10px 16px;
-            box-shadow: none;
-            border: none !important;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transition: 0.3s ease;
-            min-width: max-content;
-            /* ðŸ‘ˆ Ensure box width fits content */
-        }
-
-        .product-details h6 {
-            font-size: 14px;
-            color: #000;
-            margin: 0;
-            text-align: center;
-            white-space: nowrap;
-            /* ðŸ‘ˆ Prevent text wrap */
-            overflow: hidden;
-            text-overflow: ellipsis;
-            /* ðŸ‘ˆ Optional: show ... if too long */
-            max-width: 100%;
-            /* ðŸ‘ˆ Avoid overflow outside parent */
-        }
-
-        .tabs_wrapper ul.tabs li.active .product-details {
-            background: transparent;
-            /* border-bottom: 2px solid #ff9f43 !important; */
-        }
-
-        .tabs_wrapper ul.tabs li.active .product-details h6 {
-            color: #ff9f43;
-        }
-
-        .payment_panel {
-            position: sticky;
-            bottom: 0;
-            background-color: white;
-            overflow: visible !important;
-            padding-top: 8px;
-            z-index: 10;
-        }
-
-        .card.card-order {
-            position: sticky;
-            top: 10px;
-            overflow: visible;
-        }
-
-        .body_space {
-        }
-
-        li.quantity_type {
-            display: none;
-        }
-
-        .paymentmethod.active {
-            background-color: #1b2850;
-            color: #ffffff;
-        }
-
         .paymentmethod.active svg {
-            fill: #ffffff;
+            fill: var(--pos-primary) !important;
         }
 
-        .typemethod.active {
-            background-color: #1b2850;
-            color: #ffffff;
+        /* --- Bottom Order Button Bar (Image 3 Style) --- */
+        .btn-totallabel {
+            background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%) !important;
+            color: #ffffff !important;
+            border-radius: 10px !important;
+            padding: 12px 20px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            cursor: pointer !important;
+            box-shadow: 0 6px 18px rgba(255, 159, 67, 0.35) !important;
+            transition: all 0.2s ease !important;
+            margin-top: 14px !important;
+            border: none !important;
+        }
+        .btn-totallabel:hover {
+            box-shadow: 0 8px 24px rgba(255, 159, 67, 0.45) !important;
+            transform: translateY(-1px) !important;
+        }
+        .btn-totallabel h6 {
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            color: #ffffff !important;
+            margin: 0 !important;
+            letter-spacing: 0.3px !important;
+        }
+        .btn-totallabel h5 {
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            color: #ffffff !important;
+            margin: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+        .btn-totallabel h5 svg {
+            fill: #ffffff !important;
+            transition: transform 0.2s ease !important;
+        }
+        .btn-totallabel:hover h5 svg {
+            transform: translateX(4px) !important;
         }
 
-        .typemethod.active svg {
-            fill: #ffffff;
+        /* Mobile adjustments */
+        @media screen and (max-width: 991px) {
+            .card.card-order {
+                position: static;
+                margin-top: 16px;
+            }
+            .setvaluecash ul {
+                grid-template-columns: repeat(3, 1fr) !important;
+            }
         }
-
-        .productsetimgin {
-            height: 100px;
-            object-fit: contain;
-            margin: 1rem auto 0;
-            display: block;
-        }
-
-        .productsetbtn button {
-            display: none;
-        }
-
-        .search_custom_product {
-            width: 100%;
-        }
-
-        .payment_panel {
-            z-index: 999;
-        }
-
-        @media screen and (max-width: 768px) {
-            @media screen and (max-width: 768px) {
-    /* ... existing rules ... */
-
-    /* 🔧 Product row overflow fix */
-    .product-table {
-        overflow-x: hidden;
-    }
-
-    .product-lists {
-        flex-wrap: wrap !important;
-        display: flex !important;
-        flex-direction: column !important;
-        position: relative;
-        padding-right: 30px;
-        gap: 8px;
-    }
-
-    .productimg {
-        flex-wrap: wrap;
-        width: 100%;
-        display: flex;
-        flex-direction: row;
-        gap: 8px;
-        align-items: flex-start;
-    }
-
-    .productimgs {
-        flex-shrink: 0;
-        width: 60px;
-        height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .productimgs img {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-    }
-
-    .productcontet {
-        width: auto;
-        flex: 1;
-        min-width: 0;
-    }
-
-    .productcontet h4 {
-        font-size: 13px;
-        white-space: normal;
-        margin: 0 0 6px 0;
-        word-break: break-word;
-    }
-
-    .increment-decrement {
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-top: 6px;
-        align-items: center;
-    }
-
-    .increment-decrement .input-groups {
-        width: 80px !important;
-        height: 32px !important;
-        flex-shrink: 0;
-    }
-
-    .price-field {
-        width: 65px !important;
-        height: 32px !important;
-        margin-left: 0 !important;
-        flex-shrink: 0;
-        padding: 4px 4px !important;
-    }
-
-    .product-lists li:last-child {
-        /* delete icon */
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-    }
-
-    .product-lists li:last-child a {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .product-lists li:last-child img {
-        width: 18px;
-        height: 18px;
-    }
-}
-            .payment_panel {
-                position: static !important;
-                width: 100% !important;
-                background-color: transparent !important;
-                margin: 10px 0 !important;
-            }
-
-            .table_type {
-                position: static !important;
-                width: 100% !important;
-                background-color: transparent !important;
-                margin: 10px 0 !important;
-            }
-
-            .productset {
-                display: flex;
-            }
-
-            .productset .productsetimg {
-
-                width: 30%;
-            }
-
-            .productsetimgin {
-                object-fit: cover;
-                height: 90px;
-                margin: 0;
-                max-width: 110px;
-            }
-
-            .productsetcontent {
-                text-align: left !important;
-            }
-
-
-
-            .productsetbtn {
-                position: absolute;
-                right: 10px;
-                top: 43px;
-            }
-
-            .productsetbtn button {
-                display: block;
-                width: 100%;
-                height: 33px;
-                background-color: #1b2850;
-                color: white !important;
-                border: none;
-                border-radius: 5px;
-            }
-
-            .productsetbtn button:active {
-                color: white;
-            }
-
-            .product-lists {
-                flex-direction: row !important;
-            }
-
-            .body_space_two {
-                margin-bottom: 4rem;
-            }
-
-            a.confirm-text.remove-item {
-                /* font-size: 116px; */
-                margin: 6px;
+        @media screen and (max-width: 576px) {
+            .setvaluecash ul {
+                grid-template-columns: repeat(2, 1fr) !important;
             }
         }
     </style>
-    <div class="content">
-        <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-            <div class="page-title" style="margin-bottom: 0;">
-                <h4 style="margin-bottom: 0; font-weight: 700;">Add Order</h4>
+        <div class="content">
+        <div class="page-header d-flex justify-content-between align-items-center">
+            <div class="page-title d-flex align-items-center gap-2 m-0">
+                <i class="fas fa-utensils" style="color: var(--pos-primary); font-size: 20px;"></i>
+                <h4 style="margin-bottom: 0; font-weight: 700; color: #1e293b; font-size: 18px;">Add Order</h4>
             </div>
             <div class="d-flex align-items-center">
-                <a href="{{ route('sales.list') }}" class="btn" style="background-color: #ff9f43; color: white; font-weight: 600; border-radius: 5px; padding: 6px 15px;">
-                    &larr; Back
+                <a href="{{ route('sales.list') }}" class="pos-back-btn">
+                    <i class="fas fa-arrow-left"></i> Back
                 </a>
             </div>
         </div>
@@ -418,7 +754,7 @@
                 $hasProducts = false; // start as false
                 @endphp
 
-                <ul class="tabs border-0 mb-4">
+                <ul class="tabs border-0 mb-3">
                     @foreach ($categories as $cat)
                     @php
                     $availableProducts = $cat->products->where('quantity', '>', 0);
@@ -453,116 +789,105 @@
 
                 <div class="card card-order">
                     <div class="card-body body_space">
-                        <div class="gst-header mb-2"
-                            style="display: flex; align-items: center; justify-content: space-between;">
-                            <div class="d-flex">
-                                <label class="custom-radio-label" style="margin-right: 1rem;">
+                        <div class="gst-header mb-3"
+                            style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                            <div class="custom-gst-pill-group">
+                                <label class="custom-gst-btn">
                                     <input type="radio" name="gst_option" id="without_gst" value="without" checked />
-                                    Without GST
+                                    <span>Without GST</span>
                                 </label>
 
-                                <label class="custom-radio-label">
+                                <label class="custom-gst-btn">
                                     <input type="radio" name="gst_option" id="with_gst" value="with" />
-                                    With GST
+                                    <span>With GST</span>
                                 </label>
                             </div>
                             <div class="page-btn">
                                 @if (app('hasPermission')(2, 'add'))                                    
-                                        <a href="{{ route('tables.create') }}" class="btn" style="background-color: #ff9f43; color: white; font-weight: 600; border-radius: 5px; padding: 4px 12px; font-size: 14px;">Dine In</a>
+                                    <a href="{{ route('tables.create') }}" class="dine-in-btn">
+                                        <i class="fas fa-chair"></i> Dine In
+                                    </a>
                                 @endif
                             </div>
                         </div>
-                        <div class="row">
 
-                            <div class="col-lg-12">
-                                <div
-                                    class="header-search d-flex align-items-center position-relative me-3 mb-3 search_custom_product">
-                                    <!-- Search Icon -->
-                                    <img src="{{ env('ImagePath') . '/admin/assets/img/icons/search.svg' }}" alt="Search"
-                                        style="position: absolute; left: 12px; width: 18px; height: 18px; z-index: 10; opacity: 0.6;">
+                        <!-- Product Search Bar -->
+                        <div class="header-search position-relative mb-3 search_custom_product">
+                            <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; pointer-events: none; z-index: 5;"></i>
+                            <input type="text" id="customerSearch1"
+                                class="form-control pos-search-input" placeholder="Search dishes, drinks, items..."
+                                autocomplete="off">
+                            <div id="searchResults1"
+                                class="list-group bg-white position-absolute rounded-3 shadow mt-1 w-100"
+                                style="z-index: 1050; max-height: 300px; overflow-y: auto; display: none; top: 100%; left: 0;">
+                            </div>
+                        </div>
 
-                                    <!-- Input Field -->
-                                    <input type="text" id="customerSearch1"
-                                        class="form-control form-control-sm rounded px-3 ps-5" placeholder="Search..."
-                                        autocomplete="off" style="height: 38px; font-size: 14px;">
-
-                                    <!-- Search Results -->
-                                    <div id="searchResults1"
-                                        class="list-group bg-white position-absolute rounded shadow mt-1 w-100"
-                                        style="z-index: 1050; max-height: 300px; overflow-y: auto; display: none; top: 100%; left: 0;">
+                        <!-- Customer Details Title & Box -->
+                        <div class="customer-section-title">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-user-friends" style="color: #ff9f43; font-size: 15px;"></i>
+                                <span style="font-weight: 700; color: #1e293b; font-size: 13.5px;">Customer details</span>
+                            </div>
+                            <div class="pos-order-badge">
+                                <span class="pos-order-label">Order Type:</span>
+                                <span class="pos-order-val" id="orderTypeBadge">Delivery</span>
+                            </div>
+                        </div>
+                        <div class="customer-details-box">
+                            <div class="row g-2">
+                                <!-- Customer Name -->
+                                <div class="col-6">
+                                    <div class="select-split">
+                                        <div class="select-group w-100">
+                                            <label><i class="far fa-user-circle" style="color: #ff9f43; margin-right: 5px;"></i> Customer Name</label>
+                                            <select id="customer_name_input" class="form-control select2_customer" name="customer_name">
+                                                <option value="">Select or Type Customer</option>
+                                                @foreach ($customers as $cust)
+                                                <option value="{{ $cust->name }}" data-phone="{{ $cust->phone }}" {{ strtolower($cust->name) == 'default customer' ? 'selected' : '' }}>{{ $cust->name }} ({{ $cust->phone }})</option>
+                                                @endforeach
+                                            </select>
+                                            <span class="error_customername" style="color: red; font-size: 11px;"></span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="row">
-                                    <!-- Customer Name -->
-                                    <div class="col-6">
-                                        <div class="select-split">
-                                            <div class="select-group w-100">
-                                                <label>Customer Name</label>
-                                                <select id="customer_name_input" class="form-control select2_customer" name="customer_name">
-                                                    <option value="">Select or Type Customer</option>
-                                                    @foreach ($customers as $cust)
-                                                    <option value="{{ $cust->name }}" data-phone="{{ $cust->phone }}" {{ strtolower($cust->name) == 'default customer' ? 'selected' : '' }}>{{ $cust->name }} ({{ $cust->phone }})</option>
-                                                    @endforeach
-                                                </select>
-                                                <span class="error_customername" style="color: red;"></span>
-                                            </div>
+
+                                <!-- Customer Phone -->
+                                <div class="col-6">
+                                    <div class="select-split">
+                                        <div class="select-group w-100">
+                                            <label><i class="fas fa-phone-alt" style="color: #ff9f43; margin-right: 5px;"></i> Customer Phone</label>
+                                            <input type="tel" id="customer_phone" class="form-control"
+                                                placeholder="Customer Phone" name="customer_phone">
+                                            <span class="error_customerphone" style="color: red; font-size: 11px;"></span>
                                         </div>
                                     </div>
-
-                                    <!-- Customer Phone -->
-                                    <div class="col-6">
-                                        <div class="select-split">
-                                            <div class="select-group w-100">
-                                                <label>Customer Phone</label>
-                                                <input type="tel" id="customer_phone" class="form-control"
-                                                    placeholder="Customer Phone" name="customer_phone">
-                                                <span class="error_customerphone" style="color: red;"></span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-
-                                    <!-- Table No -->
-                                    <!-- <div class="col-md-12" id="table_no_container">
-                                        <div class="select-split">
-                                            <div class="select-group w-100">
-                                                <label>Table No</label>
-                                                <select id="table_no_select" name="table_id" style="z-index:1;"
-                                                    class="form-control select2">
-                                                    <option value="">Select Table No</option>
-                                                    @foreach ($tables as $table)
-                                                    <option value="{{ $table->id }}">
-                                                        {{ $table->table_name }}
-                                                    </option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div> -->
                                 </div>
-                                <div class="row mt-2">
-                                    <div class="col-6">
-                                        <div class="select-split">
-                                            <div class="select-group w-100">
-                                                <label>Order Type</label>
-                                                <select id="order_type_select" name="order_type" class="form-control select2-fixed">
-                                                    <option value="Delivery">Delivery</option>
-                                                    <option value="Self Pickup">Self Pickup</option>
-                                                </select>
-                                            </div>
+
+                                <!-- Order Type -->
+                                <div class="col-6">
+                                    <div class="select-split">
+                                        <div class="select-group w-100">
+                                            <label><i class="fas fa-concierge-bell" style="color: #ff9f43; margin-right: 5px;"></i> Order Type</label>
+                                            <select id="order_type_select" name="order_type" class="form-control select2-fixed">
+                                                <option value="Delivery">Delivery</option>
+                                                <option value="Self Pickup">Self Pickup</option>
+                                            </select>
                                         </div>
                                     </div>
-                                    <div class="col-6">
-                                        <div class="select-split">
-                                            <div class="select-group w-100">
-                                                <label>Assigned Staff</label>
-                                                <select name="assigned_staff_id" id="assigned_staff_id" class="form-control select2-fixed">
-                                                    <option value="">- Unassigned -</option>
-                                                    @foreach($staffList as $staff)
-                                                        <option value="{{ $staff->id }}">{{ $staff->name }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
+                                </div>
+
+                                <!-- Assigned Staff -->
+                                <div class="col-6">
+                                    <div class="select-split">
+                                        <div class="select-group w-100">
+                                            <label><i class="fas fa-user-tie" style="color: #ff9f43; margin-right: 5px;"></i> Assigned Staff</label>
+                                            <select name="assigned_staff_id" id="assigned_staff_id" class="form-control select2-fixed">
+                                                <option value="">- Unassigned -</option>
+                                                @foreach($staffList as $staff)
+                                                    <option value="{{ $staff->id }}">{{ $staff->name }}</option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
@@ -722,70 +1047,38 @@
                                         <li>
                                             <a href="javascript:void(0);" class="paymentmethod">
                                                 <input type="radio" name="payment_method" value="pending" hidden>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                    fill="#1b2850" class="bi bi-cash" viewBox="0 0 16 16">
-                                                    <path d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4" />
-                                                    <path
-                                                        d="M0 4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm3 0a2 2 0 0 1-2 2v4a2 2 0 0 1 2 2h10a2 2 0 0 1 2-2V6a2 2 0 0 1-2-2z" />
-                                                </svg>
+                                                <i class="fas fa-history"></i>
                                                 Pay Later
                                             </a>
                                         </li>
                                         <li>
-                                        <a href="javascript:void(0);" class="paymentmethod">
-                                            <input type="radio" name="payment_method" value="cash" hidden>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                fill="#1b2850" class="bi bi-cash" viewBox="0 0 16 16">
-                                                <path d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4" />
-                                                <path
-                                                    d="M0 4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm3 0a2 2 0 0 1-2 2v4a2 2 0 0 1 2 2h10a2 2 0 0 1 2-2V6a2 2 0 0 1-2-2z" />
-                                            </svg>
-                                            Cash
-                                        </a>
-                                    </li>
+                                            <a href="javascript:void(0);" class="paymentmethod">
+                                                <input type="radio" name="payment_method" value="cash" hidden>
+                                                <i class="fas fa-money-bill-wave"></i>
+                                                Cash
+                                            </a>
+                                        </li>
                                         <li>
                                             <a href="javascript:void(0);" class="paymentmethod">
                                                 <input type="radio" name="payment_method" value="debit card" hidden>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                    fill="#1b2850" class="bi bi-credit-card" viewBox="0 0 16 16">
-                                                    <path
-                                                        d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v1h14V4a1 1 0 0 0-1-1zm13 4H1v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1z" />
-                                                    <path
-                                                        d="M2 10a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z" />
-                                                </svg>
+                                                <i class="fas fa-credit-card"></i>
                                                 Debit
                                             </a>
                                         </li>
                                         <li>
                                             <a href="javascript:void(0);" class="paymentmethod">
                                                 <input type="radio" name="payment_method" value="cash+online" hidden>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                    fill="#1b2850" class="bi bi-cash" viewBox="0 0 16 16">
-                                                    <path d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4" />
-                                                    <path
-                                                        d="M0 4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm3 0a2 2 0 0 1-2 2v4a2 2 0 0 1 2 2h10a2 2 0 0 1 2-2V6a2 2 0 0 1-2-2z" />
-                                                </svg>
+                                                <i class="fas fa-money-check-alt"></i>
                                                 Cash+Online
                                             </a>
                                         </li>
-
                                         <li>
                                             <a href="javascript:void(0);" class="paymentmethod">
                                                 <input type="radio" name="payment_method" value="scan" hidden>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                    fill="#1b2850" class="bi bi-qr-code-scan" viewBox="0 0 16 16">
-                                                    <path
-                                                        d="M0 .5A.5.5 0 0 1 .5 0h3a.5.5 0 0 1 0 1H1v2.5a.5.5 0 0 1-1 0zm12 0a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-1 0V1h-2.5a.5.5 0 0 1-.5-.5M.5 12a.5.5 0 0 1 .5.5V15h2.5a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5v-3a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1 0-1H15v-2.5a.5.5 0 0 1 .5-.5M4 4h1v1H4z" />
-                                                    <path d="M7 2H2v5h5zM3 3h3v3H3zm2 8H4v1h1z" />
-                                                    <path d="M7 9H2v5h5zm-4 1h3v3H3zm8-6h1v1h-1z" />
-                                                    <path
-                                                        d="M9 2h5v5H9zm1 1v3h3V3zM8 8v2h1v1H8v1h2v-2h1v2h1v-1h2v-1h-3V8zm2 2H9V9h1zm4 2h-1v1h-2v1h3zm-4 2v-1H8v1z" />
-                                                    <path d="M12 9h2V8h-2z" />
-                                                </svg>
+                                                <i class="fas fa-qrcode"></i>
                                                 Scan
                                             </a>
                                         </li>
-
                                     </ul>
                                     {{-- ── Paid Type sub-panel (Cash / Debit / Scan) ────────── --}}
                                     <div id="paidTypeBox" style="display:none; margin-top:10px;">
@@ -849,6 +1142,7 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                            
                                             {{-- ── Scan-only fields ───────────────────────── --}}
                                             <div id="scanExtraFields" style="display:none;">
                                                 <div class="row mt-2 align-items-start">
