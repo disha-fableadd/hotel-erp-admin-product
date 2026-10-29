@@ -59,6 +59,7 @@
             --auth-secondary: #1F2937;
             --auth-muted: #667085;
             --auth-border: #d9dee8;
+            --auth-input-bg: #e8f0fe;
             --auth-bg: #f7f8fb;
         }
 
@@ -201,9 +202,9 @@
 
         .login-logo .logo-img {
             display: block;
-            width: 190px;
+            width: 135px;
             max-width: 70%;
-            max-height: 90px;
+            max-height: 65px;
             object-fit: contain;
             margin: 0 auto !important;
         }
@@ -251,7 +252,7 @@
             position: relative !important;
             display: flex !important;
             align-items: center !important;
-            min-height: clamp(42px, 6.3vh, 48px) !important;
+            min-height: 40px !important;
             border: 1px solid var(--auth-border) !important;
             border-radius: 9px !important;
             background: #fff !important;
@@ -263,6 +264,10 @@
         .login-wrapper .login-content .form-login .pass-group:focus-within {
             border-color: rgba(247, 147, 58, .78) !important;
             box-shadow: 0 0 0 4px rgba(247, 147, 58, .14) !important;
+        }
+
+        .login-wrapper .login-content .form-login .pass-group {
+            background: var(--auth-input-bg) !important;
         }
 
         .login-wrapper .login-content .form-login .form-addons::before,
@@ -303,7 +308,7 @@
         .login-wrapper .login-content .form-login .pass-group input,
         .login-wrapper .login-content .form-login .pass-group input:focus {
             width: 100% !important;
-            height: clamp(42px, 6.3vh, 48px) !important;
+            height: 40px !important;
             min-width: 0 !important;
             padding: 0 18px 0 8px !important;
             border: 0 none !important;
@@ -311,9 +316,10 @@
             outline: 0 !important;
             color: var(--auth-secondary) !important;
             font-size: 15px !important;
-            background: transparent !important;
-            background-color: transparent !important;
-            margin-right: 0 !important;
+            background: var(--auth-input-bg) !important;
+            background-color: var(--auth-input-bg) !important;
+            border-radius: 4px !important;
+            margin: 3px 4px 3px 0 !important;
             box-shadow: none !important;
         }
 
@@ -322,7 +328,7 @@
         .login-wrapper .login-content .form-login input:-webkit-autofill:hover,
         .login-wrapper .login-content .form-login input:-webkit-autofill:focus,
         .login-wrapper .login-content .form-login input:-webkit-autofill:active {
-            -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+            -webkit-box-shadow: 0 0 0 1000px var(--auth-input-bg) inset !important;
             -webkit-text-fill-color: var(--auth-secondary) !important;
             transition: background-color 5000s ease-in-out 0s !important;
         }
@@ -339,9 +345,11 @@
         .login-wrapper .login-content .form-login .pass-group .toggle-password {
             position: static !important;
             transform: none !important;
-            width: auto !important;
+            width: 48px !important;
             height: auto !important;
             flex: 0 0 48px !important;
+            align-self: stretch !important;
+            background: var(--auth-input-bg) !important;
             color: #8a94a6 !important;
             cursor: pointer !important;
             text-align: center !important;
