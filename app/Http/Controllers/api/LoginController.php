@@ -475,6 +475,30 @@ class LoginController extends Controller
         $previousYear = $currentYear - 1;
         $currentMonth = Carbon::now()->month;
 
+        // ✅ Filter date range
+        $filter = $request->query('filter', 'all');
+        $now = Carbon::now();
+        $filterStartDate = null;
+        $filterEndDate   = $now->copy()->endOfDay();
+
+        switch ($filter) {
+            case 'today':
+                $filterStartDate = $now->copy()->startOfDay();
+                break;
+            case 'this_week':
+                $filterStartDate = $now->copy()->startOfWeek();
+                break;
+            case 'this_month':
+                $filterStartDate = $now->copy()->startOfMonth();
+                break;
+            case 'this_year':
+                $filterStartDate = $now->copy()->startOfYear();
+                break;
+            default: // 'all'
+                $filterStartDate = null;
+                break;
+        }
+
         // ✅ Charts
         $salesChartThisMonth = $this->getSalesDataByMonth($currentMonth, $BranchID);
         $purchaseChartThisMonth = $this->getPurchaseDataByMonth($currentMonth, $BranchID);
@@ -485,43 +509,45 @@ class LoginController extends Controller
         $purchaseChartThisYear = $this->getPurchaseDataByYear($currentYear, $BranchID);
         $purchaseChartPreviousYear = $this->getPurchaseDataByYear($previousYear, $BranchID);
 
-        // ✅ Totals
-        $totalPurchaseAmount = PurchaseInvoice::where('isDeleted', '!=', 1)
-            ->where('branch_id', $BranchID)
-            ->sum('grand_total');
+        // ✅ Totals (with filter)
+        $salesQuery = Order::where('isDeleted', '!=', 1)->where('branch_id', $BranchID);
+        $purchaseQuery = PurchaseInvoice::where('isDeleted', '!=', 1)->where('branch_id', $BranchID);
+        $expenseQuery  = Expense::where('isDeleted', '!=', 1)->where('branch_id', $BranchID);
 
-        $totalSalesAmount = Order::where('isDeleted', '!=', 1)
-            ->where('branch_id', $BranchID)
-            ->sum('total_amount');
+        if ($filterStartDate) {
+            $salesQuery->whereBetween('created_at', [$filterStartDate, $filterEndDate]);
+            $purchaseQuery->whereBetween('created_at', [$filterStartDate, $filterEndDate]);
+            $expenseQuery->whereBetween('created_at', [$filterStartDate, $filterEndDate]);
+        }
 
-        $totalExpenseAmount = Expense::where('isDeleted', '!=', 1)
-            ->where('branch_id', $BranchID)
-            ->sum('amount');
+        $totalPurchaseAmount = $purchaseQuery->sum('grand_total');
+        $totalSalesAmount    = $salesQuery->sum('total_amount');
+        $totalExpenseAmount  = $expenseQuery->sum('amount');
 
 
         $totalInvoiceAmount = CustomInvoice::where('isDeleted', '!=', 1)
             ->where('branch_id', $BranchID)
             ->sum('grand_total');
 
-        // ✅ Counts
+        // ✅ Counts (with filter)
         $customerCount = User::where('role', 'customer')
             ->where('isDeleted', '!=', 1)
             ->where('branch_id', $BranchID)
             ->count();
-
 
         $vendorCount = User::where('role', 'vendor')
             ->where('isDeleted', '!=', 1)
             ->where('branch_id', $BranchID)
             ->count();
 
-        $purchaseInvoiceCount = PurchaseInvoice::where('isDeleted', '!=', 1)
-            ->where('branch_id', $BranchID)
-            ->count();
-
-        $salesInvoiceCount = Order::where('isDeleted', '!=', 1)
-            ->where('branch_id', $BranchID)
-            ->count();
+        $piCountQ = PurchaseInvoice::where('isDeleted', '!=', 1)->where('branch_id', $BranchID);
+        $siCountQ = Order::where('isDeleted', '!=', 1)->where('branch_id', $BranchID);
+        if ($filterStartDate) {
+            $piCountQ->whereBetween('created_at', [$filterStartDate, $filterEndDate]);
+            $siCountQ->whereBetween('created_at', [$filterStartDate, $filterEndDate]);
+        }
+        $purchaseInvoiceCount = $piCountQ->count();
+        $salesInvoiceCount    = $siCountQ->count();
 
         // ✅ Recent Products
         $recentProducts = Product::where('isDeleted', '!=', 1)
@@ -530,8 +556,8 @@ class LoginController extends Controller
             ->take(4)
             ->get();
 
-        // ✅ Latest Sales
-        $latestSales = DB::table('order_items')
+        // ✅ Latest Sales (with filter)
+        $latestSalesQ = DB::table('order_items')
             ->join('products', function ($join) {
                 $join->on('order_items.product_id', '=', 'products.id')
                     ->where('products.isDeleted', '!=', 1);
@@ -555,10 +581,11 @@ class LoginController extends Controller
                 'orders.total_amount',
                 'orders.payment_method',
                 'orders.order_number'
-            )
-            ->orderBy('order_items.created_at', 'desc')
-            ->limit(4)
-            ->get();
+            );
+        if ($filterStartDate) {
+            $latestSalesQ->whereBetween('orders.created_at', [$filterStartDate, $filterEndDate]);
+        }
+        $latestSales = $latestSalesQ->orderBy('order_items.created_at', 'desc')->limit(4)->get();
 
         // ✅ Append image_url to each item
         $basePath = env('ImagePath', '/');
@@ -579,8 +606,8 @@ class LoginController extends Controller
             return $item;
         });
 
-        // ✅ Latest Purchases
-        $latestPurchases = DB::table('purchases as pur')
+        // ✅ Latest Purchases (with filter)
+        $latestPurchasesQ = DB::table('purchases as pur')
             ->leftJoin('products as pr', function ($join) {
                 $join->on('pr.id', '=', 'pur.item')
                     ->where('pr.isDeleted', '!=', 1);
@@ -589,7 +616,11 @@ class LoginController extends Controller
             ->leftJoin('categories as cat', 'pr.category_id', '=', 'cat.id')
             ->where('pur.isDeleted', '!=', 1)
             ->where('pi.isDeleted', '!=', 1)
-            ->where('pi.branch_id', '=', $BranchID)
+            ->where('pi.branch_id', '=', $BranchID);
+        if ($filterStartDate) {
+            $latestPurchasesQ->whereBetween('pi.created_at', [$filterStartDate, $filterEndDate]);
+        }
+        $latestPurchases = $latestPurchasesQ
             ->select(
                 'pi.id as invoice_id',
                 'pur.created_at as purchase_date',
@@ -664,6 +695,7 @@ class LoginController extends Controller
         return response()->json([
             'status' => true,
             'branch_id' => $BranchID,
+            'filter' => $filter,
             'data' => [
                 'totals' => [
                     'purchase' => $totalPurchaseAmount,

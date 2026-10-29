@@ -4,6 +4,7 @@ namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Order;
 use App\Models\Setting;
 use App\Models\Table_no;
 use App\Models\TaxRate;
@@ -92,6 +93,26 @@ class TablesshowController extends Controller
             ->orderBy('table_name')
             ->get()
             ->groupBy('table_type'); // Gives → ['ac'=>[], 'nonac'=>[], 'premium'=>[]]
+
+        $tableCollection = $tables->flatten();
+        $runningOrders = Order::whereIn('table_no', $tableCollection->pluck('id'))
+            ->where('table_status', 1)
+            ->where('isDeleted', 0)
+            ->when(! empty($branchIdToUse), function ($query) use ($branchIdToUse) {
+                $query->where('branch_id', $branchIdToUse);
+            })
+            ->orderByDesc('id')
+            ->get(['id', 'table_no', 'total_amount'])
+            ->unique('table_no')
+            ->keyBy('table_no');
+
+        $tableCollection->each(function ($table) use ($runningOrders) {
+            $order = $runningOrders->get($table->id);
+            if ($order) {
+                $table->order_id = $order->id;
+                $table->running_amount = $order->total_amount;
+            }
+        });
 
         return view('tables.tables_view', compact('staff', 'tables','currency_position','taxRates','currency_symbol','categories'));
     }
