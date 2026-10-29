@@ -1,5 +1,6 @@
 @php
     $settings = App\Models\Setting::first();
+    $imagePath = rtrim(env('ImagePath') ?? '', '/');
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -17,9 +18,7 @@
     
     <title>@yield('title', 'Default Title')</title>
 
-    <!-- <link rel="shortcut icon" type="image/x-icon"
-        href="{{ optional($settings)->favicon ? env('ImagePath').'/storage/' . $settings->favicon : 'https://fableadtechnolabs.com/favicon-192x192.webp' }}"> -->
-    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('admin/assets/img/favicon-192x192.webp') }}">
+    <link rel="icon" type="image/webp" href="{{ $imagePath . '/admin/assets/img/favicon-192x192.webp?v=2' }}">
     <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/css/bootstrap.min.css' }}">
     <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/plugins/owlcarousel/owl.carousel.min.css' }}">
     <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/plugins/owlcarousel/owl.theme.default.min.css' }}">
