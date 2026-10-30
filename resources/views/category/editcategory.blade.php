@@ -3,12 +3,41 @@
 @section('title', 'Category Edit')
 
 @section('content')
+<style>
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .page-header .page-btn .btn-back {
+        background: #ff9f43;
+        color: #fff;
+        border: 0;
+        border-radius: 7px;
+        padding: 9px 18px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .page-header .page-btn .btn-back:hover {
+        background: #ff8f1f;
+        color: #fff;
+    }
+</style>
 <div class="content">
     <div class="page-header">
         <div class="page-title">
             <h4>Edit Product Category</h4>
             <!-- <h6>Edit a product Category</h6> -->
         </div>
+        <div class="page-btn">
+        <a href="{{ route('category.list') }}" class="btn btn-added">
+            <i class="fa fa-arrow-left me-1"></i> Back
+        </a>
+    </div>
     </div>
 
     <div class="card">
@@ -19,7 +48,7 @@
                     <div class="col-12">
                         <div class="col-lg-12">
                             <div class="form-group">
-                                <label for="category_name">Category Name</label>
+                                <label for="category_name">Category Name <span class="text-danger field-required-mark">*</span></label>
                                 <input type="text" name="name" id="name" value="{{ $category->name }}" class="form-control" required>
                                 <span class="error_name text-danger"></span>
                             </div>

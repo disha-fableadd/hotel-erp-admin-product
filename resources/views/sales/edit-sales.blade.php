@@ -24,30 +24,54 @@
         .select2-container--default .select2-selection--single .select2-selection__rendered {
             line-height: 29px !important;
         }
+        .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.gst-header .btn-back {
+    background: #ff9f43;
+    color: #fff;
+    border: 0;
+    border-radius: 7px;
+    padding: 9px 18px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gst-header .btn-back:hover {
+    background: #ff8f1f;
+    color: #fff;
+}
     </style>
     <div class="content">
         <div class="page-header">
-            <div class="page-title">
-                <h4>Edit Order</h4>
-                <!-- <h6>Edit your sale details</h6> -->
-            </div>
-            <div class="gst-header mb-2" style="display: flex; align-items: center; justify-content: space-between;">
-                <div class="d-flex">
-                    <label class="custom-radio-label" style="margin-right: 1rem;">
-                        <input type="radio" name="gst_option" id="without_gst" value="without_gst"
-                            {{ $sales->gst_option === 'without_gst' ? 'checked' : '' }} />
-                        Without GST
-                    </label>
+    <div class="page-title">
+        <h4>Edit Order</h4>
+    </div>
+    <div class="gst-header mb-2 ms-auto" style="display: flex; align-items: center; gap: 25px;">
+        <div class="d-flex">
+            <label class="custom-radio-label" style="margin-right: 1rem;">
+                <input type="radio" name="gst_option" id="without_gst" value="without_gst"
+                    {{ $sales->gst_option === 'without_gst' ? 'checked' : '' }} />
+                Without GST
+            </label>
 
-                    <label class="custom-radio-label">
-                        <input type="radio" name="gst_option" id="with_gst" value="with_gst"
-                            {{ $sales->gst_option === 'with_gst' ? 'checked' : '' }} />
-                        With GST
-                    </label>
-                </div>
-            </div>
-
+            <label class="custom-radio-label">
+                <input type="radio" name="gst_option" id="with_gst" value="with_gst"
+                    {{ $sales->gst_option === 'with_gst' ? 'checked' : '' }} />
+                With GST
+            </label>
         </div>
+
+        <a href="{{ route('sales.list') }}" class="btn btn-added">
+            <i class="fa fa-arrow-left me-1"></i> Back
+        </a>
+    </div>
+</div>
         <div class="card">
             <div class="card-body">
                 <div class="row">

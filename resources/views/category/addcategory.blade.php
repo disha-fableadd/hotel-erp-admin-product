@@ -3,13 +3,41 @@
 @section('title', 'Category Add')
 
 @section('content')
+<style>
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .page-header .page-btn .btn-back {
+        background: #ff9f43;
+        color: #fff;
+        border: 0;
+        border-radius: 7px;
+        padding: 9px 18px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .page-header .page-btn .btn-back:hover {
+        background: #ff8f1f;
+        color: #fff;
+    }
+</style>
 <div class="content">
     <div class="page-header">
-        <div class="page-title">
-            <h4>Add Product Category</h4>
-            <!-- <h6>Create new product Category</h6> -->
-        </div>
+    <div class="page-title">
+        <h4>Add Product Category</h4>
     </div>
+    <div class="page-btn">
+        <a href="{{ route('category.list') }}" class="btn btn-added">
+            <i class="fa fa-arrow-left me-1"></i> Back
+        </a>
+    </div>
+</div>
 
     <div class="card">
         <div class="card-body">

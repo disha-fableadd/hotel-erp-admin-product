@@ -69,6 +69,28 @@
                 margin-bottom: 10px !important
             }
         }
+          .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.gst-header .btn-back {
+    background: #ff9f43;
+    color: #fff;
+    border: 0;
+    border-radius: 7px;
+    padding: 9px 18px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gst-header .btn-back:hover {
+    background: #ff8f1f;
+    color: #fff;
+}
     </style>
     @php
         $user = Auth()->user();
@@ -122,7 +144,9 @@
                     <input type="radio" name="gst_option" id="with_gst" value="with_gst" />
                     With GST
                 </label>
-
+<a href="{{ route('purchase.lists') }}" class="btn btn-added">
+            <i class="fa fa-arrow-left me-1"></i> Back
+        </a>
             </div>
         </div>
         <div class="card">

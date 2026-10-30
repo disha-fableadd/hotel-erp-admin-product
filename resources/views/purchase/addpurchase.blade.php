@@ -168,32 +168,68 @@
     .manage_btn:hover {
         color: #e6e4e4ff;
     }
+    .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.gst-header .btn-back {
+    background: #ff9f43;
+    color: #fff;
+    border: 0;
+    border-radius: 7px;
+    padding: 9px 18px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gst-header .btn-back:hover {
+    background: #ff8f1f;
+    color: #fff;
+}
     
 </style>
 
 <div class="content">
-     <div class="page-header purchase-entry-header">
-            <div class="page-title">
-                <h4>Add Purchase</h4>
-            </div>
-            <div class="gst-header">
-            @if (app('hasPermission')(3, 'add'))
-                <a href="{{ route('purchase.ai-bill') }}" class="btn btn-sm ai-bill-upload-btn">
-                    <i class="fas fa-file-invoice" aria-hidden="true"></i> AI Bill Upload
-                </a>
-            @endif
+<div class="page-header purchase-entry-header">
+    <div class="page-title">
+        <h4>Add Purchase</h4>
+    </div>
+    <div class="gst-header ms-auto">
+        @if (app('hasPermission')(3, 'add'))
+            <a href="{{ route('purchase.ai-bill') }}" class="btn btn-sm ai-bill-upload-btn">
+                <i class="fas fa-file-invoice" aria-hidden="true"></i> AI Bill Upload
+            </a>
+        @endif
 
-            <label class="custom-radio-label">
-                <input type="radio" name="gst_option" id="without_gst" value="without" checked />
-                Without GST
-            </label>
+        <label class="custom-radio-label">
+            <input type="radio" name="gst_option" id="without_gst" value="without" checked />
+            Without GST
+        </label>
 
-            <label class="custom-radio-label">
-                <input type="radio" name="gst_option" id="with_gst" value="with" />
-                With GST
-            </label>
+        <label class="custom-radio-label">
+            <input type="radio" name="gst_option" id="with_gst" value="with" />
+            With GST
+        </label>
 
-        </div>
+        <a href="{{ route('purchase.lists') }}" class="btn btn-back">
+            <i class="fa fa-arrow-left me-1"></i> Back
+        </a>
+    </div>
+</div>
+
+        <label class="custom-radio-label">
+            <input type="radio" name="gst_option" id="with_gst" value="with" />
+            With GST
+        </label>
+
+        <a href="{{ route('purchase.lists') }}" class="btn btn-added">
+            <i class="fa fa-arrow-left me-1"></i> Back
+        </a>
+    </div>
 </div>
     <div class="card">
 
