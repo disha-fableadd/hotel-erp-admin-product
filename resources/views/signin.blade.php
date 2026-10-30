@@ -164,7 +164,7 @@
 
         .login-wrapper .login-content {
             width: 100% !important;
-            max-width: 600px !important;
+            max-width: 450px !important;
             display: block !important;
         }
 
@@ -173,7 +173,7 @@
             width: 100%;
             max-height: calc(100vh - 58px);
             max-height: calc(100dvh - 58px);
-            padding: clamp(18px, 3vh, 25px) clamp(34px, 5vw, 68px);
+            padding: clamp(18px, 2.8vh, 25px) clamp(22px, 2.5vw, 32px);
             border: 0;
             border-radius: 22px;
             background: rgba(255, 255, 255, .92);
@@ -202,9 +202,9 @@
 
         .login-logo .logo-img {
             display: block;
-            width: 135px;
-            max-width: 70%;
-            max-height: 65px;
+            width: 180px;
+            max-width: 80%;
+            max-height: 80px;
             object-fit: contain;
             margin: 0 auto !important;
         }
@@ -534,8 +534,9 @@
             }
 
             .login-logo .logo-img {
-                width: 112px;
-                max-width: 72%;
+                width: 150px;
+                max-width: 75%;
+                max-height: 70px;
             }
 
             .login-userheading h3 {
@@ -580,8 +581,8 @@
             }
 
             .login-logo .logo-img {
-                width: 98px;
-                max-height: 58px;
+                width: 135px;
+                max-height: 65px;
             }
 
             .login-userheading {
