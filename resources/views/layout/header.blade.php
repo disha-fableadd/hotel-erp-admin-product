@@ -354,7 +354,7 @@ $user = auth()->user();
             @if(in_array($user->role, ['sales-manager', 'inventory-manager', 'admin']) || ($user->role === 'staff' && (app('hasPermission')(2, 'view') || app('hasPermission')(2, 'add'))))
             <div class="dropdown me-3">
                 <button class="btn btn-sm d-flex align-items-center justify-content-center header-new-order-button" type="button" id="newOrderDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="height: 38px; background-color: #ff9f43; color: white; border: none; border-radius: 5px; padding: 0 15px; font-weight: 500; font-size: 14px; gap: 8px; box-shadow: 0 2px 6px rgba(255, 159, 67, 0.2);">
-                    + New Order <i class="fas fa-chevron-down ms-1" style="font-size: 12px;"></i>
+                    + Order <i class="fas fa-chevron-down ms-1" style="font-size: 12px;"></i>
                 </button>
                 <ul class="dropdown-menu border-0 shadow" aria-labelledby="newOrderDropdown" style="border-radius: 12px; margin-top: 8px; min-width: 150px;">
                     <li><a class="dropdown-item d-flex align-items-center gap-2 py-2" href="/add-sales">

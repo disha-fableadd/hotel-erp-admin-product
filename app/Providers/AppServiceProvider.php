@@ -24,8 +24,10 @@ class AppServiceProvider extends ServiceProvider
         // After config:cache, env() is empty in providers — use config (filled from .env at cache time).
         $imagePath = config('app.image_path');
         if (! is_string($imagePath) || $imagePath === '') {
-            $raw = config('app.url', 'http://localhost');
-            $imagePath = rtrim((string) $raw, '/').'/';
+            $assetOrigin = $this->app->runningInConsole()
+                ? config('app.url', 'http://localhost')
+                : request()->getSchemeAndHttpHost();
+            $imagePath = rtrim((string) $assetOrigin, '/').'/';
             config(['app.image_path' => $imagePath]);
         }
 

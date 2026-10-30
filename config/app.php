@@ -23,7 +23,7 @@ return [
     | Public asset base URL (CSS, JS, uploads) — must end with /
     |--------------------------------------------------------------------------
     */
-    'image_path' => ($assetBase = rtrim((string) (env('ImagePath') ?: env('IMAGE_PATH') ?: env('APP_URL', '')), '/')) !== ''
+    'image_path' => ($assetBase = rtrim((string) (env('ImagePath') ?: env('IMAGE_PATH', '')), '/')) !== ''
         ? $assetBase.'/'
         : null,
 
@@ -209,5 +209,4 @@ return [
     
 
 ];
-
 
