@@ -524,3 +524,24 @@ Route::middleware(['auth.api'])->group(function () {
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+// =========================================================================
+// OFFLINE-ONLINE DRIFT SYNC ROUTES (Flutter Desktop & POS)
+// =========================================================================
+use App\Http\Controllers\api\SyncController;
+
+Route::prefix('v1/sync')->group(function () {
+    Route::post('/verify-license', [SyncController::class, 'verifyLicense']);
+    Route::post('/login', [SyncController::class, 'apiLogin']);
+    Route::post('/pull', [SyncController::class, 'pull']);
+    Route::post('/push', [SyncController::class, 'push']);
+    Route::post('/upload-image', [SyncController::class, 'uploadImage']);
+});
+
+Route::prefix('sync')->group(function () {
+    Route::post('/verify-license', [SyncController::class, 'verifyLicense']);
+    Route::post('/login', [SyncController::class, 'apiLogin']);
+    Route::get('/full-pull', [SyncController::class, 'fullPull']);
+    Route::post('/full-push', [SyncController::class, 'fullPush']);
+    Route::post('/images-batch', [SyncController::class, 'imagesBatch']);
+});
