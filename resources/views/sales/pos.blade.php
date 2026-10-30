@@ -150,12 +150,13 @@
         }
 
         /* --- Food / Product Card --- */
+        /* --- Food / Product Card --- */
         .productset {
             background: #ffffff;
             border: 1.5px solid #edf2f7;
             border-radius: 12px;
-            padding: 10px;
-            margin-bottom: 16px;
+            padding: 8px !important;
+            margin-bottom: 12px !important;
             cursor: pointer;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
@@ -163,8 +164,8 @@
             position: relative;
             display: flex;
             flex-direction: column;
-            height: calc(100% - 16px);
             overflow: hidden;
+            height: auto !important;
         }
         .productset:hover {
             transform: translateY(-3px);
@@ -177,18 +178,18 @@
         }
         .productset .productsetimg {
             background: var(--pos-bg-subtle);
-            border-radius: 10px;
-            height: 115px;
+            border-radius: 8px;
+            height: 90px !important;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            margin-bottom: 8px;
+            margin-bottom: 4px !important;
             overflow: hidden;
         }
         .productsetimgin {
-            max-height: 95px;
-            max-width: 95px;
+            max-height: 80px !important;
+            max-width: 80px !important;
             width: auto;
             height: auto;
             object-fit: contain;
@@ -201,8 +202,8 @@
         .productset .productsetimg h6,
         .productset:hover .productsetimg h6 {
             position: absolute !important;
-            top: 8px !important;
-            right: 8px !important;
+            top: 5px !important;
+            right: 5px !important;
             bottom: auto !important;
             left: auto !important;
             width: auto !important;
@@ -212,10 +213,10 @@
             transform: none !important;
             background: rgba(15, 23, 42, 0.78) !important;
             color: #ffffff !important;
-            font-size: 11px !important;
+            font-size: 10px !important;
             font-weight: 700 !important;
-            padding: 3px 8px !important;
-            border-radius: 6px !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
             margin: 0 !important;
             line-height: 1.2 !important;
             z-index: 5 !important;
@@ -228,38 +229,54 @@
             color: #ffffff !important;
             transform: scale(1.04) !important;
         }
-        .productsetcontent {
-            padding: 4px 2px 2px;
-            text-align: center;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
+        .productsetcontent,
+        .productset .productsetcontent {
+            padding: 2px !important;
+            text-align: center !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
         }
-        .productsetcontent h4 {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1e293b;
-            margin: 2px 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .productsetcontent h4,
+        .productset .productsetcontent h4 {
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            color: #1e293b !important;
+            margin: 2px 0 !important;
+            line-height: 1.25 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            text-align: center !important;
+            width: 100% !important;
         }
-        .productsetcontent h5 {
-            font-size: 12px;
-            color: #94a3b8;
-            font-weight: 500;
-            text-transform: capitalize;
-            margin: 0 0 4px;
+        .productsetcontent h5,
+        .productset .productsetcontent h5 {
+            font-size: 11px !important;
+            color: #94a3b8 !important;
+            font-weight: 500 !important;
+            text-transform: capitalize !important;
+            margin: 0 0 3px !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+            width: 100% !important;
         }
-        .productsetcontent h6 {
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--pos-primary);
-            margin: auto 0 0;
-            display: inline-block;
+        .productsetcontent h6,
+        .productset .productsetcontent h6 {
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            color: var(--pos-primary) !important;
+            margin: 2px auto 0 !important;
+            display: block !important;
+            text-align: center !important;
+            width: 100% !important;
+            float: none !important;
         }
+        .productsetbtn,
         .productsetbtn button {
-            display: none;
+            display: none !important;
         }
         .disabled-product {
             opacity: 0.55;
@@ -895,18 +912,27 @@
 
                 @php
                 $hasProducts = false; // start as false
+                foreach ($categories as $cat) {
+                    if ($cat->products && $cat->products->where('quantity', '>', 0)->count() > 0) {
+                        $hasProducts = true;
+                        break;
+                    }
+                }
                 @endphp
 
+                @if ($hasProducts)
                 <ul class="tabs border-0 mb-3">
+                    <li id="all">
+                        <div class="product-details">
+                            <h6>All Products</h6>
+                        </div>
+                    </li>
                     @foreach ($categories as $cat)
                     @php
                     $availableProducts = $cat->products->where('quantity', '>', 0);
                     @endphp
 
                     @if ($availableProducts->count() > 0)
-                    @php
-                    $hasProducts = true; // at least one product exists
-                    @endphp
                     <li id="{{ $cat->id }}">
                         <div class="product-details">
                             <h6 style="text-transform: capitalize;">{{ $cat->name }}</h6>
@@ -915,8 +941,7 @@
                     @endif
                     @endforeach
                 </ul>
-
-                @if (!$hasProducts)
+                @else
                 <div class="product-details text-center">
                     <h6>No data available</h6>
                     <a href="{{ url('add-product') }}?redirect_to=add-sales" class="btn btn-primary mt-2">
@@ -1001,7 +1026,10 @@
                                         <div class="select-group w-100">
                                             <label><i class="fas fa-phone-alt" style="color: #ff9f43; margin-right: 5px;"></i> Customer Phone</label>
                                             <input type="tel" id="customer_phone" class="form-control"
-                                                placeholder="Customer Phone" name="customer_phone">
+                                                placeholder="Customer Phone" name="customer_phone"
+                                                maxlength="10" inputmode="numeric" pattern="[0-9]{10}"
+                                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"
+                                                onkeypress="return event.charCode >= 48 && event.charCode <= 57">
                                             <span class="error_customerphone" style="color: red; font-size: 11px;"></span>
                                         </div>
                                     </div>
@@ -2720,7 +2748,7 @@
                     const imageBasePath = "{{ rtrim(env('ImagePath'), '/') }}";
 
                     if (products.length === 0) {
-                        productsHtml = '<div class="col-12"><p>No items found in this category</p></div>';
+                        productsHtml = '<div class="col-12"><p>' + (categoryId === 'all' ? 'No items found' : 'No items found in this category') + '</p></div>';
                     } else {
                         products.forEach(function(product) {
                             let productImage = fallbackImage;
@@ -2781,18 +2809,15 @@
                                                     <img src="${productImage}" alt="${product.name}" class="productsetimgin">
                                                     <h6>Qty: ${product.quantity || '0'}</h6>
                                                 </div>
-                                                <div class="productsetcontent" style="padding: 0.5rem;">
-                                                    <h4 style="font-size: 14px; font-weight: 600; margin: 0.5rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                        ${product.name}
-                                                    </h4>
+                                                <div class="productsetcontent">
+                                                    <h4>${product.name}</h4>
                                                     <h1 class="d-none">${product.categoryId || product.category_id || ''}</h1>
                                                     <h2 class="d-none">${product.quantity_type || ''}</h2>
                                                     <h3 class="d-none">${product.quantity_type_id || ''}</h3>
-                                                    
-                                                    <h5 style="text-transform: capitalize;">${product.category_name || 'Uncategorized'}</h5>
+                                                    <h5>${product.category_name || 'Uncategorized'}</h5>
                                                     <h6>${displayPrice}</h6>
                                                 </div>
-                                                <div class="productsetbtn">
+                                                <div class="productsetbtn d-none">
                                                     <button class="btn btn-added" ${addButtonDisabled}>+ Add</button>
                                                 </div>
                                             </div>
@@ -2845,9 +2870,20 @@
             }).on('change', function() {
                 var phone = $(this).find(':selected').data('phone');
                 if (phone) {
-                    $('#customer_phone').val(phone);
+                    var cleaned = String(phone).replace(/\D/g, '').slice(0, 10);
+                    $('#customer_phone').val(cleaned).trigger('input');
                 } else {
-                    $('#customer_phone').val('');
+                    $('#customer_phone').val('').trigger('input');
+                }
+            });
+
+            $(document).on('input', '#customer_phone', function () {
+                var val = $(this).val().replace(/\D/g, '').slice(0, 10);
+                if ($(this).val() !== val) {
+                    $(this).val(val);
+                }
+                if (val.length === 10 || val.length === 0) {
+                    $('.error_customerphone').text('');
                 }
             });
             $(".select2-fixed").select2({
