@@ -577,6 +577,11 @@ class SalesController extends Controller
             return redirect()->route('sales.list')->with('error', 'Order not found.');
         }
 
+        $tableRow = (!empty($sales->table_no) ? Table_no::find($sales->table_no) : null)
+            ?? Table_no::where('order_id', $sales->id)->first();
+        $tableNo = $sales->table_no ?: ($tableRow->id ?? null);
+        $tableName = $tableRow->table_name ?? ($tableNo ? 'Table #' . $tableNo : null);
+
         // Fetch user data (assuming 'user_id' in orders table)
         $user = $sales->user_id ? User::find($sales->user_id) : null;
 
@@ -626,8 +631,14 @@ class SalesController extends Controller
         $formattedAfterDiscount = $formatCurrency($afterDiscount);
         $formattedFinalTotal = $formatCurrency($finalTotal);
 
+               // Ignore a numeric customer_name (a customer ID saved by mistake) and use the real user name
+        $rawName = trim((string) ($sales->customer_name ?? ''));
+        $customerName = ($rawName !== '' && !is_numeric($rawName))
+            ? $rawName
+            : ($user->name ?? 'Walk-in Customer');
+
         $customer = [
-            'name' => $sales->customer_name ?: ($user->name ?? 'Walk-in Customer'),
+            'name' => $customerName,
             'email' => $user->email ?? '',
             'phone' => $sales->customer_phone ?: ($user->phone ?? ''),
         ];
@@ -661,6 +672,8 @@ class SalesController extends Controller
             'paidAmount'             => $paidAmount,
             'pendingAmount'          => $pendingAmount,
             'allPayments'            => $allPayments,
+            'tableName'              => $tableName,
+            'tableNo'                => $tableNo,
         ];
 
         $useSmallInvoice = $request->query('size') === 'small'
