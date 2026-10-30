@@ -260,6 +260,7 @@
                                     </h5>
                                 </li>
 
+                                @if ($discountAmount > 0)
                                 <li>
                                     <h4>Discount</h4>
                                     <h5>
@@ -284,6 +285,7 @@
                                         @endif
                                     </h5>
                                 </li>
+                                @endif
 
                                 @foreach ($taxDetails as $tax)
                                 <li>

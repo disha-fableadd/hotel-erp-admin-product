@@ -632,10 +632,12 @@
             white-space: nowrap;
         }
 
-        /* Modern Steppers */
+        /* Modern Steppers & Cart Row Controls */
         .increment-decrement {
-            display: flex;
-            align-items: center;
+            display: inline-flex !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+            gap: 6px !important;
         }
         .increment-decrement .input-groups {
             display: inline-flex !important;
@@ -643,9 +645,10 @@
             border: 1px solid var(--pos-border) !important;
             border-radius: 8px !important;
             overflow: hidden !important;
-            width: 86px !important;
+            width: 84px !important;
             height: 30px !important;
             background: #ffffff !important;
+            flex-shrink: 0 !important;
         }
         .increment-decrement .input-groups .button-minus,
         .increment-decrement .input-groups .button-plus {
@@ -668,7 +671,7 @@
             color: var(--pos-primary) !important;
         }
         .increment-decrement .input-groups .quantity-field {
-            width: 34px !important;
+            width: 32px !important;
             height: 100% !important;
             border: none !important;
             border-left: 1px solid var(--pos-border) !important;
@@ -681,14 +684,34 @@
             background: #ffffff !important;
         }
         .price-field {
-            width: 60px !important;
+            width: 65px !important;
             height: 30px !important;
             border-radius: 6px !important;
             border: 1px solid var(--pos-border) !important;
             padding: 2px 6px !important;
             font-size: 12px !important;
-            margin-left: 6px !important;
+            margin: 0 !important;
             font-weight: 600 !important;
+            flex-shrink: 0 !important;
+        }
+        .cart-quantity-type {
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            color: #475569 !important;
+            background: #f1f5f9 !important;
+            border: 1px solid #cbd5e1 !important;
+            padding: 0 7px !important;
+            height: 30px !important;
+            border-radius: 6px !important;
+            line-height: 28px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+            text-transform: uppercase !important;
+            margin: 0 !important;
+            flex-shrink: 0 !important;
+            box-sizing: border-box !important;
         }
         .confirm-text.remove-item {
             width: 28px;
@@ -764,19 +787,23 @@
             color: #10b981 !important;
         }
 
-        /* --- Payment Methods (Sticky Bottom Panel) --- */
+        /* --- Payment Methods (Fixed Bottom Panel - Screenshot 3 Style) --- */
         .payment_panel {
-            position: sticky;
+            position: fixed;
             bottom: 0;
-            background: #ffffff;
-            z-index: 100;
-            margin-top: 4px !important;
-            padding-top: 8px !important;
-            padding-bottom: 4px !important;
-            border-top: 1px dashed var(--pos-border);
-            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
-            border-bottom-left-radius: 12px;
-            border-bottom-right-radius: 12px;
+            background-color: #ffffff !important;
+            z-index: 999;
+            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--pos-border);
+            border-bottom: none;
+            border-radius: 12px 12px 0 0;
+            padding: 8px 12px 8px !important;
+            margin: 0 !important;
+            box-sizing: border-box;
+        }
+
+        .card.card-order .card-body.body_space {
+            padding-bottom: 230px !important;
         }
         .payment_panel_header {
             display: flex;
@@ -1177,7 +1204,7 @@
                                         <input type="hidden" name="subtotal" value="" class="tax-hidden">
                                     </li>
 
-                                    <li>
+                                    <li class="discount-summary-row" style="display: none;">
                                         <h5>Discount Amount</h5>
                                         <h6 class="discount-amount">
                                             @if ($currency_position === 'right')
@@ -1189,7 +1216,7 @@
                                         <input type="hidden" name="discount_amount" value="0.00" class="tax-hidden">
                                     </li>
 
-                                    <li>
+                                    <li class="price-after-discount-row" style="display: none;">
                                         <h5>Price After Discount</h5>
                                         <h6 class="price-after-discount">
                                             @if ($currency_position === 'right')
@@ -2118,6 +2145,12 @@
                             currencyPosition));
                         $("input[name='price_after_discount']").val(priceAfterDiscount.toFixed(2));
 
+                        if (discountAmount > 0) {
+                            $(".discount-summary-row, .price-after-discount-row").show();
+                        } else {
+                            $(".discount-summary-row, .price-after-discount-row").hide();
+                        }
+
                         $(".total-value h6").html(formatCurrency(total.toFixed(2), currencySymbol, currencyPosition));
                         $(".btn-totallabel h6").html('Total Amount : ' + formatCurrency(total.toFixed(2),
                             currencySymbol, currencyPosition));
@@ -2141,6 +2174,7 @@
                     } else {
                         // Reset everything if no subtotal
                         $(".taxList").hide().find("h6").html(formatCurrency("0.00", currencySymbol, currencyPosition));
+                        $(".discount-summary-row, .price-after-discount-row").hide();
                         $(".discount-amount").html(formatCurrency("0.00", currencySymbol, currencyPosition));
                         $(".price-after-discount").html(formatCurrency("0.00", currencySymbol, currencyPosition));
                         $(".total-value h6").html(formatCurrency("0.00", currencySymbol, currencyPosition));
@@ -2196,12 +2230,12 @@
                                                     <input type="text" name="quantity" value="${item.quantity}" class="quantity-field" data-id="${item.id}" data-stock="${item.stock}">
                                                     <input type="button" value="+" class="button-plus inc button" data-id="${item.id}">
                                                 </div>
-                                                <input type="number" class="price-field form-control form-control-sm" data-id="${item.id}" value="${numericPrice}" min="0" step="0.01" style="width:80px;height:35px;margin-left:10px;font-size:13px;">
+                                                <input type="number" class="price-field form-control form-control-sm" data-id="${item.id}" value="${numericPrice}" min="0" step="0.01">
+                                                ${qtyType ? `<span class="cart-quantity-type text-uppercase">${qtyType}</span>` : ''}
                                             </div>
                                         </div>
                                     </div>
                                 </li>
-                                ${qtyType ? `<li class="quantity_type text-uppercase">${qtyType}</li>` : '<li class="quantity_type"></li>'}
 
                                 <li>
                                     <a class="confirm-text remove-item" href="javascript:void(0);" data-id="${item.id}">
@@ -2377,8 +2411,10 @@
                     if (discountValue < 0 || discountValue > 100) {
                         $(".error_discount").text("Discount must be between 0-100%").css("color", "red");
                         $(this).val("");
+                        calculateTotals();
                     } else if (isNaN(discountValue)) {
                         $(".error_discount").text("");
+                        calculateTotals();
                     } else {
                         $(".error_discount").text("Discount Applied").css("color", "green");
                         calculateTotals();
@@ -3320,6 +3356,44 @@
                         }
                     });
                 });
+            });
+
+            // ── Keep Payment Panel pinned & perfectly aligned to right order card (Screenshot 3 Style) ──
+            function updatePosPaymentPanelPosition() {
+                var $card = $('.card.card-order');
+                var $panel = $('.payment_panel');
+                if (!$card.length || !$panel.length) return;
+
+                if ($(window).width() >= 992) {
+                    var rect = $card[0].getBoundingClientRect();
+                    $panel.css({
+                        'position': 'fixed',
+                        'bottom': '0',
+                        'left': rect.left + 'px',
+                        'width': rect.width + 'px',
+                        'right': 'auto'
+                    });
+                } else {
+                    $panel.css({
+                        'position': 'fixed',
+                        'bottom': '0',
+                        'left': '8px',
+                        'right': '8px',
+                        'width': 'auto'
+                    });
+                }
+            }
+
+            $(window).on('resize scroll', updatePosPaymentPanelPosition);
+            $(document).on('click', '#toggle_btn, .bar-icon, #sidebar, .sidebar-menu, a.nav-link', function() {
+                setTimeout(updatePosPaymentPanelPosition, 100);
+                setTimeout(updatePosPaymentPanelPosition, 300);
+            });
+            $(document).ready(function() {
+                updatePosPaymentPanelPosition();
+                setTimeout(updatePosPaymentPanelPosition, 100);
+                setTimeout(updatePosPaymentPanelPosition, 300);
+                setTimeout(updatePosPaymentPanelPosition, 800);
             });
         </script>
         @endpush

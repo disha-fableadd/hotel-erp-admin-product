@@ -183,6 +183,7 @@
                                             </h5>
                                         </li>
 
+                                        @if ($discountAmount > 0)
                                         <li>
                                             <h4>Discount</h4>
                                             <h5>{{ $discountPercentage }}%
@@ -195,6 +196,7 @@
                                             <h5>{{ formatCurrency($afterDiscount, $setting?->currency_symbol ?? '₹', $setting?->currency_position ?? 'left') }}
                                             </h5>
                                         </li>
+                                        @endif
 
                                         @foreach ($taxDetails as $tax)
                                             <li>
