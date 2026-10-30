@@ -820,6 +820,157 @@ Pushes offline records created or modified locally in Drift.
 
 ---
 
+### 5.5. Upload Image API & Image URL Handling
+
+When syncing products, categories, or staff profile pictures, images must be handled seamlessly between Flutter Desktop (local offline disk) and the Laravel Cloud Backend (MySQL + Storage).
+
+#### A. How Image Links Work in Backend & Pull API
+1. **Database Storage:**
+   - In MySQL, the `products.images` column stores a relative path or JSON array string:
+     e.g., `"img/product/sandwich_123.webp"` or `'["img/product/sandwich_123.webp"]'`.
+   - `categories.image` stores `"img/category/beverages.png"`.
+   - `brands.logo` stores `"img/brand/logo.png"`.
+2. **Pull API Output (`/api/v1/sync/pull`):**
+   - The backend Laravel models (`Product`, `Category`, `Brand`) automatically run accessor helpers (`getImageUrlAttribute()`, `tenant_image_url()`) which prepend the cloud domain and tenant storage prefix:
+   ```json
+   {
+     "id": 101,
+     "client_uuid": "8e367873-cbf2-4112-9c3f-c309f485bb2e",
+     "name": "Paneer Butter Masala",
+     "price": 280.00,
+     "images": "img/product/paneer_butter_masala.webp",
+     "image_url": [
+       "https://your-hotel-domain.com/storage/img/product/paneer_butter_masala.webp"
+     ]
+   }
+   ```
+
+#### B. Upload Image API (Flutter -> Server)
+When a user adds or edits a product or category from the desktop app:
+1. **Endpoint:** `POST /api/v1/sync/upload-image`
+2. **Headers:**
+   - `X-License-Key: 23B8A`
+   - `Authorization: Bearer <TOKEN>`
+   - `Content-Type: multipart/form-data`
+3. **Form-Data Request:**
+   - `image`: Binary file (JPEG, PNG, WEBP)
+4. **Response (200 OK):**
+   ```json
+   {
+     "status": "success",
+     "path": "img/product/xY873d91k.webp",
+     "url": "https://your-hotel-domain.com/storage/img/product/xY873d91k.webp"
+   }
+   ```
+5. **Next Step:** Save the returned `path` in your local Drift `ProductsTable.images` column and send it to `/api/v1/sync/push`.
+
+#### C. Dart Image URL Resolver & Offline Caching Helper
+Save this helper in Flutter at `lib/utils/image_helper.dart`:
+
+```dart
+import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+
+class ImageSyncHelper {
+  /// Resolves the full image URL from relative path or JSON array
+  static String resolveImageUrl({
+    required String? rawImage,
+    required String baseUrl, // e.g. "https://your-hotel-domain.com"
+  }) {
+    if (rawImage == null || rawImage.trim().isEmpty) {
+      return '';
+    }
+
+    String cleanPath = rawImage.trim();
+
+    // If already full HTTP/HTTPS URL
+    if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+      return cleanPath;
+    }
+
+    // If stored as JSON array string: '["img/product/abc.jpg"]'
+    if (cleanPath.startsWith('[')) {
+      try {
+        final decoded = jsonDecode(cleanPath);
+        if (decoded is List && decoded.isNotEmpty) {
+          cleanPath = decoded.first.toString();
+        }
+      } catch (_) {}
+    }
+
+    // Remove leading slashes
+    cleanPath = cleanPath.replaceAll(RegExp(r'^/+'), '');
+
+    // Ensure /storage/ prefix is present
+    if (!cleanPath.startsWith('storage/')) {
+      cleanPath = 'storage/$cleanPath';
+    }
+
+    final normalizedBase = baseUrl.replaceAll(RegExp(r'/+$'), '');
+    return '$normalizedBase/$cleanPath';
+  }
+
+  /// Uploads local image file from Flutter Desktop to Server
+  static Future<String?> uploadImage({
+    required File imageFile,
+    required String baseUrl,
+    required String licenseKey,
+    String? token,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/upload-image');
+      final request = http.MultipartRequest('POST', uri);
+
+      request.headers['X-License-Key'] = licenseKey;
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['path'] as String?; // Save this path in Drift DB
+      }
+    } catch (e) {
+      print('Image upload error: $e');
+    }
+    return null;
+  }
+
+  /// Downloads and caches image locally on PC disk for 100% offline viewing
+  static Future<String?> cacheImageLocally(String fullUrl, String filename) async {
+    try {
+      final dir = await getApplicationSupportDirectory();
+      final imagesDir = Directory('${dir.path}/cached_images');
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
+      }
+
+      final localFile = File('${imagesDir.path}/$filename');
+      if (await localFile.exists()) {
+        return localFile.path;
+      }
+
+      final response = await http.get(Uri.parse(fullUrl));
+      if (response.statusCode == 200) {
+        await localFile.writeAsBytes(response.bodyBytes);
+        return localFile.path;
+      }
+    } catch (e) {
+      print('Image caching error: $e');
+    }
+    return null;
+  }
+}
+```
+
+---
+
 ## 6. Complete Flutter Dart Sync Implementation
 
 Save this in `lib/services/hotel_sync_service.dart`:
@@ -885,7 +1036,7 @@ class HotelUniversalSyncService {
           if (tableKey == 'deleted_ids' || tableKey == 'deleted_records') continue;
           final List rows = data[tableKey] ?? [];
 
-          // Example: Products
+          // Example: Products (with Image & Category Sync)
           if (tableKey == 'products') {
             for (var row in rows) {
               await db.into(db.productsTable).insertOnConflictUpdate(
@@ -896,6 +1047,11 @@ class HotelUniversalSyncService {
                   price: Value((row['price'] as num?)?.toDouble() ?? 0.0),
                   quantity: Value((row['quantity'] as num?)?.toDouble() ?? 0.0),
                   status: Value(row['status'] ?? 'active'),
+                  images: Value(row['images'] is List ? jsonEncode(row['images']) : row['images']?.toString()),
+                  categoryId: Value(row['category_id'] as int?),
+                  brandId: Value(row['brand_id'] as int?),
+                  quantityTypeId: Value(row['quantity_type_id'] as int?),
+                  branchId: Value(row['branch_id'] as int?),
                   isDirty: const Value(false),
                   syncedAt: Value(DateTime.parse(serverTime)),
                 ),
