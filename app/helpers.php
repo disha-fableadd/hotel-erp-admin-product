@@ -18,17 +18,12 @@ if (! function_exists('image_path_base')) {
                 if (is_string($configured) && $configured !== '') {
                     return $cached = rtrim($configured, '/').'/';
                 }
-
-                $appUrl = config('app.url');
-                if (is_string($appUrl) && $appUrl !== '') {
-                    return $cached = rtrim($appUrl, '/').'/';
-                }
             }
         } catch (\Throwable) {
             // Application not booted yet.
         }
 
-        $raw = env('ImagePath') ?: env('IMAGE_PATH') ?: env('APP_URL', '');
+        $raw = env('ImagePath') ?: env('IMAGE_PATH', '');
 
         return $cached = ($raw !== '' ? rtrim((string) $raw, '/').'/' : '/');
     }

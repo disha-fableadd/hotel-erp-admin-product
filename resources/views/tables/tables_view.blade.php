@@ -1999,6 +1999,74 @@
                 font-size: 14px;
             }
         }
+        /* Header ni niche space - heading ane Take Away button banne mate */
+        .tables-floor {
+            padding-top: 24px;
+        }
+
+        @media (max-width: 767px) {
+        .tables-floor .page-header {
+            flex-wrap: nowrap;          /* heading ane button ek j row ma */
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .tables-floor .page-title {
+            flex: 1 1 auto;
+            min-width: 0;               /* text ne wrap thava de */
+        }
+
+        .tables-floor .page-title h4 {
+            font-size: 1.05rem;
+        }
+
+        .tables-floor .page-title p {
+            font-size: 0.78rem;
+        }
+
+        .tables-floor .page-btn {
+            flex: 0 0 auto;             /* button nu size fix, sankochay nahi */
+        }
+
+        .tables-floor .btn-added {
+            padding: 8px 12px !important;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+    }
+
+        @media (max-width: 991px) {
+            .tables-floor {
+                padding-top: 32px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .tables-floor {
+                padding-top: 20px;
+            }
+        }
+        @media (max-width: 767px) {
+            .tables-floor .page-title h4 {
+                font-size: 0.9rem;       /* heading nanu */
+                line-height: 1.25;
+                text-align: left;
+            }
+
+            .tables-floor .page-title p {
+                font-size: 0.64rem;      /* description nanu */
+                line-height: 1.35;
+                margin-top: 4px;
+                text-align: left;
+            }
+
+            .tables-floor .btn-added {
+                padding: 7px 10px !important;
+                font-size: 11px;
+            }
+        }
+        
+
     </style>
 
     <div class="content">
