@@ -336,11 +336,22 @@ class SalesController extends Controller
         $currencySymbol = $settings->currency_symbol ?? '₹';
         $currencyPosition = $settings->currency_position ?? 'left';
 
-        $products = Product::with('category', 'quantityType')
-            ->where('category_id', $categoryId)
+        $user = Auth::guard('api')->user();
+
+        $query = Product::with('category', 'quantityType')
             ->where('isDeleted', 0)
-            ->where('status', 'active') // ✅ Only active products
-            ->get();
+            ->where('status', 'active'); // ✅ Only active products
+
+        if ($user && ($user->role === 'staff' || $user->role === 'sub-admin')) {
+            $branchId = ($user->role === 'staff' && $user->branch_id) ? $user->branch_id : $user->id;
+            $query->where('branch_id', $branchId);
+        }
+
+        if ($categoryId !== 'all' && $categoryId !== '0' && $categoryId != 0) {
+            $query->where('category_id', $categoryId);
+        }
+
+        $products = $query->get();
         return response()->json([
             'status' => true,
             'currency_symbol' => $currencySymbol,
@@ -355,9 +366,8 @@ class SalesController extends Controller
                     'quantity_type' => $product->quantityType ? $product->quantityType->quantity_type : null, // ✅ Add name
                     'image' => $product->images,
                     'image_url' => $product->image_url,
-                    'category_name' => $product->category->name,
+                    'category_name' => $product->category ? $product->category->name : 'Uncategorized',
                     'categoryId' => $product->category_id,
-                    'category_name' => $product->category ? $product->category->name : null,
                 ];
             }),
         ]);

@@ -164,7 +164,7 @@
 
         .login-wrapper .login-content {
             width: 100% !important;
-            max-width: 450px !important;
+            max-width: 465px !important;
             display: block !important;
         }
 
@@ -173,7 +173,7 @@
             width: 100%;
             max-height: calc(100vh - 58px);
             max-height: calc(100dvh - 58px);
-            padding: clamp(18px, 2.8vh, 25px) clamp(22px, 2.5vw, 32px);
+            padding: clamp(20px, 3vh, 26px) clamp(28px, 3.5vw, 38px);
             border: 0;
             border-radius: 22px;
             background: rgba(255, 255, 255, .92);
@@ -236,14 +236,14 @@
         }
 
         .login-wrapper .login-content .form-login {
-            margin-bottom: clamp(12px, 2vh, 17px) !important;
+            margin-bottom: clamp(10px, 1.8vh, 15px) !important;
         }
 
         .login-wrapper .login-content .form-login label {
             display: block !important;
-            margin-bottom: clamp(5px, 1vh, 8px) !important;
+            margin-bottom: 4px !important;
             color: #111827 !important;
-            font-size: 14px !important;
+            font-size: 13.5px !important;
             font-weight: 600 !important;
         }
 
@@ -252,9 +252,10 @@
             position: relative !important;
             display: flex !important;
             align-items: center !important;
-            min-height: 40px !important;
+            min-height: 36px !important;
+            height: 36px !important;
             border: 1px solid var(--auth-border) !important;
-            border-radius: 9px !important;
+            border-radius: 8px !important;
             background: #fff !important;
             overflow: hidden !important;
             transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease !important;
@@ -274,8 +275,8 @@
         .login-wrapper .login-content .form-login .pass-group::before {
             content: "" !important;
             align-self: stretch !important;
-            width: 56px !important;
-            flex: 0 0 56px !important;
+            width: 46px !important;
+            flex: 0 0 46px !important;
             border-right: 0 !important;
             background: #fff !important;
         }
@@ -283,11 +284,11 @@
         .login-wrapper .login-content .form-login .form-addons::after,
         .login-wrapper .login-content .form-login .pass-group::after {
             position: absolute !important;
-            left: 19px !important;
+            left: 16px !important;
             z-index: 2 !important;
             color: var(--auth-primary) !important;
             font-family: "Font Awesome 5 Free" !important;
-            font-size: 16px !important;
+            font-size: 14px !important;
             font-weight: 900 !important;
             line-height: 1 !important;
         }
@@ -308,18 +309,18 @@
         .login-wrapper .login-content .form-login .pass-group input,
         .login-wrapper .login-content .form-login .pass-group input:focus {
             width: 100% !important;
-            height: 40px !important;
+            height: 32px !important;
             min-width: 0 !important;
-            padding: 0 18px 0 8px !important;
+            padding: 0 14px 0 6px !important;
             border: 0 none !important;
             border-style: none !important;
             outline: 0 !important;
             color: var(--auth-secondary) !important;
-            font-size: 15px !important;
+            font-size: 14px !important;
             background: var(--auth-input-bg) !important;
             background-color: var(--auth-input-bg) !important;
             border-radius: 4px !important;
-            margin: 3px 4px 3px 0 !important;
+            margin: 2px 3px 2px 0 !important;
             box-shadow: none !important;
         }
 
@@ -345,13 +346,14 @@
         .login-wrapper .login-content .form-login .pass-group .toggle-password {
             position: static !important;
             transform: none !important;
-            width: 48px !important;
+            width: 40px !important;
             height: auto !important;
-            flex: 0 0 48px !important;
+            flex: 0 0 40px !important;
             align-self: stretch !important;
             background: var(--auth-input-bg) !important;
             color: #8a94a6 !important;
             cursor: pointer !important;
+            font-size: 13.5px !important;
             text-align: center !important;
             transition: color .2s ease !important;
             display: flex !important;
@@ -604,12 +606,13 @@
 
             .form-addons,
             .pass-group {
-                min-height: 40px;
+                min-height: 36px;
+                height: 36px;
             }
 
             .form-addons input,
             .pass-group input {
-                height: 40px;
+                height: 32px;
             }
 
             .signin-options {
