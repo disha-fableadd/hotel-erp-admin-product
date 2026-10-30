@@ -54,25 +54,42 @@
             box-shadow: 0 4px 10px rgba(255, 159, 67, 0.35);
         }
 
-        /* --- Category Tabs (Pill Style - Fixed Width & No Scrollbar) --- */
+        /* --- Category Tabs (Single Row with Horizontal Scrollbar) --- */
         .tabs_wrapper {
-            overflow: visible;
+            width: 100%;
+            overflow: hidden;
+            margin-bottom: 12px;
         }
         .tabs_wrapper ul.tabs {
             display: flex !important;
-            flex-wrap: wrap !important;
+            flex-wrap: nowrap !important;
             align-items: center !important;
             gap: 10px !important;
-            padding: 4px 2px 14px !important;
-            margin: 0 0 14px 0 !important;
+            padding: 4px 4px 10px !important;
+            margin: 0 !important;
             list-style: none !important;
             width: 100% !important;
             overflow-x: auto !important;
-            scrollbar-width: none !important; /* Hide scrollbar */
+            overflow-y: hidden !important;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin !important;
+            scrollbar-color: #cbd5e1 #f8fafc !important;
         }
         .tabs_wrapper ul.tabs::-webkit-scrollbar {
-            display: none !important; /* Hide scrollbar */
-            height: 0px !important;
+            display: block !important;
+            height: 5px !important;
+        }
+        .tabs_wrapper ul.tabs::-webkit-scrollbar-track {
+            background: #f1f5f9 !important;
+            border-radius: 10px !important;
+        }
+        .tabs_wrapper ul.tabs::-webkit-scrollbar-thumb {
+            background: #cbd5e1 !important;
+            border-radius: 10px !important;
+            transition: background 0.2s;
+        }
+        .tabs_wrapper ul.tabs::-webkit-scrollbar-thumb:hover {
+            background: #ff9f43 !important;
         }
         .tabs_wrapper ul.tabs li {
             width: auto !important;
@@ -376,6 +393,35 @@
             background: #ffffff !important;
             border-color: var(--pos-primary) !important;
             box-shadow: 0 0 0 2px rgba(255, 159, 67, 0.15) !important;
+        }
+        .top-pos-search-wrapper {
+            flex: 1;
+            max-width: 520px;
+            margin: 0 16px;
+        }
+        .btn-close-search {
+            transition: all 0.2s ease;
+        }
+        .btn-close-search:hover {
+            border-color: #ef4444 !important;
+            color: #ef4444 !important;
+            background: #fef2f2 !important;
+        }
+        .pos-search-results-box {
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+        }
+        @media (max-width: 768px) {
+            .page-header {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .top-pos-search-wrapper {
+                order: 3;
+                width: 100%;
+                max-width: 100%;
+                margin: 6px 0 0 0;
+            }
         }
 
         /* Customer Section & Details Box */
@@ -896,11 +942,26 @@
     </style>
         <div class="content">
         <div class="page-header d-flex justify-content-between align-items-center">
-            <div class="page-title d-flex align-items-center gap-2 m-0">
+            <div class="page-title d-flex align-items-center gap-2 m-0" style="flex-shrink: 0;">
                 <i class="fas fa-utensils" style="color: var(--pos-primary); font-size: 17px;"></i>
                 <h4 style="margin-bottom: 0; font-weight: 700; color: #1e293b; font-size: 16px;">Add Order</h4>
             </div>
-            <div class="d-flex align-items-center">
+
+            <!-- Top Center Product Search Bar -->
+            <div class="top-pos-search-wrapper position-relative">
+                <div class="header-search position-relative search_custom_product w-100">
+                    <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 13px; pointer-events: none; z-index: 5;"></i>
+                    <input type="text" id="topProductSearch"
+                        class="form-control pos-search-input pos-product-search-input" placeholder="Search dishes, drinks, items..."
+                        autocomplete="off" style="height: 34px; font-size: 13px; border-radius: 8px;">
+                    <div id="topSearchResults"
+                        class="list-group bg-white position-absolute rounded-3 shadow mt-1 w-100 pos-search-results-box"
+                        style="z-index: 1050; max-height: 350px; overflow-y: auto; display: none; top: 100%; left: 0;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center" style="flex-shrink: 0;">
                 <a href="{{ route('sales.list') }}" class="pos-back-btn">
                     <i class="fas fa-arrow-left"></i> Back
                 </a>
@@ -983,10 +1044,10 @@
                         <div class="header-search position-relative mb-2 search_custom_product">
                             <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; pointer-events: none; z-index: 5;"></i>
                             <input type="text" id="customerSearch1"
-                                class="form-control pos-search-input" placeholder="Search dishes, drinks, items..."
+                                class="form-control pos-search-input pos-product-search-input" placeholder="Search dishes, drinks, items..."
                                 autocomplete="off">
                             <div id="searchResults1"
-                                class="list-group bg-white position-absolute rounded-3 shadow mt-1 w-100"
+                                class="list-group bg-white position-absolute rounded-3 shadow mt-1 w-100 pos-search-results-box"
                                 style="z-index: 1050; max-height: 300px; overflow-y: auto; display: none; top: 100%; left: 0;">
                             </div>
                         </div>
@@ -2100,8 +2161,12 @@
                     selectedItems.forEach(function(item) {
                         // Extract numeric price for input
                         let numericPrice = parseFloat(item.price.replace(/[^0-9.-]+/g, "")) || 0;
-                        // Get valid quantity type (exclude null, empty, N/A)
-                        let qtyType = (item.quantity_type && item.quantity_type !== 'N/A' && item.quantity_type.trim() !== '') ? item.quantity_type : ((item.quantity_type_id && item.quantity_type_id !== 'N/A' && item.quantity_type_id.toString().trim() !== '') ? item.quantity_type_id : '');
+                        // Get clean, valid quantity type (exclude null, empty, N/A, undefined, pure numbers)
+                        let rawQty = (item.quantity_type || item.quantity_type_id || "").toString().trim();
+                        let qtyType = "";
+                        if (rawQty && !['undefined', 'null', 'n/a', 'none', '0'].includes(rawQty.toLowerCase()) && isNaN(rawQty)) {
+                            qtyType = rawQty;
+                        }
 
                         productHtml += `
                             <ul class="product-lists">
@@ -2123,13 +2188,12 @@
                                                     <input type="text" name="quantity" value="${item.quantity}" class="quantity-field" data-id="${item.id}" data-stock="${item.stock}">
                                                     <input type="button" value="+" class="button-plus inc button" data-id="${item.id}">
                                                 </div>
-                                                ${qtyType ? `<span style="font-size:12px;color:#000;font-weight:600;margin-left:6px;text-transform:uppercase;">${qtyType}</span>` : ''}
                                                 <input type="number" class="price-field form-control form-control-sm" data-id="${item.id}" value="${numericPrice}" min="0" step="0.01" style="width:80px;height:35px;margin-left:10px;font-size:13px;">
                                             </div>
                                         </div>
                                     </div>
                                 </li>
-                                ${qtyType ? `<li class="quantity_type text-uppercase">${qtyType}</li>` : ''}
+                                ${qtyType ? `<li class="quantity_type text-uppercase">${qtyType}</li>` : '<li class="quantity_type"></li>'}
 
                                 <li>
                                     <a class="confirm-text remove-item" href="javascript:void(0);" data-id="${item.id}">
@@ -2148,14 +2212,20 @@
                     var productName = $product.find("h4").text().trim();
                     var productPrice = $product.find(".productsetcontent h6").text().trim();
                     var categoryId = $product.find(".productsetcontent h1").text().trim();
-                    var quantity_type = $product.find(".productsetcontent h2").text().trim();
-                    var quantity_type123 = $product.find(".productsetcontent h3").text().trim();
+                    var quantity_type = ($product.find(".productsetcontent h2").text() || "").trim();
+                    var quantity_type123 = ($product.find(".productsetcontent h3").text() || "").trim();
+                    if (quantity_type && ['undefined', 'null'].includes(quantity_type.toLowerCase())) {
+                        quantity_type = "";
+                    }
 
                     var productImage = $product.find("img").attr("src");
                     var productCode = "PT001";
                     var $checkIcon = $product.find(".check-product i");
                     var productStock = parseInt($product.data("stock")) || 0;
                     var quantity_type_id = $product.data("quantity_type_id") || quantity_type123 || quantity_type;
+                    if (quantity_type_id && ['undefined', 'null'].includes(quantity_type_id.toString().toLowerCase())) {
+                        quantity_type_id = "";
+                    }
 
                     var uniqueId = productId;
                     if (selectedItems.has(uniqueId)) {
@@ -2908,14 +2978,11 @@
                 }
             }, 100);
             $(document).ready(function() {
-                const $searchInput = $('#customerSearch1');
-                const $resultBox = $('#searchResults1');
-
-                $searchInput.on('input', function() {
-                    const query = $(this).val().trim();
+                function executeProductSearch($input, $resultBox) {
+                    const query = $input.val().trim();
 
                     if (query.length < 1) {
-                        $resultBox.hide();
+                        $resultBox.hide().empty();
                         return;
                     }
 
@@ -2929,56 +2996,73 @@
                         success: function(data) {
                             $resultBox.empty();
 
-
-                            let hasResults = false;
-
-                            // Users section
-                            // (add user search results here if needed)
-
-                            // Items section
                             if (data.products && data.products.length > 0) {
-                                hasResults = true;
-                                $resultBox.append(
-                                    `<div class="list-group-item fw-bold mt-2">Items</div>`);
+                                // Header with "Products" on left and "✕" cross button on right (Like Image 3)
+                                $resultBox.append(`
+                                    <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 bg-white" style="border-bottom: 2px solid #f1f5f9; position: sticky; top: 0; z-index: 10;">
+                                        <span class="fw-bold" style="font-size: 13.5px; color: #1e293b;">Products</span>
+                                        <button type="button" class="btn-close-search" style="background: none; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; cursor: pointer;" title="Close">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                `);
+
                                 data.products.forEach(product => {
                                     $resultBox.append(`
-                                                <div class="list-group-item d-flex align-items-center justify-content-between">
-                                                    <div class="d-flex align-items-center">
-                                                        <img src="${product.image}" alt="Item Image" class="rounded me-2" style="width:30px; height:30px; object-fit: cover;">
-                                                        <div>
-                                                            <strong>${product.name ?? 'N/A'}</strong><br>
-                                                            <small>Price: ${product.price ?? 'N/A'}</small>
-                                                        </div>
-                                                    </div>
-                                                    <button class="btn btn-sm btn-primary add-product"
-                                                        data-id="${product.id}"
-                                                        data-name="${product.name}"
-                                                        data-price="${product.price}"
-                                                        data-quantity_type_id="${product.quantity_type_id}"
-                                                        data-quantity_type123="${product.quantity_type_id || ''}"
-                                                        data-image="${product.image}"
-                                                        data-stock="${product.stock ?? 10}"
-                                                        data-category="${product.category_id ?? 0}">+ Add</button>
+                                        <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3" style="border-bottom: 1px solid #f1f5f9;">
+                                            <div class="d-flex align-items-center gap-2" style="flex: 1; min-width: 0;">
+                                                <img src="${product.image}" alt="Item Image" class="rounded" style="width: 34px; height: 34px; object-fit: cover; flex-shrink: 0; border: 1px solid #f1f5f9;">
+                                                <div style="min-width: 0;">
+                                                    <strong style="font-size: 13px; color: #1e293b; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${product.name ?? 'N/A'}</strong>
+                                                    <small style="font-size: 11.5px; color: #64748b; font-weight: 600;">Price: ${product.price ?? 'N/A'}</small>
                                                 </div>
-                                            `);
+                                            </div>
+                                            <button class="btn btn-sm btn-primary add-product ms-2"
+                                                style="border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 12px; flex-shrink: 0;"
+                                                data-id="${product.id}"
+                                                data-name="${product.name}"
+                                                data-price="${product.price}"
+                                                data-quantity_type="${product.quantity_type || ''}"
+                                                data-quantity_type_id="${product.quantity_type_id || ''}"
+                                                data-quantity_type123="${product.quantity_type_id || ''}"
+                                                data-image="${product.image}"
+                                                data-stock="${product.stock ?? 10}"
+                                                data-category="${product.category_id ?? 0}">+ Add</button>
+                                        </div>
+                                    `);
                                 });
+
+                                $resultBox.show();
+                            } else {
+                                $resultBox.html(`
+                                    <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3">
+                                        <span style="font-size: 13px; color: #64748b;">No results found</span>
+                                        <button type="button" class="btn-close-search" style="background: none; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; cursor: pointer;" title="Close">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                `).show();
                             }
-
-                            // Orders section
-                            // (add orders section if needed)
-
-                            if (!hasResults) {
-                                $resultBox.html(
-                                    '<div class="list-group-item">No results found</div>');
-                            }
-
-                            $resultBox.show();
                         },
                         error: function(xhr, status, error) {
-
                             $resultBox.hide();
                         }
                     });
+                }
+
+                // Handle typing in both search bars (top center or side)
+                $(document).on('input', '.pos-product-search-input', function() {
+                    const $input = $(this);
+                    const $resultBox = $input.siblings('.pos-search-results-box');
+                    executeProductSearch($input, $resultBox);
+                });
+
+                // Close cross button click (Like Image 3)
+                $(document).on('click', '.btn-close-search', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $('.pos-search-results-box').hide().empty();
+                    $('.pos-product-search-input').val('');
                 });
 
                 $(document).on("click", ".add-product", function() {
@@ -2990,8 +3074,9 @@
                     const productStock = parseInt($btn.data("stock")) || 0;
                     const categoryId = $btn.data("category");
 
-                    const quantity_type1 = $btn.data("quantity_type_id");
-                    const quantity_type123 = $btn.data("quantity_type123");
+                    const quantity_type = ($btn.data("quantity_type") || "").toString().trim();
+                    const quantity_type1 = ($btn.data("quantity_type_id") || "").toString().trim();
+                    const quantity_type123 = ($btn.data("quantity_type123") || "").toString().trim();
 
                     // Check if product is already selected
                     if (selectedItems.has(productId)) {
@@ -3017,26 +3102,28 @@
                             name: productName,
                             price: productPrice,
                             image: productImage,
-                            quantity_type_id: quantity_type1,
-                            quantity_type123: quantity_type123,
+                            quantity_type: (quantity_type && !['undefined', 'null'].includes(quantity_type.toLowerCase())) ? quantity_type : '',
+                            quantity_type_id: (quantity_type1 && !['undefined', 'null'].includes(quantity_type1.toLowerCase())) ? quantity_type1 : '',
+                            quantity_type123: (quantity_type123 && !['undefined', 'null'].includes(quantity_type123.toLowerCase())) ? quantity_type123 : '',
 
                             code: "PT001", // Default code
                             quantity: 1,
                             stock: productStock
                         });
 
-                        // Optional: highlight or disable the Add button
-                        $btn.prop("disabled", true).text("Added");
-
                         // Call existing function to update UI
                         updateTotalItems();
                     }
+
+                    // ✅ Close the search dropdown and reset input after adding product
+                    $('.pos-search-results-box').hide().empty();
+                    $('.pos-product-search-input').val('');
                 });
 
-                // Optional: Hide dropdown on outside click
+                // Hide dropdown on outside click
                 $(document).on('click', function(e) {
-                    if (!$(e.target).closest($searchInput).length && !$(e.target).closest($resultBox).length) {
-                        $resultBox.hide();
+                    if (!$(e.target).closest('.search_custom_product').length) {
+                        $('.pos-search-results-box').hide();
                     }
                 });
             });

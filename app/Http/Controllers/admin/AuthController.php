@@ -736,9 +736,11 @@ class AuthController extends Controller
             ->get(['id', 'name', 'email', 'profile_image', 'role']);
 
         // Search products by name, include category_id
-        $products = Product::where('name', 'LIKE', "%{$query}%")
+        $products = Product::with('quantityType')
+            ->where('name', 'LIKE', "%{$query}%")
+            ->where('isDeleted', 0)
             ->take(10)
-            ->get(['id', 'name', 'price', 'images', 'category_id']);
+            ->get(['id', 'name', 'price', 'images', 'category_id', 'quantity_type_id', 'quantity']);
 
         // Search orders by order number or customer name
         $orders = Order::with('user:id,name')
@@ -786,6 +788,9 @@ class AuthController extends Controller
                     'name' => $product->name,
                     'price' => $formatCurrency($product->price), // formatted price
                     'category_id' => $product->category_id,
+                    'stock' => $product->quantity,
+                    'quantity_type_id' => $product->quantity_type_id,
+                    'quantity_type' => ($product->quantityType && $product->quantityType->quantity_type) ? $product->quantityType->quantity_type : '',
                     'image' => $imageFileName ? asset(env('ImagePath') . 'storage/' . $imageFileName) : asset(env('ImagePath') . 'admin/assets/img/product/noimage.png'),
                 ];
             }),
