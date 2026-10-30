@@ -1132,8 +1132,19 @@
 
                                 let isLowStock = quantity !== 'N/A' && !isNaN(parseFloat(quantity)) && parseFloat(quantity) <= parseFloat(lowStockThreshold);
 
+                                let formattedQty = quantity;
+                                if (quantity !== 'N/A' && !isNaN(parseFloat(quantity))) {
+                                    let num = parseFloat(quantity);
+                                    if (num % 1 === 0) {
+                                        formattedQty = num.toString();
+                                    } else {
+                                        let fixed = num.toFixed(2);
+                                        formattedQty = (parseFloat(fixed) === num) ? fixed : parseFloat(num.toFixed(4)).toString();
+                                    }
+                                }
+
                                 let quantityDisplay =
-                                    `<span class="quantity-history" data-id="${product.id}" style="cursor:pointer; border: 1px solid #ececec; padding: 4px 8px; border-radius: 4px; display: inline-block;">${quantity}</span>`;
+                                    `<span class="quantity-history" data-id="${product.id}" style="cursor:pointer; border: 1px solid #ececec; padding: 4px 8px; border-radius: 4px; display: inline-block;">${formattedQty}</span>`;
                                 if (isLowStock) {
                                     quantityDisplay += ` <span class="badge bg-danger ms-1">Low Stock</span>`;
                                 }
@@ -1192,7 +1203,7 @@
                                             </div>
                                         </div>
                                         <div class="pl-m-foot">
-                                            <div class="pl-m-stat quantity-history" data-id="${product.id}"><span>Qty</span><strong class="${isLowStock ? 'text-danger' : ''}">${quantity}</strong></div>
+                                            <div class="pl-m-stat quantity-history" data-id="${product.id}"><span>Qty</span><strong class="${isLowStock ? 'text-danger' : ''}">${formattedQty}</strong></div>
                                             ${brandName && brandName !== 'N/A' ? `<div class="pl-m-stat"><span>Brand</span><strong>${escapeHtmlText(brandName)}</strong></div>` : ''}
                                             <div class="pl-m-stat pl-m-cat"><span>Category</span><strong>${escapeHtmlText(categoryName)}</strong></div>
                                             <div class="pl-m-acts">
