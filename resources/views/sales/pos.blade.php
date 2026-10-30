@@ -764,11 +764,19 @@
             color: #10b981 !important;
         }
 
-        /* --- Payment Methods (Modern Compact Cards) --- */
+        /* --- Payment Methods (Sticky Bottom Panel) --- */
         .payment_panel {
+            position: sticky;
+            bottom: 0;
+            background: #ffffff;
+            z-index: 100;
             margin-top: 4px !important;
-            padding-top: 6px !important;
+            padding-top: 8px !important;
+            padding-bottom: 4px !important;
             border-top: 1px dashed var(--pos-border);
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
         }
         .payment_panel_header {
             display: flex;
