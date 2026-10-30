@@ -2729,7 +2729,8 @@
                                     if (result.isConfirmed) {
                                         window.open("/sales/invoice/pdf/" + orderId,
                                             "_blank");
-                                        window.location.href = "/sales-invoice/" + orderId;
+                                        // Removed redirect - user stays on same page after order completion
+                                        // window.location.href = "/sales-invoice/" + orderId;
                                     }
                                 });
                                 // Reset form
