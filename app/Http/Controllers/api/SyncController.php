@@ -17,13 +17,22 @@ class SyncController extends Controller
     /**
      * Map payload table names to their respective Eloquent Models.
      */
+    /**
+     * Map payload table names to their respective Eloquent Models.
+     * Covers 100% of all ERP & Hotel operational tables.
+     */
     protected $modelMap = [
-        // Masters
+        // Masters & Config
         'categories' => \App\Models\Category::class,
         'brands' => \App\Models\Brand::class,
         'quantity_types' => \App\Models\QuantityType::class,
         'taxes' => \App\Models\TaxRate::class,
+        'currency' => \App\Models\Currency::class,
+        'discounts' => \App\Models\Discounts::class,
         'settings' => \App\Models\Setting::class,
+        'smtp_settings' => \App\Models\SmtpSetting::class,
+        'branches' => \App\Models\Branch::class,
+        'location_settings' => \App\Models\LocationSettingsModel::class,
 
         // Hotel & Restaurant Tables & Reservations
         'table_no' => \App\Models\Table_no::class,
@@ -45,18 +54,55 @@ class SyncController extends Controller
         // Purchases & Vendors
         'purchases' => \App\Models\Purchases::class,
         'purchase_invoice' => \App\Models\PurchaseInvoice::class,
+        'ai_purchase_bills' => \App\Models\AiPurchaseBill::class,
 
         // Custom Invoices
         'custom_invoice' => \App\Models\CustomInvoice::class,
         'custom_invoice_item' => \App\Models\CustomInvoiceItem::class,
 
-        // Expenses
+        // Accounting, Banking & Notes
         'expenses' => \App\Models\Expense::class,
         'expense_types' => \App\Models\ExpenseType::class,
+        'bank_master' => \App\Models\BankMaster::class,
+        'credit_notes_type' => \App\Models\CreditNotesType::class,
+        'credit_note_items' => \App\Models\CreditNoteItem::class,
+        'debit_notes_type' => \App\Models\DebitNotesType::class,
+        'debit_note_items' => \App\Models\DebitNoteItem::class,
 
         // Deliveries
         'deliveries' => \App\Models\Delivery::class,
         'delivery_items' => \App\Models\DeliveryItem::class,
+
+        // HR, Attendance & Payroll
+        'department' => \App\Models\DepartmentModel::class,
+        'designation' => \App\Models\DesignationModel::class,
+        'attendance' => \App\Models\Attendance::class,
+        'attendances' => \App\Models\AttendanceModel::class,
+        'log_attendance' => \App\Models\LogAttendance::class,
+        'advance_payments' => \App\Models\AdvancePayment::class,
+        'leaves' => \App\Models\LeaveModel::class,
+        'leave_type' => \App\Models\LeaveTypeModel::class,
+        'holiday_calendar' => \App\Models\HolidayCalendarModel::class,
+        'payroll' => \App\Models\PayrollModel::class,
+        'salaries' => \App\Models\Salary::class,
+        'company_rules' => \App\Models\CompanyRulesModel::class,
+        'face_login_audits' => \App\Models\FaceLoginAudit::class,
+
+        // CRM & Notifications
+        'appointments' => \App\Models\Appointment::class,
+        'notifications' => \App\Models\Notification::class,
+        'whatsapp_message_templates' => \App\Models\WhatsAppMessageTemplate::class,
+        'facebook_app_configurations' => \App\Models\FacebookAppConfiguration::class,
+
+        // Plans & Licenses
+        'plans' => \App\Models\Plan::class,
+        'plan_features' => \App\Models\PlanFeature::class,
+        'product_licenses' => \App\Models\ProductLicense::class,
+        'product_license_domains' => \App\Models\ProductLicenseDomain::class,
+
+        // RBAC Modules & Permissions
+        'modules' => \App\Models\Module::class,
+        'user_permissions' => \App\Models\UserPermission::class,
     ];
 
     /**
@@ -761,7 +807,56 @@ class SyncController extends Controller
                 }
             }
 
-            // 11. Handle Offline Deletions (deleted_records and deleted_ids)
+            // 11. Dynamic Universal Push for all remaining ERP tables & modules
+            $handledManually = [
+                'users', 'user_details', 'categories', 'brands', 'quantity_types',
+                'table_no', 'products', 'orders', 'order_items', 'payment_store',
+                'table_reservations', 'expenses', 'purchases', 'purchase_invoice'
+            ];
+
+            foreach ($this->modelMap as $tableKey => $modelClass) {
+                if (in_array($tableKey, $handledManually, true)) {
+                    continue;
+                }
+
+                if (!empty($payload[$tableKey]) && is_array($payload[$tableKey])) {
+                    if (!isset($syncedMappings[$tableKey])) {
+                        $syncedMappings[$tableKey] = [];
+                    }
+
+                    $modelInstance = new $modelClass();
+                    $fillable = $modelInstance->getFillable();
+
+                    foreach ($payload[$tableKey] as $recordData) {
+                        $clientUuid = $recordData['client_uuid'] ?? (string) Str::uuid();
+                        $model = $modelClass::firstOrNew(['client_uuid' => $clientUuid]);
+
+                        foreach ($recordData as $key => $value) {
+                            if (in_array($key, $fillable, true)) {
+                                $model->{$key} = $value;
+                            }
+                        }
+
+                        $model->client_uuid = $clientUuid;
+                        if (in_array('branch_id', $fillable, true) && empty($model->branch_id)) {
+                            $model->branch_id = $recordData['branch_id'] ?? $branchId;
+                        }
+                        if (isset($recordData['isDeleted']) && in_array('isDeleted', $fillable, true)) {
+                            $model->isDeleted = (int)$recordData['isDeleted'];
+                        }
+
+                        $model->save();
+
+                        $syncedMappings[$tableKey][] = [
+                            'local_id' => $recordData['local_id'] ?? null,
+                            'remote_id' => $model->id,
+                            'client_uuid' => $clientUuid,
+                        ];
+                    }
+                }
+            }
+
+            // 12. Handle Offline Deletions (deleted_records and deleted_ids)
             if (!empty($payload['deleted_records'])) {
                 foreach ($payload['deleted_records'] as $tableName => $records) {
                     $modelClass = $this->modelMap[$tableName] ?? null;
