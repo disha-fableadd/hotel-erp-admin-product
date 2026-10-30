@@ -56,9 +56,8 @@
 
         /* --- Category Tabs (Single Row with Horizontal Scrollbar) --- */
         .tabs_wrapper {
-            width: 100%;
-            overflow: hidden;
-            margin-bottom: 12px;
+            overflow: visible;
+            min-width: 0;
         }
         .tabs_wrapper ul.tabs {
             display: flex !important;
@@ -66,9 +65,10 @@
             align-items: center !important;
             gap: 10px !important;
             padding: 4px 4px 10px !important;
-            margin: 0 !important;
+            margin: 0 0 10px 0 !important;
             list-style: none !important;
             width: 100% !important;
+            max-width: 100% !important;
             overflow-x: auto !important;
             overflow-y: hidden !important;
             -webkit-overflow-scrolling: touch;
