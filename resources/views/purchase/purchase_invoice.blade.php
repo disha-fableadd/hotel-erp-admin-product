@@ -74,6 +74,11 @@
     }
 </style>
 <div class="content">
+    @if (isset($invoice) && $invoice->aiBill)
+        <div class="alert alert-info">
+            <a href="{{ route('purchase.ai-bill.saved', $invoice->id) }}">View original bill, purchase date and all extracted details</a>
+        </div>
+    @endif
     <div class="page-header">
         <div class="page-title">
             <h4>Purchase Invoice</h4>

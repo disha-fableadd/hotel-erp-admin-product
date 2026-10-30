@@ -39,6 +39,11 @@ class PurchaseInvoice extends Model
     {
         return $this->belongsTo(User::class, 'vendor_id');
     }
+
+    public function aiBill()
+    {
+        return $this->hasOne(AiPurchaseBill::class, 'purchase_invoice_id');
+    }
     public function tax()
     {
         return $this->belongsTo(TaxRate::class, 'tax_rate_id');

@@ -172,11 +172,16 @@
 </style>
 
 <div class="content">
-     <div class="page-header">
+     <div class="page-header purchase-entry-header">
             <div class="page-title">
                 <h4>Add Purchase</h4>
             </div>
             <div class="gst-header">
+            @if (app('hasPermission')(3, 'add'))
+                <a href="{{ route('purchase.ai-bill') }}" class="btn btn-sm ai-bill-upload-btn">
+                    <i class="fas fa-file-invoice" aria-hidden="true"></i> AI Bill Upload
+                </a>
+            @endif
 
             <label class="custom-radio-label">
                 <input type="radio" name="gst_option" id="without_gst" value="without" checked />

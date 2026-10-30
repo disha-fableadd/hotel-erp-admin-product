@@ -4,12 +4,17 @@ namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\AiPurchaseBill;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\Purchase\PurchaseBillVisionService;
+use App\Services\Purchase\ProductMatcher;
+use App\Services\Purchase\SaveAiPurchaseBill;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class PurchaseAiBillController extends Controller
@@ -24,6 +29,7 @@ class PurchaseAiBillController extends Controller
             'categories' => $this->categories($branchId),
             'products' => $this->products($branchId),
             'aiReady' => $aiReady,
+            'recentBills' => AiPurchaseBill::where('branch_id', $branchId)->whereNotNull('purchase_invoice_id')->latest()->limit(20)->get(),
         ]);
     }
 
@@ -49,23 +55,18 @@ class PurchaseAiBillController extends Controller
         $branchId = $this->branchId();
         $products = $this->products($branchId);
         $vendors = $this->vendors($branchId);
-        $categories = $this->categories($branchId);
 
         $matchedVendor = $this->matchVendor($extracted['vendor_name'], $extracted['vendor_phone'], $vendors);
-        $defaultCategory = $categories->first();
 
         $items = [];
         foreach ($extracted['items'] as $item) {
-            $quantity = $this->stockQuantity($item['weight'], $item['bags']);
+            $quantity = $item['quantity'];
             $amount = (float) $item['amount'];
-            if ($amount <= 0 && $item['rate'] > 0 && $quantity > 0) {
-                $amount = round($item['rate'] * $quantity, 2);
-            }
 
             $unitPrice = $quantity > 0 ? round($amount / $quantity, 4) : (float) $item['rate'];
-            $match = $this->matchProduct($item['name'], $item['hsn'], $products);
+            $match = app(ProductMatcher::class)->match($item['name'], $item['unit'], $products);
 
-            $items[] = [
+            $items[] = array_merge($item, [
                 'name' => $item['name'],
                 'hsn' => $item['hsn'],
                 'bags' => $item['bags'],
@@ -75,21 +76,34 @@ class PurchaseAiBillController extends Controller
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'product_id' => $match['id'] ?? null,
-                'category_id' => $match['category_id'] ?? ($defaultCategory['id'] ?? null),
+                'category_id' => $match['category_id'] ?? null,
                 'current_stock' => $match['quantity'] ?? 0,
                 'action' => $match ? 'update' : 'create',
-            ];
+            ]);
         }
 
         $grandTotal = (float) $extracted['grand_total'];
         $itemsTotal = round(array_sum(array_column($items, 'amount')), 2);
-        if ($grandTotal <= 0) {
-            $grandTotal = $itemsTotal;
+
+        $token = (string) Str::uuid();
+        $path = $request->file('bill')->store('ai-bills/'.$branchId, 'local');
+        try {
+            AiPurchaseBill::create([
+                'branch_id' => $branchId, 'created_by' => Auth::id(),
+                'draft_token' => $token, 'file_path' => $path,
+                'original_name' => $request->file('bill')->getClientOriginalName(),
+                'extraction' => $extracted,
+            ]);
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($path);
+            throw $e;
         }
 
         return response()->json([
             'success' => true,
-            'header' => [
+            'draft_token' => $token,
+            'warnings' => $extracted['warnings'],
+            'header' => array_merge(collect($extracted)->except('items', 'warnings', 'source_payload')->all(), [
                 'vendor_id' => $matchedVendor['id'] ?? null,
                 'vendor_name' => $extracted['vendor_name'],
                 'vendor_phone' => $extracted['vendor_phone'],
@@ -100,9 +114,59 @@ class PurchaseAiBillController extends Controller
                 'grand_total' => $grandTotal,
                 'items_total' => $itemsTotal,
                 'amount_in_words' => $extracted['amount_in_words'],
-            ],
+            ]),
             'items' => $items,
         ]);
+    }
+
+    public function save(Request $request, SaveAiPurchaseBill $save): JsonResponse
+    {
+        $data = $request->validate([
+            'draft_token' => 'required|uuid', 'status' => 'required|in:pending,completed',
+            'header' => 'required|array', 'header.bill_no' => 'required|string|max:255',
+            'header.bill_date' => 'required|date_format:Y-m-d',
+            'header.vendor_id' => 'nullable|integer', 'header.vendor_name' => 'required_without:header.vendor_id|nullable|string|max:255',
+            'header.vendor_phone' => 'nullable|string|max:50',
+            'header.document_type' => 'required|in:purchase,service,utility,credit_note,other',
+            'header.grand_total' => 'required|numeric|min:0|max:99999999.99',
+            'header.currency' => 'required|in:INR', 'header.extra_fields' => 'nullable|array',
+            'header.remark' => 'nullable|string|max:5000',
+            'header.extra_fields.discount_total' => 'nullable|numeric|min:0|max:99999999.99',
+            'header.extra_fields.shipping_total' => 'nullable|numeric|min:0|max:99999999.99',
+            'header.extra_fields.taxes' => 'nullable|array',
+            'header.extra_fields.taxes.*.name' => 'required|string|max:255',
+            'header.extra_fields.taxes.*.rate' => 'required|numeric|min:0|max:100',
+            'header.extra_fields.taxes.*.amount' => 'required|numeric|min:0|max:99999999.99',
+            'items' => 'required|array|min:1|max:500', 'items.*' => 'required|array',
+            'items.*.name' => 'required|string|max:255', 'items.*.product_id' => 'nullable|integer',
+            'items.*.category_id' => 'nullable|integer', 'items.*.category' => 'nullable|string|max:255',
+            'items.*.hsn' => 'nullable|string|max:255', 'items.*.unit' => 'required|string|max:100',
+            'items.*.quantity' => 'required|numeric|min:0.0001|max:99999999|decimal:0,4',
+            'items.*.rate' => 'required|numeric|min:0|max:99999999.99',
+            'items.*.amount' => 'required|numeric|min:0|max:99999999.99',
+            'items.*.track_stock' => 'required|boolean', 'items.*.extra_fields' => 'nullable|array',
+        ]);
+        // Laravel filters array keys when nested rules exist. Keep unfamiliar
+        // extra fields after validating the container and known financial keys.
+        $data['header']['extra_fields'] = $request->input('header.extra_fields', []);
+        $invoice = $save->save($data, $this->branchId(), (int) Auth::id());
+        return response()->json([
+            'success' => true, 'purchase_id' => $invoice->id,
+            'message' => 'Bill saved. Products and stock updated; all reviewed details and the original bill are retained.',
+            'redirect' => route('purchase.ai-bill.saved', $invoice->id),
+        ]);
+    }
+
+    public function saved(int $id): View
+    {
+        $bill = AiPurchaseBill::where('branch_id', $this->branchId())->where('purchase_invoice_id', $id)->firstOrFail();
+        return view('purchase.ai-bill-saved', ['bill' => $bill]);
+    }
+
+    public function original(int $id)
+    {
+        $bill = AiPurchaseBill::where('branch_id', $this->branchId())->findOrFail($id);
+        return Storage::disk('local')->download($bill->file_path, $bill->original_name);
     }
 
     private function branchId(): int
@@ -160,19 +224,17 @@ class PurchaseAiBillController extends Controller
      */
     private function products(int $branchId)
     {
-        return Product::where('isDeleted', 0)
-            ->where('status', 'active')
-            ->where(function ($query) use ($branchId) {
-                $query->where('branch_id', $branchId)->orWhereNull('branch_id');
-            })
+        return Product::with('quantityType')->where('isDeleted', 0)
+            ->where('branch_id', $branchId)
             ->orderBy('name')
-            ->get(['id', 'name', 'category_id', 'hsn_code', 'quantity', 'price', 'purchase_price'])
+            ->get(['id', 'name', 'category_id', 'hsn_code', 'quantity', 'price', 'purchase_price', 'quantity_type_id'])
             ->map(fn (Product $product) => [
                 'id' => $product->id,
                 'name' => $product->name,
                 'category_id' => $product->category_id,
                 'hsn_code' => $product->hsn_code,
                 'quantity' => (float) $product->quantity,
+                'unit' => $product->quantityType?->quantity_type ?? '',
                 'price' => (float) ($product->purchase_price ?: $product->price),
             ])
             ->values();
@@ -184,83 +246,11 @@ class PurchaseAiBillController extends Controller
      */
     private function matchVendor(string $name, string $phone, $vendors): ?array
     {
-        if ($phone !== '') {
-            $byPhone = $vendors->first(function ($vendor) use ($phone) {
-                return preg_replace('/\D+/', '', (string) $vendor['phone']) === $phone;
-            });
-            if ($byPhone) {
-                return $byPhone;
-            }
-        }
-
-        $needle = $this->normalizeName($name);
-        if ($needle === '') {
-            return null;
-        }
-
-        $best = null;
-        $bestScore = 0;
-        foreach ($vendors as $vendor) {
-            similar_text($needle, $this->normalizeName((string) $vendor['name']), $percent);
-            if ($percent > $bestScore) {
-                $bestScore = $percent;
-                $best = $vendor;
-            }
-        }
-
-        return $bestScore >= 72 ? $best : null;
-    }
-
-    /**
-     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $products
-     * @return array<string, mixed>|null
-     */
-    private function matchProduct(string $name, string $hsn, $products): ?array
-    {
-        $needle = $this->normalizeName($name);
-        $hsn = trim($hsn);
-
-        $best = null;
-        $bestScore = 0;
-
-        foreach ($products as $product) {
-            $haystack = $this->normalizeName((string) $product['name']);
-            $score = 0;
-            similar_text($needle, $haystack, $percent);
-            $score = (float) $percent;
-
-            if ($needle !== '' && ($haystack !== '' && (str_contains($haystack, $needle) || str_contains($needle, $haystack)))) {
-                $score = max($score, 88);
-            }
-
-            if ($hsn !== '' && trim((string) ($product['hsn_code'] ?? '')) === $hsn) {
-                $score += 12;
-            }
-
-            if ($score > $bestScore) {
-                $bestScore = $score;
-                $best = $product;
-            }
-        }
-
-        return $bestScore >= 78 ? $best : null;
-    }
-
-    private function stockQuantity(float $weight, float $bags): float
-    {
-        if ($weight > 0) {
-            return $weight;
-        }
-
-        return $bags > 0 ? $bags : 1;
-    }
-
-    private function normalizeName(string $value): string
-    {
-        $value = mb_strtolower($value);
-        $value = preg_replace('/[\p{Gujarati}\p{Devanagari}]+/u', ' ', $value) ?? $value;
-        $value = preg_replace('/[^a-z0-9]+/i', ' ', $value) ?? $value;
-
-        return trim(preg_replace('/\s+/', ' ', $value) ?? $value);
+        $matcher = app(ProductMatcher::class);
+        $matches = $vendors->filter(function ($vendor) use ($name, $phone, $matcher) {
+            return ($name !== '' && $matcher->normalize($vendor['name']) === $matcher->normalize($name))
+                || ($phone !== '' && preg_replace('/\D+/', '', (string) $vendor['phone']) === $phone);
+        });
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 }
