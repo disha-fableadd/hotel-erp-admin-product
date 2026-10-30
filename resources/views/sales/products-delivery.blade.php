@@ -215,7 +215,7 @@
                                     </span>
                                     @endif -->
                                     <a class="me-3" href="{{ route('sales.invoice.pdf', $order->id) }}" target="_blank" title="Download PDF">
-                                        <img src="{{ asset('admin/assets/img/icons/pdf.svg') }}" alt="pdf">
+                                        <img src="{{ env('ImagePath') . 'admin/assets/img/icons/pdf.svg' }}" alt="pdf">
                                     </a>
                                 </td>
                             </tr>

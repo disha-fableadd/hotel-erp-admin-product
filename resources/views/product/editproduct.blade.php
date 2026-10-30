@@ -66,12 +66,39 @@
             color: #fff;
         }
     }
+    .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.page-header .page-btn .btn-back {
+    background: #ff9f43;
+    color: #fff;
+    border: 0;
+    border-radius: 7px;
+    padding: 9px 18px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.page-header .page-btn .btn-back:hover {
+    background: #ff8f1f;
+    color: #fff;
+}
 </style>
 <div class="content">
     <div class="page-header">
         <div class="page-title">
             <h4>Edit Product</h4>
         </div>
+        <div class="page-btn">
+        <a href="{{ route('product.list') }}" class="btn btn-added">
+            <i class="fa fa-arrow-left me-1"></i> Back
+        </a>
+    </div>
     </div>
 
     <div class="card">
@@ -81,7 +108,7 @@
                 <div class="row">
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Product Name</label>
+                            <label>Product Name <span class="text-danger field-required-mark">*</span></label>
                             <input type="text" name="name" id="name">
                             <span class="error_name text-danger"></span>
                         </div>
@@ -89,7 +116,7 @@
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
                             <div class="product-label-action">
-                                <label>Category</label>
+                                <label>Category <span class="text-danger field-required-mark">*</span></label>
                                 <button type="button" class="btn-add-inline open-custom-modal" data-type="category">Add Category</button>
                             </div>
                             <select class="select" name="category_id" id="category_id">
@@ -113,7 +140,7 @@
 
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>SKU</label>
+                            <label>SKU <span class="text-danger field-required-mark">*</span></label>
                             <input type="number" name="SKU" id="SKU" class="form-control" step="1" min="0">
                             <span class="error_SKU text-danger"></span>
                         </div>
@@ -121,7 +148,7 @@
 
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Quantity</label>
+                            <label>Quantity <span class="text-danger field-required-mark">*</span></label>
                             <input type="number" name="quantity" id="quantity" class="form-control" step="1" min="0">
                             <span class="error_quantity text-danger"></span>
                         </div>
@@ -141,7 +168,7 @@
                     
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Price</label>
+                            <label>Price <span class="text-danger field-required-mark">*</span></label>
                             <input type="number" name="price" id="price" class="form-control" step="0.01" min="0">
                             <span class="error_price text-danger"></span>
                         </div>
