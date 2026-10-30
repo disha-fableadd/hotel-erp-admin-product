@@ -212,6 +212,11 @@ $user = auth()->user();
                             <i class="fas fa-shopping-bag"></i> Purchases
                         </a></li>
                     @endif
+                    @if(tenant_has_module('Purchases') && app('hasPermission')(3, 'add'))
+                        <li><a class="dropdown-item hr-dropdown-item {{ request()->routeIs('purchase.ai-bill*') ? 'active' : '' }}" href="{{ route('purchase.ai-bill') }}">
+                            <i class="fas fa-file-invoice" aria-hidden="true"></i> AI Bill Upload
+                        </a></li>
+                    @endif
                     @if(app('hasPermission')(17, 'view'))
                         <li><a class="dropdown-item hr-dropdown-item" href="{{ route('inventory.list') }}">
                             <i class="fa fa-book"></i> Manage Inventory
@@ -341,6 +346,11 @@ $user = auth()->user();
             --}}
 
             <!-- New Order Button -->
+            @if(tenant_has_module('Purchases') && app('hasPermission')(3, 'add'))
+                <a href="{{ route('purchase.ai-bill') }}" class="btn btn-sm ai-bill-upload-btn d-none d-lg-inline-flex me-3" @if(request()->routeIs('purchase.ai-bill*')) aria-current="page" @endif>
+                    <i class="fas fa-file-invoice" aria-hidden="true"></i> AI Bill Upload
+                </a>
+            @endif
             @if(in_array($user->role, ['sales-manager', 'inventory-manager', 'admin']) || ($user->role === 'staff' && (app('hasPermission')(2, 'view') || app('hasPermission')(2, 'add'))))
             <div class="dropdown me-3">
                 <button class="btn btn-sm d-flex align-items-center justify-content-center header-new-order-button" type="button" id="newOrderDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="height: 38px; background-color: #ff9f43; color: white; border: none; border-radius: 5px; padding: 0 15px; font-weight: 500; font-size: 14px; gap: 8px; box-shadow: 0 2px 6px rgba(255, 159, 67, 0.2);">

@@ -36,6 +36,47 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/css/style.css' }}">
     @stack('css')
+    <style>
+        .btn.ai-bill-upload-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 38px;
+            padding: 8px 15px;
+            border: 1px solid #ff9f43;
+            border-radius: 5px;
+            background: #ff9f43;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 20px;
+            white-space: nowrap;
+            transition: background-color .2s, border-color .2s;
+        }
+        .btn.ai-bill-upload-btn:hover,
+        .btn.ai-bill-upload-btn:focus-visible {
+            background: #1b2850;
+            border-color: #1b2850;
+            color: #fff;
+        }
+        .btn.ai-bill-upload-btn:focus-visible {
+            outline: 2px solid #ff9f43;
+            outline-offset: 3px;
+        }
+        .purchase-page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .purchase-page-actions .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            min-height: 38px; padding: 8px 15px; border-radius: 5px; line-height: 20px;
+        }
+        .purchase-page-actions .btn + .btn { margin-left: 0; }
+        .purchase-entry-header { flex-wrap: wrap; gap: 16px; }
+        .purchase-entry-header .gst-header { flex-wrap: wrap; gap: 16px; }
+        @media (max-width: 575px) {
+            .purchase-page-actions { width: 100%; }
+            .purchase-page-actions .btn { flex: 1; }
+        }
+    </style>
 </head>
 
 <body style="min-height: 100vh; display: flex; flex-direction: column;">

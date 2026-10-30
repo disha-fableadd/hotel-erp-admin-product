@@ -851,11 +851,14 @@
                 <h4>Purchases List</h4>
                 <!-- <h6>Manage your purchases</h6> -->
             </div>
-            <div class="page-btn">
+            <div class="page-btn purchase-page-actions">
                 <!-- <a href="javascript:void(0);" class="btn btn-sm btn-warning text-white me-2" id="open-import-modal-top">
                     <i class="fas fa-upload"></i> Import
                 </a> -->
                 @if (app('hasPermission')(3, 'add'))
+                    <a href="{{ route('purchase.ai-bill') }}" class="btn btn-sm ai-bill-upload-btn">
+                        <i class="fas fa-file-invoice" aria-hidden="true"></i> AI Bill Upload
+                    </a>
                     <a href="{{ route('purchase.add') }}" class="btn btn-sm btn-added">
                         <img src="{{ env('ImagePath') . 'admin/assets/img/icons/plus.svg' }}" alt="img">New Purchases
                     </a>
@@ -925,9 +928,6 @@
                             <button id="exportPdf" class="btn btn-sm btn-danger">
                                 <i class="fas fa-file-pdf"></i> PDF
                             </button>
-                            <a href="{{ route('purchase.ai-bill') }}" class="btn btn-sm btn-added d-flex align-items-center justify-content-center" style="min-height: 36px;">
-                        <i class="fas fa-magic me-1"></i> AI Bill Upload
-                    </a>
                         </div>
                     </div>
                 </div>

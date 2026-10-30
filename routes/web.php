@@ -302,6 +302,9 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::get('/import-purchase', [PurchaseController::class, 'import_purchase'])->name('purchase.import');
     Route::get('/ai-purchase-bill', [\App\Http\Controllers\admin\PurchaseAiBillController::class, 'index'])->name('purchase.ai-bill');
     Route::post('/ai-purchase-bill/parse', [\App\Http\Controllers\admin\PurchaseAiBillController::class, 'parse'])->name('purchase.ai-bill.parse');
+    Route::post('/ai-purchase-bill/save', [\App\Http\Controllers\admin\PurchaseAiBillController::class, 'save'])->name('purchase.ai-bill.save');
+    Route::get('/ai-purchase-bill/saved/{id}', [\App\Http\Controllers\admin\PurchaseAiBillController::class, 'saved'])->name('purchase.ai-bill.saved');
+    Route::get('/ai-purchase-bill/original/{id}', [\App\Http\Controllers\admin\PurchaseAiBillController::class, 'original'])->name('purchase.ai-bill.original');
     Route::get('/purchase-report', [PurchaseController::class, 'purchase_report'])->name('purchase.report');
     // Route::get('/purchase-details', [PurchaseController::class, 'purchase_details'])->name('purchase.details');
     Route::get('/purchase-details', [PurchaseController::class, 'purchaseDetails'])->name('purchase.details');
