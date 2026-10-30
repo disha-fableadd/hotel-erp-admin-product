@@ -26,7 +26,7 @@
                     <!-- Customer Name -->
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Table Name</label>
+                            <label>Table Name <span class="text-danger field-required-mark">*</span></label>
                             <input type="text" name="customer_name" id="customer_name" class="form-control">
                             <div class="text-danger error-customer_name"></div>
                         </div>
@@ -35,7 +35,7 @@
                     <!-- Email -->
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Table Type</label>
+                            <label>Table Type <span class="text-danger field-required-mark">*</span></label>
                        
                             <select id="email" name="email" style="z-index:1;"
                                 class="form-control select22">

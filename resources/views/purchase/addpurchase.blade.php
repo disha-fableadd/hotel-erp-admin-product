@@ -197,7 +197,7 @@
 
                 <div class="col-lg-6 col-sm-12 col-6">
                     <div class="form-group">
-                        <label>Vendor Name</label>
+                        <label>Vendor Name <span class="text-danger field-required-mark">*</span></label>
                         <select id="vendor_name" name="vendor_id" class="form-control select2 vendor-select">
                             <option value="">Select Vendor</option>
                             @foreach ($vendors as $vendor)
@@ -246,7 +246,7 @@
                     </div> -->
                     <div class="col-lg-3 col-sm-12 col-6">
                         <div class="form-group">
-                            <label>Product Name</label>
+                            <label>Product Name <span class="text-danger field-required-mark">*</span></label>
                             <select id="product_name" name="product_name[]" class="form-control select2 product-select">
                                 <option value="">Product Name</option>
                                 @foreach ($products as $product)
@@ -262,7 +262,7 @@
                     </div>
                     <div class="col-lg-2 col-sm-12 col-6">
                         <div class="form-group">
-                            <label>Price</label>
+                            <label>Price <span class="text-danger field-required-mark">*</span></label>
                             <input type="number" name="price[]" class="form-control price-input"
                                 placeholder="Enter Price" min="0" oninput="this.value = this.value < 0 ? 0 : this.value">
                             <span class="error text-danger"></span>
@@ -312,7 +312,7 @@
                 </div>
                 <div class="col-lg-3 col-sm-6 col-6">
                     <div class="form-group">
-                        <label>Purchase Status</label>
+                        <label>Purchase Status <span class="text-danger field-required-mark">*</span></label>
                         <select name="status" class="form-control">
                             <option value="">Choose Status</option>
                             <option value="completed">Completed</option>

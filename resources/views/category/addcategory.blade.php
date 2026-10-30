@@ -18,7 +18,7 @@
                     <!-- <div class="col-12"> -->
                     <div class="col-lg-12">
                         <div class="form-group">
-                            <label for="category_name">Category Name</label>
+                            <label for="category_name">Category Name <span class="text-danger field-required-mark">*</span></label>
                             <input type="text" name="name" id="name" class="form-control" required>
                             <span class="error_name text-danger"></span>
                         </div>
