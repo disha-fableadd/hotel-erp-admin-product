@@ -605,6 +605,7 @@
                                     {{ $subtotal }}
                                 </td>
                             </tr>
+                            @if ((float)($discountPercent ?? 0) > 0)
                             <tr>
                                 <td style="padding:  0 0 5px 0;">Discount :</td>
                                 <td style="text-align: right; padding:  0 0 5px 0;">
@@ -617,6 +618,7 @@
                                     {{ $formattedAfterDiscount }}
                                 </td>
                             </tr>
+                            @endif
                             <tr>
                                 <td style="padding: 0 0 5px 0;">Grand Total :</td>
                                 <td style="text-align: right; padding: 0 0 5px 0;">

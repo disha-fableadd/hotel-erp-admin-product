@@ -359,7 +359,7 @@
                                     <input type="hidden" name="subtotal" value="" class="tax-hidden">
                                 </li>
 
-                                <li>
+                                <li class="discount-summary-row" style="display: none;">
                                     <h5>Discount Amount</h5>
                                     <h6 class="discount-amount">
                                         @if ($currency_position === 'right')
@@ -371,7 +371,7 @@
                                     <input type="hidden" name="discount_amount" value="0.00" class="tax-hidden">
                                 </li>
 
-                                <li>
+                                <li class="price-after-discount-row" style="display: none;">
                                     <h5>Price After Discount</h5>
                                     <h6 class="price-after-discount">
                                         @if ($currency_position === 'right')
@@ -753,6 +753,12 @@
                         currencyPosition));
                     $("input[name='price_after_discount']").val(priceAfterDiscount.toFixed(2));
 
+                    if (discountAmount > 0) {
+                        $(".discount-summary-row, .price-after-discount-row").show();
+                    } else {
+                        $(".discount-summary-row, .price-after-discount-row").hide();
+                    }
+
                     $(".total-value h6").html(formatCurrency(total.toFixed(2), currencySymbol, currencyPosition));
                     $(".btn-totallabel h6").html('Total Amount : ' + formatCurrency(total.toFixed(2),
                         currencySymbol, currencyPosition));
@@ -761,6 +767,7 @@
                 } else {
                     // Reset everything if no subtotal
                     $(".taxList").hide().find("h6").html(formatCurrency("0.00", currencySymbol, currencyPosition));
+                    $(".discount-summary-row, .price-after-discount-row").hide();
                     $(".discount-amount").html(formatCurrency("0.00", currencySymbol, currencyPosition));
                     $(".price-after-discount").html(formatCurrency("0.00", currencySymbol, currencyPosition));
                     $(".total-value h6").html(formatCurrency("0.00", currencySymbol, currencyPosition));
@@ -950,8 +957,10 @@
                 if (discountValue < 0 || discountValue > 100) {
                     $(".error_discount").text("Discount must be between 0-100%").css("color", "red");
                     $(this).val("");
+                    calculateTotals();
                 } else if (isNaN(discountValue)) {
                     $(".error_discount").text("");
+                    calculateTotals();
                 } else {
                     $(".error_discount").text("Discount Applied").css("color", "green");
                     calculateTotals();
