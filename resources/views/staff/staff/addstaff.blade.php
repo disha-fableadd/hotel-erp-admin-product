@@ -95,7 +95,7 @@
             font-weight: 700;
         }
 
-        .staff-form-card .form-group label {
+        .card-body .form-group label {
             color: #111827;
             font-weight: 600;
             font-size: 13px;
@@ -196,13 +196,12 @@
         </div>
 
         <div class="card">
-            <div class="card-body staff-form-card">
+            <div class="card-body">
                 <form id="customerForm" method="POST" enctype="multipart/form-data">
                     @csrf
-                    <h5 class="staff-step-title mb-4">Staff Details</h5>
-                    <div class="row g-3">
+                    <div class="row">
                         <!-- Customer Name -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                             <div class="form-group">
                                 {{-- <label>Staff Name</label> --}}
                                 <label>Staff Name <span class="text-danger">*</span></label>
@@ -213,7 +212,7 @@
                         </div>
 
                         <!-- Username -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                             <div class="form-group">
                                 <label>Username <span class="text-danger">*</span></label>
                                 <div class="input-group">
@@ -230,7 +229,7 @@
                         </div>
 
                         <!-- Email -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                             <div class="form-group">
                                 <label>Email <span class="text-danger">*</span></label>
                                 <input type="email" name="email" id="email" class="form-control" autocomplete="off">
@@ -239,7 +238,7 @@
                         </div>
 
                         <!-- Password -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                             <div class="form-group">
                                 <label>Password <span class="text-danger">*</span></label>
                                 <div class="position-relative">
@@ -255,7 +254,7 @@
                         </div>
 
                         <!-- Phone -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                             <div class="form-group">
                                 <label>Phone <span class="text-danger">*</span></label>
                                 <input type="text" name="phone" id="phone" maxlength="10" pattern="\d{10}"
@@ -266,7 +265,7 @@
                         </div>
 
                         <!-- Country -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                             <div class="form-group">
                                 <label>Country</label>
                                 <input type="text" name="country" id="country" class="form-control">
@@ -275,7 +274,7 @@
                         </div>
 
                         <!-- City -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                             <div class="form-group">
                                 <label>City</label>
                                 <input type="text" name="city" id="city" class="form-control">
@@ -284,7 +283,7 @@
                         </div>
 
                          <!-- Role -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                             <div class="form-group">
                                 <label>Role <span class="text-danger">*</span></label>
                                 <select name="role" id="role" class="form-control select2 role-select">
@@ -297,7 +296,7 @@
                         </div>
 
                         <!-- Department -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                             <div class="form-group">
                                 <label>Department</label>
                                 <select name="department_id" id="department_id" class="form-control select2 department-select">
@@ -311,7 +310,7 @@
                         </div>
 
                         <!-- Designation -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                             <div class="form-group">
                                 <label>Designation</label>
                                 <select name="designation_id" id="designation_id" class="form-control select2 designation-select" disabled>
@@ -323,7 +322,7 @@
 
 
                         <!-- Joining Date -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                             <div class="form-group">
                                 <label>Joining Date <span class="text-danger">*</span></label>
                                 <input type="date" name="joining_date" id="joining_date" class="form-control">
@@ -333,7 +332,7 @@
 
 
                         <!-- Salary -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                             <div class="form-group">
                                 <label>Salary <span class="text-danger">*</span></label>
                                 <input type="number" name="salary" id="salary" class="form-control" min="0"
@@ -366,7 +365,7 @@
                         </div> -->
 
                         <!-- Address -->
-                        <div class="col-lg-4 col-12 staff-basic-step">
+                        <div class="col-lg-3 col-12 staff-basic-step">
                             <div class="form-group">
                                 <label>Address</label>
                                 <textarea name="address" id="address" class="form-control"></textarea>
@@ -375,7 +374,7 @@
                         </div>
 
                         <!-- Avatar Upload -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                             <div class="form-group">
                                 <label>Photo</label>
                                 <div class="image-upload">
@@ -398,7 +397,7 @@
                         </div>
 
                         <!-- Face Photo Upload -->
-                        <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                        <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                             <div class="form-group">
                                 <label>Face Photo <span class="text-muted" style="font-size:11px;font-weight:400;">(upload or use camera)</span></label>
                                 <div class="image-upload">
@@ -773,6 +772,7 @@
             $(".role-select, .department-select, .working-location, .designation-select")
                 .select2({
                     tags: true,
+                    width: '100%',
                 });
             let $gstLoader = $('#gst-loader');
 

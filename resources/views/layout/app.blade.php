@@ -20,7 +20,7 @@
 
     <!-- <link rel="shortcut icon" type="image/x-icon"
         href="{{ optional($settings)->favicon ? rtrim(image_path_base(), '/').'/storage/' . $settings->favicon : 'https://fableadtechnolabs.com/favicon-192x192.webp' }}"> -->
-    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('admin/assets/img/favicon-192x192.webp') }}">
+    <link rel="icon" type="image/webp" href="{{ env('ImagePath').'/admin/assets/img/favicon-192x192.webp?v=2' }}">
     <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/css/bootstrap.min.css' }}">
     <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/plugins/owlcarousel/owl.carousel.min.css' }}">
     <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/plugins/owlcarousel/owl.theme.default.min.css' }}">

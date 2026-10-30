@@ -95,7 +95,7 @@
             font-weight: 700;
         }
 
-        .staff-form-card .form-group label {
+        .card-body .form-group label {
             color: #111827;
             font-weight: 600;
             font-size: 13px;
@@ -135,6 +135,15 @@
             background: #eef2f7;
             color: #1e293b;
         }
+        .staff-submit-loader {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.7);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
     <div class="content">
         {{-- <div class="page-header">
@@ -154,11 +163,10 @@
         </div>
 
         <div class="card">
-            <div class="card-body staff-form-card">
-                <h5 class="staff-step-title mb-4">Staff Details</h5>
-                <div class="row g-3">
+            <div class="card-body">
+                <div class="row">
                     <!-- Customer Name -->
-                    <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                         <div class="form-group">
                             {{-- <label>Staff Name</label> --}}
                             <label>Staff Name <span class="text-danger">*</span></label>
@@ -169,7 +177,7 @@
                     </div>
 
                     <!-- Username -->
-                    <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                         <div class="form-group">
                             <label>Username <span class="text-danger">*</span></label>
                             <div class="input-group">
@@ -186,7 +194,7 @@
                     </div>
 
                     <!-- Email -->
-                    <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                         <div class="form-group">
                             <label>Email <span class="text-danger">*</span></label>
                             <input type="email" name="email" id="email" class="form-control" autocomplete="off">
@@ -195,9 +203,9 @@
                     </div>
 
                     <!-- Password -->
-                    <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                         <div class="form-group ">
-                            <label>Password <span class="text-danger">*</span></label>
+                            <label>Password</label>
                             <div class="position-relative">
                                 <input type="password" name="password" id="password" class="form-control"
                                     autocomplete="new-password" placeholder="Leave blank to keep current">
@@ -211,7 +219,7 @@
                     </div>
 
                     <!-- Phone -->
-                    <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                         <div class="form-group">
                             <label>Phone <span class="text-danger">*</span></label>
                             <input type="text" name="phone" id="phone" maxlength="10" pattern="\d{10}"
@@ -219,7 +227,7 @@
                             <div class="text-danger error-phone"></div>
                         </div>
                     </div>
-                    <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                         <div class="form-group">
                             <label>Country</label>
                             <input type="text" id="country" name="country" class="form-control">
@@ -227,7 +235,7 @@
 
                         </div>
                     </div>
-                    <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                         <div class="form-group">
                             <label>City</label>
                             <input type="text" id="city" name="city" class="form-control">
@@ -235,10 +243,10 @@
 
                         </div>
                     </div>
-                    <div class="col-lg-4 col-md-6 col-12 staff-basic-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-basic-step">
                         <div class="form-group">
                             <label>Role <span class="text-danger">*</span></label>
-                            <select name="role" id="role" class="form-control">
+                            <select name="role" id="role" class="form-control select2 role-select">
                                 <option value="">Select Role</option>
                                 <option value="staff">Staff</option>
                                 <option value="hr">HR</option>
@@ -246,10 +254,10 @@
                             <div class="text-danger error-role"></div>
                         </div>
                     </div>
-                    <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                         <div class="form-group">
                             <label>Department</label>
-                            <select id="department_id" name="department_id" class="form-control">
+                            <select id="department_id" name="department_id" class="form-control select2 department-select">
                                 <option value="">Select Department</option>
                                 @foreach ($departments as $department)
                                     <option value="{{ $department->id }}">{{ $department->department_name }}</option>
@@ -259,10 +267,10 @@
 
                         </div>
                     </div>
-                    <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                         <div class="form-group">
-                            <label>Designation</label>
-                            <select id="designation_id" name="designation_id" class="form-control" disabled>
+                            <label>Designation</label> 
+                            <select id="designation_id" name="designation_id" class="form-control select2 designation-select" disabled>
                                 <option value="">Select Designation</option>
                             </select>
                             <div class="text-danger error-designation_id"></div>
@@ -270,7 +278,7 @@
                         </div>
                     </div>
 
-                    <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                         <div class="form-group">
                             <label>Joining Date <span class="text-danger">*</span></label>
                             <input type="date" id="joining_date" name="joining_date" class="form-control">
@@ -279,7 +287,7 @@
                         </div>
                     </div>
 
-                    <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                         <div class="form-group">
                             <label>Salary <span class="text-danger">*</span></label>
                             <input type="number" id="salary" name="salary" class="form-control" min="0"
@@ -304,7 +312,7 @@
 
                         </div>
                     </div> -->
-                    <div class="col-lg-4 col-12 staff-basic-step">
+                    <div class="col-lg-3 col-12 staff-basic-step">
                         <div class="form-group">
                             <label>Address</label>
                             <textarea id="address" name="address" class="form-control"></textarea>
@@ -312,7 +320,7 @@
 
                         </div>
                     </div>
-                    <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                         <div class="form-group">
                             <label>Photo</label>
                             <div class="image-upload">
@@ -332,7 +340,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-4 col-md-6 col-12 staff-job-step">
+                    <div class="col-lg-3 col-md-6 col-12 staff-job-step">
                         <div class="form-group">
                             <label>Face Photo <span class="text-muted" style="font-size:11px;font-weight:400;">(upload or use camera)</span></label>
                             <div class="image-upload">
@@ -498,11 +506,16 @@
             });
 
             $designation.prop('disabled', false);
+            $designation.prop('disabled', false).trigger('change');
         }
 
         $(document).ready(function() {
             $('#department_id').on('change', function() {
                 populateDesignationOptions($(this).val());
+            });
+            $(".role-select, .department-select, .designation-select").select2({
+                tags: true,
+                width: '100%',
             });
             $('#role').on('change', applyRoleBasedPermissionFilter);
 
@@ -524,6 +537,7 @@
             let url = window.location.pathname;
             let customerId = url.split("/").pop();
             populateDesignationOptions($('#department_id').val(), $('#designation_id').val());
+            
 
             // AJAX call to get customer data
             $.ajax({
@@ -538,7 +552,7 @@
                         let details = customer.details || {};
 
                         // Populate form fields
-                        $("#role").val(customer.role || "");
+                        $("#role").val(customer.role || "").trigger("change");
                         // if (customer.haspermission) {
                         // console.log(customer.haspermission);
                         // console.log(customer.haspermission);
@@ -565,7 +579,7 @@
                         $("#city").val(details.city || ""); // Use empty string if city is null
                         $("#address").val(details.address ||
                             ""); // Use empty string if address is null
-                        $("#department_id").val(details.department_id || "");
+                        $("#department_id").val(details.department_id || "").trigger("change");
                         populateDesignationOptions(details.department_id || "", details.designation_id || "");
 
                         // Format joining_date using UTC components to avoid timezone issues
