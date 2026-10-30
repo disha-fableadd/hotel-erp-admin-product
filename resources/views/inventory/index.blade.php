@@ -11,7 +11,7 @@
         .sorting_1 {
             /* display: flex !important; */
             /* align-items: center !important;
-                                    gap: 5px !important; */
+                                            gap: 5px !important; */
         }
 
         .table-scroll-top {
@@ -935,12 +935,54 @@
                 fetchinventory();
             });
             // ✅ Open Edit Modal
+            // $(document).on("click", ".edit-product", function() {
+            //     var authToken = localStorage.getItem("authToken");
+            //     let productId = $(this).data("id");
+
+            //     // alert(productId)
+            //     // Fetch product details from API
+            //     $.ajax({
+            //         url: "/api/products_edit_inventroy/" + productId,
+            //         type: "GET",
+            //         headers: {
+            //             "Authorization": "Bearer " + authToken
+            //         },
+            //         success: function(response) {
+            //             if (response.status) {
+            //                 let product = response.product;
+            //                 console.log(product);
+
+            //                 // Fill modal fields
+            //                 $("#editProductId").val(product.id);
+            //                 $("#editProductName").val(product.product_name);
+            //                 $("#editProductSku").val(product.sku);
+            //                 $("#editProductPrice").val(product.price);
+            //                 $("#editProductinitialStock").val(product.initial_stock);
+            //                 $("#editProductStock").val(product.current_stock);
+            //                 // Reset stock update section so old values don't show
+            //                 $("input[name='stock_action']").prop("checked", false);
+            //                 $("#stockQuantity").val("");
+            //                 $("#stockQuantityBox").addClass("d-none");
+            //                 $("#stockQuantityLabel").text("Quantity");
+
+            //                 // Show modal
+            //                 $("#editProductModal").modal("show");
+            //             } else {
+            //                 alert("Product not found!");
+            //             }
+            //         }
+            //         $('#editProductModal').on('hidden.bs.modal', function() {
+            //             $("input[name='stock_action']").prop("checked", false);
+            //             $("#stockQuantity").val("");
+            //             $("#stockQuantityBox").addClass("d-none");
+            //         });
+            //     });
+            // });
+            // ✅ Open Edit Modal
             $(document).on("click", ".edit-product", function() {
                 var authToken = localStorage.getItem("authToken");
                 let productId = $(this).data("id");
 
-                // alert(productId)
-                // Fetch product details from API
                 $.ajax({
                     url: "/api/products_edit_inventroy/" + productId,
                     type: "GET",
@@ -950,9 +992,7 @@
                     success: function(response) {
                         if (response.status) {
                             let product = response.product;
-                            console.log(product);
 
-                            // Fill modal fields
                             $("#editProductId").val(product.id);
                             $("#editProductName").val(product.product_name);
                             $("#editProductSku").val(product.sku);
@@ -960,13 +1000,25 @@
                             $("#editProductinitialStock").val(product.initial_stock);
                             $("#editProductStock").val(product.current_stock);
 
-                            // Show modal
+                            // Reset stock update section so old values don't show
+                            $("input[name='stock_action']").prop("checked", false);
+                            $("#stockQuantity").val("");
+                            $("#stockQuantityBox").addClass("d-none");
+                            $("#stockQuantityLabel").text("Quantity");
+
                             $("#editProductModal").modal("show");
                         } else {
                             alert("Product not found!");
                         }
                     }
                 });
+            });
+
+            // Clear stock fields whenever the modal closes
+            $('#editProductModal').on('hidden.bs.modal', function() {
+                $("input[name='stock_action']").prop("checked", false);
+                $("#stockQuantity").val("");
+                $("#stockQuantityBox").addClass("d-none");
             });
 
             // ✅ Handle Save Changes
@@ -978,6 +1030,32 @@
                 var authToken = localStorage.getItem("authToken");
                 let stockAction = $("input[name='stock_action']:checked").val(); // 'add' or 'minus'
                 let stockQuantity = $("#stockQuantity").val(); // the textbox value
+                // Basic validation
+                if (!stockAction) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Select an action",
+                        text: "Please choose Add Quantity or Minus Quantity.",
+                        confirmButtonColor: "#ff9f43"
+                    });
+                    return;
+                }
+                if (!stockQuantity || parseFloat(stockQuantity) <= 0) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Enter quantity",
+                        text: "Please enter a quantity greater than 0.",
+                        confirmButtonColor: "#ff9f43"
+                    });
+                    return;
+                }
+
+                // Define the button so success/error callbacks can use it
+                let $btn = $(this).find("button[type='submit']");
+                let originalText = $btn.html();
+                $btn.html('<span class="spinner-border spinner-border-sm me-1"></span> Saving...').prop(
+                    "disabled", true);
+
                 let formData = {
                     name: $("#editProductName").val(),
                     sku: $("#editProductSku").val(),
@@ -997,12 +1075,42 @@
                     },
                     data: formData,
                     success: function(response) {
+                        $btn.html(originalText).prop("disabled", false);
+
                         if (response.status) {
                             $("#editProductModal").modal("hide");
-                            fetchinventory(); // refresh table
+
+                            Swal.fire({
+                                title: "Success!",
+                                text: response.message || "Stock updated successfully!",
+                                icon: "success",
+                                confirmButtonText: "OK",
+                                confirmButtonColor: "#ff9f43"
+                            }).then(() => {
+                                location.reload();
+                            });
                         } else {
-                            alert("Update failed!");
+                            Swal.fire({
+                                icon: "error",
+                                title: "Error",
+                                text: response.message || "Update failed!",
+                                confirmButtonColor: "#ff9f43"
+                            });
                         }
+                    },
+                    error: function(xhr) {
+                        $btn.html(originalText).prop("disabled", false);
+
+                        let msg = "Something went wrong. Please try again.";
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error",
+                            text: msg,
+                            confirmButtonColor: "#ff9f43"
+                        });
                     }
                 });
             });
