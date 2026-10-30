@@ -221,16 +221,7 @@
     </div>
 </div>
 
-        <label class="custom-radio-label">
-            <input type="radio" name="gst_option" id="with_gst" value="with" />
-            With GST
-        </label>
-
-        <a href="{{ route('purchase.lists') }}" class="btn btn-added">
-            <i class="fa fa-arrow-left me-1"></i> Back
-        </a>
-    </div>
-</div>
+        
     <div class="card">
 
         <div class="card-body">
