@@ -23,21 +23,21 @@
                 <div class="row">
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Supplier Name</label>
+                            <label>Supplier Name <span class="text-danger field-required-mark">*</span></label>
                             <input type="text" name="name" id="supplier_name" class="form-control">
                             <span class="text-danger error-name"></span>
                         </div>
                     </div>
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Email</label>
+                            <label>Email <span class="text-danger field-required-mark">*</span></label>
                             <input type="email" name="email" id="email" class="form-control">
                             <span class="text-danger error-email"></span>
                         </div>
                     </div>
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Phone</label>
+                            <label>Phone <span class="text-danger field-required-mark">*</span></label>
                             <input type="text" name="phone" id="phone" class="form-control">
                             <span class="text-danger error-phone"></span>
                         </div>

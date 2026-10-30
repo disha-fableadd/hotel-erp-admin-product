@@ -487,7 +487,7 @@
                 <div class="modal-body">
                     <input type="hidden" id="quantity_type_id">
                     <div class="form-group mb-3">
-                        <label>Quantity Type Name</label>
+                        <label>Quantity Type Name <span class="text-danger field-required-mark">*</span></label>
                         <input type="text" name="quantity_type" id="quantity_type" class="form-control" placeholder="Enter quantity type">
                         <span class="text-danger" id="quantity_type_error"></span>
                     </div>

@@ -18,7 +18,7 @@
                 <div class="row">
                     <div class="col-lg-12">
                         <div class="form-group">
-                            <label>Brand Name</label>
+                            <label>Brand Name <span class="text-danger field-required-mark">*</span></label>
                             <input type="text" name="name" id="name">
                             <span class="error_name text-danger"></span>
                         </div>
