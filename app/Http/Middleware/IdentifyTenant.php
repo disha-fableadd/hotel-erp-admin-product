@@ -28,6 +28,23 @@ class IdentifyTenant
             return $next($request);
         }
 
+        // Resolve tenant via explicit License Key header or query/body param (e.g. Flutter Desktop app sync)
+        $licenseKey = $request->header('X-License-Key')
+            ?? $request->header('X-Tenant-Key')
+            ?? $request->input('license_key')
+            ?? $request->input('tenant_license');
+
+        if (!empty($licenseKey)) {
+            try {
+                $tenant = $this->tenancy->resolveByLicenseKey($licenseKey);
+                $request->attributes->set('tenant', $tenant);
+                AppViewData::share();
+                return $next($request);
+            } catch (TenantResolutionException $e) {
+                return $this->deny($request, $e);
+            }
+        }
+
         // If a tenant session already exists, resolve and activate that tenant
         if ($request->hasSession() && $request->session()->has('tenant_id')) {
             try {
@@ -87,8 +104,8 @@ class IdentifyTenant
         // If request is on central domain or localhost and not yet authenticated, handle public endpoints
         $centralHost = static::isCentralHost($request->getHost());
 
-        // For public login, logout, face login and attendance endpoints, allow passing through
-        if ($request->is('/') || $request->is('login') || $request->is('logout') || $request->is('auth/*') || $request->is('face-login*') || $request->is('api/face-login-data') || $request->is('iclock/*') || $request->is('attendance/biometric*') || $request->is('face-photo/*')) {
+        // For public login, logout, face login, attendance and sync endpoints, allow passing through
+        if ($request->is('/') || $request->is('login') || $request->is('logout') || $request->is('auth/*') || $request->is('face-login*') || $request->is('api/face-login-data') || $request->is('iclock/*') || $request->is('attendance/biometric*') || $request->is('face-photo/*') || $request->is('api/v1/sync*') || $request->is('api/sync*')) {
             if (! $centralHost) {
                 // If on a client subdomain, resolve that client's branding/theme
                 try {

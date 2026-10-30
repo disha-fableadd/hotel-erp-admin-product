@@ -138,6 +138,41 @@ class TenantManager
     }
 
     /**
+     * Resolve tenant by license key / unique_id (used by Flutter Desktop Sync & POS).
+     */
+    public function resolveByLicenseKey(string $licenseKey, bool $fresh = false): array
+    {
+        $licenseKey = trim($licenseKey);
+        $key = 'license_key:' . sha1(strtoupper($licenseKey) . '|' . config('tenant.product_code') . '|' . config('tenant.project_code'));
+        $cache = $this->lookupCache();
+
+        if (! $fresh && is_array($cached = $cache->get($key))) {
+            return $this->activate($cached);
+        }
+
+        try {
+            $response = $this->client()->post('/resolve-license', array_filter([
+                'license_key' => $licenseKey,
+                'product_code' => config('tenant.product_code'),
+                'project_code' => config('tenant.project_code') ?: null,
+            ]));
+        } catch (ConnectionException $e) {
+            return $this->activateStaleOrFail($key, $e->getMessage());
+        }
+
+        if ($response->serverError()) {
+            return $this->activateStaleOrFail($key, 'HTTP ' . $response->status());
+        }
+
+        $tenant = $this->tenantFromResponse($response, $key);
+
+        $cache->put($key, $tenant, max(1, (int) config('tenant.cache_seconds')));
+        $cache->put($key . ':stale', $tenant, max(1, (int) config('tenant.grace_seconds')));
+
+        return $this->activate($tenant);
+    }
+
+    /**
      * Every client database of this product/project (for console commands).
      *
      * @return array<int, array>
