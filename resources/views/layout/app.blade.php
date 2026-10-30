@@ -18,21 +18,23 @@
     
     <title>@yield('title', 'Default Title')</title>
 
-    <link rel="icon" type="image/webp" href="{{ $imagePath . '/admin/assets/img/favicon-192x192.webp?v=2' }}">
-    <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/css/bootstrap.min.css' }}">
-    <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/plugins/owlcarousel/owl.carousel.min.css' }}">
-    <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/plugins/owlcarousel/owl.theme.default.min.css' }}">
-    <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/css/animate.css' }}">
-    <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/plugins/select2/css/select2.min.css' }}">
-    <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/css/bootstrap-datetimepicker.min.css' }}">
+    <!-- <link rel="shortcut icon" type="image/x-icon"
+        href="{{ optional($settings)->favicon ? rtrim(image_path_base(), '/').'/storage/' . $settings->favicon : 'https://fableadtechnolabs.com/favicon-192x192.webp' }}"> -->
+    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('admin/assets/img/favicon-192x192.webp') }}">
+    <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/css/bootstrap.min.css' }}">
+    <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/plugins/owlcarousel/owl.carousel.min.css' }}">
+    <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/plugins/owlcarousel/owl.theme.default.min.css' }}">
+    <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/css/animate.css' }}">
+    <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/plugins/select2/css/select2.min.css' }}">
+    <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/css/bootstrap-datetimepicker.min.css' }}">
 
-    <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/css/dataTables.bootstrap4.min.css' }}">
+    <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/css/dataTables.bootstrap4.min.css' }}">
 
-    <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/plugins/fontawesome/css/fontawesome.min.css' }}">
-    <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/plugins/fontawesome/css/all.min.css' }}">
+    <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/plugins/fontawesome/css/fontawesome.min.css' }}">
+    <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/plugins/fontawesome/css/all.min.css' }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ env('ImagePath').'/admin/assets/css/style.css' }}">
+    <link rel="stylesheet" href="{{ rtrim(image_path_base(), '/').'/admin/assets/css/style.css' }}">
     @stack('css')
 </head>
 

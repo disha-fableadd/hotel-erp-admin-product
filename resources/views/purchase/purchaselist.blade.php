@@ -925,6 +925,9 @@
                             <button id="exportPdf" class="btn btn-sm btn-danger">
                                 <i class="fas fa-file-pdf"></i> PDF
                             </button>
+                            <a href="{{ route('purchase.ai-bill') }}" class="btn btn-sm btn-added d-flex align-items-center justify-content-center" style="min-height: 36px;">
+                        <i class="fas fa-magic me-1"></i> AI Bill Upload
+                    </a>
                         </div>
                     </div>
                 </div>

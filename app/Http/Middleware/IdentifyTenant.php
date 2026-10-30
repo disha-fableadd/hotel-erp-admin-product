@@ -22,6 +22,12 @@ class IdentifyTenant
             return $next($request);
         }
 
+        // Activation must be reachable before login or tenant resolution.
+        // Otherwise / redirects to /license and tenancy redirects it back to /.
+        if ($request->is('license', 'license/*')) {
+            return $next($request);
+        }
+
         // If a tenant session already exists, resolve and activate that tenant
         if ($request->hasSession() && $request->session()->has('tenant_id')) {
             try {

@@ -31,6 +31,7 @@ class User extends Authenticatable
         'pan_number',
         'password',
         'isDeleted',
+        'account_status',
         'profile_image',
         'haspermission',
         'created_by',

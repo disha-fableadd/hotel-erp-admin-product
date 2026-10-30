@@ -1374,11 +1374,11 @@ $user = auth()->user();
             if (platform === 'Zomato') {
                 header.style.backgroundColor = '#E23744';
                 titleText.textContent = 'Zomato Orders';
-                modalIcon.innerHTML = `<img src="{{ env('ImagePath').'/admin/assets/img/product/zomato.png' }}" alt="Zomato" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover;">`;
+                modalIcon.innerHTML = `<img src="{{ rtrim(image_path_base(), '/').'/admin/assets/img/product/zomato.png' }}" alt="Zomato" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover;">`;
             } else {
                 header.style.backgroundColor = '#FC8019';
                 titleText.textContent = 'Swiggy Orders';
-                modalIcon.innerHTML = `<img src="{{ env('ImagePath').'/admin/assets/img/product/swiggy.jpg' }}" alt="Swiggy" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover;">`;
+                modalIcon.innerHTML = `<img src="{{ rtrim(image_path_base(), '/').'/admin/assets/img/product/swiggy.jpg' }}" alt="Swiggy" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover;">`;
             }
 
             // Reset filters
