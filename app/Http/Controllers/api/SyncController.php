@@ -934,10 +934,11 @@ class SyncController extends Controller
 
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('img/product', 'public');
+            $fullUrl = function_exists('tenant_image_url') ? tenant_image_url($imagePath) : asset('storage/' . $imagePath);
             return response()->json([
                 'status' => 'success',
                 'path' => $imagePath,
-                'url' => asset('storage/' . $imagePath),
+                'url' => $fullUrl,
             ], 200);
         }
 
@@ -956,10 +957,11 @@ class SyncController extends Controller
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $file) {
                 $path = $file->store('img/sync', 'public');
+                $fullUrl = function_exists('tenant_image_url') ? tenant_image_url($path) : asset('storage/' . $path);
                 $uploaded[] = [
                     'original_name' => $file->getClientOriginalName(),
                     'path' => $path,
-                    'url' => asset('storage/' . $path),
+                    'url' => $fullUrl,
                 ];
             }
         }
