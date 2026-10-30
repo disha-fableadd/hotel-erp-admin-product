@@ -974,6 +974,121 @@
                 grid-template-columns: repeat(2, 1fr) !important;
             }
         }
+   /* ===== Cart row: name on top, everything else on ONE aligned line ===== */
+.product-table {
+    max-height: 300px;            /* was 220px, name was getting clipped */
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.product-lists {
+    display: block !important;
+    padding: 8px 6px !important;
+    margin: 0 !important;
+    border-bottom: 1px solid #f1f5f9;
+}
+.product-lists > li.cart-row {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    list-style: none;
+}
+
+/* Name row */
+.cart-item-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 8px 0 !important;
+    padding: 0 !important;
+    line-height: 1.3 !important;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1e293b;
+    text-transform: capitalize;
+    white-space: normal;
+    overflow: visible;
+}
+.cart-item-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Controls row: every child is exactly 36px tall and centered */
+.cart-item-controls {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 10px !important;
+    width: 100%;
+    height: 36px;
+}
+.cart-item-controls > * {
+    margin: 0 !important;
+    flex-shrink: 0;
+}
+
+/* Image */
+.cart-item-controls .productimgs {
+    width: 36px !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+.cart-item-controls .productimgs img {
+    max-width: 32px;
+    max-height: 32px;
+    margin: 0 !important;
+}
+
+/* Stepper + price + unit */
+.cart-item-controls .increment-decrement {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.cart-item-controls .increment-decrement > * {
+    margin: 0 !important;
+}
+.cart-item-controls .input-groups {
+    height: 32px !important;
+    margin: 0 !important;
+}
+.cart-item-controls .price-field {
+    height: 32px !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+.cart-item-controls .cart-quantity-type {
+    height: 32px !important;
+    line-height: 1 !important;
+}
+
+/* Delete icon */
+.cart-item-controls .remove-item {
+    margin-left: auto !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+}
+.cart-item-controls .remove-item img {
+    width: 16px;
+    height: 16px;
+    display: block;
+    margin: 0 !important;
+}
     </style>
         <div class="content">
         <div class="page-header d-flex justify-content-between align-items-center">
@@ -2225,38 +2340,33 @@
                         }
 
                         productHtml += `
-                            <ul class="product-lists">
-                                <li>
-                                    <div class="productimg">
-                                        <div class="productimgs">
-                                            <img src="${item.image}" alt="${item.name}">
-                                        </div>
-                                        <div class="productcontet">
-                                            <h4 style="text-transform: capitalize;">${item.name}
-                                                <a href="javascript:void(0);" class="ms-2 edit-item" data-id="${item.id}">
-                                                    <img src="{{ env('ImagePath') . '/admin/assets/img/icons/edit-5.svg' }}" alt="edit">
-                                                </a>
-                                            </h4>
+    <ul class="product-lists">
+        <li class="cart-row">
+            <h4 class="cart-item-name">
+                <span class="cart-item-title">${item.name}</span>
+            </h4>
 
-                                            <div class="increment-decrement">
-                                                <div class="input-groups">
-                                                    <input type="button" value="-" class="button-minus dec button" data-id="${item.id}">
-                                                    <input type="text" name="quantity" value="${item.quantity}" class="quantity-field" data-id="${item.id}" data-stock="${item.stock}">
-                                                    <input type="button" value="+" class="button-plus inc button" data-id="${item.id}">
-                                                </div>
-                                                <input type="number" class="price-field form-control form-control-sm" data-id="${item.id}" value="${numericPrice}" min="0" step="0.01">
-                                                ${qtyType ? `<span class="cart-quantity-type text-uppercase">${qtyType}</span>` : ''}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </li>
+            <div class="cart-item-controls">
+                <div class="productimgs">
+                    <img src="${item.image}" alt="${item.name}">
+                </div>
 
-                                <li>
-                                    <a class="confirm-text remove-item" href="javascript:void(0);" data-id="${item.id}">
-                                        <img src="{{ env('ImagePath') . '/admin/assets/img/icons/delete-2.svg' }}" alt="delete">
-                                    </a>
-                                </li>
-                            </ul>`;
+                <div class="increment-decrement">
+                    <div class="input-groups">
+                        <input type="button" value="-" class="button-minus dec button" data-id="${item.id}">
+                        <input type="text" name="quantity" value="${item.quantity}" class="quantity-field" data-id="${item.id}" data-stock="${item.stock}">
+                        <input type="button" value="+" class="button-plus inc button" data-id="${item.id}">
+                    </div>
+                    <input type="number" class="price-field form-control form-control-sm" data-id="${item.id}" value="${numericPrice}" min="0" step="0.01">
+                    ${qtyType ? `<span class="cart-quantity-type">${qtyType}</span>` : ''}
+                </div>
+
+                <a class="confirm-text remove-item" href="javascript:void(0);" data-id="${item.id}">
+                    <img src="{{ env('ImagePath') . '/admin/assets/img/icons/delete-2.svg' }}" alt="delete">
+                </a>
+            </div>
+        </li>
+    </ul>`;
                     });
 
                     $productTable.html(productHtml);

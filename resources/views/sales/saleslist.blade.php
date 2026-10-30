@@ -2902,12 +2902,8 @@
                         }
 
                         let quickBtns = `
-                            <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');" title="Print">
-                                <i class="fas fa-print"></i>
-                            </a>
-                            <button type="button" class="btn sl-m-only sl-m-share" data-order-id="${order.id}" title="Share">
-                                <i class="fas fa-share"></i>
-                            </button>
+                            
+                            
                             <a class="sl-m-only sl-m-pdf" href="/sales/invoice/pdf/${order.id}" target="_blank" rel="noopener" title="PDF">
                                 <span>Pdf</span>
                             </a>
@@ -3488,12 +3484,8 @@
                 @endif
             }
             let quickBtns2 = `
-                <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');" title="Print">
-                    <i class="fas fa-print"></i>
-                </a>
-                <button type="button" class="btn sl-m-only sl-m-share" data-order-id="${order.id}" title="Share">
-                    <i class="fas fa-share"></i>
-                </button>
+                
+                
                 <a class="sl-m-only sl-m-pdf" href="/sales/invoice/pdf/${order.id}" target="_blank" rel="noopener" title="PDF">
                     <span>Pdf</span>
                 </a>
@@ -3651,12 +3643,7 @@
                 @endif
             }
             let quickBtns3 = `
-                <a class="btn sl-m-only sl-m-print" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');" title="Print">
-                    <i class="fas fa-print"></i>
-                </a>
-                <button type="button" class="btn sl-m-only sl-m-share" data-order-id="${order.id}" title="Share">
-                    <i class="fas fa-share"></i>
-                </button>
+                
                 <a class="sl-m-only sl-m-pdf" href="/sales/invoice/pdf/${order.id}" target="_blank" rel="noopener" title="PDF">
                     <span>Pdf</span>
                 </a>
