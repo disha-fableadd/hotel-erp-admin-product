@@ -1744,6 +1744,51 @@
                 </div>
             </div>
         </div>
+        {{-- 🧾 Bill Generated Modal --}}
+        <div class="modal fade" id="billGeneratedModal" tabindex="-1" aria-labelledby="billGeneratedModalLabel"
+            aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:780px;">
+                <div class="modal-content" style="border-radius:16px; overflow:hidden;">
+                    <div class="modal-header border-0 pb-0" style="background:#fff; padding:20px 24px 10px;">
+                        <h5 class="modal-title fw-bold fs-5" id="billGeneratedModalLabel">Bill Generated</h5>
+                        <button type="button" class="btn-close" id="closeBillModalBtn" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-0" style="background:#f8f9fa;">
+                        <p class="text-muted mb-0 px-4 pt-2 pb-2" style="font-size:13px;">
+                            Press <kbd>F10</kbd> or click Print — same invoice format as before
+                        </p>
+                        <div style="height:520px; background:#e0e0e0; position:relative;">
+                            <iframe id="billPreviewIframe"
+                                src=""
+                                style="width:100%; height:100%; border:none; display:block;"
+                                title="Bill Preview">
+                            </iframe>
+                            <div id="billIframeLoader"
+                                style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;z-index:10;">
+                                <div class="spinner-border text-warning" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-3 pb-3 px-4 gap-2" style="background:#fff;">
+                        <button type="button" id="closeBillBtn"
+                            style="background:#6c757d;color:#fff;font-weight:600;border:none;border-radius:10px;padding:10px 28px;font-size:15px;">
+                            Close
+                        </button>
+                        <button type="button" id="detailsBillBtn"
+                            style="background:#fff;color:#495057;font-weight:600;border:2px solid #dee2e6;border-radius:10px;padding:10px 28px;font-size:15px;"
+                            onclick="if(window._billOrderId){ window.location.href='/sales-invoice/'+window._billOrderId; }">
+                            Details
+                        </button>
+                        <button type="button" id="printBillBtn"
+                            style="background:#ff9f43;color:#fff;font-weight:700;border:none;border-radius:10px;padding:10px 32px;font-size:15px;">
+                            Print (F10)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
         @endsection
         @push('js')
         <script>
@@ -2829,20 +2874,28 @@
                                 orderId = response.order_id;
                                 // alert("Order placed successfully!");
                                 // location.reload();
-                                Swal.fire({
-                                    title: "Success",
-                                    text: response.message,
-                                    icon: "success",
-                                    confirmButtonText: "OK",
-                                    confirmButtonColor: "#ff9f43" // Set custom button color
-                                }).then((result) => {
-                                    if (result.isConfirmed) {
-                                        window.open("/sales/invoice/pdf/" + orderId,
-                                            "_blank");
-                                        // Removed redirect - user stays on same page after order completion
-                                        // window.location.href = "/sales-invoice/" + orderId;
-                                    }
+                                // Show Bill Generated modal with embedded preview
+                                window._billOrderId = orderId;
+                                var billUrl = "/sales/invoice/pdf/" + orderId;
+                                var $iframe = $("#billPreviewIframe");
+                                var $loader = $("#billIframeLoader");
+
+                                // Show loader while iframe loads
+                                $loader.show();
+                                $iframe.attr("src", "");
+                                setTimeout(function() {
+                                    $iframe.attr("src", billUrl);
+                                }, 50);
+
+                                $iframe.off("load").on("load", function() {
+                                    $loader.hide();
                                 });
+
+                                var billModal = new bootstrap.Modal(document.getElementById("billGeneratedModal"), {
+                                    backdrop: "static",
+                                    keyboard: false
+                                });
+                                billModal.show();
                                 // Reset form
                                 selectedItems.clear();
                                 $(".check-product i").removeClass("selected");
@@ -3519,6 +3572,34 @@
                 setTimeout(updatePosPaymentPanelPosition, 100);
                 setTimeout(updatePosPaymentPanelPosition, 300);
                 setTimeout(updatePosPaymentPanelPosition, 800);
+            });
+
+            // ── Bill Generated Modal: Print & Close handlers ──────────────────
+            $(document).on('click', '#printBillBtn', function() {
+                if (window._billOrderId) {
+                    window.open("/sales/invoice/pdf/" + window._billOrderId, "_blank");
+                }
+            });
+
+            $(document).on('click', '#closeBillBtn, #closeBillModalBtn', function() {
+                var modalEl = document.getElementById("billGeneratedModal");
+                var bsModal = bootstrap.Modal.getInstance(modalEl);
+                if (bsModal) bsModal.hide();
+                // Clear iframe src to stop loading
+                $("#billPreviewIframe").attr("src", "");
+            });
+
+            // F10 key → Print (only when Bill modal is open)
+            $(document).on('keydown', function(e) {
+                if (e.key === 'F10' || e.keyCode === 121) {
+                    var modalEl = document.getElementById("billGeneratedModal");
+                    if (modalEl && modalEl.classList.contains('show')) {
+                        e.preventDefault();
+                        if (window._billOrderId) {
+                            window.open("/sales/invoice/pdf/" + window._billOrderId, "_blank");
+                        }
+                    }
+                }
             });
         </script>
         @endpush
