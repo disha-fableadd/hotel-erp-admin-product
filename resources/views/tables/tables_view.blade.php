@@ -2891,6 +2891,20 @@
                 return position === 'right' ? amount + symbol : symbol + amount;
             }
 
+            function formatStockQty(qty) {
+                if (qty === null || qty === undefined || qty === '') return '0';
+                let num = parseFloat(qty);
+                if (isNaN(num)) return qty;
+                if (num % 1 === 0) {
+                    return num.toString();
+                }
+                let fixed = num.toFixed(2);
+                if (parseFloat(fixed) === num) {
+                    return fixed;
+                }
+                return parseFloat(num.toFixed(4)).toString();
+            }
+
             function escapeHtmlAttr(value) {
                 return String(value == null ? '' : value)
                     .replace(/&/g, '&amp;')
@@ -3191,7 +3205,7 @@
                                                             ${outOfStockBadge}
                                                             <div class="productsetimg">
                                                                 <img src="${safeImage}" alt="${safeName}" class="productsetimgin">
-                                                                <h6>Qty: ${product.quantity || '0'}</h6>
+                                                                <h6>Qty: ${formatStockQty(product.quantity)}</h6>
                                                             </div>
                                                             <div class="productsetcontent">
                                                                 <h4>${safeName}</h4>

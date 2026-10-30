@@ -558,6 +558,20 @@
                 return position === 'right' ? amount + symbol : symbol + amount;
             }
 
+            function formatStockQty(qty) {
+                if (qty === null || qty === undefined || qty === '') return '0';
+                let num = parseFloat(qty);
+                if (isNaN(num)) return qty;
+                if (num % 1 === 0) {
+                    return num.toString();
+                }
+                let fixed = num.toFixed(2);
+                if (parseFloat(fixed) === num) {
+                    return fixed;
+                }
+                return parseFloat(num.toFixed(4)).toString();
+            }
+
             // function calculateTotals() {
             //     const firstTaxElement = $(".tax-value").first();
             //     const currencySymbol = firstTaxElement.data("symbol") || '{{ $currency_symbol }}'; // fallback
@@ -1333,7 +1347,7 @@
                                             ${outOfStockBadge}
                                             <div class="productsetimg">
                                                 <img src="${productImage}" alt="${product.name}" class="productsetimgin">
-                                                <h6>Qty: ${product.quantity || '0'}</h6>
+                                                <h6>Qty: ${formatStockQty(product.quantity)}</h6>
                                             </div>
                                             <div class="productsetcontent" style="padding: 0.5rem;">
                                                 <h4 style="font-size: 14px; font-weight: 600; margin: 0.5rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
