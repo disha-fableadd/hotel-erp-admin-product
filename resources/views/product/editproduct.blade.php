@@ -148,9 +148,9 @@
 
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Current Stock <span class="text-danger field-required-mark">*</span></label>
-                            <input type="number" name="quantity" id="quantity" class="form-control" step="1" min="0">
-                            <small class="text-muted">On-hand stock (not order qty)</small>
+                            <label>Current Stock</label>
+                            <input type="number" name="quantity" id="quantity" class="form-control" step="1" min="0" placeholder="0">
+                            <small class="text-muted">Optional. Leave 0 for kitchen-prepared food tracked by recipe.</small>
                             <span class="error_quantity text-danger"></span>
                         </div>
                     </div>

@@ -636,7 +636,7 @@ class ProductController extends Controller
             'price'         => 'required|numeric',
             'SKU'           => 'required|string|max:255|unique:products,SKU',
             'barcode'       => 'nullable|string|max:255|unique:products,barcode',
-            'quantity'      => 'required|integer|min:0',
+            'quantity'      => 'nullable|integer|min:0',
             'status'        => 'nullable|in:active,inactive',
             'availablility' => 'nullable|in:in_stock,out_stock',
             'images'        => 'nullable|array',
@@ -680,6 +680,7 @@ class ProductController extends Controller
         }
 
         $restaurantAttrs = $master->extractRestaurantAttributes($request);
+        $stockQty = $request->filled('quantity') ? (int) $request->quantity : 0;
 
         $product = Product::create(array_merge([
             'vendor_id'     => $request->vendor_id ?? 1,
@@ -692,9 +693,9 @@ class ProductController extends Controller
             'quantity_type_id' => $request->quantity_type_id,
             'SKU'           => $request->SKU,
             'barcode'       => $request->barcode,
-            'quantity'      => $request->quantity,
+            'quantity'      => $stockQty,
             'status'        => $request->status ?? 'active',
-            'availablility' => $request->quantity == 0
+            'availablility' => $stockQty == 0
                 ? 'out_stock'
                 : ($request->availablility ?? 'in_stock'),
             'images'        => json_encode($imagePaths),
@@ -702,8 +703,8 @@ class ProductController extends Controller
 
         ProductInventory::create([
             'product_id'    => $product->id,
-            'initial_stock' => $request->quantity,
-            'current_stock' => $request->quantity,
+            'initial_stock' => $stockQty,
+            'current_stock' => $stockQty,
             'branch_id'     => $branchId,
             'create_by'     => $userId,
             'type'          => 'Create',
@@ -732,7 +733,7 @@ class ProductController extends Controller
             'price'         => 'required|numeric',
             'SKU'           => 'required|string|max:255|unique:products,SKU,' . $request->product_id . ',id',
             'barcode'       => 'nullable|string|max:255|unique:products,barcode,' . $request->product_id . ',id',
-            'quantity'      => 'required|integer|min:0',
+            'quantity'      => 'nullable|integer|min:0',
             'quantity_type_id' => 'nullable',
             'status'        => 'nullable|in:active,inactive',
             'availablility' => 'nullable|in:in_stock,out_stock',
@@ -775,6 +776,7 @@ class ProductController extends Controller
         }
 
         $restaurantAttrs = $master->extractRestaurantAttributes($request);
+        $stockQty = $request->filled('quantity') ? (int) $request->quantity : (int) ($product->quantity ?? 0);
 
         $product->update(array_merge([
             'vendor_id'     => $request->vendor_id ?? 1,
@@ -786,17 +788,17 @@ class ProductController extends Controller
             'price'         => $request->price,
             'SKU'           => $request->SKU,
             'barcode'       => $request->barcode,
-            'quantity'      => $request->quantity,
+            'quantity'      => $stockQty,
             'quantity_type_id' => $request->quantity_type_id,
             'status'        => $request->status,
-            'availablility' => $request->quantity == 0 ? 'out_stock' : ($request->availablility ?? 'in_stock'),
+            'availablility' => $stockQty == 0 ? 'out_stock' : ($request->availablility ?? 'in_stock'),
             'images'        => json_encode($existingImages),
         ], $restaurantAttrs));
 
         ProductInventory::create([
             'product_id'    => $product->id,
-            'initial_stock' => $request->quantity,
-            'current_stock' => $request->quantity,
+            'initial_stock' => $stockQty,
+            'current_stock' => $stockQty,
             'branch_id'     => $branchId,
             'create_by'     => $userId,
             'type'          => 'Edit',
