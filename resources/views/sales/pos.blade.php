@@ -1789,10 +1789,33 @@
                 </div>
             </div>
         </div>
+        <div class="modal fade" id="posVariantAddonModal" tabindex="-1" aria-hidden="true" style="z-index: 1065;">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Choose options — <span id="posOptionProductName"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="posOptionProductId">
+                        <div id="posVariantOptions" class="mb-3"></div>
+                        <div id="posAddonOptions" class="mb-2"></div>
+                        <div class="fw-bold">Line price: <span id="posOptionLinePrice">0.00</span></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-warning text-white" id="posOptionConfirmAdd">Add to order</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         @endsection
         @push('js')
         <script>
             let selectedItems = new Map();
+            const canItemDiscount = {{ !empty($can_item_discount) ? 'true' : 'false' }};
+            const posCurrencySymbol = @json($currency_symbol ?? '₹');
+            const posCurrencyPosition = @json($currency_position ?? 'left');
 
             // ── Bank loader (global scope so all handlers can access it) ──
             function loadBanksInto(selector) {
@@ -2261,10 +2284,12 @@
 
                     let subtotal = 0;
 
-                    // Calculate subtotal from selected items
+                    // Calculate subtotal from selected items (after item-level discount when allowed)
                     selectedItems.forEach(function(item) {
-                        const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
-                        subtotal += price * item.quantity;
+                        const price = parseFloat(String(item.price).replace(/[^0-9.-]+/g, "")) || 0;
+                        const gross = price * item.quantity;
+                        const discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
+                        subtotal += gross - (gross * discPct / 100);
                     });
 
                     // Update subtotal display
@@ -2370,19 +2395,151 @@
                     calculateTotals();
                 }
 
+                function formatPosMoney(amount) {
+                    var price = parseFloat(amount || 0).toFixed(2);
+                    return posCurrencyPosition === 'right' ? (price + posCurrencySymbol) : (posCurrencySymbol + price);
+                }
+
+                function parseProductOptionsAttr($el, key) {
+                    try {
+                        var raw = $el.attr(key) || '[]';
+                        raw = raw.replace(/&quot;/g, '"');
+                        var parsed = JSON.parse(raw);
+                        return Array.isArray(parsed) ? parsed : [];
+                    } catch (e) {
+                        return [];
+                    }
+                }
+
+                function addProductToCart(meta) {
+                    var uniqueId = meta.uniqueId || meta.productId;
+                    if (selectedItems.has(uniqueId)) {
+                        var existing = selectedItems.get(uniqueId);
+                        existing.quantity += 1;
+                        selectedItems.set(uniqueId, existing);
+                    } else {
+                        if (meta.item_discount_percent == null) meta.item_discount_percent = 0;
+                        selectedItems.set(uniqueId, meta);
+                    }
+                    updateTotalItems();
+                }
+
+                var pendingPosProduct = null;
+
+                function refreshPosOptionPrice() {
+                    if (!pendingPosProduct) return;
+                    var unit = parseFloat(pendingPosProduct.basePrice) || 0;
+                    var $checkedVariant = $('#posVariantOptions input[name="pos_variant"]:checked');
+                    if ($checkedVariant.length) {
+                        unit = parseFloat($checkedVariant.data('price')) || unit;
+                    }
+                    $('#posAddonOptions input.pos-addon-check:checked').each(function () {
+                        unit += parseFloat($(this).data('price')) || 0;
+                    });
+                    $('#posOptionLinePrice').text(formatPosMoney(unit));
+                    pendingPosProduct.computedUnit = unit;
+                }
+
+                function openPosOptionModal(meta, variants, addons) {
+                    pendingPosProduct = meta;
+                    $('#posOptionProductName').text(meta.name);
+                    $('#posOptionProductId').val(meta.productId);
+
+                    var $v = $('#posVariantOptions').empty();
+                    if (variants.length) {
+                        $v.append('<label class="form-label fw-bold">Size / Variant</label>');
+                        variants.forEach(function (v, idx) {
+                            $v.append(
+                                '<div class="form-check">' +
+                                '<input class="form-check-input" type="radio" name="pos_variant" id="pos_var_' + v.id + '" value="' + v.id + '" data-price="' + v.price + '" data-name="' + (v.name || '') + '" ' + (idx === 0 ? 'checked' : '') + '>' +
+                                '<label class="form-check-label" for="pos_var_' + v.id + '">' + (v.name || '') + ' — ' + formatPosMoney(v.price) + '</label>' +
+                                '</div>'
+                            );
+                        });
+                    }
+
+                    var $a = $('#posAddonOptions').empty();
+                    if (addons.length) {
+                        $a.append('<label class="form-label fw-bold">Add-ons</label>');
+                        addons.forEach(function (ad) {
+                            $a.append(
+                                '<div class="form-check">' +
+                                '<input class="form-check-input pos-addon-check" type="checkbox" id="pos_ad_' + ad.id + '" value="' + ad.id + '" data-price="' + ad.price + '" data-name="' + (ad.name || '') + '">' +
+                                '<label class="form-check-label" for="pos_ad_' + ad.id + '">' + (ad.name || '') + ' (+' + formatPosMoney(ad.price) + ')</label>' +
+                                '</div>'
+                            );
+                        });
+                    }
+
+                    refreshPosOptionPrice();
+                    var modalEl = document.getElementById('posVariantAddonModal');
+                    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                }
+
+                $(document).on('change', '#posVariantOptions input, #posAddonOptions input', refreshPosOptionPrice);
+
+                $(document).on('click', '#posOptionConfirmAdd', function () {
+                    if (!pendingPosProduct) return;
+                    var variantId = null;
+                    var variantName = '';
+                    var $v = $('#posVariantOptions input[name="pos_variant"]:checked');
+                    if ($v.length) {
+                        variantId = parseInt($v.val(), 10);
+                        variantName = $v.data('name') || '';
+                    }
+                    var addonIds = [];
+                    var addonNames = [];
+                    $('#posAddonOptions input.pos-addon-check:checked').each(function () {
+                        addonIds.push(parseInt($(this).val(), 10));
+                        addonNames.push($(this).data('name'));
+                    });
+
+                    var unit = pendingPosProduct.computedUnit || pendingPosProduct.basePrice;
+                    var displayName = pendingPosProduct.name;
+                    if (variantName) displayName += ' (' + variantName + ')';
+                    if (addonNames.length) displayName += ' + ' + addonNames.join(', ');
+
+                    var uniqueId = String(pendingPosProduct.productId) + '-v' + (variantId || 0) + '-a' + addonIds.join('_');
+                    addProductToCart({
+                        id: uniqueId,
+                        productId: pendingPosProduct.productId,
+                        variant_id: variantId,
+                        addon_ids: addonIds,
+                        categoryId: pendingPosProduct.categoryId,
+                        name: displayName,
+                        price: formatPosMoney(unit),
+                        image: pendingPosProduct.image,
+                        code: pendingPosProduct.code,
+                        quantity_type: pendingPosProduct.quantity_type,
+                        quantity_type_id: pendingPosProduct.quantity_type_id,
+                        quantity_type123: pendingPosProduct.quantity_type123,
+                        quantity: 1,
+                        stock: pendingPosProduct.stock,
+                        item_discount_percent: 0,
+                        uniqueId: uniqueId
+                    });
+
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('posVariantAddonModal')).hide();
+                    pendingPosProduct = null;
+                });
+
                 function renderSelectedItems() {
                     var $productTable = $(".product-table");
                     var productHtml = "";
 
                     selectedItems.forEach(function(item) {
                         // Extract numeric price for input
-                        let numericPrice = parseFloat(item.price.replace(/[^0-9.-]+/g, "")) || 0;
+                        let numericPrice = parseFloat(String(item.price).replace(/[^0-9.-]+/g, "")) || 0;
                         // Get clean, valid quantity type (exclude null, empty, N/A, undefined, pure numbers)
                         let rawQty = (item.quantity_type || item.quantity_type_id || "").toString().trim();
                         let qtyType = "";
                         if (rawQty && !['undefined', 'null', 'n/a', 'none', '0'].includes(rawQty.toLowerCase()) && isNaN(rawQty)) {
                             qtyType = rawQty;
                         }
+                        var discPct = parseFloat(item.item_discount_percent || 0) || 0;
+                        var discHtml = canItemDiscount
+                            ? `<input type="number" class="form-control form-control-sm item-disc-field" data-id="${item.id}" value="${discPct}" min="0" max="100" step="0.01" title="Item discount %" placeholder="Disc %" style="width:70px;">`
+                            : '';
 
                         productHtml += `
     <ul class="product-lists">
@@ -2403,6 +2560,7 @@
                         <input type="button" value="+" class="button-plus inc button" data-id="${item.id}">
                     </div>
                     <input type="number" class="price-field form-control form-control-sm" data-id="${item.id}" value="${numericPrice}" min="0" step="0.01">
+                    ${discHtml}
                     ${qtyType ? `<span class="cart-quantity-type">${qtyType}</span>` : ''}
                 </div>
 
@@ -2417,8 +2575,20 @@
                     $productTable.html(productHtml);
                 }
 
+                $(document).on("input", ".item-disc-field", function () {
+                    var itemId = $(this).data("id");
+                    var pct = Math.max(0, Math.min(100, parseFloat($(this).val()) || 0));
+                    if (selectedItems.has(itemId)) {
+                        var item = selectedItems.get(itemId);
+                        item.item_discount_percent = pct;
+                        selectedItems.set(itemId, item);
+                        calculateTotals();
+                    }
+                });
+
                 $(document).on("click", ".productset", function() {
                     var $product = $(this);
+                    if ($product.hasClass('disabled-product')) return;
                     var productId = $product.data("id");
                     var productName = $product.find("h4").text().trim();
                     var productPrice = $product.find(".productsetcontent h6").text().trim();
@@ -2436,6 +2606,28 @@
                     var quantity_type_id = $product.data("quantity_type_id") || quantity_type123 || quantity_type;
                     if (quantity_type_id && ['undefined', 'null'].includes(quantity_type_id.toString().toLowerCase())) {
                         quantity_type_id = "";
+                    }
+                    var basePrice = parseFloat($product.attr('data-base-price')) || parseFloat(String(productPrice).replace(/[^0-9.-]+/g, '')) || 0;
+                    var variants = parseProductOptionsAttr($product, 'data-variants');
+                    var addons = parseProductOptionsAttr($product, 'data-addons');
+
+                    var meta = {
+                        productId: productId,
+                        categoryId: categoryId,
+                        name: productName,
+                        image: productImage,
+                        code: productCode,
+                        quantity_type: quantity_type,
+                        quantity_type_id: quantity_type_id,
+                        quantity_type123: quantity_type123,
+                        stock: productStock,
+                        basePrice: basePrice
+                    };
+
+                    if ((variants && variants.length) || (addons && addons.length)) {
+                        openPosOptionModal(meta, variants || [], addons || []);
+                        $checkIcon.addClass("selected");
+                        return;
                     }
 
                     var uniqueId = productId;
@@ -2467,7 +2659,8 @@
                             quantity_type_id: quantity_type_id,
                             quantity_type123: quantity_type123,
                             quantity: 1,
-                            stock: productStock
+                            stock: productStock,
+                            item_discount_percent: 0
                         });
                         $checkIcon.addClass("selected");
                         updateTotalItems();
@@ -2748,15 +2941,21 @@
                         // Use numeric quantity_type_id: prefer quantity_type123 (numeric ID from data attribute),
                         // then quantity_type_id (set by search-add path), or fall back to quantity_type (text name)
                         const qtId = item.quantity_type123 || item.quantity_type_id || item.quantity_type || null;
+                        var discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
+                        var lineGross = price * item.quantity;
+                        var lineTotal = lineGross - (lineGross * discPct / 100);
                         orderItems.push({
                             product_id: item.productId,
+                            variant_id: item.variant_id || null,
+                            addon_ids: item.addon_ids || [],
+                            addons: item.addon_ids || [],
                             quantity: item.quantity,
                             quantity_type_id: qtId,
                             quantity_type123: item.quantity_type123 || item.quantity_type_id,
-
                             categoryId: item.categoryId,
                             price: price,
-                            total: price * item.quantity
+                            item_discount_percent: discPct,
+                            total: lineTotal
                         });
                     });
 
@@ -3093,9 +3292,13 @@
                                 addButtonDisabled = 'disabled'; // disable button
                             }
 
+                            var variantsJson = JSON.stringify(product.variants || []).replace(/"/g, '&quot;');
+                            var addonsJson = JSON.stringify(product.addons || []).replace(/"/g, '&quot;');
+                            var basePriceNum = parseFloat(product.price || 0) || 0;
+
                             productsHtml += `
                                         <div class="col-lg-3 col-sm-6 d-flex position-relative">
-                                            <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" data-quantity_type_id="${product.quantity_type_id || ''}" style="position: relative;">
+                                            <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                 ${outOfStockBadge}
                                                 <div class="productsetimg">
                                                     <img src="${productImage}" alt="${product.name}" class="productsetimgin">

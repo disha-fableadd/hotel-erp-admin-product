@@ -30,6 +30,22 @@ class SalesController extends Controller
         return app(PosPricingService::class);
     }
 
+    protected function allowsItemLevelDiscount($branchId): bool
+    {
+        $setting = Setting::where('branch_id', $branchId)->first();
+        return (bool) ($setting->allow_item_level_discount ?? false);
+    }
+
+    protected function sanitizeItemDiscounts(array $item, bool $allowed): array
+    {
+        if ($allowed) {
+            return $item;
+        }
+        $item['item_discount_percent'] = 0;
+        $item['item_discount_amount'] = 0;
+        return $item;
+    }
+
     protected function recipeStock(): RecipeStockService
     {
         return app(RecipeStockService::class);
@@ -630,9 +646,12 @@ class SalesController extends Controller
             }
 
             // Resolve trusted prices from DB (variants + add-ons)
+            $allowItemDisc = $this->allowsItemLevelDiscount($branchIdToUse);
             $resolvedLines = [];
             foreach ($request->items as $item) {
-                $resolvedLines[] = $this->posPricing()->resolveLine($item);
+                $resolvedLines[] = $this->posPricing()->resolveLine(
+                    $this->sanitizeItemDiscounts((array) $item, $allowItemDisc)
+                );
             }
             $withGst = ($request->gst_option === 'with' || $request->gst_option === 'with_gst');
             $money = $this->posPricing()->calculateOrderTotals(
@@ -705,6 +724,13 @@ class SalesController extends Controller
                         'type' => 'Sale',
                         'date' => now(),
                     ]);
+                    try {
+                        app(\App\Services\StockLedgerService::class)->record(
+                            $product, 'out', (float) $line['quantity'], 'Sale', 'order', $order->id,
+                            $branchIdToUse, $userData->id
+                        );
+                    } catch (\Throwable $e) {
+                    }
                 }
 
                 OrderItem::create([
@@ -718,6 +744,8 @@ class SalesController extends Controller
                     'quantity_type_id' => $line['quantity_type_id'] ?? null,
                     'price' => $line['unit_price'],
                     'unit_price' => $line['unit_price'],
+                    'item_discount_percent' => $line['item_discount_percent'] ?? 0,
+                    'item_discount_amount' => $line['item_discount_amount'] ?? 0,
                     'total_amount' => $line['line_total'],
                     'branch_id' => $branchIdToUse,
                     'created_by' => $userData->id,
@@ -1189,9 +1217,12 @@ class SalesController extends Controller
             // Now delete old order items
             OrderItem::where('order_id', $order_id)->delete();
 
+            $allowItemDisc = $this->allowsItemLevelDiscount($branchIdToUse);
             $resolvedLines = [];
             foreach ($request->items as $item) {
-                $resolvedLines[] = $this->posPricing()->resolveLine($item);
+                $resolvedLines[] = $this->posPricing()->resolveLine(
+                    $this->sanitizeItemDiscounts((array) $item, $allowItemDisc)
+                );
             }
 
             // Check updated stock availability
@@ -1265,6 +1296,13 @@ class SalesController extends Controller
                         'type' => 'Order Updated (Sale)',
                         'date' => now(),
                     ]);
+                    try {
+                        app(\App\Services\StockLedgerService::class)->record(
+                            $product, 'out', (float) $line['quantity'], 'Sale', 'order', $order->id,
+                            $branchIdToUse, $userData->id
+                        );
+                    } catch (\Throwable $e) {
+                    }
                 }
 
                 OrderItem::create([
@@ -1278,6 +1316,8 @@ class SalesController extends Controller
                     'quantity_type_id' => $line['quantity_type_id'] ?? null,
                     'price' => $line['unit_price'],
                     'unit_price' => $line['unit_price'],
+                    'item_discount_percent' => $line['item_discount_percent'] ?? 0,
+                    'item_discount_amount' => $line['item_discount_amount'] ?? 0,
                     'total_amount' => $line['line_total'],
                     'branch_id' => $branchIdToUse,
                     'created_by' => $userData->id,

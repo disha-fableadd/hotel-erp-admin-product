@@ -1191,4 +1191,69 @@ class ProductController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Searchable ingredient products for recipe builder (raw / packaged / general stock items).
+     */
+    public function searchIngredients(Request $request)
+    {
+        $user = Auth::guard('api')->user();
+        if (!$user) {
+            return response()->json(['status' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $role = $user->role ?? '';
+        $branchId = $user->id;
+        if ($role === 'staff') {
+            $branchId = $user->branch_id;
+        } elseif ($role === 'admin') {
+            $branchId = $request->selectedSubAdminId
+                ?? $request->sub_admin_id
+                ?? $user->id;
+        } elseif ($role === 'sub-admin') {
+            $branchId = $user->id;
+        }
+
+        $q = trim((string) $request->get('q', $request->get('term', '')));
+        $excludeId = (int) $request->get('exclude_product_id', 0);
+
+        $query = Product::query()
+            ->where('isDeleted', 0)
+            ->where('branch_id', $branchId)
+            ->where(function ($w) {
+                $w->whereIn('product_kind', ['raw_material', 'packaged', 'general'])
+                    ->orWhereNull('product_kind');
+            });
+
+        if ($excludeId > 0) {
+            $query->where('id', '!=', $excludeId);
+        }
+
+        if ($q !== '') {
+            $query->where(function ($w) use ($q) {
+                $w->where('name', 'like', '%' . $q . '%')
+                    ->orWhere('SKU', 'like', '%' . $q . '%');
+                if (ctype_digit($q)) {
+                    $w->orWhere('id', (int) $q);
+                }
+            });
+        }
+
+        $rows = $query->orderBy('name')->limit(40)->get(['id', 'name', 'SKU', 'quantity', 'product_kind', 'cost_price']);
+
+        return response()->json([
+            'status' => true,
+            'data' => $rows->map(function ($p) {
+                return [
+                    'id' => $p->id,
+                    'text' => $p->name . ($p->SKU ? ' (' . $p->SKU . ')' : '') . ' · stock ' . ($p->quantity ?? 0),
+                    'name' => $p->name,
+                    'SKU' => $p->SKU,
+                    'quantity' => $p->quantity,
+                    'product_kind' => $p->product_kind,
+                    'cost_price' => $p->cost_price,
+                ];
+            })->values(),
+        ]);
+    }
 }

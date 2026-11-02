@@ -21,15 +21,68 @@
         </tr>`;
     }
 
+    function recipeIngredientLabel(data) {
+        if (!data) return '';
+        if (data.ingredient && data.ingredient.name) {
+            return data.ingredient.name + (data.ingredient.SKU ? ' (' + data.ingredient.SKU + ')' : '');
+        }
+        if (data.ingredient_name) return data.ingredient_name;
+        if (data.ingredient_product_id) return '#' + data.ingredient_product_id;
+        return '';
+    }
+
     function recipeRow(data) {
         data = data || {};
+        var ingId = data.ingredient_product_id || '';
+        var label = recipeIngredientLabel(data);
+        var selectedOpt = ingId
+            ? '<option value="' + ingId + '" selected>' + $('<div/>').text(label || ('#' + ingId)).html() + '</option>'
+            : '';
         return `<tr>
-            <td><input type="hidden" class="recipe-item-id" value="${data.id || ''}">
-                <input type="number" class="form-control recipe-ingredient-id" value="${data.ingredient_product_id || ''}" min="1" placeholder="Product ID"></td>
+            <td>
+                <input type="hidden" class="recipe-item-id" value="${data.id || ''}">
+                <input type="hidden" class="recipe-ingredient-id" value="${ingId}">
+                <select class="form-control recipe-ingredient-select" style="width:100%;">${selectedOpt}</select>
+            </td>
             <td><input type="number" class="form-control recipe-qty" value="${data.quantity != null ? data.quantity : ''}" min="0" step="0.0001"></td>
             <td><input type="number" class="form-control recipe-qty-type" value="${data.quantity_type_id || ''}" min="1" placeholder="Optional"></td>
             <td><button type="button" class="btn-row-remove remove-recipe-row">X</button></td>
         </tr>`;
+    }
+
+    function initRecipeIngredientSelect($select) {
+        if (!$select || !$select.length || typeof $select.select2 !== 'function') return;
+        if ($select.hasClass('select2-hidden-accessible')) {
+            $select.select2('destroy');
+        }
+        var authToken = localStorage.getItem('authToken');
+        var selectedSubAdminId = localStorage.getItem('selectedSubAdminId');
+        var excludeId = $('#product_id').val() || $('input[name="id"]').val() || '';
+        $select.select2({
+            width: '100%',
+            placeholder: 'Search ingredient…',
+            allowClear: true,
+            ajax: {
+                url: '/api/products/search-ingredients',
+                dataType: 'json',
+                delay: 250,
+                headers: { Authorization: 'Bearer ' + authToken },
+                data: function (params) {
+                    return {
+                        q: params.term || '',
+                        selectedSubAdminId: selectedSubAdminId,
+                        exclude_product_id: excludeId
+                    };
+                },
+                processResults: function (res) {
+                    var list = (res && res.data) ? res.data : [];
+                    return { results: list };
+                }
+            },
+            minimumInputLength: 0
+        }).on('change', function () {
+            $(this).closest('tr').find('.recipe-ingredient-id').val($(this).val() || '');
+        });
     }
 
     function toggleRestaurantSections() {
@@ -138,7 +191,11 @@
             $('#recipe_yield_qty').val(recipe.yield_qty || 1);
             $('#recipe_notes').val(recipe.notes || '');
             var $rt = $('#recipeItemsTable tbody').empty();
-            (recipe.items || []).forEach(function (ri) { $rt.append(recipeRow(ri)); });
+            (recipe.items || []).forEach(function (ri) {
+                var $row = $(recipeRow(ri));
+                $rt.append($row);
+                initRecipeIngredientSelect($row.find('.recipe-ingredient-select'));
+            });
         }
 
         toggleRestaurantSections();
@@ -175,11 +232,17 @@
             $('#addonsTable tbody').append(addonRow());
         });
         $('#addRecipeRow').on('click', function () {
-            $('#recipeItemsTable tbody').append(recipeRow());
+            var $row = $(recipeRow());
+            $('#recipeItemsTable tbody').append($row);
+            initRecipeIngredientSelect($row.find('.recipe-ingredient-select'));
         });
         $(document).on('click', '.remove-variant-row', function () { $(this).closest('tr').remove(); });
         $(document).on('click', '.remove-addon-row', function () { $(this).closest('tr').remove(); });
-        $(document).on('click', '.remove-recipe-row', function () { $(this).closest('tr').remove(); });
+        $(document).on('click', '.remove-recipe-row', function () {
+            var $sel = $(this).closest('tr').find('.recipe-ingredient-select');
+            if ($sel.hasClass('select2-hidden-accessible')) $sel.select2('destroy');
+            $(this).closest('tr').remove();
+        });
         $(document).on('change', '#product_kind, #recipe_required', toggleRestaurantSections);
         toggleRestaurantSections();
         loadTaxes();

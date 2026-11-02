@@ -20,6 +20,8 @@ class OrderItem extends Model
         'quantity_type_id',
         'price',
         'unit_price',
+        'item_discount_percent',
+        'item_discount_amount',
         'total_amount',
         'branch_id',
         'created_by',

@@ -117,7 +117,18 @@ class TablesshowController extends Controller
             }
         });
 
-        return view('tables.tables_view', compact('staff', 'tables','currency_position','taxRates','currency_symbol','categories'));
+        $can_item_discount = (bool) ($setting->allow_item_level_discount ?? false);
+
+        return view('tables.tables_view', compact(
+            'staff',
+            'tables',
+            'currency_position',
+            'taxRates',
+            'currency_symbol',
+            'categories',
+            'can_item_discount',
+            'setting'
+        ));
     }
     public function show($id)
     {

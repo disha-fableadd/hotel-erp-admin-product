@@ -70,6 +70,11 @@ class Order extends Model
     {
         return $this->belongsTo(User::class, 'assigned_staff_id');
     }
+
+    public function tableNo()
+    {
+        return $this->belongsTo(Table_no::class, 'table_no', 'id');
+    }
     protected static function boot()
     {
         parent::boot();

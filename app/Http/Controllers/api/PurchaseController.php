@@ -322,6 +322,7 @@ class PurchaseController extends Controller
                         // 'category_id'   => $category_id,
                         'price'         => $product['price'],
                         'purchase_price' => $product['price'],
+                        'cost_price'    => $product['price'],
                         'quantity'      => $product['quantity'],
                         'hsn_code'       => $product['hsn_code'] ?? null,
                         'quantity_type_id'      => $product['quantity_type_id'],
@@ -332,9 +333,26 @@ class PurchaseController extends Controller
                         'branch_id'     => $userBranchId ?? $userId,
                     ]);
                     $product_id = $newProduct->id;
+                    try {
+                        app(\App\Services\StockLedgerService::class)->record(
+                            $newProduct,
+                            'in',
+                            (float) $product['quantity'],
+                            'Purchase',
+                            'purchase',
+                            null,
+                            $newProduct->branch_id,
+                            auth()->id(),
+                            (float) $product['price']
+                        );
+                    } catch (\Throwable $e) {
+                        \Log::warning('Ledger on new purchase product: ' . $e->getMessage());
+                    }
                 } else {
                     $existingProduct = Product::find($product['id']);
                     if ($existingProduct) {
+                        $buyQty = (float) $product['quantity'];
+                        $buyPrice = (float) $product['price'];
                         $existingProduct->update([
                             // 'price'       => $product['price'],
                             'quantity'    => $existingProduct->quantity + $product['quantity'],
@@ -342,6 +360,23 @@ class PurchaseController extends Controller
                             // 'category_id' => $category_id,
                             'purchase_price' => $product['price'],
                         ]);
+                        try {
+                            app(\App\Services\AverageCostService::class)
+                                ->applyPurchase($existingProduct->fresh(), $buyQty, $buyPrice);
+                            app(\App\Services\StockLedgerService::class)->record(
+                                $existingProduct->fresh(),
+                                'in',
+                                $buyQty,
+                                'Purchase',
+                                'purchase',
+                                null,
+                                $existingProduct->branch_id,
+                                auth()->id(),
+                                $buyPrice
+                            );
+                        } catch (\Throwable $e) {
+                            \Log::warning('Avg cost / ledger on purchase: ' . $e->getMessage());
+                        }
                         $product_id = $existingProduct->id;
                     }
                 }

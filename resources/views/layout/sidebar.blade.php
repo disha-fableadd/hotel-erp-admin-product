@@ -405,6 +405,12 @@
                                             src="{{ image_path('admin/assets/img/icons/sales1.svg') }}"
                                             alt="img"><span>Orders</span> <span class="menu-arrow"></span></a>
                                 </li>
+                                <li class="sidebar-module sidebar-module-link">
+                                    <a href="{{ route('kot.board') }}">
+                                        <i class="fas fa-utensils" style="width:20px;text-align:center;"></i>
+                                        <span>Kitchen KOT</span>
+                                    </a>
+                                </li>
                             @endif
 
                             {{-- Products Delivery --}}
@@ -431,6 +437,12 @@
                                     <a href="{{ route('inventory.list') }}">
                                         <i class="fa fa-book"></i>
                                         <span>Manage Inventory</span>
+                                    </a>
+                                </li>
+                                <li class="sidebar-module sidebar-module-link">
+                                    <a href="{{ route('inventory.stock_ledger') }}">
+                                        <i class="fa fa-exchange-alt" style="width:20px;text-align:center;"></i>
+                                        <span>Stock Ledger</span>
                                     </a>
                                 </li>
                             @endif

@@ -8,11 +8,30 @@ use App\Models\Category;
 use App\Models\Brand;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Models\StockLedgerEntry;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class InventoryController extends Controller
 {
+    protected function branchIdToUse()
+    {
+        $user = auth()->user();
+        $role = $user->role ?? '';
+        $subAdminId = session('selectedSubAdminId');
+
+        if ($role === 'sub-admin') {
+            return $user->id;
+        }
+        if ($role === 'admin' && !empty($subAdminId)) {
+            return $subAdminId;
+        }
+        if ($role === 'staff') {
+            return $user->branch_id;
+        }
+        return $user->id;
+    }
+
     public function index()
     {
        $user = auth()->user();
@@ -28,5 +47,26 @@ class InventoryController extends Controller
     public function View(Request $request ,$id)
     {
         return view('inventory/view');
+    }
+
+    public function stockLedger(Request $request)
+    {
+        $branchId = $this->branchIdToUse();
+        $productId = $request->get('product_id');
+
+        $entries = StockLedgerEntry::with('product')
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($productId, fn ($q) => $q->where('product_id', $productId))
+            ->orderByDesc('id')
+            ->paginate(50)
+            ->withQueryString();
+
+        $products = Product::where('isDeleted', 0)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->orderBy('name')
+            ->limit(500)
+            ->get(['id', 'name']);
+
+        return view('inventory.stock_ledger', compact('entries', 'products', 'productId'));
     }
 }

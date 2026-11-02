@@ -29,6 +29,7 @@ use App\Http\Controllers\admin\CustomInvoiceController;
 use App\Http\Controllers\admin\SubBranchController;
 use App\Http\Controllers\admin\AccountLedgerController;
 use App\Http\Controllers\admin\InventoryController;
+use App\Http\Controllers\admin\KotController;
 use App\Http\Controllers\admin\IncomeSheetController;
 use Illuminate\Support\Facades\View;
 use App\Http\Controllers\api\GstController;
@@ -206,6 +207,8 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
 
     // Sales
     Route::get('/tables-view', [TablesshowController::class, 'create'])->name('tables.create');
+    Route::get('/kitchen/kot', [KotController::class, 'index'])->name('kot.board');
+    Route::get('/kitchen/kot/{orderId}/print', [KotController::class, 'print'])->name('kot.print');
 
     // Reservations list page
     Route::get('/reservations', [AdminReservationController::class, 'index'])->name('reservations.index');
@@ -507,6 +510,7 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
 
     Route::get('/inventory-list', [InventoryController::class, 'index'])->name('inventory.list');
     Route::get('/inventory-View/{id}', [InventoryController::class, 'View'])->name('inventory.View');
+    Route::get('/stock-ledger', [InventoryController::class, 'stockLedger'])->name('inventory.stock_ledger');
 
     // Accounting balancesheet =========
     Route::get('/balance-sheet', [BalanceSheetController::class, 'index'])->name('accounting.balance-sheet');

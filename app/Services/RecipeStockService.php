@@ -134,6 +134,21 @@ class RecipeStockService
                     'create_by' => $order->created_by,
                     'date' => now()->toDateString(),
                 ]);
+
+                try {
+                    app(\App\Services\StockLedgerService::class)->record(
+                        $ingredient,
+                        'out',
+                        $consumeQty,
+                        'RecipeConsume',
+                        'order_item',
+                        $item->id,
+                        $ingredient->branch_id ?: $order->branch_id,
+                        $order->created_by
+                    );
+                } catch (\Throwable $e) {
+                    // ledger optional if migration not run
+                }
             }
 
             // Marker for idempotency (same reference as ingredient rows)
@@ -208,6 +223,19 @@ class RecipeStockService
                     'create_by' => $order->created_by,
                     'date' => now()->toDateString(),
                 ]);
+                try {
+                    app(\App\Services\StockLedgerService::class)->record(
+                        $ingredient,
+                        'in',
+                        $delta,
+                        'RecipeReverse',
+                        'order_item',
+                        $item->id,
+                        $ingredient->branch_id ?: $order->branch_id,
+                        $order->created_by
+                    );
+                } catch (\Throwable $e) {
+                }
             }
 
             ProductInventory::create([

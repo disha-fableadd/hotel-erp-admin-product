@@ -73,12 +73,23 @@ class PosPricingService
             }
         }
 
+        $gross = round($unitPrice * $qty, 2);
+        $itemDiscPct = max(0, min(100, (float) ($item['item_discount_percent'] ?? 0)));
+        $itemDiscAmt = round($gross * ($itemDiscPct / 100), 2);
+        if (isset($item['item_discount_amount']) && (float) $item['item_discount_amount'] > 0 && $itemDiscPct <= 0) {
+            $itemDiscAmt = min($gross, round((float) $item['item_discount_amount'], 2));
+            $itemDiscPct = $gross > 0 ? round(($itemDiscAmt / $gross) * 100, 2) : 0;
+        }
+        $lineTotal = round(max(0, $gross - $itemDiscAmt), 2);
+
         return [
             'product' => $product,
             'variant_id' => $variantId,
             'addons' => $addonPayload,
             'unit_price' => round($unitPrice, 2),
-            'line_total' => round($unitPrice * $qty, 2),
+            'item_discount_percent' => $itemDiscPct,
+            'item_discount_amount' => $itemDiscAmt,
+            'line_total' => $lineTotal,
             'category_id' => $item['categoryId'] ?? $item['category_id'] ?? $product->category_id,
             'quantity_type_id' => $item['quantity_type_id'] ?? $product->quantity_type_id,
             'quantity' => $qty,

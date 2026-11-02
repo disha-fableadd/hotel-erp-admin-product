@@ -243,6 +243,17 @@
                                 </div>
                             </div>
 
+                            <div class="col-lg-3 col-sm-6 col-6">
+                                <div class="form-group">
+                                    <label>Allow Item-Level Discounts (POS)</label>
+                                    <select id="allow_item_level_discount" class="form-select">
+                                        <option value="0">Off</option>
+                                        <option value="1">On</option>
+                                    </select>
+                                    <small class="text-muted">When on, cashiers can discount individual cart lines.</small>
+                                </div>
+                            </div>
+
                             <div class="col-lg-3 col-sm-12 col-6">
                                 <div class="form-group">
                                     <label>Invoice Size</label>
@@ -1307,6 +1318,9 @@
 
                         // 🏦 General Info (already working)
                         $("#low_stock").val(settings.low_stock || '');
+                        $("#allow_item_level_discount").val(
+                            settings.allow_item_level_discount == 1 || settings.allow_item_level_discount === true ? '1' : '0'
+                        );
                         $("#shop_name").val(settings.name);
                         $("#gst_num").val(settings.gst_num);
                         $("#email").val(settings.email);
@@ -1698,6 +1712,7 @@
                 // Prepare FormData
                 let formData = new FormData();
                 formData.append("low_stock", $("#low_stock").val());
+                formData.append("allow_item_level_discount", $("#allow_item_level_discount").val());
                 formData.append("shop_name", $("#shop_name").val());
                 formData.append("gst_num", $("#gst_num").val());
                 formData.append("email", $("#email").val());

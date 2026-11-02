@@ -16,6 +16,7 @@ class Setting extends Model
         'phone',
         'gst_num',
         'low_stock',
+        'allow_item_level_discount',
         'address',
         'logo',
         'currency_position',

@@ -381,6 +381,7 @@ Route::middleware(['auth.api'])->group(function () {
 
     //add-product
     Route::get('/get-quantity-type', [ProductController::class, 'getQuantityTypes']);
+    Route::get('/products/search-ingredients', [ProductController::class, 'searchIngredients']);
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index']);

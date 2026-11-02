@@ -925,6 +925,8 @@ class SalesController extends Controller
         // ðŸ”¹ Banks for Debit payment â€” loaded via API in the view
         $banks = collect();
 
+        $can_item_discount = (bool) ($setting->allow_item_level_discount ?? false);
+
         return view('sales.pos', compact(
             'categories',
             // 'quantityTypes',
@@ -937,7 +939,8 @@ class SalesController extends Controller
             'setting',
             'staffList',
             'productsArray',
-            'banks'
+            'banks',
+            'can_item_discount'
         ));
     }
     // public function sale_report($ids)

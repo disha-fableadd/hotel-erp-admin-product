@@ -63,6 +63,7 @@ class GeneralSettingController extends Controller
             'shop_name'         => 'required|string',
             'gst_num'           => 'nullable',
             'low_stock'         => 'nullable',
+            'allow_item_level_discount' => 'nullable|boolean',
             'state_code'        => 'nullable',
             'email'             => 'required|email',
             'phone'             => 'required',
@@ -125,6 +126,9 @@ class GeneralSettingController extends Controller
 
         $settings->gst_num           = $request->gst_num;
         $settings->low_stock         = $request->low_stock;
+        if ($request->has('allow_item_level_discount')) {
+            $settings->allow_item_level_discount = (int) $request->allow_item_level_discount;
+        }
         $settings->name              = $request->shop_name;
         $settings->email             = $request->email;
         $settings->phone             = $request->phone;

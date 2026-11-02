@@ -2557,6 +2557,7 @@
     <script>
         const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
         var authToken = localStorage.getItem("authToken");
+        const canItemDiscount = {{ !empty($can_item_discount) ? 'true' : 'false' }};
 
         // Use event delegation to handle dynamically created elements
         $(document).ready(function () {
@@ -3465,10 +3466,12 @@
 
                 let subtotal = 0;
 
-                // Calculate subtotal from selected items
+                // Calculate subtotal from selected items (after item-level discount when allowed)
                 selectedItems.forEach(function (item) {
-                    const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
-                    subtotal += price * item.quantity;
+                    const price = parseFloat(String(item.price).replace(/[^0-9.-]+/g, "")) || 0;
+                    const gross = price * item.quantity;
+                    const discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
+                    subtotal += gross - (gross * discPct / 100);
                 });
 
                 // Update subtotal display
@@ -3588,6 +3591,11 @@
                     var safeCartImage = escapeHtmlAttr(resolveProductImage(item.image));
                     var safeCartName = escapeHtmlAttr(item.name);
 
+                    var discPct = parseFloat(item.item_discount_percent || 0) || 0;
+                    var discHtml = canItemDiscount
+                        ? `<li class="item-disc"><input type="number" class="form-control form-control-sm item-disc-field" data-id="${item.id}" value="${discPct}" min="0" max="100" step="0.01" title="Item discount %" style="width:64px;"></li>`
+                        : '';
+
                     productHtml += `
                                         <ul class="product-lists">
                                             <li>
@@ -3615,6 +3623,7 @@
                                             <li class="quantity_type text-uppercase">${item.quantity_type || item.quantity_type_id}</li>
 
                                             <li class="price">${item.price}</li>
+                                            ${discHtml}
                                             <li>
                                                 <a class="confirm-text remove-item" href="javascript:void(0);" data-id="${item.id}">
                                                     <img src="{{ env('ImagePath') . '/admin/assets/img/icons/delete-2.svg' }}" alt="delete">
@@ -3625,6 +3634,17 @@
 
                 $productTable.html(productHtml);
             }
+
+            $(document).on('input', '.item-disc-field', function () {
+                var itemId = $(this).data('id');
+                var pct = Math.max(0, Math.min(100, parseFloat($(this).val()) || 0));
+                if (selectedItems.has(itemId)) {
+                    var item = selectedItems.get(itemId);
+                    item.item_discount_percent = pct;
+                    selectedItems.set(itemId, item);
+                    calculateTotals();
+                }
+            });
 
             function renderTableOrders() {
                 var $product = $(this);
@@ -3784,6 +3804,7 @@
                     quantity_type123: pendingPosProduct.quantity_type123,
                     quantity: 1,
                     stock: pendingPosProduct.stock,
+                    item_discount_percent: 0,
                     uniqueId: uniqueId
                 });
 
@@ -4043,6 +4064,8 @@
 
 
                     const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
+                    var discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
+                    var lineGross = price * item.quantity;
                     orderItems.push({
                         product_id: item.productId,
                         variant_id: item.variant_id || null,
@@ -4051,10 +4074,10 @@
                         quantity: item.quantity,
                         quantity_type_id: item.quantity_type,
                         quantity_type123: item.quantity_type123,
-
                         categoryId: item.categoryId,
                         price: price,
-                        total: price * item.quantity
+                        item_discount_percent: discPct,
+                        total: lineGross - (lineGross * discPct / 100)
                     });
                 });
 
@@ -4257,6 +4280,8 @@
 
 
                     const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
+                    var discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
+                    var lineGross = price * item.quantity;
                     orderItems.push({
                         product_id: item.productId,
                         variant_id: item.variant_id || null,
@@ -4265,10 +4290,10 @@
                         quantity: item.quantity,
                         quantity_type_id: item.quantity_type,
                         quantity_type123: item.quantity_type123,
-
                         categoryId: item.categoryId,
                         price: price,
-                        total: price * item.quantity
+                        item_discount_percent: discPct,
+                        total: lineGross - (lineGross * discPct / 100)
                     });
                 });
 
@@ -4466,6 +4491,8 @@
 
 
                     const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
+                    var discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
+                    var lineGross = price * item.quantity;
                     orderItems.push({
                         product_id: item.productId,
                         variant_id: item.variant_id || null,
@@ -4474,10 +4501,10 @@
                         quantity: item.quantity,
                         quantity_type_id: item.quantity_type,
                         quantity_type123: item.quantity_type123,
-
                         categoryId: item.categoryId,
                         price: price,
-                        total: price * item.quantity
+                        item_discount_percent: discPct,
+                        total: lineGross - (lineGross * discPct / 100)
                     });
                 });
 

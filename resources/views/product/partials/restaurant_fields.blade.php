@@ -297,7 +297,7 @@
                     <table class="table table-bordered restaurant-repeat-table" id="recipeItemsTable">
                         <thead>
                             <tr>
-                                <th>Ingredient Product ID</th>
+                                <th style="min-width:240px;">Ingredient</th>
                                 <th>Quantity</th>
                                 <th>Qty Type ID (optional)</th>
                                 <th style="width:70px;"></th>
@@ -306,7 +306,7 @@
                         <tbody></tbody>
                     </table>
                     <button type="button" class="btn-row-add" id="addRecipeRow">+ Add Ingredient</button>
-                    <p class="text-muted small mt-2 mb-0">Use raw material / packaged product IDs. Ingredients deduct on confirmed sale when Recipe Required is Yes.</p>
+                    <p class="text-muted small mt-2 mb-0">Search raw material / packaged stock items. Ingredients deduct on confirmed sale when Recipe Required is Yes.</p>
                 </div>
             </div>
         </div>
