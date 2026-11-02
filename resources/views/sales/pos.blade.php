@@ -24,12 +24,26 @@
         /* Container Layout */
         .page-header {
             background: #ffffff;
-            border-radius: 8px;
-            padding: 6px 14px;
+            border-radius: 10px;
+            padding: 8px 12px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
             border: 1px solid var(--pos-border);
             margin-bottom: 8px;
-            min-height: 42px;
+            min-height: 46px;
+            gap: 10px;
+        }
+        .page-header .pos-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            min-width: 0;
+        }
+        .page-header .pos-header-divider {
+            width: 1px;
+            height: 22px;
+            background: #e2e8f0;
+            flex-shrink: 0;
         }
         .pos-back-btn {
             display: inline-flex;
@@ -395,9 +409,10 @@
             box-shadow: 0 0 0 2px rgba(255, 159, 67, 0.15) !important;
         }
         .top-pos-search-wrapper {
-            flex: 1;
-            max-width: 520px;
-            margin: 0 16px;
+            flex: 1 1 auto;
+            max-width: 480px;
+            min-width: 160px;
+            margin: 0;
         }
         .btn-close-search {
             transition: all 0.2s ease;
@@ -416,11 +431,22 @@
                 flex-wrap: wrap;
                 gap: 8px;
             }
+            .page-header .pos-header-left {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .page-header .pos-header-divider {
+                display: none;
+            }
+            .page-header .page-title {
+                display: none;
+            }
             .top-pos-search-wrapper {
                 order: 3;
                 width: 100%;
                 max-width: 100%;
-                margin: 6px 0 0 0;
+                flex: 1 1 100%;
+                margin: 0;
             }
         }
 
@@ -1090,29 +1116,31 @@
     margin: 0 !important;
 }
 
-        /* Multi-bill tabs (same pattern as poojasaman POS) */
+        /* Multi-bill tabs inside combined header */
         .pos-bill-tabs-bar {
             display: flex;
             align-items: center;
             justify-content: flex-start;
-            gap: 8px;
+            gap: 6px;
             width: auto;
-            max-width: 100%;
-            margin-bottom: 10px;
+            max-width: min(42vw, 360px);
+            margin: 0;
             min-height: 28px;
+            flex-shrink: 1;
+            min-width: 0;
         }
         #posBillTabsBar #posBillTabs.pos-bill-tabs {
             display: inline-flex !important;
             align-items: center;
             gap: 6px;
             overflow-x: auto;
-            flex: 0 0 auto !important;
+            flex: 1 1 auto !important;
             width: max-content !important;
-            max-width: calc(100% - 40px);
+            max-width: 100%;
             min-width: 0;
             scrollbar-width: thin;
         }
-        .pos-bill-tabs::-webkit-scrollbar { height: 4px; }
+        .pos-bill-tabs::-webkit-scrollbar { height: 3px; }
         #posBillTabsBar .pos-bill-tab {
             display: inline-flex !important;
             align-items: center;
@@ -1120,7 +1148,7 @@
             gap: 4px;
             flex: 0 0 auto !important;
             width: max-content !important;
-            max-width: 160px !important;
+            max-width: 140px !important;
             height: 28px !important;
             min-height: 28px !important;
             min-width: 0 !important;
@@ -1143,7 +1171,7 @@
         }
         .pos-bill-tab-name {
             flex: 0 1 auto;
-            max-width: 90px;
+            max-width: 80px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -1199,16 +1227,22 @@
             cursor: pointer;
         }
         .pos-add-bill-tab:hover { background: #ff9f43; }
+        @media (max-width: 992px) {
+            .pos-bill-tabs-bar { max-width: min(55vw, 280px); }
+        }
     </style>
         <div class="content">
-        <div class="pos-bill-tabs-bar" id="posBillTabsBar">
-            <div class="pos-bill-tabs" id="posBillTabs"></div>
-            <button type="button" class="pos-add-bill-tab" id="posAddBillTabBtn" title="New bill (Shift + T)">+</button>
-        </div>
         <div class="page-header d-flex justify-content-between align-items-center">
-            <div class="page-title d-flex align-items-center gap-2 m-0" style="flex-shrink: 0;">
-                <i class="fas fa-utensils" style="color: var(--pos-primary); font-size: 17px;"></i>
-                <h4 style="margin-bottom: 0; font-weight: 700; color: #1e293b; font-size: 16px;">Add Order</h4>
+            <div class="pos-header-left">
+                <div class="pos-bill-tabs-bar" id="posBillTabsBar">
+                    <div class="pos-bill-tabs" id="posBillTabs"></div>
+                    <button type="button" class="pos-add-bill-tab" id="posAddBillTabBtn" title="New bill (Shift + T)">+</button>
+                </div>
+                <span class="pos-header-divider" aria-hidden="true"></span>
+                <div class="page-title d-flex align-items-center gap-2 m-0" style="flex-shrink: 0;">
+                    <i class="fas fa-utensils" style="color: var(--pos-primary); font-size: 16px;"></i>
+                    <h4 style="margin-bottom: 0; font-weight: 700; color: #1e293b; font-size: 15px;">Add Order</h4>
+                </div>
             </div>
 
             <!-- Top Center Product Search Bar -->
