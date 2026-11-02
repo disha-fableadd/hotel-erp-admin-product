@@ -148,8 +148,9 @@
 
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Quantity <span class="text-danger field-required-mark">*</span></label>
+                            <label>Current Stock <span class="text-danger field-required-mark">*</span></label>
                             <input type="number" name="quantity" id="quantity" class="form-control" step="1" min="0">
+                            <small class="text-muted">On-hand stock (not order qty)</small>
                             <span class="error_quantity text-danger"></span>
                         </div>
                     </div>
@@ -168,11 +169,13 @@
                     
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Price <span class="text-danger field-required-mark">*</span></label>
+                            <label>Base Selling Price <span class="text-danger field-required-mark">*</span></label>
                             <input type="number" name="price" id="price" class="form-control" step="0.01" min="0">
                             <span class="error_price text-danger"></span>
                         </div>
                     </div>
+
+                    @include('product.partials.restaurant_fields')
 
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
@@ -417,6 +420,9 @@
 
                 var authToken = localStorage.getItem("authToken");
                 let formData = new FormData($('#productForm')[0]);
+                if (typeof window.appendRestaurantProductPayload === 'function') {
+                    window.appendRestaurantProductPayload(formData);
+                }
 
                 $('.error_name, .error_category_id, .error_brand_id, .error_SKU, .error_quantity, .error_price, .error_status, .error_barcode, .error_description, .error_availablility').text('');
 
@@ -630,6 +636,13 @@
                     get_brand(product.brand_id);
                     get_quantity_type(product.quantity_type_id);
 
+                    if (typeof window.populateRestaurantProductFields === 'function') {
+                        product.variants = response.variants || product.variants || [];
+                        product.addons = response.addons || product.addons || [];
+                        product.recipe = response.recipe || product.recipe || null;
+                        window.populateRestaurantProductFields(product);
+                    }
+
                     // ✅ Existing images show
                     if (product.images) {
                         let images = JSON.parse(product.images);
@@ -819,4 +832,5 @@
             });
         });
     </script>
+    @include('product.partials.restaurant_fields_script')
     @endpush

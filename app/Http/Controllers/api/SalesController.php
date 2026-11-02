@@ -12,6 +12,8 @@ use App\Models\TaxRate;
 use App\Models\Table_no;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Services\PosPricingService;
+use App\Services\RecipeStockService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -23,6 +25,16 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class SalesController extends Controller
 {
+    protected function posPricing(): PosPricingService
+    {
+        return app(PosPricingService::class);
+    }
+
+    protected function recipeStock(): RecipeStockService
+    {
+        return app(RecipeStockService::class);
+    }
+
     private function normalizeTableStatus(?string $status): string
     {
         $status = strtolower(trim((string) $status));
@@ -338,9 +350,12 @@ class SalesController extends Controller
 
         $user = Auth::guard('api')->user();
 
-        $query = Product::with('category', 'quantityType')
+        $query = Product::with(['category', 'quantityType', 'variants', 'addons'])
             ->where('isDeleted', 0)
-            ->where('status', 'active'); // ✅ Only active products
+            ->where('status', 'active')
+            ->where(function ($q) {
+                $q->where('is_pos_available', 1)->orWhereNull('is_pos_available');
+            });
 
         if ($user && ($user->role === 'staff' || $user->role === 'sub-admin')) {
             $branchId = ($user->role === 'staff' && $user->branch_id) ? $user->branch_id : $user->id;
@@ -351,7 +366,8 @@ class SalesController extends Controller
             $query->where('category_id', $categoryId);
         }
 
-        $products = $query->get();
+        $products = $query->orderBy('display_order')->orderBy('name')->get();
+
         return response()->json([
             'status' => true,
             'currency_symbol' => $currencySymbol,
@@ -363,11 +379,30 @@ class SalesController extends Controller
                     'price' => $product->price,
                     'quantity' => $product->quantity,
                     'quantity_type_id' => $product->quantity_type_id,
-                    'quantity_type' => $product->quantityType ? $product->quantityType->quantity_type : null, // ✅ Add name
+                    'quantity_type' => $product->quantityType ? $product->quantityType->quantity_type : null,
                     'image' => $product->images,
                     'image_url' => $product->image_url,
-                    'category_name' => $product->category ? $product->category->name : 'Uncategorized',
                     'categoryId' => $product->category_id,
+                    'category_name' => $product->category ? $product->category->name : 'Uncategorized',
+                    'product_kind' => $product->product_kind ?? 'general',
+                    'food_type' => $product->food_type ?? 'na',
+                    'track_inventory' => (bool) ($product->track_inventory ?? true),
+                    'kitchen_station' => $product->kitchen_station,
+                    'variants' => ($product->variants ?? collect())->map(function ($v) {
+                        return [
+                            'id' => $v->id,
+                            'name' => $v->name,
+                            'sku' => $v->sku,
+                            'price' => $v->price,
+                        ];
+                    })->values(),
+                    'addons' => ($product->addons ?? collect())->map(function ($a) {
+                        return [
+                            'id' => $a->id,
+                            'name' => $a->name,
+                            'price' => $a->price,
+                        ];
+                    })->values(),
                 ];
             }),
         ]);
@@ -594,6 +629,32 @@ class SalesController extends Controller
                 $payment_status = 'pending';
             }
 
+            // Resolve trusted prices from DB (variants + add-ons)
+            $resolvedLines = [];
+            foreach ($request->items as $item) {
+                $resolvedLines[] = $this->posPricing()->resolveLine($item);
+            }
+            $withGst = ($request->gst_option === 'with' || $request->gst_option === 'with_gst');
+            $money = $this->posPricing()->calculateOrderTotals(
+                $resolvedLines,
+                (float) ($request->discount ?? 0),
+                $withGst,
+                $branchIdToUse
+            );
+            if (!empty($money['tax_ids'])) {
+                $taxJson = json_encode($money['tax_ids']);
+            }
+            $trustedTotal = $money['total'];
+            if ($request->payment_method != 'pending') {
+                if ($request->paid_type === 'partially' && isset($request->pending_amount) && $request->pending_amount > 0) {
+                    $remain = $request->pending_amount;
+                } else {
+                    $remain = 0;
+                }
+            } else {
+                $remain = $trustedTotal;
+            }
+
             // Create order
             $order = Order::create([
                 'order_number'    => $orderNumber,
@@ -604,7 +665,7 @@ class SalesController extends Controller
                 'discount'        => $request->discount ?? 0,
                 'tax_id'          => $taxJson,
                 'gst_option'      => $request->gst_option === 'with' ? 'with_gst' : 'without_gst',
-                'total_amount'    => $request->total,
+                'total_amount'    => $trustedTotal,
                 'remaining_amount' => $remain,
                 'payment_status'  => $payment_status,
                 'table_no'        => $tableNoInt,
@@ -617,42 +678,49 @@ class SalesController extends Controller
                 'created_by'      => $userData->id,
             ]);
 
-            // Insert order items and reduce product stock
-            foreach ($request->items as $item) {
-                $product = Product::find($item['product_id']);
-                $product->quantity -= $item['quantity'];
-                $product->save();
+            // Insert order items and reduce finished-good stock when track_inventory is on
+            foreach ($resolvedLines as $line) {
+                $product = $line['product'];
+                $trackInventory = array_key_exists('track_inventory', $product->getAttributes())
+                    ? (bool) $product->track_inventory
+                    : true;
 
-                $resolved_qty_type_id = !empty($item['quantity_type123']) && is_numeric($item['quantity_type123'])
-                    ? intval($item['quantity_type123'])
-                    : (!empty($item['quantity_type123'])
-                        ? (\App\Models\QuantityType::where('quantity_type', $item['quantity_type123'])->first()->id ?? null)
-                        : null);
+                if ($trackInventory) {
+                    $beforeQty = (int) $product->quantity;
+                    $product->quantity = max(0, $beforeQty - (int) $line['quantity']);
+                    if ((int) $product->quantity === 0) {
+                        $product->availablility = 'out_stock';
+                    }
+                    $product->save();
+
+                    $lastInventory = ProductInventory::where('product_id', $product->id)
+                        ->orderBy('id', 'desc')
+                        ->first();
+                    ProductInventory::create([
+                        'product_id' => $product->id,
+                        'initial_stock' => $lastInventory->initial_stock ?? $beforeQty,
+                        'current_stock' => $product->quantity,
+                        'branch_id' => $branchIdToUse,
+                        'create_by' => $userData->id,
+                        'type' => 'Sale',
+                        'date' => now(),
+                    ]);
+                }
 
                 OrderItem::create([
                     'order_id' => $order->id,
                     'user_id' => $customer_id ?? null,
-                    'category_id' => $item['categoryId'] ?? null,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'quantity_type_id' => $resolved_qty_type_id,
-                    'price' => $item['price'],
-                    'total_amount' => $item['total'],
+                    'category_id' => $line['category_id'] ?? null,
+                    'product_id' => $product->id,
+                    'variant_id' => $line['variant_id'],
+                    'addons' => $line['addons'] ?: null,
+                    'quantity' => $line['quantity'],
+                    'quantity_type_id' => $line['quantity_type_id'] ?? null,
+                    'price' => $line['unit_price'],
+                    'unit_price' => $line['unit_price'],
+                    'total_amount' => $line['line_total'],
                     'branch_id' => $branchIdToUse,
                     'created_by' => $userData->id,
-                ]);
-                $lastInventory = ProductInventory::where('product_id', $product->id)
-                    ->orderBy('id', 'desc') // ✅ latest record first
-                    ->first();
-                // ✅ Insert into ProductInventory
-                ProductInventory::create([
-                    'product_id' => $product->id,
-                    'initial_stock' => $lastInventory->initial_stock, // stock before sale
-                    'current_stock' => $product->quantity,            // stock after sale
-                    'branch_id' => $branchIdToUse,
-                    'create_by' => $userData->id,
-                    'type' => 'Sale',
-                    'date' => now(),
                 ]);
             }
             if ($tableNoInt) {
@@ -759,6 +827,12 @@ class SalesController extends Controller
             }
 
             DB::commit();
+
+            try {
+                $this->recipeStock()->consumeForOrder($order->fresh());
+            } catch (\Throwable $e) {
+                Log::error('Recipe consume error: ' . $e->getMessage());
+            }
             
             try {
                 $shopSetting = \App\Models\Setting::where('branch_id', $branchIdToUse)->first();
@@ -1081,12 +1155,22 @@ class SalesController extends Controller
 
             $order = Order::findOrFail($order_id);
 
+            // Reverse any prior recipe consumption before rewriting lines
+            try {
+                $this->recipeStock()->reverseForOrder($order);
+            } catch (\Throwable $e) {
+                Log::error('Recipe reverse error: ' . $e->getMessage());
+            }
+
             // Restore stock first from OLD items
             $oldItems = OrderItem::where('order_id', $order_id)->get();
 
             foreach ($oldItems as $old) {
                 $product = Product::find($old->product_id);
-                if ($product) {
+                $trackInventory = $product && array_key_exists('track_inventory', $product->getAttributes())
+                    ? (bool) $product->track_inventory
+                    : true;
+                if ($product && $trackInventory) {
                     $product->quantity += $old->quantity;
                     $product->save();
 
@@ -1105,33 +1189,40 @@ class SalesController extends Controller
             // Now delete old order items
             OrderItem::where('order_id', $order_id)->delete();
 
-            // Check updated stock availability
+            $resolvedLines = [];
             foreach ($request->items as $item) {
-                $p = Product::find($item['product_id']);
-                if ($p->quantity < $item['quantity']) {
+                $resolvedLines[] = $this->posPricing()->resolveLine($item);
+            }
+
+            // Check updated stock availability
+            foreach ($resolvedLines as $line) {
+                $p = $line['product'];
+                $trackInventory = array_key_exists('track_inventory', $p->getAttributes())
+                    ? (bool) $p->track_inventory
+                    : true;
+                if ($trackInventory && $p->quantity < $line['quantity']) {
                     return response()->json([
                         'status' => false,
-                        'message' => "Insufficient stock for Product ID: {$item['product_id']}",
+                        'message' => "Insufficient stock for Product ID: {$p->id}",
                     ], 400);
                 }
             }
 
-            // Prepare tax JSON like insert
-            $taxJson = json_encode([]);
-            if ($request->has('tax') && !empty($request->tax)) {
-                $TaxRateIds = TaxRate::where('status', 'active')
-                    ->where('isDeleted', 0)
-                    ->where('branch_id', $branchIdToUse)
-                    ->pluck('id')
-                    ->toArray();
-                $taxJson = json_encode($TaxRateIds);
-            }
+            $withGst = ($request->gst_option === 'with' || $request->gst_option === 'with_gst');
+            $money = $this->posPricing()->calculateOrderTotals(
+                $resolvedLines,
+                (float) ($request->discount ?? 0),
+                $withGst,
+                $branchIdToUse
+            );
+            $taxJson = !empty($money['tax_ids']) ? json_encode($money['tax_ids']) : json_encode([]);
+            $trustedTotal = $money['total'];
 
             if ($request->payment_method != 'pending') {
                 $remain = 0;
                 $payment_status = 'completed';
             } else {
-                $remain = $request->total;
+                $remain = $trustedTotal;
                 $payment_status = 'pending';
             }
 
@@ -1144,7 +1235,7 @@ class SalesController extends Controller
                 'discount' => $request->discount ?? 0,
                 'tax_id' => $taxJson,
                 'gst_option' => $request->gst_option === 'with' ? 'with_gst' : 'without_gst',
-                'total_amount' => $request->total,
+                'total_amount' => $trustedTotal,
                 'remaining_amount' => $remain,
                 'payment_status' => $payment_status,
                 'table_no' => $request->table_id ?? null,
@@ -1154,39 +1245,42 @@ class SalesController extends Controller
             ]);
 
             // Insert updated order items & reduce stock
-            foreach ($request->items as $item) {
+            foreach ($resolvedLines as $line) {
+                $product = $line['product'];
+                $trackInventory = array_key_exists('track_inventory', $product->getAttributes())
+                    ? (bool) $product->track_inventory
+                    : true;
 
-                $product = Product::find($item['product_id']);
-                $product->quantity -= $item['quantity'];
-                $product->save();
+                if ($trackInventory) {
+                    $beforeQty = (int) $product->quantity;
+                    $product->quantity = max(0, $beforeQty - (int) $line['quantity']);
+                    $product->save();
 
-                $resolved_qty_type_id = !empty($item['quantity_type123']) && is_numeric($item['quantity_type123'])
-                    ? intval($item['quantity_type123'])
-                    : (!empty($item['quantity_type123'])
-                        ? (\App\Models\QuantityType::where('quantity_type', $item['quantity_type123'])->first()->id ?? null)
-                        : null);
+                    ProductInventory::create([
+                        'product_id' => $product->id,
+                        'initial_stock' => $beforeQty,
+                        'current_stock' => $product->quantity,
+                        'branch_id' => $branchIdToUse,
+                        'create_by' => $userData->id,
+                        'type' => 'Order Updated (Sale)',
+                        'date' => now(),
+                    ]);
+                }
 
                 OrderItem::create([
                     'order_id' => $order->id,
                     'user_id' => $customer_id,
-                    'category_id' => $item['categoryId'] ?? null,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'quantity_type_id' => $resolved_qty_type_id,
-                    'price' => $item['price'],
-                    'total_amount' => $item['total'],
+                    'category_id' => $line['category_id'] ?? null,
+                    'product_id' => $product->id,
+                    'variant_id' => $line['variant_id'],
+                    'addons' => $line['addons'] ?: null,
+                    'quantity' => $line['quantity'],
+                    'quantity_type_id' => $line['quantity_type_id'] ?? null,
+                    'price' => $line['unit_price'],
+                    'unit_price' => $line['unit_price'],
+                    'total_amount' => $line['line_total'],
                     'branch_id' => $branchIdToUse,
                     'created_by' => $userData->id,
-                ]);
-
-                ProductInventory::create([
-                    'product_id' => $product->id,
-                    'initial_stock' => $product->quantity + $item['quantity'],
-                    'current_stock' => $product->quantity,
-                    'branch_id' => $branchIdToUse,
-                    'create_by' => $userData->id,
-                    'type' => 'Order Updated (Sale)',
-                    'date' => now(),
                 ]);
             }
 
@@ -1258,6 +1352,12 @@ class SalesController extends Controller
             }
 
             DB::commit();
+
+            try {
+                $this->recipeStock()->consumeForOrder($order->fresh());
+            } catch (\Throwable $e) {
+                Log::error('Recipe consume on update error: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'status' => true,

@@ -18,6 +18,8 @@ class ProductInventory extends Model
         'initial_stock',
         'current_stock',
         'type',
+        'reference_type',
+        'reference_id',
         'branch_id',
         'create_by',
         'date',

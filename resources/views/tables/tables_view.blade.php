@@ -2449,6 +2449,27 @@
         </div>
     </div>
 
+    <div class="modal fade" id="posVariantAddonModal" tabindex="-1" aria-hidden="true" style="z-index: 1065;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Choose options — <span id="posOptionProductName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="posOptionProductId">
+                    <div id="posVariantOptions" class="mb-3"></div>
+                    <div id="posAddonOptions" class="mb-2"></div>
+                    <div class="fw-bold">Line price: <span id="posOptionLinePrice">0.00</span></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning text-white" id="posOptionConfirmAdd">Add to order</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="reservationModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
@@ -3267,9 +3288,13 @@
                         var safeCategory = escapeHtmlAttr(product.category_name || 'Uncategorized');
                         var safeImage = escapeHtmlAttr(productImage);
 
+                        var variantsJson = escapeHtmlAttr(JSON.stringify(product.variants || []));
+                        var addonsJson = escapeHtmlAttr(JSON.stringify(product.addons || []));
+                        var basePriceNum = parseFloat(product.price || 0).toFixed(2);
+
                         productsHtml += `
                                                     <div class="col-lg-4 col-md-6 col-sm-6 d-flex position-relative product-card-col">
-                                                        <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" data-quantity_type_id="${product.quantity_type_id || ''}" style="position: relative;">
+                                                        <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                             ${outOfStockBadge}
                                                             <div class="productsetimg">
                                                                 <img src="${safeImage}" alt="${safeName}" class="productsetimgin">
@@ -3639,6 +3664,133 @@
                 updateTotalItems();
             }
 
+            function parseProductOptionsAttr($el, key) {
+                try {
+                    var raw = $el.attr(key) || '[]';
+                    var parsed = JSON.parse(raw);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function formatPosMoney(amount) {
+                var firstTaxElement = $(".tax-value").first();
+                var currencySymbol = firstTaxElement.data("symbol") || '{{ $currency_symbol }}';
+                var currencyPosition = firstTaxElement.data("position") || '{{ $currency_position }}';
+                return formatCurrency(parseFloat(amount || 0).toFixed(2), currencySymbol, currencyPosition);
+            }
+
+            function addProductToCart(meta) {
+                var uniqueId = meta.uniqueId || meta.productId;
+                if (selectedItems.has(uniqueId)) {
+                    var existing = selectedItems.get(uniqueId);
+                    existing.quantity += 1;
+                    selectedItems.set(uniqueId, existing);
+                } else {
+                    selectedItems.set(uniqueId, meta);
+                }
+                updateTotalItems();
+            }
+
+            var pendingPosProduct = null;
+
+            function refreshPosOptionPrice() {
+                if (!pendingPosProduct) return;
+                var unit = parseFloat(pendingPosProduct.basePrice) || 0;
+                var $checkedVariant = $('#posVariantOptions input[name="pos_variant"]:checked');
+                if ($checkedVariant.length) {
+                    unit = parseFloat($checkedVariant.data('price')) || unit;
+                }
+                $('#posAddonOptions input.pos-addon-check:checked').each(function () {
+                    unit += parseFloat($(this).data('price')) || 0;
+                });
+                $('#posOptionLinePrice').text(formatPosMoney(unit));
+                pendingPosProduct.computedUnit = unit;
+            }
+
+            function openPosOptionModal(meta, variants, addons) {
+                pendingPosProduct = meta;
+                $('#posOptionProductName').text(meta.name);
+                $('#posOptionProductId').val(meta.productId);
+
+                var $v = $('#posVariantOptions').empty();
+                if (variants.length) {
+                    $v.append('<label class="form-label fw-bold">Size / Variant</label>');
+                    variants.forEach(function (v, idx) {
+                        $v.append(
+                            '<div class="form-check">' +
+                            '<input class="form-check-input" type="radio" name="pos_variant" id="pos_var_' + v.id + '" value="' + v.id + '" data-price="' + v.price + '" data-name="' + (v.name || '') + '" ' + (idx === 0 ? 'checked' : '') + '>' +
+                            '<label class="form-check-label" for="pos_var_' + v.id + '">' + (v.name || '') + ' — ' + formatPosMoney(v.price) + '</label>' +
+                            '</div>'
+                        );
+                    });
+                }
+
+                var $a = $('#posAddonOptions').empty();
+                if (addons.length) {
+                    $a.append('<label class="form-label fw-bold">Add-ons</label>');
+                    addons.forEach(function (ad) {
+                        $a.append(
+                            '<div class="form-check">' +
+                            '<input class="form-check-input pos-addon-check" type="checkbox" id="pos_ad_' + ad.id + '" value="' + ad.id + '" data-price="' + ad.price + '" data-name="' + (ad.name || '') + '">' +
+                            '<label class="form-check-label" for="pos_ad_' + ad.id + '">' + (ad.name || '') + ' (+' + formatPosMoney(ad.price) + ')</label>' +
+                            '</div>'
+                        );
+                    });
+                }
+
+                refreshPosOptionPrice();
+                var modalEl = document.getElementById('posVariantAddonModal');
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            }
+
+            $(document).on('change', '#posVariantOptions input, #posAddonOptions input', refreshPosOptionPrice);
+
+            $(document).on('click', '#posOptionConfirmAdd', function () {
+                if (!pendingPosProduct) return;
+                var variantId = null;
+                var variantName = '';
+                var $v = $('#posVariantOptions input[name="pos_variant"]:checked');
+                if ($v.length) {
+                    variantId = parseInt($v.val(), 10);
+                    variantName = $v.data('name') || '';
+                }
+                var addonIds = [];
+                var addonNames = [];
+                $('#posAddonOptions input.pos-addon-check:checked').each(function () {
+                    addonIds.push(parseInt($(this).val(), 10));
+                    addonNames.push($(this).data('name'));
+                });
+
+                var unit = pendingPosProduct.computedUnit || pendingPosProduct.basePrice;
+                var displayName = pendingPosProduct.name;
+                if (variantName) displayName += ' (' + variantName + ')';
+                if (addonNames.length) displayName += ' + ' + addonNames.join(', ');
+
+                var uniqueId = String(pendingPosProduct.productId) + '-v' + (variantId || 0) + '-a' + addonIds.join('_');
+                addProductToCart({
+                    id: uniqueId,
+                    productId: pendingPosProduct.productId,
+                    variant_id: variantId,
+                    addon_ids: addonIds,
+                    categoryId: pendingPosProduct.categoryId,
+                    name: displayName,
+                    price: formatPosMoney(unit),
+                    image: pendingPosProduct.image,
+                    code: pendingPosProduct.code,
+                    quantity_type: pendingPosProduct.quantity_type,
+                    quantity_type_id: pendingPosProduct.quantity_type_id,
+                    quantity_type123: pendingPosProduct.quantity_type123,
+                    quantity: 1,
+                    stock: pendingPosProduct.stock,
+                    uniqueId: uniqueId
+                });
+
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('posVariantAddonModal')).hide();
+                pendingPosProduct = null;
+            });
+
             $(document).on("click", ".productset", function () {
                 var $product = $(this);
                 var productId = $product.data("id");
@@ -3651,38 +3803,20 @@
                 var productImage = resolveProductImage($product.find("img.productsetimgin").attr("src") || $product.find("img").first().attr("src"));
                 var productCode = "PT001";
                 var $checkIcon = $product.find(".check-product i");
-                var productStock = parseInt($product.data("stock")); // assuming data-stock is set
+                var productStock = parseInt($product.data("stock"));
                 var quantity_type_id = $product.data("quantity_type_id");
+                var basePrice = parseFloat($product.attr('data-base-price')) || parseFloat(String(productPrice).replace(/[^0-9.-]+/g, '')) || 0;
+                var variants = parseProductOptionsAttr($product, 'data-variants');
+                var addons = parseProductOptionsAttr($product, 'data-addons');
 
-
-                //var apiQty = parseInt($product.attr("data-selected-qty")) || 1;
-
-                //var uniqueId = productId;
-                //selectedItems.set(uniqueId, {
-                    // id: uniqueId,
-                    // productId: productId,
-                    // categoryId: categoryId,
-                    // name: productName,
-                    // price: productPrice,
-                    // image: productImage,
-                    // code: productCode,
-                    // quantity_type: quantity_type,
-                    // quantity_type_id: quantity_type_id,
-                    // quantity_type123: quantity_type123,
-                    // quantity: apiQty,
-                   // stock: productStock // <-- Add stock
-
-                //});
-                var uniqueId = productId;
                 var apiQtyAttr = $product.attr("data-selected-qty");
                 var apiQty = apiQtyAttr !== undefined && apiQtyAttr !== null && apiQtyAttr !== ''
                     ? parseInt(apiQtyAttr, 10)
                     : NaN;
 
                 if (!isNaN(apiQty) && apiQty > 0) {
-                    // Restoring quantity from an existing order — set exact qty, do not increment
-                    selectedItems.set(uniqueId, {
-                        id: uniqueId,
+                    selectedItems.set(productId, {
+                        id: productId,
                         productId: productId,
                         categoryId: categoryId,
                         name: productName,
@@ -3695,30 +3829,47 @@
                         quantity: apiQty,
                         stock: productStock
                     });
-                } else if (selectedItems.has(uniqueId)) {
-                    let item = selectedItems.get(uniqueId);
-                    item.quantity += 1;
-                    selectedItems.set(uniqueId, item);
-                } else {
-                    selectedItems.set(uniqueId, {
-                        id: uniqueId,
-                        productId: productId,
-                        categoryId: categoryId,
-                        name: productName,
-                        price: productPrice,
-                        image: productImage,
-                        code: productCode,
-                        quantity_type: quantity_type,
-                        quantity_type_id: quantity_type_id,
-                        quantity_type123: quantity_type123,
-                        quantity: 1,
-                        stock: productStock
-                    });
+                    $product.removeAttr("data-selected-qty");
+                    $checkIcon.addClass("selected");
+                    updateTotalItems();
+                    return;
                 }
 
-                $product.removeAttr("data-selected-qty");
+                var meta = {
+                    productId: productId,
+                    categoryId: categoryId,
+                    name: productName,
+                    image: productImage,
+                    code: productCode,
+                    quantity_type: quantity_type,
+                    quantity_type_id: quantity_type_id,
+                    quantity_type123: quantity_type123,
+                    stock: productStock,
+                    basePrice: basePrice
+                };
+
+                if ((variants && variants.length) || (addons && addons.length)) {
+                    openPosOptionModal(meta, variants || [], addons || []);
+                    $checkIcon.addClass("selected");
+                    return;
+                }
+
+                addProductToCart({
+                    id: productId,
+                    productId: productId,
+                    categoryId: categoryId,
+                    name: productName,
+                    price: productPrice,
+                    image: productImage,
+                    code: productCode,
+                    quantity_type: quantity_type,
+                    quantity_type_id: quantity_type_id,
+                    quantity_type123: quantity_type123,
+                    quantity: 1,
+                    stock: productStock,
+                    uniqueId: productId
+                });
                 $checkIcon.addClass("selected");
-                updateTotalItems();
             });
 
             $(document).on("click", ".button-plus", function () {
@@ -3894,6 +4045,9 @@
                     const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
                     orderItems.push({
                         product_id: item.productId,
+                        variant_id: item.variant_id || null,
+                        addon_ids: item.addon_ids || [],
+                        addons: item.addon_ids || [],
                         quantity: item.quantity,
                         quantity_type_id: item.quantity_type,
                         quantity_type123: item.quantity_type123,
@@ -4105,6 +4259,9 @@
                     const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
                     orderItems.push({
                         product_id: item.productId,
+                        variant_id: item.variant_id || null,
+                        addon_ids: item.addon_ids || [],
+                        addons: item.addon_ids || [],
                         quantity: item.quantity,
                         quantity_type_id: item.quantity_type,
                         quantity_type123: item.quantity_type123,
@@ -4311,6 +4468,9 @@
                     const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
                     orderItems.push({
                         product_id: item.productId,
+                        variant_id: item.variant_id || null,
+                        addon_ids: item.addon_ids || [],
+                        addons: item.addon_ids || [],
                         quantity: item.quantity,
                         quantity_type_id: item.quantity_type,
                         quantity_type123: item.quantity_type123,

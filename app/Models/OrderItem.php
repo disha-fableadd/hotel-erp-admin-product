@@ -13,10 +13,13 @@ class OrderItem extends Model
         'order_id',
         'user_id',
         'product_id',
+        'variant_id',
+        'addons',
         'category_id',
         'quantity',
         'quantity_type_id',
         'price',
+        'unit_price',
         'total_amount',
         'branch_id',
         'created_by',
@@ -24,9 +27,19 @@ class OrderItem extends Model
         'created_at',
         'updated_at',
     ];
+
+    protected $casts = [
+        'addons' => 'array',
+    ];
+
     public function product()
     {
         return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+
+    public function variant()
+    {
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
     }
     // public function product()
     // {

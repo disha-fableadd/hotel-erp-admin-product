@@ -21,15 +21,36 @@ class Product extends Model
         'barcode',
         'description',
         'price',
+        'cost_price',
         'quantity_type_id',
         'images',
         'quantity',
+        'min_stock',
         'isDeleted',
         'availablility',
         'status',
+        'product_kind',
+        'food_type',
+        'tax_id',
+        'tax_inclusive',
+        'is_pos_available',
+        'track_inventory',
+        'recipe_required',
+        'kitchen_station',
+        'prep_time_minutes',
+        'display_order',
         'created_at',
         'updated_at',
         'create_by',
+    ];
+
+    protected $casts = [
+        'tax_inclusive' => 'boolean',
+        'is_pos_available' => 'boolean',
+        'track_inventory' => 'boolean',
+        'recipe_required' => 'boolean',
+        'cost_price' => 'decimal:2',
+        'min_stock' => 'decimal:4',
     ];
 
     protected $appends = ['image_url'];
@@ -49,6 +70,31 @@ class Product extends Model
     public function quantityType()
     {
         return $this->belongsTo(QuantityType::class, 'quantity_type_id');
+    }
+
+    public function tax()
+    {
+        return $this->belongsTo(TaxRate::class, 'tax_id');
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class, 'product_id')
+            ->where('isDeleted', 0)
+            ->orderBy('sort_order');
+    }
+
+    public function addons()
+    {
+        return $this->belongsToMany(ProductAddon::class, 'product_addon_product', 'product_id', 'addon_id')
+            ->where('product_addons.isDeleted', 0)
+            ->withTimestamps();
+    }
+
+    public function recipe()
+    {
+        return $this->hasOne(ProductRecipe::class, 'product_id')
+            ->where('isDeleted', 0);
     }
 
 

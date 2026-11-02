@@ -10,7 +10,9 @@ use App\Models\Product;
 use App\Models\ProductInventory;
 use App\Models\Purchases;
 use App\Models\QuantityType;
+use App\Models\TaxRate;
 use App\Models\User;
+use App\Services\ProductMasterService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +25,11 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ProductController extends Controller
 {
+    protected function productMaster(): ProductMasterService
+    {
+        return app(ProductMasterService::class);
+    }
+
     // public function getAllProduct(Request $request)
     // {
     //     $user              = Auth::guard('api')->user();
@@ -150,10 +157,12 @@ class ProductController extends Controller
     $query = Product::with([
         'category',
         'brand',
-        'quantityType'
+        'quantityType',
+        'variants',
     ])
     ->where('isDeleted', 0)
     ->where('branch_id', $branchIdToUse)
+    ->orderBy('display_order')
     ->orderBy('id', 'desc');
 
     if (!empty($categoryId)) {
@@ -617,27 +626,26 @@ class ProductController extends Controller
     // }
     public function createProduct(Request $request)
     {
-        // dd($request->all());
-        $validator = Validator::make($request->all(), [
+        $master = $this->productMaster();
+        $validator = Validator::make($request->all(), array_merge([
             'vendor_id'     => 'nullable|numeric',
             'category_id'   => 'required|numeric',
             'brand_id'      => 'nullable|numeric',
             'name'          => 'required|string|max:255',
             'description'   => 'nullable|string',
             'price'         => 'required|numeric',
-            'SKU'           => 'required|string|max:255|unique:products,SKU', // ✅ removed $request->product_id (not needed for create)
+            'SKU'           => 'required|string|max:255|unique:products,SKU',
             'barcode'       => 'nullable|string|max:255|unique:products,barcode',
             'quantity'      => 'required|integer|min:0',
             'status'        => 'nullable|in:active,inactive',
             'availablility' => 'nullable|in:in_stock,out_stock',
             'images'        => 'nullable|array',
             'images.*'      => 'image|mimes:jpeg,png,jpg,gif,webp',
-        ], [], [
+        ], $master->restaurantFieldRules()), [], [
             'category_id'   => 'category',
             'brand_id'      => 'brand',
             'SKU'           => 'SKU',
             'availablility' => 'availability',
-            // 'create_by'     => 'create_by'
         ]);
 
         if ($validator->fails()) {
@@ -647,7 +655,6 @@ class ProductController extends Controller
             ], 422);
         }
 
-        // ✅ Handle image uploads
         $imagePaths = [];
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
@@ -656,30 +663,25 @@ class ProductController extends Controller
             }
         }
 
-        // ✅ Get user role and branch logic
         $user          = Auth::guard('api')->user();
         $userRole      = $user->role ?? '';
         $userId        = $user->id ?? null;
         $StaffBranchId = $user->branch_id ?? null;
         $branchId = null;
         if ($userRole === 'sub-admin') {
-            $branchId = $userId; // Sub-admin owns their branch
+            $branchId = $userId;
         } elseif ($userRole === 'admin') {
             $branchId = $request->branch_id ?? $userId;
-        } elseif (strtolower($userRole) === 'staff') { // ✅ lowercase check
+        } elseif (strtolower($userRole) === 'staff') {
             $branchId = $StaffBranchId;
         }
-        // dd($StaffBranchId);
-
-        // if (! empty($request->sub_admin_id)) {
-        //     $branchId = $request->sub_admin_id; // ✅ override if passed
-        // }
         if (!empty($request->sub_admin_id) && $userRole !== 'staff') {
             $branchId = $request->sub_admin_id;
         }
 
-        // ✅ Create Product
-        $product = Product::create([
+        $restaurantAttrs = $master->extractRestaurantAttributes($request);
+
+        $product = Product::create(array_merge([
             'vendor_id'     => $request->vendor_id ?? 1,
             'category_id'   => $request->category_id,
             'brand_id'      => $request->brand_id,
@@ -696,19 +698,20 @@ class ProductController extends Controller
                 ? 'out_stock'
                 : ($request->availablility ?? 'in_stock'),
             'images'        => json_encode($imagePaths),
-            // 'create_by'     => $userId,
-        ]);
+        ], $restaurantAttrs));
 
-        // ✅ Create ProductInventory log
         ProductInventory::create([
             'product_id'    => $product->id,
             'initial_stock' => $request->quantity,
             'current_stock' => $request->quantity,
             'branch_id'     => $branchId,
-            'create_by'     => $userId, // ✅ use userId (not branchId, which is confusing)
+            'create_by'     => $userId,
             'type'          => 'Create',
             'date'          => now(),
         ]);
+
+        $master->syncRelations($product, $request);
+        $product->load(['variants', 'addons', 'recipe.items']);
 
         return response()->json([
             'status'  => true,
@@ -719,7 +722,8 @@ class ProductController extends Controller
 
     public function updateProduct(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $master = $this->productMaster();
+        $validator = Validator::make($request->all(), array_merge([
             'vendor_id'     => 'nullable|numeric',
             'category_id'   => 'required|numeric',
             'brand_id'      => 'nullable|numeric',
@@ -734,7 +738,7 @@ class ProductController extends Controller
             'availablility' => 'nullable|in:in_stock,out_stock',
             'images'        => 'nullable|array',
             'images.*'      => 'image|mimes:jpeg,png,jpg,gif,webp',
-        ], [], [
+        ], $master->restaurantFieldRules(true)), [], [
             'category_id'   => 'category',
             'brand_id'      => 'brand',
             'SKU'           => 'SKU',
@@ -745,16 +749,13 @@ class ProductController extends Controller
             return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
         }
 
-        // Find the product
         $product = Product::find($request->product_id);
         if (! $product) {
             return response()->json(['status' => false, 'message' => 'Product not found'], 404);
         }
 
-        // Get existing images
         $existingImages = json_decode($product->images, true) ?? [];
 
-        // Handle new image uploads
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
                 $path             = $image->store('img/product', 'public');
@@ -762,12 +763,10 @@ class ProductController extends Controller
             }
         }
 
-        // Get user role and ID for branch assignment
         $user     = auth()->user();
         $userRole = $user->role ?? '';
         $userId   = $user->id ?? null;
 
-        // Determine branch_id
         $branchId = $product->branch_id;
         if ($userRole === 'sub-admin') {
             $branchId = $userId;
@@ -775,8 +774,9 @@ class ProductController extends Controller
             $branchId = $request->branch_id;
         }
 
-        // Update product
-        $product->update([
+        $restaurantAttrs = $master->extractRestaurantAttributes($request);
+
+        $product->update(array_merge([
             'vendor_id'     => $request->vendor_id ?? 1,
             'category_id'   => $request->category_id,
             'brand_id'      => $request->brand_id,
@@ -784,7 +784,6 @@ class ProductController extends Controller
             'name'          => $request->name,
             'description'   => $request->description,
             'price'         => $request->price,
-            'quantity_type'         => $request->quantity_type,
             'SKU'           => $request->SKU,
             'barcode'       => $request->barcode,
             'quantity'      => $request->quantity,
@@ -792,13 +791,8 @@ class ProductController extends Controller
             'status'        => $request->status,
             'availablility' => $request->quantity == 0 ? 'out_stock' : ($request->availablility ?? 'in_stock'),
             'images'        => json_encode($existingImages),
-            'capacity'      => $request->capacity,
-            'voltage'       => $request->voltage,
-            'warranty'      => $request->warranty,
-            'expiry_date'   => $request->expiry_date,
-        ]);
+        ], $restaurantAttrs));
 
-        // ✅ Insert into product inventory log
         ProductInventory::create([
             'product_id'    => $product->id,
             'initial_stock' => $request->quantity,
@@ -808,6 +802,9 @@ class ProductController extends Controller
             'type'          => 'Edit',
             'date'          => now(),
         ]);
+
+        $master->syncRelations($product, $request);
+        $product->load(['variants', 'addons', 'recipe.items']);
 
         return response()->json([
             'status'  => true,
@@ -1019,9 +1016,17 @@ class ProductController extends Controller
 
     public function getProductDetails($id)
     {
-        $product = Product::with(['category', 'quantityType'])->findOrFail($id);
+        $product = Product::with([
+            'category',
+            'brand',
+            'quantityType',
+            'tax',
+            'variants',
+            'addons',
+            'recipe.items.ingredient',
+            'recipe.items.quantityType',
+        ])->findOrFail($id);
 
-        // Fetch currency settings
         $settings         = DB::table('settings')->first();
         $currencySymbol   = $settings->currency_symbol ?? '₹';
         $currencyPosition = $settings->currency_position ?? 'left';
@@ -1035,6 +1040,9 @@ class ProductController extends Controller
 
         return response()->json([
             'product'          => $product,
+            'variants'         => $product->variants,
+            'addons'           => $product->addons,
+            'recipe'           => $product->recipe,
             'currencySymbol'   => $currencySymbol,
             'currencyPosition' => $currencyPosition,
             'barcode_html'     => $barcodeHtml,
@@ -1130,11 +1138,20 @@ class ProductController extends Controller
 
     public function edit_product(Request $request, $id)
     {
-        $product = Product::findOrFail($id);
-        // dd($product);
+        $product = Product::with([
+            'variants',
+            'addons',
+            'recipe.items.ingredient',
+            'recipe.items.quantityType',
+            'tax',
+        ])->findOrFail($id);
+
         return response()->json([
-            'status'  => true,
-            'product' => $product,
+            'status'   => true,
+            'product'  => $product,
+            'variants' => $product->variants,
+            'addons'   => $product->addons,
+            'recipe'   => $product->recipe,
         ]);
     }
     public function getQuantityTypes(Request $request)

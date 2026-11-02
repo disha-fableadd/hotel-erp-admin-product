@@ -152,9 +152,10 @@
 
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Quantity <span class="text-danger field-required-mark">*</span></label>
+                            <label>Current Stock <span class="text-danger field-required-mark">*</span></label>
                             <input type="number" name="quantity" id="quantity" class="form-control" min="0"
                                 step="1">
+                            <small class="text-muted">On-hand stock (not order qty)</small>
                             <span class="error_quantity text-danger"></span>
                         </div>
                     </div>
@@ -173,12 +174,14 @@
 
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
-                            <label>Price <span class="text-danger field-required-mark">*</span></label>
+                            <label>Base Selling Price <span class="text-danger field-required-mark">*</span></label>
                             <input type="number" name="price" id="price" class="form-control" min="0"
                                 step="0.01">
                             <span class="error_price text-danger"></span>
                         </div>
                     </div>
+
+                    @include('product.partials.restaurant_fields')
 
                     <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
@@ -371,6 +374,9 @@
 
             var authToken = localStorage.getItem("authToken");
             let formData = new FormData($('#productForm')[0]);
+            if (typeof window.appendRestaurantProductPayload === 'function') {
+                window.appendRestaurantProductPayload(formData);
+            }
             if (selectedSubAdminId) {
                 formData.append("sub_admin_id", selectedSubAdminId);
             }
@@ -778,4 +784,5 @@
         get_quantity_type();
     });
 </script>
+@include('product.partials.restaurant_fields_script')
 @endpush
