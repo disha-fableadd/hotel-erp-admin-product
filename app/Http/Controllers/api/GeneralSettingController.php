@@ -34,6 +34,7 @@ class GeneralSettingController extends Controller
             $settings->currency_symbol   = '₹';
             $settings->currency_position = 'left';
             $settings->low_stock         = 10;
+            $settings->default_gst_option = 'without';
             $settings->show_hr_dashboard = 1;
             $settings->show_erp_dashboard = 1;
         }
@@ -64,6 +65,7 @@ class GeneralSettingController extends Controller
             'gst_num'           => 'nullable',
             'low_stock'         => 'nullable',
             'allow_item_level_discount' => 'nullable|boolean',
+            'default_gst_option' => 'nullable|in:with,without',
             'state_code'        => 'nullable',
             'email'             => 'required|email',
             'phone'             => 'required',
@@ -128,6 +130,9 @@ class GeneralSettingController extends Controller
         $settings->low_stock         = $request->low_stock;
         if ($request->has('allow_item_level_discount')) {
             $settings->allow_item_level_discount = (int) $request->allow_item_level_discount;
+        }
+        if ($request->has('default_gst_option')) {
+            $settings->default_gst_option = $request->default_gst_option === 'with' ? 'with' : 'without';
         }
         $settings->name              = $request->shop_name;
         $settings->email             = $request->email;

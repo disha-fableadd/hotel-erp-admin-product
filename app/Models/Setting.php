@@ -17,6 +17,7 @@ class Setting extends Model
         'gst_num',
         'low_stock',
         'allow_item_level_discount',
+        'default_gst_option',
         'address',
         'logo',
         'currency_position',

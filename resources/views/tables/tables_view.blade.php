@@ -2245,12 +2245,13 @@
                                 <div class="order-panel-title">Current Order</div>
                                 <div class="gst-header mb-2">
                                     <div class="custom-gst-pill-group">
+                                        @php $defaultGst = ((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without'; @endphp
                                         <label class="custom-gst-pill">
-                                            <input type="radio" name="gst_option" id="without_gst" value="without" checked />
+                                            <input type="radio" name="gst_option" id="without_gst" value="without" {{ $defaultGst === 'without' ? 'checked' : '' }} />
                                             <span>Without GST</span>
                                         </label>
                                         <label class="custom-gst-pill">
-                                            <input type="radio" name="gst_option" id="with_gst" value="with" />
+                                            <input type="radio" name="gst_option" id="with_gst" value="with" {{ $defaultGst === 'with' ? 'checked' : '' }} />
                                             <span>With GST</span>
                                         </label>
                                     </div>
@@ -2558,6 +2559,7 @@
         const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
         var authToken = localStorage.getItem("authToken");
         const canItemDiscount = {{ !empty($can_item_discount) ? 'true' : 'false' }};
+        const defaultGstOption = @json(((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without');
 
         // Use event delegation to handle dynamically created elements
         $(document).ready(function () {
@@ -2650,7 +2652,8 @@
             $('.btn-totallabel_1').hide();
             $('.btn-totallabel_2').hide();
             $('.setvaluecash').hide();
-            $('input[name="gst_option"]').prop("checked", false).trigger('change');
+            $('input[name="gst_option"]').prop("checked", false);
+            $(`input[name="gst_option"][value="${defaultGstOption || 'without'}"]`).prop("checked", true).trigger('change');
             $('#discount').val("").trigger('input');
             tableOrderModal.show();
         }
@@ -2868,7 +2871,8 @@
                         $('.btn-totallabel_1').hide();
                         $('.btn-totallabel_2').hide();
                         $('.setvaluecash').hide();
-                        $('input[name="gst_option"]').prop("checked", false).trigger('change');
+                        $('input[name="gst_option"]').prop("checked", false);
+                        $(`input[name="gst_option"][value="${defaultGstOption || 'without'}"]`).prop("checked", true).trigger('change');
 
                         // Clear discount
                         $('#discount').val("").trigger('input');
@@ -2974,8 +2978,9 @@
                 });
             });
 
-            // Initialize tax rows as hidden on page load
-            $(".taxList").hide();
+            // Apply default GST from settings (shows/hides tax rows)
+            $("input[name='gst_option']").prop('checked', false);
+            $("input[name='gst_option'][value='" + (defaultGstOption || 'without') + "']").prop('checked', true).trigger('change');
 
             function formatCurrency(amount, symbol, position) {
                 return position === 'right' ? amount + symbol : symbol + amount;

@@ -1286,12 +1286,13 @@
                             style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div class="custom-gst-pill-group">
                                 <label class="custom-gst-btn">
-                                    <input type="radio" name="gst_option" id="without_gst" value="without" checked />
+                                    @php $defaultGst = ((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without'; @endphp
+                                    <input type="radio" name="gst_option" id="without_gst" value="without" {{ $defaultGst === 'without' ? 'checked' : '' }} />
                                     <span>Without GST</span>
                                 </label>
 
                                 <label class="custom-gst-btn">
-                                    <input type="radio" name="gst_option" id="with_gst" value="with" />
+                                    <input type="radio" name="gst_option" id="with_gst" value="with" {{ $defaultGst === 'with' ? 'checked' : '' }} />
                                     <span>With GST</span>
                                 </label>
                             </div>
@@ -1928,6 +1929,7 @@
         <script>
             let selectedItems = new Map();
             const canItemDiscount = {{ !empty($can_item_discount) ? 'true' : 'false' }};
+            const defaultGstOption = @json(((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without');
             const posCurrencySymbol = @json($currency_symbol ?? '₹');
             const posCurrencyPosition = @json($currency_position ?? 'left');
 
@@ -2256,8 +2258,9 @@
                 selectedItems = new Map();
                 var authToken = localStorage.getItem("authToken");
 
-                // Initialize tax rows as hidden on page load
-                $(".taxList").hide();
+                // Apply default GST from settings (shows/hides tax rows)
+                $("input[name='gst_option']").prop('checked', false);
+                $("input[name='gst_option'][value='" + (defaultGstOption || 'without') + "']").prop('checked', true).trigger('change');
 
                 // No payment method selected by default
 
@@ -3943,7 +3946,7 @@
                         items: [],
                         customerName: '',
                         customerPhone: '',
-                        gstOption: 'without',
+                        gstOption: defaultGstOption || 'without',
                         paymentMethod: 'pending',
                         discount: '',
                         orderType: 'Delivery',

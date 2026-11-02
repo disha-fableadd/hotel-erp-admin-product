@@ -254,6 +254,17 @@
                                 </div>
                             </div>
 
+                            <div class="col-lg-3 col-sm-6 col-6">
+                                <div class="form-group">
+                                    <label>Default GST on POS</label>
+                                    <select id="default_gst_option" class="form-select">
+                                        <option value="without">Without GST</option>
+                                        <option value="with">With GST</option>
+                                    </select>
+                                    <small class="text-muted">Pre-selects With/Without GST on Add Order and Tables POS.</small>
+                                </div>
+                            </div>
+
                             <div class="col-lg-3 col-sm-12 col-6">
                                 <div class="form-group">
                                     <label>Invoice Size</label>
@@ -1321,6 +1332,9 @@
                         $("#allow_item_level_discount").val(
                             settings.allow_item_level_discount == 1 || settings.allow_item_level_discount === true ? '1' : '0'
                         );
+                        $("#default_gst_option").val(
+                            settings.default_gst_option === 'with' ? 'with' : 'without'
+                        );
                         $("#shop_name").val(settings.name);
                         $("#gst_num").val(settings.gst_num);
                         $("#email").val(settings.email);
@@ -1713,6 +1727,7 @@
                 let formData = new FormData();
                 formData.append("low_stock", $("#low_stock").val());
                 formData.append("allow_item_level_discount", $("#allow_item_level_discount").val());
+                formData.append("default_gst_option", $("#default_gst_option").val());
                 formData.append("shop_name", $("#shop_name").val());
                 formData.append("gst_num", $("#gst_num").val());
                 formData.append("email", $("#email").val());
