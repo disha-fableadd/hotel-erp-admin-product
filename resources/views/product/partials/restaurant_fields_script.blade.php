@@ -35,13 +35,24 @@
     function toggleRestaurantSections() {
         var kind = $('#product_kind').val() || 'general';
         var recipeRequired = String($('#recipe_required').val()) === '1';
-        var showFood = (kind === 'prepared_food' || kind === 'packaged');
+        var showFood = (kind === 'prepared_food' || kind === 'packaged' || kind === 'raw_material');
         var showVariants = (kind === 'prepared_food' || kind === 'packaged');
         var showRecipe = recipeRequired || kind === 'prepared_food';
 
-        $('.restaurant-food-fields').toggle(showFood || kind === 'raw_material');
-        $('.restaurant-variant-fields').toggle(showVariants);
-        $('.restaurant-recipe-fields').toggle(showRecipe);
+        $('.restaurant-food-fields').toggle(showFood);
+        $('.restaurant-variant-tab').toggle(showVariants);
+        $('.restaurant-recipe-tab').toggle(showRecipe);
+
+        // If active tab was hidden, jump back to Basic
+        if ((!showVariants && $('#tab-variants-btn').hasClass('active')) ||
+            (!showRecipe && $('#tab-recipe-btn').hasClass('active'))) {
+            var basicBtn = document.getElementById('tab-basic-btn');
+            if (basicBtn && typeof bootstrap !== 'undefined') {
+                bootstrap.Tab.getOrCreateInstance(basicBtn).show();
+            } else {
+                $('#tab-basic-btn').tab('show');
+            }
+        }
 
         if (kind === 'raw_material') {
             $('#food_type').val('na');

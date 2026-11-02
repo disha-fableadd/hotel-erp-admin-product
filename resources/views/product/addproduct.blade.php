@@ -183,26 +183,6 @@
 
                     @include('product.partials.restaurant_fields')
 
-                    <div class="col-lg-3 col-sm-6 col-6">
-                        <div class="form-group">
-                            <label> Status</label>
-                            <select class="select" name="status" id="status">
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                            <span class="error_status text-danger"></span>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-sm-6 col-6">
-                        <div class="form-group">
-                            <label> Stock</label>
-                            <select class="select" name="availablility" id="availablility" disabled>
-                                <option value="in_stock">In Stock</option>
-                                <option value="out_stock">Out Of Stock</option>
-                            </select>
-                            <span class="error_availablility text-danger"></span>
-                        </div>
-                    </div>
                     <script>
                         document.addEventListener('DOMContentLoaded', function() {
                             const qtyInput = document.getElementById('quantity');
@@ -211,50 +191,17 @@
                                 qtyInput.addEventListener('input', function() {
                                     const qty = parseInt(this.value);
 
-                                    // Update using jQuery + Select2
                                     if (!isNaN(qty) && qty === 0) {
                                         $('#availablility').val('out_stock').trigger('change');
                                     } else {
                                         $('#availablility').val('in_stock').trigger('change');
                                     }
-
                                 });
                             }
                         });
                     </script>
 
-
-                    <div class="col-lg-3 col-sm-6 col-6">
-                        <div class="form-group">
-                            <label>Barcode</label>
-                            <input type="text" name="barcode" id="barcode" class="form-control">
-                            <span class="error_barcode text-danger"></span>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-sm-6 col-6">
-                        <div class="form-group">
-                            <label>Description</label>
-                            <textarea class="form-control" name="description" id="description" rows="1"></textarea>
-                            <span class="error_description text-danger"></span>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-3 col-sm-6 col-6">
-                        <div class="form-group">
-                            <label> Product Image</label>
-                            <div class="image-upload">
-                                <input type="file" name="images[]" id="images" multiple>
-                                <div class="image-uploads">
-                                    <img src="{{ env('ImagePath') . '/admin/assets/img/icons/upload.svg' }}"
-                                         alt="img">
-                                    <h4>Drag and drop a file to upload</h4>
-                                </div>
-                            </div>
-                            <div class="image-preview" style="margin-top: 10px;"></div>
-                            <span class="error_images text-danger"></span>
-                        </div>
-                    </div>
-                    <div class="col-lg-12">
+                    <div class="col-lg-12 mt-3">
                         <a href="javascript:void(0);" class="btn btn-submit me-2 submit">Submit</a>
                         <a href="{{ route('product.list') }}" class="btn btn-cancel">Cancel</a></br>
                         <span class="success_submit text-danger"></span>
