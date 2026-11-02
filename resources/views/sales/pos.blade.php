@@ -1089,8 +1089,122 @@
     display: block;
     margin: 0 !important;
 }
+
+        /* Multi-bill tabs (same pattern as poojasaman POS) */
+        .pos-bill-tabs-bar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            width: auto;
+            max-width: 100%;
+            margin-bottom: 10px;
+            min-height: 28px;
+        }
+        #posBillTabsBar #posBillTabs.pos-bill-tabs {
+            display: inline-flex !important;
+            align-items: center;
+            gap: 6px;
+            overflow-x: auto;
+            flex: 0 0 auto !important;
+            width: max-content !important;
+            max-width: calc(100% - 40px);
+            min-width: 0;
+            scrollbar-width: thin;
+        }
+        .pos-bill-tabs::-webkit-scrollbar { height: 4px; }
+        #posBillTabsBar .pos-bill-tab {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 4px;
+            flex: 0 0 auto !important;
+            width: max-content !important;
+            max-width: 160px !important;
+            height: 28px !important;
+            min-height: 28px !important;
+            min-width: 0 !important;
+            border: 0;
+            background: #3a3f4b;
+            color: #fff;
+            border-radius: 999px;
+            padding: 0 6px 0 10px !important;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            line-height: 1;
+            white-space: nowrap;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        #posBillTabsBar .pos-bill-tab.active {
+            background: #ff9f43;
+            color: #fff;
+        }
+        .pos-bill-tab-name {
+            flex: 0 1 auto;
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-align: left;
+        }
+        .pos-bill-tab-count {
+            display: none;
+            min-width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.22);
+            font-size: 9px;
+            align-items: center;
+            justify-content: center;
+            padding: 0 3px;
+            line-height: 1;
+        }
+        .pos-bill-tab.has-items .pos-bill-tab-count { display: inline-flex; }
+        #posBillTabsBar .pos-bill-tab-close {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 14px !important;
+            width: 14px !important;
+            height: 14px !important;
+            min-width: 14px !important;
+            min-height: 14px !important;
+            border-radius: 50%;
+            border: 0;
+            background: rgba(255,255,255,0.22);
+            color: #fff;
+            font-size: 9px !important;
+            font-weight: 700;
+            line-height: 1 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            cursor: pointer;
+        }
+        #posBillTabsBar .pos-bill-tab-close:hover { background: rgba(0,0,0,0.28); }
+        .pos-add-bill-tab {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 0;
+            background: #1b2850;
+            color: #fff;
+            font-size: 16px;
+            line-height: 1;
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .pos-add-bill-tab:hover { background: #ff9f43; }
     </style>
         <div class="content">
+        <div class="pos-bill-tabs-bar" id="posBillTabsBar">
+            <div class="pos-bill-tabs" id="posBillTabs"></div>
+            <button type="button" class="pos-add-bill-tab" id="posAddBillTabBtn" title="New bill (Shift + T)">+</button>
+        </div>
         <div class="page-header d-flex justify-content-between align-items-center">
             <div class="page-title d-flex align-items-center gap-2 m-0" style="flex-shrink: 0;">
                 <i class="fas fa-utensils" style="color: var(--pos-primary); font-size: 17px;"></i>
@@ -2393,6 +2507,9 @@
                     $(".totalitem h4").text("Total items : " + selectedItems.size);
                     renderSelectedItems();
                     calculateTotals();
+                    if (typeof window.refreshActivePosBillTab === 'function') {
+                        window.refreshActivePosBillTab();
+                    }
                 }
 
                 function formatPosMoney(amount) {
@@ -3095,16 +3212,7 @@
                                     keyboard: false
                                 });
                                 billModal.show();
-                                // Reset form
-                                selectedItems.clear();
-                                $(".check-product i").removeClass("selected");
-                                $("input[name='customer_name'], input[name='customer_phone']").val(
-                                    "");
-                                $("input[name='payment_method']").prop("checked", false);
-                                $("input[name='type']").prop("checked", false);
-                                $(".paymentmethod").removeClass("active");
-                                $(".typemethod").removeClass("active");
-                                $("#discount").val("");
+                                // Close current bill tab (or clear cart if tabs unavailable)
                                 $("#paidTypeBox").hide();
                                 $("#cashOnlineBox").hide();
                                 $("#paidTypeSelect").val("");
@@ -3117,7 +3225,6 @@
                                 $("#scanExtraFields").hide();
                                 $("#scanBankSelect").val("");
                                 $("#scanRemark").val("");
-                                // Reset Cash+Online fields
                                 $("#cashOnlinePaidTypeSelect").val("");
                                 $("#cashOnlinePaidAmountBox").hide();
                                 $("#cashOnlineEnterAmount").val("");
@@ -3126,7 +3233,17 @@
                                 $("#onlineAmount").val("0");
                                 $("#cashOnlineBankSelect").val("");
                                 $("#cashOnlineRemark").val("");
-                                updateTotalItems();
+                                if (typeof window.posBillTabsCloseCurrentAfterSave === 'function') {
+                                    window.posBillTabsCloseCurrentAfterSave();
+                                } else {
+                                    selectedItems.clear();
+                                    $(".check-product i").removeClass("selected");
+                                    $("input[name='customer_name'], input[name='customer_phone']").val("");
+                                    $("input[name='payment_method']").prop("checked", false);
+                                    $(".paymentmethod").removeClass("active");
+                                    $("#discount").val("");
+                                    updateTotalItems();
+                                }
                             } else {
                                 alert("Error: " + response.message);
                             }
@@ -3802,6 +3919,280 @@
                             window.open("/sales/invoice/pdf/" + window._billOrderId, "_blank");
                         }
                     }
+                }
+            });
+
+            // ── Multi-bill tabs (Bill 1 / +) ──────────────────────────────────
+            window.initPosBillTabs = function() {
+                const MAX_TABS = 12;
+                let tabs = [];
+                let activeId = null;
+                let nextNum = 1;
+                let switching = false;
+
+                function cloneItems(mapRef) {
+                    try {
+                        return JSON.parse(JSON.stringify(Array.from(mapRef.entries())));
+                    } catch (e) {
+                        return [];
+                    }
+                }
+
+                function emptyState() {
+                    return {
+                        items: [],
+                        customerName: '',
+                        customerPhone: '',
+                        gstOption: 'without',
+                        paymentMethod: 'pending',
+                        discount: '',
+                        orderType: 'Delivery',
+                        staffId: ''
+                    };
+                }
+
+                function currentCustomerName() {
+                    const $sel = $('#customer_name_input');
+                    if (!$sel.length) return '';
+                    const val = $sel.val();
+                    if (!val) return '';
+                    const $opt = $sel.find('option:selected');
+                    let text = ($opt.text() || String(val)).trim();
+                    const lower = text.toLowerCase();
+                    if (lower === 'select or type customer' || lower === 'choose' || lower === 'select') return '';
+                    if (lower.indexOf('default customer') === 0) return '';
+                    const phone = String($('#customer_phone').val() || '').trim();
+                    if (phone && text.indexOf('(' + phone + ')') !== -1) {
+                        text = text.replace('(' + phone + ')', '').trim();
+                    }
+                    return text;
+                }
+
+                function resetPaymentExtras() {
+                    $("#paidTypeBox").hide();
+                    $("#cashOnlineBox").hide();
+                    $("#paidTypeSelect").val("");
+                    $("#paidAmountBox").hide();
+                    $("#enterAmount").prop("readonly", false).val("");
+                    $("#pendingAmount").prop("readonly", true).val("");
+                    $("#debitExtraFields").hide();
+                    $("#debitBankSelect").val("");
+                    $("#debitRemark").val("");
+                    $("#scanExtraFields").hide();
+                    $("#scanBankSelect").val("");
+                    $("#scanRemark").val("");
+                    $("#cashOnlinePaidTypeSelect").val("");
+                    $("#cashOnlinePaidAmountBox").hide();
+                    $("#cashOnlineEnterAmount").val("");
+                    $("#cashOnlinePendingAmount").val("");
+                    $("#cashAmount").val("");
+                    $("#onlineAmount").val("0");
+                    $("#cashOnlineBankSelect").val("");
+                    $("#cashOnlineRemark").val("");
+                }
+
+                function snapshotState() {
+                    return {
+                        items: cloneItems(selectedItems),
+                        customerName: $('#customer_name_input').val() || '',
+                        customerPhone: $('#customer_phone').val() || '',
+                        gstOption: $("input[name='gst_option']:checked").val() || 'without',
+                        paymentMethod: $("input[name='payment_method']:checked").val() || 'pending',
+                        discount: $('#discount').val() || '',
+                        orderType: $('#order_type_select').val() || 'Delivery',
+                        staffId: $('#assigned_staff_id').val() || ''
+                    };
+                }
+
+                function snapshotActive() {
+                    if (switching || !activeId) return;
+                    const tab = tabs.find(t => t.id === activeId);
+                    if (!tab) return;
+                    tab.state = snapshotState();
+                }
+
+                function itemCount(state) {
+                    return (state && state.items) ? state.items.length : 0;
+                }
+
+                function tabTitle(tab) {
+                    const name = (tab.state && tab.state.customerName) ? String(tab.state.customerName).trim() : '';
+                    if (name && name.toLowerCase().indexOf('default customer') !== 0) {
+                        return name;
+                    }
+                    return 'Bill ' + tab.number;
+                }
+
+                function renderTabs() {
+                    const $wrap = $('#posBillTabs');
+                    if (!$wrap.length) return;
+                    $wrap.empty();
+                    tabs.forEach(function(tab) {
+                        const count = itemCount(tab.state);
+                        const title = tabTitle(tab);
+                        const safeTitle = $('<div>').text(title).html();
+                        const $btn = $(`
+                            <div class="pos-bill-tab${tab.id === activeId ? ' active' : ''}${count ? ' has-items' : ''}" role="button" tabindex="0" data-bill-id="${tab.id}" title="${safeTitle}">
+                                <span class="pos-bill-tab-name">${safeTitle}</span>
+                                <span class="pos-bill-tab-count">${count}</span>
+                                <span class="pos-bill-tab-close" data-close-bill="${tab.id}" title="Close">&times;</span>
+                            </div>
+                        `);
+                        $wrap.append($btn);
+                    });
+                }
+
+                function restoreState(state) {
+                    switching = true;
+                    const data = state || emptyState();
+                    selectedItems.clear();
+                    (data.items || []).forEach(function(entry) {
+                        if (Array.isArray(entry) && entry.length >= 2) {
+                            selectedItems.set(String(entry[0]), entry[1]);
+                        }
+                    });
+
+                    const custVal = data.customerName || '';
+                    const $cust = $('#customer_name_input');
+                    if ($cust.length) {
+                        if (custVal && !$cust.find('option').filter(function() { return $(this).val() === custVal; }).length) {
+                            const opt = new Option(custVal, custVal, true, true);
+                            $cust.append(opt);
+                        }
+                        $cust.val(custVal).trigger('change');
+                    }
+                    $('#customer_phone').val(data.customerPhone || '');
+
+                    const gstVal = data.gstOption || 'without';
+                    $("input[name='gst_option'][value='" + gstVal + "']").prop('checked', true).trigger('change');
+
+                    resetPaymentExtras();
+                    $("input[name='payment_method']").prop('checked', false);
+                    $('.paymentmethod').removeClass('active');
+                    const payVal = data.paymentMethod || 'pending';
+                    const $pay = $("input[name='payment_method'][value='" + payVal + "']");
+                    if ($pay.length) {
+                        $pay.prop('checked', true);
+                        $pay.closest('a.paymentmethod, .paymentmethod').addClass('active');
+                    }
+
+                    $('#discount').val(data.discount || '');
+                    if ($('#order_type_select').length) {
+                        $('#order_type_select').val(data.orderType || 'Delivery').trigger('change');
+                    }
+                    if ($('#assigned_staff_id').length) {
+                        $('#assigned_staff_id').val(data.staffId || '').trigger('change');
+                    }
+
+                    $('.check-product i').removeClass('selected');
+                    selectedItems.forEach(function(item) {
+                        if (item && item.productId) {
+                            $(".productset[data-id='" + item.productId + "'] .check-product i").addClass('selected');
+                        }
+                    });
+
+                    if (typeof window.updateTotalItems === 'function') {
+                        window.updateTotalItems();
+                    }
+                    switching = false;
+                }
+
+                function addTab(makeActive, options) {
+                    if (tabs.length >= MAX_TABS) {
+                        Swal.fire('Limit reached', 'You can keep up to ' + MAX_TABS + ' bills open.', 'info');
+                        return;
+                    }
+                    snapshotActive();
+                    const keepCurrent = !!(options && options.keepCurrent);
+                    const tab = {
+                        id: 'bill_' + Date.now() + '_' + nextNum,
+                        number: nextNum++,
+                        state: keepCurrent ? snapshotState() : emptyState()
+                    };
+                    tabs.push(tab);
+                    if (makeActive !== false) {
+                        activeId = tab.id;
+                        if (!keepCurrent) {
+                            restoreState(tab.state);
+                        }
+                    }
+                    renderTabs();
+                }
+
+                function switchTab(id) {
+                    if (!id || id === activeId) return;
+                    snapshotActive();
+                    const tab = tabs.find(t => t.id === id);
+                    if (!tab) return;
+                    activeId = tab.id;
+                    restoreState(tab.state);
+                    renderTabs();
+                }
+
+                function closeTab(id) {
+                    const idx = tabs.findIndex(t => t.id === id);
+                    if (idx === -1) return;
+                    if (tabs.length === 1) {
+                        tabs[0].state = emptyState();
+                        restoreState(tabs[0].state);
+                        renderTabs();
+                        return;
+                    }
+                    const wasActive = tabs[idx].id === activeId;
+                    tabs.splice(idx, 1);
+                    if (wasActive) {
+                        const next = tabs[Math.max(0, idx - 1)];
+                        activeId = next.id;
+                        restoreState(next.state);
+                    }
+                    renderTabs();
+                }
+
+                window.refreshActivePosBillTab = function() {
+                    if (switching || !activeId) return;
+                    snapshotActive();
+                    renderTabs();
+                };
+
+                window.posBillTabsCloseCurrentAfterSave = function() {
+                    snapshotActive();
+                    closeTab(activeId);
+                    if (!tabs.length) {
+                        addTab(true);
+                    }
+                };
+
+                $('#posAddBillTabBtn').on('click', function() {
+                    addTab(true);
+                });
+                $(document).on('click', '.pos-bill-tab', function(e) {
+                    if ($(e.target).closest('.pos-bill-tab-close').length) return;
+                    switchTab(String($(this).attr('data-bill-id') || ''));
+                });
+                $(document).on('click', '.pos-bill-tab-close', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeTab(String($(this).data('close-bill')));
+                });
+                $(document).on('keydown', function(e) {
+                    if (!e.shiftKey || (e.key !== 'T' && e.key !== 't')) return;
+                    if ($(e.target).is('input, textarea, select, [contenteditable="true"]')) return;
+                    e.preventDefault();
+                    addTab(true);
+                });
+
+                $(document).on('change input', '#customer_name_input, #customer_phone, #discount, #order_type_select, #assigned_staff_id, input[name="gst_option"], input[name="payment_method"]', function() {
+                    if (typeof window.refreshActivePosBillTab === 'function') {
+                        window.refreshActivePosBillTab();
+                    }
+                });
+
+                addTab(true, { keepCurrent: true });
+            };
+
+            $(function() {
+                if ($('#posBillTabs').length) {
+                    window.initPosBillTabs();
                 }
             });
         </script>
