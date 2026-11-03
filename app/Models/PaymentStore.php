@@ -12,10 +12,13 @@ class PaymentStore extends Model
     protected $table = 'payment_store';
 
     protected $fillable = [
+        'client_uuid',
+        'branch_id',
         'user_id',
         'order_id',
         'custom_invoice_id',
         'purchase_id',
+        'amount',
         'payment_amount',
         'payment_date',
         'payment_method',
@@ -31,6 +34,30 @@ class PaymentStore extends Model
         'created_at',
         'updated_at',
     ];
+
+    protected $appends = [
+        'amount',
+        'order_client_uuid',
+    ];
+
+    /**
+     * Accessor for 'amount' to ensure backward compatibility and sync with Drift DB
+     */
+    public function getAmountAttribute()
+    {
+        return $this->attributes['amount'] ?? $this->attributes['payment_amount'] ?? 0.00;
+    }
+
+    /**
+     * Accessor for 'order_client_uuid' to link with Flutter Drift order references
+     */
+    public function getOrderClientUuidAttribute()
+    {
+        if (isset($this->attributes['order_client_uuid'])) {
+            return $this->attributes['order_client_uuid'];
+        }
+        return $this->order?->client_uuid ?? null;
+    }
 
 
 

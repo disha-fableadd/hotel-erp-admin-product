@@ -337,6 +337,9 @@ class SyncController extends Controller
             if ($tableKey === 'orders') {
                 $query->with(['order_items', 'user', 'payments']);
             }
+            if ($tableKey === 'payment_store') {
+                $query->with(['order:id,client_uuid']);
+            }
             if ($tableKey === 'table_no') {
                 $query->with(['order']);
             }
@@ -727,23 +730,108 @@ class SyncController extends Controller
 
             // 8. Payment Store
             if (!empty($payload['payment_store'])) {
+                $hasAmountCol = Schema::hasColumn('payment_store', 'amount');
+                $hasBranchCol = Schema::hasColumn('payment_store', 'branch_id');
+                $hasClientUuidCol = Schema::hasColumn('payment_store', 'client_uuid');
+
                 foreach ($payload['payment_store'] as $p) {
                     $uuid = $p['client_uuid'] ?? (string) Str::uuid();
-                    $payment = \App\Models\PaymentStore::firstOrNew(['client_uuid' => $uuid]);
 
+                    if ($hasClientUuidCol) {
+                        $payment = \App\Models\PaymentStore::firstOrNew(['client_uuid' => $uuid]);
+                    } else {
+                        $payment = new \App\Models\PaymentStore();
+                    }
+
+                    // 1. Resolve Amount (support both payment_amount and amount)
+                    $amount = floatval($p['payment_amount'] ?? $p['amount'] ?? 0.0);
+
+                    // 2. Resolve Order ID
                     $orderId = $p['order_id'] ?? null;
+                    $ord = null;
                     if (!$orderId && !empty($p['order_client_uuid'])) {
                         $ord = \App\Models\Order::where('client_uuid', $p['order_client_uuid'])->first();
                         $orderId = $ord ? $ord->id : null;
+                    } elseif ($orderId) {
+                        $ord = \App\Models\Order::find($orderId);
                     }
 
+                    // 3. Resolve User ID (user_id is NOT NULL in database)
+                    $userId = $p['user_id'] ?? null;
+                    if (!$userId && !empty($p['user_client_uuid'])) {
+                        $usr = \App\Models\User::where('client_uuid', $p['user_client_uuid'])->first();
+                        $userId = $usr ? $usr->id : null;
+                    }
+                    if (!$userId && $ord) {
+                        $userId = $ord->user_id;
+                    }
+                    if (!$userId) {
+                        try {
+                            $userId = auth('api')->id() ?? auth()->id();
+                        } catch (\Throwable $e) {
+                            $userId = null;
+                        }
+                    }
+                    if (!$userId) {
+                        $userId = \App\Models\User::where('branch_id', $branchId)->value('id') ?? \App\Models\User::value('id') ?? 1;
+                    }
+
+                    // 4. Resolve Payment Method & Amounts
+                    $method = strtolower($p['payment_method'] ?? 'cash');
+                    $cashAmount = isset($p['cash_amount']) ? floatval($p['cash_amount']) : ($method === 'cash' ? $amount : 0.0);
+                    $upiAmount = isset($p['upi_amount']) ? floatval($p['upi_amount']) : (in_array($method, ['upi', 'online', 'card', 'bank_transfer', 'qr']) ? $amount : 0.0);
+
+                    // 5. Populate attributes safely
+                    $payment->user_id = $userId;
                     $payment->order_id = $orderId;
-                    $payment->amount = $p['amount'] ?? 0;
-                    $payment->payment_method = $p['payment_method'] ?? 'cash';
-                    $payment->status = $p['status'] ?? 'completed';
-                    $payment->branch_id = $p['branch_id'] ?? $branchId;
-                    $payment->client_uuid = $uuid;
+                    $payment->payment_amount = $amount;
+                    if ($hasAmountCol) {
+                        $payment->amount = $amount;
+                    }
+                    $payment->payment_date = !empty($p['payment_date']) ? Carbon::parse($p['payment_date'])->toDateString() : Carbon::now('Asia/Kolkata')->toDateString();
+                    $payment->payment_type = $p['payment_type'] ?? 'fully';
+                    $payment->payment_method = $method;
+                    $payment->cash_amount = $cashAmount;
+                    $payment->upi_amount = $upiAmount;
+                    $payment->remaining_amount = floatval($p['remaining_amount'] ?? 0.0);
+                    $payment->status = $p['status'] ?? 'paid';
+
+                    if ($hasBranchCol) {
+                        $payment->branch_id = $p['branch_id'] ?? $branchId;
+                    }
+                    if ($hasClientUuidCol) {
+                        $payment->client_uuid = $uuid;
+                    }
+                    if (!empty($p['bank_id'])) {
+                        $payment->bank_id = $p['bank_id'];
+                    }
+                    if (!empty($p['custom_invoice_id'])) {
+                        $payment->custom_invoice_id = $p['custom_invoice_id'];
+                    }
+                    if (!empty($p['purchase_id'])) {
+                        $payment->purchase_id = $p['purchase_id'];
+                    }
+                    if (isset($p['remarks'])) {
+                        $payment->remarks = $p['remarks'];
+                    }
+                    if (isset($p['isDeleted'])) {
+                        $payment->isDeleted = (int)$p['isDeleted'];
+                    }
+
                     $payment->save();
+
+                    // 6. Recalculate Order remaining_amount and payment_status if applicable
+                    if ($ord && $amount > 0) {
+                        $totalPaid = \App\Models\PaymentStore::where('order_id', $ord->id)->where('isDeleted', 0)->sum('payment_amount');
+                        $remaining = max(0, ($ord->total_amount ?? 0) - $totalPaid);
+                        $ord->remaining_amount = $remaining;
+                        if ($remaining <= 0) {
+                            $ord->payment_status = 'completed';
+                        } elseif ($remaining < ($ord->total_amount ?? 0)) {
+                            $ord->payment_status = 'partially';
+                        }
+                        $ord->save();
+                    }
 
                     $syncedMappings['payment_store'][] = [
                         'local_id' => $p['local_id'] ?? null,
