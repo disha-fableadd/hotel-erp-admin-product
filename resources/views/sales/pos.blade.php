@@ -2161,17 +2161,29 @@
         {{-- 🧾 Bill Generated Modal --}}
         <div class="modal fade" id="billGeneratedModal" tabindex="-1" aria-labelledby="billGeneratedModalLabel"
             aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-            <div class="modal-dialog modal-dialog-centered" style="max-width:780px;">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:860px;">
                 <div class="modal-content" style="border-radius:16px; overflow:hidden;">
                     <div class="modal-header border-0 pb-0" style="background:#fff; padding:20px 24px 10px;">
-                        <h5 class="modal-title fw-bold fs-5" id="billGeneratedModalLabel">Bill Generated</h5>
+                        <div>
+                            <h5 class="modal-title fw-bold fs-5 mb-0" id="billGeneratedModalLabel">Bill Generated</h5>
+                            <small class="text-muted">Select printer → Press <kbd>F10</kbd> or Print</small>
+                        </div>
                         <button type="button" class="btn-close" id="closeBillModalBtn" aria-label="Close"></button>
                     </div>
                     <div class="modal-body p-0" style="background:#f8f9fa;">
-                        <p class="text-muted mb-0 px-4 pt-2 pb-2" style="font-size:13px;">
-                            Press <kbd>F10</kbd> or click Print — same invoice format as before
-                        </p>
-                        <div style="height:520px; background:#e0e0e0; position:relative;">
+                        <div class="phone-print-panel d-md-none px-3 pt-2" data-select="#posPrinterSelect" data-status="#posQzStatus" data-storage="posSelectedPrinter" data-bt="#posBtPrinterList">
+                            <div class="phone-print-tabs mb-2">
+                                <button type="button" class="phone-print-tab is-active btn btn-sm btn-outline-primary me-1" data-tab="bt">Bluetooth</button>
+                                <button type="button" class="phone-print-tab btn btn-sm btn-outline-secondary" data-tab="wifi">WIFI</button>
+                            </div>
+                            <div id="posBtPrinterList" class="bt-printer-list" data-print-pane="bt">
+                                <div class="bt-printer-empty small text-muted">Tap Bluetooth and choose the receipt printer.</div>
+                            </div>
+                            <div id="posWifiPrinterList" class="bt-printer-list d-none" data-print-pane="wifi">
+                                <div class="bt-printer-empty small text-muted">Looking for Wi‑Fi printers…</div>
+                            </div>
+                        </div>
+                        <div style="height:min(520px, 58vh); background:#e0e0e0; position:relative;">
                             <iframe id="billPreviewIframe"
                                 src=""
                                 style="width:100%; height:100%; border:none; display:block;"
@@ -2185,20 +2197,54 @@
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer border-0 pt-3 pb-3 px-4 gap-2" style="background:#fff;">
-                        <button type="button" id="closeBillBtn"
-                            style="background:#6c757d;color:#fff;font-weight:600;border:none;border-radius:10px;padding:10px 28px;font-size:15px;">
-                            Close
-                        </button>
-                        <button type="button" id="detailsBillBtn"
-                            style="background:#fff;color:#495057;font-weight:600;border:2px solid #dee2e6;border-radius:10px;padding:10px 28px;font-size:15px;"
-                            onclick="if(window._billOrderId){ window.location.href='/sales-invoice/'+window._billOrderId; }">
-                            Details
-                        </button>
-                        <button type="button" id="printBillBtn"
-                            style="background:#ff9f43;color:#fff;font-weight:700;border:none;border-radius:10px;padding:10px 32px;font-size:15px;">
-                            Print (F10)
-                        </button>
+                    <div class="modal-footer border-0 pt-2 pb-3 px-3 px-md-4" style="background:#fff;">
+                        <div class="w-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <div class="d-flex flex-wrap align-items-center gap-2" style="min-width:0; flex:1 1 280px;">
+                                <label class="mb-0 small text-muted text-nowrap" for="posPrinterSelect">Printer</label>
+                                <select id="posPrinterSelect" class="form-select form-select-sm" style="min-width:140px;max-width:220px;flex:1 1 160px;">
+                                    <option value="">Connecting…</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="posRefreshPrintersBtn" title="Refresh printer list">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm d-none d-md-inline-block desktop-bt-print-btn"
+                                    data-select="#posPrinterSelect" data-status="#posQzStatus" data-storage="posSelectedPrinter"
+                                    title="Choose a nearby Bluetooth printer">
+                                    <i class="fab fa-bluetooth-b"></i> Bluetooth
+                                </button>
+                                <div class="form-check mb-0 d-flex align-items-center gap-1">
+                                    <input class="form-check-input" type="checkbox" id="posThermalAutoCut">
+                                    <label class="form-check-label small" for="posThermalAutoCut">Auto cut</label>
+                                </div>
+                                <div class="form-check mb-0 d-flex align-items-center gap-1" title="Also open kitchen KOT print with the bill">
+                                    <input class="form-check-input" type="checkbox" id="posPrintKotWithBill" checked>
+                                    <label class="form-check-label small" for="posPrintKotWithBill">Print KOT</label>
+                                </div>
+                                <span class="small text-nowrap" id="posQzStatus" style="color:#6c757d;"></span>
+                                <a href="https://qz.io/download/" target="_blank" rel="noopener" class="small text-nowrap" id="posQzInstallLink" style="display:none;">Install QZ Tray</a>
+                                <a href="{{ url('/qz/install-qz-trust.bat') }}" class="small text-nowrap d-none d-md-inline" id="posQzTrustLink" title="Fixes Allow disabled when Remember is checked">Fix Allow</a>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+                                <button type="button" id="closeBillBtn" class="btn btn-secondary"
+                                    style="font-weight:600;border-radius:10px;padding:8px 18px;">
+                                    Close
+                                </button>
+                                <button type="button" id="detailsBillBtn" class="btn btn-outline-secondary"
+                                    style="font-weight:600;border-radius:10px;padding:8px 18px;"
+                                    onclick="if(window._billOrderId){ window.location.href='/sales-invoice/'+window._billOrderId; }">
+                                    Details
+                                </button>
+                                <button type="button" id="printKotOnlyBtn" class="btn btn-outline-dark"
+                                    style="font-weight:600;border-radius:10px;padding:8px 16px;"
+                                    title="Print kitchen ticket only">
+                                    KOT
+                                </button>
+                                <button type="button" id="printBillBtn" class="btn"
+                                    style="background:#ff9f43;color:#fff;font-weight:700;border:none;border-radius:10px;padding:8px 22px;">
+                                    Print (F10)
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3655,6 +3701,9 @@
 
                                 $iframe.off("load").on("load", function() {
                                     $loader.hide();
+                                    if (window.InvoiceQzPrint && InvoiceQzPrint.preparePhonePrint && this.src) {
+                                        InvoiceQzPrint.preparePhonePrint(this.src);
+                                    }
                                 });
 
                                 var billModal = new bootstrap.Modal(document.getElementById("billGeneratedModal"), {
@@ -3662,6 +3711,15 @@
                                     keyboard: false
                                 });
                                 billModal.show();
+                                // Restore Print KOT preference
+                                try {
+                                    var kotPref = localStorage.getItem('posPrintKotWithBill');
+                                    if (kotPref === '0') {
+                                        $('#posPrintKotWithBill').prop('checked', false);
+                                    } else {
+                                        $('#posPrintKotWithBill').prop('checked', true);
+                                    }
+                                } catch (e) {}
                                 // Close current bill tab (or clear cart if tabs unavailable)
                                 $("#paidTypeBox").hide();
                                 $("#cashOnlineBox").hide();
@@ -4342,10 +4400,104 @@
                 setTimeout(updatePosPaymentPanelPosition, 800);
             });
 
-            // ── Bill Generated Modal: Print & Close handlers ──────────────────
+            // ── Bill Generated Modal: QZ / Bluetooth print + KOT ─────────────
+            function refreshPosPrinterList() {
+                if (!window.InvoiceQzPrint) {
+                    $('#posQzStatus').text('QZ print loading…').css('color', '#6c757d');
+                    return Promise.resolve();
+                }
+                return InvoiceQzPrint.refreshPrinters({
+                    select: '#posPrinterSelect',
+                    status: '#posQzStatus',
+                    installLink: '#posQzInstallLink',
+                    storageKey: 'posSelectedPrinter',
+                    list: '#posBtPrinterList',
+                    wifiList: '#posWifiPrinterList'
+                });
+            }
+
+            function openKotPrintWindow(orderId) {
+                if (!orderId) return;
+                var kotUrl = "/kitchen/kot/" + orderId + "/print";
+                var w = window.open(kotUrl, "kot_print_" + orderId, "width=420,height=640,scrollbars=yes");
+                if (!w) {
+                    // popup blocked — open in hidden iframe as fallback
+                    var $frame = $('#posKotSilentFrame');
+                    if (!$frame.length) {
+                        $frame = $('<iframe id="posKotSilentFrame" title="KOT print" style="position:absolute;width:0;height:0;border:0;left:-9999px;"></iframe>');
+                        $('body').append($frame);
+                    }
+                    $frame.attr('src', kotUrl);
+                }
+            }
+
+            function printBillFromModal() {
+                var orderId = window._billOrderId;
+                if (!orderId) return;
+
+                var frame = document.getElementById('billPreviewIframe');
+                var pdfUrl = frame && frame.src ? frame.src : ("/sales/invoice/pdf/" + orderId);
+                var printerName = ($('#posPrinterSelect').val() || '').trim();
+                var doAutoCut = $('#posThermalAutoCut').is(':checked');
+                var alsoKot = $('#posPrintKotWithBill').is(':checked');
+
+                function afterBillPrint() {
+                    if (alsoKot) {
+                        openKotPrintWindow(orderId);
+                    }
+                }
+
+                if (!window.InvoiceQzPrint) {
+                    window.open(pdfUrl, "_blank");
+                    afterBillPrint();
+                    return;
+                }
+
+                if (!printerName) {
+                    $('#posQzStatus').text('Select a printer (or Bluetooth)').css('color', '#ea5455');
+                    // Fallback browser print of PDF
+                    window.open(pdfUrl, "_blank");
+                    afterBillPrint();
+                    return;
+                }
+
+                $('#printBillBtn').prop('disabled', true);
+                Promise.resolve(InvoiceQzPrint.printInvoice({
+                    printerName: printerName,
+                    pdfUrl: pdfUrl,
+                    autoCut: doAutoCut,
+                    frame: frame,
+                    status: '#posQzStatus',
+                    button: '#printBillBtn',
+                    select: '#posPrinterSelect',
+                    list: '#posBtPrinterList',
+                    storageKey: 'posSelectedPrinter'
+                })).then(function() {
+                    afterBillPrint();
+                }).catch(function() {
+                    afterBillPrint();
+                }).then(function() {
+                    $('#printBillBtn').prop('disabled', false);
+                });
+            }
+
+            $(document).on('click', '#posRefreshPrintersBtn', function() {
+                refreshPosPrinterList();
+            });
+
+            $(document).on('change', '#posPrintKotWithBill', function() {
+                try {
+                    localStorage.setItem('posPrintKotWithBill', $(this).is(':checked') ? '1' : '0');
+                } catch (e) {}
+            });
+
             $(document).on('click', '#printBillBtn', function() {
+                printBillFromModal();
+            });
+
+            $(document).on('click', '#printKotOnlyBtn', function() {
                 if (window._billOrderId) {
-                    window.open("/sales/invoice/pdf/" + window._billOrderId, "_blank");
+                    openKotPrintWindow(window._billOrderId);
                 }
             });
 
@@ -4353,19 +4505,35 @@
                 var modalEl = document.getElementById("billGeneratedModal");
                 var bsModal = bootstrap.Modal.getInstance(modalEl);
                 if (bsModal) bsModal.hide();
-                // Clear iframe src to stop loading
                 $("#billPreviewIframe").attr("src", "");
             });
 
-            // F10 key → Print (only when Bill modal is open)
+            // When bill modal opens, refresh QZ printers
+            $(document).on('shown.bs.modal', '#billGeneratedModal', function() {
+                var tries = 0;
+                (function waitQz() {
+                    tries++;
+                    if (window.InvoiceQzPrint || tries > 40) {
+                        refreshPosPrinterList();
+                        if (window.InvoiceQzPrint && InvoiceQzPrint.preparePhonePrint) {
+                            var frame = document.getElementById('billPreviewIframe');
+                            if (frame && frame.src) {
+                                InvoiceQzPrint.preparePhonePrint(frame.src);
+                            }
+                        }
+                        return;
+                    }
+                    setTimeout(waitQz, 150);
+                })();
+            });
+
+            // F10 → Print bill (+ KOT if checked) when Bill modal is open
             $(document).on('keydown', function(e) {
                 if (e.key === 'F10' || e.keyCode === 121) {
                     var modalEl = document.getElementById("billGeneratedModal");
                     if (modalEl && modalEl.classList.contains('show')) {
                         e.preventDefault();
-                        if (window._billOrderId) {
-                            window.open("/sales/invoice/pdf/" + window._billOrderId, "_blank");
-                        }
+                        printBillFromModal();
                     }
                 }
             });
@@ -4644,4 +4812,5 @@
                 }
             });
         </script>
+        @include('partials.invoice-qz-print-script')
         @endpush

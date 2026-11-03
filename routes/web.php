@@ -114,6 +114,15 @@ Route::post('/face-login', [FaceLoginController::class, 'login'])->name('face-lo
 Route::get('/api/face-login-data', [FaceLoginController::class, 'getFaceData']);
 Route::post('/auth/face-login', [LoginController::class, 'faceLogin'])->name('auth.face-login');
 
+// QZ Tray print signing + trust install (Bluetooth / thermal printers)
+Route::get('/qz/override.crt', [\App\Http\Controllers\QzTrayController::class, 'overrideCrt'])->name('qz.override');
+Route::get('/qz/install-qz-trust.bat', [\App\Http\Controllers\QzTrayController::class, 'installBat'])->name('qz.install-bat');
+Route::middleware(['auth:web'])->group(function () {
+    Route::get('/qz/certificate', [\App\Http\Controllers\QzTrayController::class, 'certificate'])->name('qz.certificate');
+    Route::post('/qz/sign', [\App\Http\Controllers\QzTrayController::class, 'sign'])->name('qz.sign');
+    Route::get('/qz/sign', [\App\Http\Controllers\QzTrayController::class, 'sign']);
+});
+
 // Serve face photos directly from storage — bypasses storage:link symlink issues on shared hosting.
 Route::get('/face-photo/{filename}', function (string $filename) {
     // Sanitize: only allow safe filenames (no directory traversal)
