@@ -15,6 +15,7 @@ class QuantityType extends Model
         'quantity_type',
         'created_by',
         'branch_id',
-        'isDeleted'
+        'isDeleted',
+        'client_uuid',
     ];
 }

@@ -15,6 +15,7 @@ class Brand extends Model
         'logo',
         'branch_id',
         'isDeleted',
+        'client_uuid',
         'created_at',
         'updated_at',
     ];

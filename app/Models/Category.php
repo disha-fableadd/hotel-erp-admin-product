@@ -14,6 +14,7 @@ class Category extends Model
         'image',
         'branch_id',
         'isDeleted',
+        'client_uuid',
         'created_at',
         'updated_at',
     ];

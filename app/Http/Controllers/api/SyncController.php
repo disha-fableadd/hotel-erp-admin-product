@@ -526,15 +526,27 @@ class SyncController extends Controller
                 }
             }
 
-            // 4. Quantity Types (Units)
-            if (!empty($payload['quantity_types'])) {
-                foreach ($payload['quantity_types'] as $qt) {
+            // 4. Quantity Types (Units) — accept both quantity_types and units keys from desktop
+            $quantityTypesPayload = [];
+            if (!empty($payload['quantity_types']) && is_array($payload['quantity_types'])) {
+                $quantityTypesPayload = array_merge($quantityTypesPayload, $payload['quantity_types']);
+            }
+            if (!empty($payload['units']) && is_array($payload['units'])) {
+                $quantityTypesPayload = array_merge($quantityTypesPayload, $payload['units']);
+            }
+            if (!empty($quantityTypesPayload)) {
+                foreach ($quantityTypesPayload as $qt) {
                     $uuid = $qt['client_uuid'] ?? (string) Str::uuid();
                     $unit = \App\Models\QuantityType::firstOrNew(['client_uuid' => $uuid]);
-                    $unit->type = $qt['type'] ?? ($qt['name'] ?? 'Plate');
+                    // DB column is quantity_type (not type/name)
+                    $unitName = trim((string) ($qt['quantity_type'] ?? $qt['type'] ?? $qt['name'] ?? $qt['unit_name'] ?? ''));
+                    if ($unitName === '') {
+                        $unitName = 'Pcs';
+                    }
+                    $unit->quantity_type = $unitName;
                     $unit->branch_id = $qt['branch_id'] ?? $branchId;
                     if (isset($qt['isDeleted'])) {
-                        $unit->isDeleted = (int)$qt['isDeleted'];
+                        $unit->isDeleted = (int) $qt['isDeleted'];
                     }
                     $unit->client_uuid = $uuid;
                     $unit->save();
@@ -581,49 +593,66 @@ class SyncController extends Controller
             }
 
             // 6. Products / Menu Items
-            if (!empty($payload['products'])) {
+            if (!empty($payload['products']) && is_array($payload['products'])) {
                 foreach ($payload['products'] as $p) {
                     $uuid = $p['client_uuid'] ?? (string) Str::uuid();
+                    $prodBranchId = $p['branch_id'] ?? $branchId;
+
+                    // Resolve FKs: remote ID → client UUID → name (auto-create masters when needed)
+                    $categoryId = $this->resolveSyncedCategoryId($p, $prodBranchId);
+                    $brandId = $this->resolveSyncedBrandId($p, $prodBranchId);
+                    $quantityTypeId = $this->resolveSyncedQuantityTypeId($p, $prodBranchId);
+
+                    // Prefer client_uuid; fall back to remote_id / SKU for older desktop payloads
                     $product = \App\Models\Product::firstOrNew(['client_uuid' => $uuid]);
-
-                    // Resolve foreign keys
-                    $categoryId = $p['category_id'] ?? null;
-                    if (!$categoryId && !empty($p['category_client_uuid'])) {
-                        $cat = \App\Models\Category::where('client_uuid', $p['category_client_uuid'])->first();
-                        $categoryId = $cat ? $cat->id : null;
+                    if (!$product->exists) {
+                        $remoteId = $p['id'] ?? $p['remote_id'] ?? null;
+                        if ($remoteId) {
+                            $byRemote = \App\Models\Product::find($remoteId);
+                            if ($byRemote) {
+                                $product = $byRemote;
+                            }
+                        }
+                    }
+                    if (!$product->exists) {
+                        $sku = trim((string) ($p['sku'] ?? $p['SKU'] ?? ''));
+                        if ($sku !== '') {
+                            $bySku = \App\Models\Product::where('SKU', $sku)->first();
+                            if ($bySku) {
+                                $product = $bySku;
+                            }
+                        }
                     }
 
-                    $brandId = $p['brand_id'] ?? null;
-                    if (!$brandId && !empty($p['brand_client_uuid'])) {
-                        $brand = \App\Models\Brand::where('client_uuid', $p['brand_client_uuid'])->first();
-                        $brandId = $brand ? $brand->id : null;
+                    $product->name = $p['name'] ?? $product->name;
+                    $product->SKU = $p['sku'] ?? $p['SKU'] ?? $product->SKU;
+                    $product->barcode = $p['barcode'] ?? $product->barcode;
+                    $product->description = $p['description'] ?? $product->description;
+                    $product->price = $p['price'] ?? $product->price ?? 0;
+                    if (array_key_exists('purchase_price', $p) || array_key_exists('cost_price', $p)) {
+                        $product->cost_price = $p['purchase_price'] ?? $p['cost_price'] ?? $product->cost_price;
                     }
-
-                    $unitId = $p['quantity_type_id'] ?? null;
-                    if (!$unitId && !empty($p['quantity_type_client_uuid'])) {
-                        $qt = \App\Models\QuantityType::where('client_uuid', $p['quantity_type_client_uuid'])->first();
-                        $unitId = $qt ? $qt->id : null;
-                    }
-
-                    $product->name = $p['name'];
-                    $product->SKU = $p['sku'] ?? $p['SKU'] ?? null;
-                    $product->barcode = $p['barcode'] ?? null;
-                    $product->description = $p['description'] ?? null;
-                    $product->price = $p['price'] ?? 0;
-                    $product->quantity = $p['quantity'] ?? 0;
-                    $product->status = $p['status'] ?? 'active';
-                    $product->availablility = $p['availablility'] ?? 'in_stock';
+                    $product->quantity = $p['quantity'] ?? $product->quantity ?? 0;
+                    $product->status = $p['status'] ?? $product->status ?? 'active';
+                    $product->availablility = $p['availablility'] ?? $p['availability'] ?? $product->availablility ?? 'in_stock';
                     $product->category_id = $categoryId;
                     $product->brand_id = $brandId;
-                    $product->quantity_type_id = $unitId;
-                    $product->branch_id = $p['branch_id'] ?? $branchId;
+                    $product->quantity_type_id = $quantityTypeId;
+                    $product->branch_id = $prodBranchId;
+
+                    if (Schema::hasColumn('products', 'unit_id')) {
+                        $product->unit_id = $quantityTypeId;
+                    }
+                    if (Schema::hasColumn('products', 'availability') && isset($p['availability'])) {
+                        $product->availability = $p['availability'];
+                    }
 
                     if (!empty($p['images'])) {
                         $product->images = is_array($p['images']) ? json_encode($p['images']) : $p['images'];
                     }
 
                     if (isset($p['isDeleted'])) {
-                        $product->isDeleted = (int)$p['isDeleted'];
+                        $product->isDeleted = (int) $p['isDeleted'];
                     }
                     $product->client_uuid = $uuid;
                     $product->save();
@@ -995,6 +1024,137 @@ class SyncController extends Controller
                 'file' => $e->getFile(),
             ], 500);
         }
+    }
+
+    /**
+     * Resolve category_id for a synced product: valid remote ID → client UUID → name (auto-create).
+     */
+    protected function resolveSyncedCategoryId(array $data, $branchId = null): ?int
+    {
+        $categoryId = $data['category_id'] ?? null;
+        if ($categoryId && !\App\Models\Category::where('id', $categoryId)->exists()) {
+            $categoryId = null; // local/stale desktop ID
+        }
+
+        if (!$categoryId && !empty($data['category_client_uuid'])) {
+            $cat = \App\Models\Category::where('client_uuid', $data['category_client_uuid'])->first();
+            $categoryId = $cat ? (int) $cat->id : null;
+        }
+
+        $catName = trim((string) ($data['category_name'] ?? $data['category'] ?? ''));
+        if (!$categoryId && $catName !== '') {
+            $query = \App\Models\Category::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($catName)]);
+            if ($branchId) {
+                $query->where(function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+                });
+            }
+            $cat = $query->first();
+            if (!$cat) {
+                $cat = new \App\Models\Category();
+                $cat->name = $catName;
+                $cat->branch_id = $branchId;
+                if (!empty($data['category_client_uuid'])) {
+                    $cat->client_uuid = $data['category_client_uuid'];
+                }
+                $cat->isDeleted = 0;
+                $cat->save();
+            } elseif (!empty($data['category_client_uuid']) && empty($cat->client_uuid)) {
+                $cat->client_uuid = $data['category_client_uuid'];
+                $cat->save();
+            }
+            $categoryId = (int) $cat->id;
+        }
+
+        return $categoryId ? (int) $categoryId : null;
+    }
+
+    /**
+     * Resolve quantity_type_id: valid remote ID / unit_id → client UUID → name (auto-create).
+     */
+    protected function resolveSyncedQuantityTypeId(array $data, $branchId = null): ?int
+    {
+        $quantityTypeId = $data['quantity_type_id'] ?? $data['unit_id'] ?? null;
+        if ($quantityTypeId && !\App\Models\QuantityType::where('id', $quantityTypeId)->exists()) {
+            $quantityTypeId = null; // local/stale desktop ID
+        }
+
+        $qtUuid = $data['quantity_type_client_uuid'] ?? $data['unit_client_uuid'] ?? null;
+        if (!$quantityTypeId && !empty($qtUuid)) {
+            $qt = \App\Models\QuantityType::where('client_uuid', $qtUuid)->first();
+            $quantityTypeId = $qt ? (int) $qt->id : null;
+        }
+
+        $qtName = trim((string) ($data['quantity_type'] ?? $data['unit_name'] ?? $data['quantity_type_name'] ?? ''));
+        if (!$quantityTypeId && $qtName !== '') {
+            $query = \App\Models\QuantityType::query()
+                ->whereRaw('LOWER(quantity_type) = ?', [mb_strtolower($qtName)]);
+            if ($branchId && Schema::hasColumn('quantity_types', 'branch_id')) {
+                $query->where(function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+                });
+            }
+            $qt = $query->first();
+            if (!$qt) {
+                $qt = new \App\Models\QuantityType();
+                $qt->quantity_type = $qtName;
+                if (Schema::hasColumn('quantity_types', 'branch_id')) {
+                    $qt->branch_id = $branchId;
+                }
+                if (!empty($qtUuid)) {
+                    $qt->client_uuid = $qtUuid;
+                }
+                $qt->isDeleted = 0;
+                $qt->save();
+            } elseif (!empty($qtUuid) && empty($qt->client_uuid)) {
+                $qt->client_uuid = $qtUuid;
+                $qt->save();
+            }
+            $quantityTypeId = (int) $qt->id;
+        }
+
+        return $quantityTypeId ? (int) $quantityTypeId : null;
+    }
+
+    /**
+     * Resolve brand_id: valid remote ID → client UUID → name (lookup only, no auto-create).
+     */
+    protected function resolveSyncedBrandId(array $data, $branchId = null): ?int
+    {
+        $brandId = $data['brand_id'] ?? null;
+        if ($brandId && !\App\Models\Brand::where('id', $brandId)->exists()) {
+            $brandId = null;
+        }
+
+        if (!$brandId && !empty($data['brand_client_uuid'])) {
+            $brand = \App\Models\Brand::where('client_uuid', $data['brand_client_uuid'])->first();
+            $brandId = $brand ? (int) $brand->id : null;
+        }
+
+        $brandName = trim((string) ($data['brand_name'] ?? $data['brand'] ?? ''));
+        if (
+            !$brandId
+            && $brandName !== ''
+            && strcasecmp($brandName, 'N/A') !== 0
+            && strcasecmp($brandName, 'All Brands') !== 0
+        ) {
+            $query = \App\Models\Brand::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($brandName)]);
+            if ($branchId) {
+                $query->where(function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+                });
+            }
+            $brand = $query->first();
+            if ($brand) {
+                if (!empty($data['brand_client_uuid']) && empty($brand->client_uuid)) {
+                    $brand->client_uuid = $data['brand_client_uuid'];
+                    $brand->save();
+                }
+                $brandId = (int) $brand->id;
+            }
+        }
+
+        return $brandId ? (int) $brandId : null;
     }
 
     // =============================================

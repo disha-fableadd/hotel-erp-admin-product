@@ -72,6 +72,9 @@
         .tabs_wrapper {
             overflow: visible;
             min-width: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
         .tabs_wrapper ul.tabs {
             display: flex !important;
@@ -158,12 +161,43 @@
             font-weight: 700;
         }
 
+        /* Override theme inline-block (clips product rows mid-card) */
+        .tabs_wrapper .tabs_container,
         .tabs_container {
-            max-height: calc(100vh - 220px);
-            overflow-y: auto;
-            overflow-x: hidden;
+            display: block !important;
+            width: 100% !important;
+            flex: 1 1 auto;
+            max-height: calc(100vh - 280px);
+            min-height: 320px;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
             padding-right: 4px;
-            padding-bottom: 20px;
+            padding-bottom: 28px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tabs_wrapper .tabs_container .tab_content,
+        .tabs_wrapper .tabs_container .tab_content.active,
+        .tabs_container .tab_content,
+        .tabs_container .tab_content.active {
+            display: block !important;
+            width: 100% !important;
+            float: none !important;
+        }
+        .tabs_container .tab_content > .row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+            margin-left: -6px;
+            margin-right: -6px;
+        }
+        .tabs_container .tab_content > .row > [class*="col-"] {
+            padding-left: 6px;
+            padding-right: 6px;
+            display: flex;
+        }
+        .tabs_container .tab_content > .row > [class*="col-"] > .productset {
+            width: 100%;
+            min-height: 168px;
         }
         .tabs_container::-webkit-scrollbar {
             width: 6px;
@@ -589,8 +623,9 @@
 
         /* Cart Product Table Rows */
         .product-table {
-            max-height: 220px;
+            max-height: 300px;
             overflow-y: auto;
+            overflow-x: hidden;
             margin-bottom: 10px;
             padding-right: 4px;
         }
@@ -1043,14 +1078,14 @@
     white-space: nowrap;
 }
 
-/* Controls row: every child is exactly 36px tall and centered */
+/* Controls row: image + qty + price + delete on one aligned line */
 .cart-item-controls {
     display: flex !important;
     align-items: center !important;
     flex-wrap: nowrap !important;
-    gap: 10px !important;
+    gap: 8px !important;
     width: 100%;
-    height: 36px;
+    min-height: 40px;
 }
 .cart-item-controls > * {
     margin: 0 !important;
@@ -1059,16 +1094,29 @@
 
 /* Image */
 .cart-item-controls .productimgs {
-    width: 36px !important;
-    height: 36px !important;
+    width: 40px !important;
+    height: 40px !important;
     display: flex !important;
     align-items: center;
     justify-content: center;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    flex-shrink: 0;
 }
 .cart-item-controls .productimgs img {
-    max-width: 32px;
-    max-height: 32px;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 40px;
+    max-height: 40px;
+    object-fit: cover;
+    display: block;
     margin: 0 !important;
+    /* Hide broken-image alt text fragments inside the thumb */
+    color: transparent !important;
+    font-size: 0 !important;
+    text-indent: -9999px;
 }
 
 /* Stepper + price + unit */
@@ -1099,15 +1147,19 @@
     line-height: 1 !important;
 }
 
-/* Delete icon */
+/* Delete icon — keep vertically centered with qty/price row */
 .cart-item-controls .remove-item {
     margin-left: auto !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
     width: 32px !important;
     height: 32px !important;
+    min-width: 32px !important;
     display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
+    align-items: center !important;
+    justify-content: center !important;
     padding: 0 !important;
+    align-self: center !important;
 }
 .cart-item-controls .remove-item img {
     width: 16px;
@@ -1967,6 +2019,10 @@
             const defaultGstOption = @json(((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without');
             const posCurrencySymbol = @json($currency_symbol ?? '₹');
             const posCurrencyPosition = @json($currency_position ?? 'left');
+            const POS_NO_IMAGE = @json(rtrim((string) env('ImagePath'), '/') . '/admin/assets/img/product/noimage.png');
+            const POS_IMAGE_BASE = @json(rtrim((string) env('ImagePath'), '/'));
+            const POS_DELETE_ICON = @json(rtrim((string) env('ImagePath'), '/') . '/admin/assets/img/icons/delete-2.svg');
+            window.POS_NO_IMAGE = POS_NO_IMAGE;
 
             function escapeHtmlAttr(str) {
                 return String(str == null ? '' : str)
@@ -1975,6 +2031,54 @@
                     .replace(/'/g, '&#39;')
                     .replace(/</g, '&lt;')
                     .replace(/>/g, '&gt;');
+            }
+
+            function escapeHtmlText(str) {
+                return String(str == null ? '' : str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function resolveProductImage(imageValue) {
+                var fallback = POS_NO_IMAGE;
+                var imageBasePath = POS_IMAGE_BASE || '';
+                if (imageValue == null || imageValue === '') {
+                    return fallback;
+                }
+                try {
+                    var path = imageValue;
+                    while (Array.isArray(path)) {
+                        if (!path.length) return fallback;
+                        path = path[0];
+                    }
+                    if (typeof path !== 'string') path = String(path);
+                    // Strip accidental HTML attribute leftovers from older buggy cart markup
+                    path = path.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                    var clean = path.replace(/\\/g, '').trim().replace(/^["']+|["']+$/g, '');
+                    if (clean.charAt(0) === '[') {
+                        var parsed = JSON.parse(clean);
+                        while (Array.isArray(parsed)) {
+                            if (!parsed.length) return fallback;
+                            parsed = parsed[0];
+                        }
+                        clean = String(parsed || '').replace(/\\/g, '').trim().replace(/^["']+|["']+$/g, '');
+                    }
+                    if (!clean || clean === 'null' || clean === 'undefined') return fallback;
+                    // Reject values that look like broken attribute fragments
+                    if (/alt\s*=|onerror\s*=|javascript:/i.test(clean)) return fallback;
+                    if (/^https?:\/\//i.test(clean) || clean.indexOf('data:') === 0) return clean;
+                    if (clean.indexOf('/storage/') !== -1 || clean.indexOf('admin/assets/') !== -1) {
+                        if (/^https?:\/\//i.test(clean) || clean.charAt(0) === '/') return clean;
+                        return imageBasePath.replace(/\/$/, '') + '/' + clean.replace(/^\//, '');
+                    }
+                    clean = clean.replace(/^\/?storage\//, '');
+                    return imageBasePath + '/storage/' + clean;
+                } catch (e) {
+                    return fallback;
+                }
             }
 
             function storePosProductOptions(productId, variants, addons) {
@@ -2742,17 +2846,24 @@
                         var discHtml = canItemDiscount
                             ? `<input type="number" class="form-control form-control-sm item-disc-field" data-id="${item.id}" value="${discPct}" min="0" max="100" step="0.01" title="Item discount %" placeholder="Disc %" style="width:70px;">`
                             : '';
+                        var resolvedCartImage = resolveProductImage(item.image);
+                        var safeCartImage = escapeHtmlAttr(resolvedCartImage);
+                        var safeCartName = escapeHtmlAttr(item.name || 'Product');
+                        var safeCartTitle = escapeHtmlText(item.name);
+                        var safeQtyType = escapeHtmlText(qtyType);
+                        var safeNoImage = escapeHtmlAttr(POS_NO_IMAGE);
+                        var safeDeleteIcon = escapeHtmlAttr(POS_DELETE_ICON);
 
                         productHtml += `
     <ul class="product-lists">
         <li class="cart-row">
             <h4 class="cart-item-name">
-                <span class="cart-item-title">${item.name}</span>
+                <span class="cart-item-title">${safeCartTitle}</span>
             </h4>
 
             <div class="cart-item-controls">
                 <div class="productimgs">
-                    <img src="${item.image}" alt="${item.name}">
+                    <img src="${safeCartImage}" alt="${safeCartName}" data-fallback="${safeNoImage}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')||window.POS_NO_IMAGE;">
                 </div>
 
                 <div class="increment-decrement">
@@ -2763,11 +2874,11 @@
                     </div>
                     <input type="number" class="price-field form-control form-control-sm" data-id="${item.id}" value="${numericPrice}" min="0" step="0.01">
                     ${discHtml}
-                    ${qtyType ? `<span class="cart-quantity-type">${qtyType}</span>` : ''}
+                    ${qtyType ? `<span class="cart-quantity-type">${safeQtyType}</span>` : ''}
                 </div>
 
                 <a class="confirm-text remove-item" href="javascript:void(0);" data-id="${item.id}">
-                    <img src="{{ env('ImagePath') . '/admin/assets/img/icons/delete-2.svg' }}" alt="delete">
+                    <img src="${safeDeleteIcon}" alt="delete">
                 </a>
             </div>
         </li>
@@ -2801,7 +2912,9 @@
                         quantity_type = "";
                     }
 
-                    var productImage = $product.find("img").attr("src");
+                    var productImage = resolveProductImage(
+                        $product.find("img.productsetimgin").attr("src") || $product.find("img").first().attr("src")
+                    );
                     var productCode = "PT001";
                     var $checkIcon = $product.find(".check-product i");
                     var productStock = parseInt($product.data("stock")) || 0;
@@ -3476,34 +3589,14 @@
                 function renderProducts(products, categoryId, currencySymbol, currencyPosition) {
 
                     var productsHtml = '';
-                    const fallbackImage = "{{ env('ImagePath') . 'admin/assets/img/product/noimage.png' }}";
-                    const imageBasePath = "{{ rtrim(env('ImagePath'), '/') }}";
 
                     if (products.length === 0) {
                         productsHtml = '<div class="col-12"><p>' + (categoryId === 'all' ? 'No items found' : 'No items found in this category') + '</p></div>';
                     } else {
                         products.forEach(function(product) {
-                            let productImage = fallbackImage;
-
-                            // Handle different image formats
-                            if (product.image) {
-                                try {
-                                    // Clean the image string
-                                    let cleanImageString = product.image.replace(/\\/g, '');
-                                    cleanImageString = cleanImageString.replace(/^"(.*)"$/, '$1');
-
-                                    if (cleanImageString.startsWith('[')) {
-                                        let imagesArray = JSON.parse(cleanImageString);
-                                        if (Array.isArray(imagesArray) && imagesArray.length > 0) {
-                                            productImage = `${imageBasePath}/storage/${imagesArray[0]}`;
-                                        }
-                                    } else {
-                                        productImage = `${imageBasePath}/storage/${cleanImageString}`;
-                                    }
-                                } catch (e) {
-                                    productImage = fallbackImage;
-                                }
-                            }
+                            let productImage = escapeHtmlAttr(resolveProductImage(
+                                product.image_url || product.image || product.images || ''
+                            ));
 
                             // Format price
                             let price = parseFloat(product.price || 0).toFixed(2);
@@ -3543,22 +3636,23 @@
                                 ? `<div style="position:absolute;bottom:8px;left:8px;background:rgba(27,40,80,0.9);color:#fff;font-weight:600;padding:2px 7px;border-radius:4px;font-size:10px;z-index:10;">${variantsList.length ? variantsList.length + ' sizes' : 'Options'}</div>`
                                 : '';
 
+                            var safeNoImage = escapeHtmlAttr(POS_NO_IMAGE);
                             productsHtml += `
                                         <div class="col-lg-3 col-sm-6 d-flex position-relative">
                                             <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                 ${outOfStockBadge}
                                                 ${hasOptionsBadge}
                                                 <div class="productsetimg">
-                                                    <img src="${productImage}" alt="${escapeHtmlAttr(product.name)}" class="productsetimgin">
+                                                    <img src="${productImage}" alt="${escapeHtmlAttr(product.name)}" class="productsetimgin" data-fallback="${safeNoImage}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')||window.POS_NO_IMAGE;">
                                                     <h6>Qty: ${formatStockQty(product.quantity)}</h6>
                                                 </div>
                                                 <div class="productsetcontent">
-                                                    <h4>${product.name}</h4>
-                                                    <h1 class="d-none">${product.categoryId || product.category_id || ''}</h1>
-                                                    <h2 class="d-none">${product.quantity_type || ''}</h2>
-                                                    <h3 class="d-none">${product.quantity_type_id || ''}</h3>
-                                                    <h5>${product.category_name || 'Uncategorized'}</h5>
-                                                    <h6>${displayPrice}</h6>
+                                                    <h4>${escapeHtmlText(product.name)}</h4>
+                                                    <h1 class="d-none">${escapeHtmlText(product.categoryId || product.category_id || '')}</h1>
+                                                    <h2 class="d-none">${escapeHtmlText(product.quantity_type || '')}</h2>
+                                                    <h3 class="d-none">${escapeHtmlText(product.quantity_type_id || '')}</h3>
+                                                    <h5>${escapeHtmlText(product.category_name || 'Uncategorized')}</h5>
+                                                    <h6>${escapeHtmlText(displayPrice)}</h6>
                                                 </div>
                                                 <div class="productsetbtn d-none">
                                                     <button class="btn btn-added" ${addButtonDisabled}>+ Add</button>
@@ -3686,13 +3780,15 @@
                                     var optHint = (product.variants && product.variants.length)
                                         ? ` · ${product.variants.length} sizes`
                                         : '';
+                                    var searchImg = escapeHtmlAttr(resolveProductImage(product.image));
+                                    var searchNoImg = escapeHtmlAttr(POS_NO_IMAGE);
                                     $resultBox.append(`
                                         <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3" style="border-bottom: 1px solid #f1f5f9;">
                                             <div class="d-flex align-items-center gap-2" style="flex: 1; min-width: 0;">
-                                                <img src="${product.image}" alt="Item Image" class="rounded" style="width: 34px; height: 34px; object-fit: cover; flex-shrink: 0; border: 1px solid #f1f5f9;">
+                                                <img src="${searchImg}" alt="" class="rounded" style="width: 34px; height: 34px; object-fit: cover; flex-shrink: 0; border: 1px solid #f1f5f9;" data-fallback="${searchNoImg}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')||window.POS_NO_IMAGE;">
                                                 <div style="min-width: 0;">
-                                                    <strong style="font-size: 13px; color: #1e293b; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${product.name ?? 'N/A'}</strong>
-                                                    <small style="font-size: 11.5px; color: #64748b; font-weight: 600;">Price: ${product.price ?? 'N/A'}${optHint}</small>
+                                                    <strong style="font-size: 13px; color: #1e293b; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtmlText(product.name ?? 'N/A')}</strong>
+                                                    <small style="font-size: 11.5px; color: #64748b; font-weight: 600;">Price: ${escapeHtmlText(product.price ?? 'N/A')}${optHint}</small>
                                                 </div>
                                             </div>
                                             <button class="btn btn-sm btn-primary add-product ms-2"
@@ -3704,7 +3800,7 @@
                                                 data-quantity_type="${product.quantity_type || ''}"
                                                 data-quantity_type_id="${product.quantity_type_id || ''}"
                                                 data-quantity_type123="${product.quantity_type_id || ''}"
-                                                data-image="${product.image}"
+                                                data-image="${searchImg}"
                                                 data-stock="${product.stock ?? 10}"
                                                 data-category="${product.category_id ?? 0}">+ Add</button>
                                         </div>
@@ -3749,7 +3845,7 @@
                     const productId = $btn.data("id");
                     const productName = $btn.data("name");
                     const productPrice = $btn.data("price");
-                    const productImage = $btn.data("image");
+                    const productImage = resolveProductImage($btn.attr("data-image") || $btn.data("image"));
                     const productStock = parseInt($btn.data("stock")) || 0;
                     const categoryId = $btn.data("category");
                     const basePrice = parseFloat($btn.attr('data-raw-price')) || parseFloat(String(productPrice).replace(/[^0-9.-]+/g, '')) || 0;
