@@ -627,6 +627,16 @@ class ProductController extends Controller
     public function createProduct(Request $request)
     {
         $master = $this->productMaster();
+
+        if ($request->exists('quantity')) {
+            $rawQty = $request->input('quantity');
+            if ($rawQty === '' || $rawQty === null) {
+                $request->merge(['quantity' => null]);
+            } elseif (is_numeric($rawQty)) {
+                $request->merge(['quantity' => (int) round((float) $rawQty)]);
+            }
+        }
+
         $validator = Validator::make($request->all(), array_merge([
             'vendor_id'     => 'nullable|numeric',
             'category_id'   => 'required|numeric',
@@ -636,7 +646,7 @@ class ProductController extends Controller
             'price'         => 'required|numeric',
             'SKU'           => 'required|string|max:255|unique:products,SKU',
             'barcode'       => 'nullable|string|max:255|unique:products,barcode',
-            'quantity'      => 'nullable|integer|min:0',
+            'quantity'      => 'nullable|numeric|min:0',
             'status'        => 'nullable|in:active,inactive',
             'availablility' => 'nullable|in:in_stock,out_stock',
             'images'        => 'nullable|array',
@@ -724,6 +734,17 @@ class ProductController extends Controller
     public function updateProduct(Request $request)
     {
         $master = $this->productMaster();
+
+        // Normalize stock from DB decimals like "100.0000" so integer validation passes
+        if ($request->exists('quantity')) {
+            $rawQty = $request->input('quantity');
+            if ($rawQty === '' || $rawQty === null) {
+                $request->merge(['quantity' => null]);
+            } elseif (is_numeric($rawQty)) {
+                $request->merge(['quantity' => (int) round((float) $rawQty)]);
+            }
+        }
+
         $validator = Validator::make($request->all(), array_merge([
             'vendor_id'     => 'nullable|numeric',
             'category_id'   => 'required|numeric',
@@ -733,7 +754,7 @@ class ProductController extends Controller
             'price'         => 'required|numeric',
             'SKU'           => 'required|string|max:255|unique:products,SKU,' . $request->product_id . ',id',
             'barcode'       => 'nullable|string|max:255|unique:products,barcode,' . $request->product_id . ',id',
-            'quantity'      => 'nullable|integer|min:0',
+            'quantity'      => 'nullable|numeric|min:0',
             'quantity_type_id' => 'nullable',
             'status'        => 'nullable|in:active,inactive',
             'availablility' => 'nullable|in:in_stock,out_stock',

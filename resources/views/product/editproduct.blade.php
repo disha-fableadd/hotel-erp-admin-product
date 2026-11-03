@@ -551,7 +551,14 @@
                     $('#expiry_date').val(product.expiry_date);
                     $('#name').val(product.name);
                     $('#SKU').val(product.SKU);
-                    $('#quantity').val(product.quantity);
+                    var qtyVal = product.quantity;
+                    if (qtyVal !== null && qtyVal !== undefined && qtyVal !== '') {
+                        qtyVal = parseFloat(qtyVal);
+                        qtyVal = isNaN(qtyVal) ? '' : (Number.isInteger(qtyVal) ? qtyVal : Math.round(qtyVal));
+                    } else {
+                        qtyVal = '';
+                    }
+                    $('#quantity').val(qtyVal);
                     $('#quantity_type_id').val(product.quantity_type_id).trigger('change');
                     $('#price').val(product.price);
                     $('#barcode').val(product.barcode);
