@@ -387,25 +387,53 @@
         .pos-order-scroll {
             flex: 1 1 auto;
             min-height: 0;
-            overflow-y: auto;
-            overflow-x: hidden;
-            -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
             padding-right: 2px;
             margin-bottom: 6px;
         }
-        .pos-order-scroll::-webkit-scrollbar {
+        .pos-order-scroll > .card-body.pt-0:first-child {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding-bottom: 4px !important;
+        }
+        .pos-order-scroll .totalitem {
+            flex-shrink: 0;
+        }
+        /* Kill theme height:34vh + overflow:visible (items were spilling over Discount) */
+        .card.card-order .product-table,
+        .pos-order-scroll .product-table,
+        .product-table {
+            height: auto !important;
+            max-height: none !important;
+            flex: 1 1 auto;
+            min-height: 96px;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 8px;
+            margin-bottom: 0 !important;
+        }
+        .pos-order-scroll .product-table::-webkit-scrollbar {
             width: 5px;
         }
-        .pos-order-scroll::-webkit-scrollbar-thumb {
+        .pos-order-scroll .product-table::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 4px;
         }
-        .pos-order-scroll .product-table {
-            max-height: none !important;
-            overflow: visible !important;
-        }
         .pos-order-scroll .body_space_two {
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
+            background: #ffffff;
+            padding-top: 6px !important;
             padding-bottom: 4px !important;
+            border-top: 1px solid #eef2f7;
+            margin-top: 2px;
         }
         .split-card {
             display: none !important;
@@ -736,18 +764,8 @@
 
         /* Cart Product Table Rows */
         .product-table {
-            max-height: 300px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            margin-bottom: 10px;
+            margin-bottom: 0;
             padding-right: 4px;
-        }
-        .product-table::-webkit-scrollbar {
-            width: 4px;
-        }
-        .product-table::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
         }
         .product-lists {
             display: flex;
@@ -977,6 +995,7 @@
             padding: 8px 10px !important;
             margin: 0 !important;
             box-sizing: border-box;
+            isolation: isolate;
         }
 
         .card.card-order .card-body.body_space {
@@ -1150,6 +1169,11 @@
             }
             .pos-order-scroll {
                 max-height: 420px;
+                overflow: hidden;
+            }
+            .card.card-order .product-table,
+            .pos-order-scroll .product-table {
+                max-height: 240px !important;
             }
             .tabs_wrapper,
             .tabs_wrapper .tabs_container,
@@ -1166,10 +1190,6 @@
             }
         }
    /* ===== Cart row: name on top, everything else on ONE aligned line ===== */
-.product-table {
-    max-height: none;
-    overflow: visible;
-}
 .product-lists {
     display: block !important;
     padding: 5px 4px !important;
