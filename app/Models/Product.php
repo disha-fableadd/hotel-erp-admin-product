@@ -39,7 +39,6 @@ class Product extends Model
         'kitchen_station',
         'prep_time_minutes',
         'display_order',
-        'client_uuid',
         'created_at',
         'updated_at',
         'create_by',
