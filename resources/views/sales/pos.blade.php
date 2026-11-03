@@ -176,9 +176,14 @@
             padding-bottom: 28px;
             -webkit-overflow-scrolling: touch;
         }
+        /* Inactive tabs must stay hidden — only .active is shown */
         .tabs_wrapper .tabs_container .tab_content,
+        .tabs_container .tab_content {
+            display: none !important;
+            width: 100% !important;
+            float: none !important;
+        }
         .tabs_wrapper .tabs_container .tab_content.active,
-        .tabs_container .tab_content,
         .tabs_container .tab_content.active {
             display: block !important;
             width: 100% !important;
