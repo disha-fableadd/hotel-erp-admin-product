@@ -521,43 +521,31 @@
             }
         }
 
-        /* Customer Section & Details Box */
+        /* Customer Section & Details Box — compact for more cart space */
         .customer-section-title {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            margin-top: 4px;
-            margin-bottom: 6px;
-            padding: 0 2px;
-            flex-wrap: nowrap;
-            min-height: 24px;
-        }
-        .customer-section-title > div:first-child {
-            min-width: 0;
-            flex: 1 1 auto;
+            display: none !important; /* merged into customer-details-box header */
         }
         .pos-order-badge {
             background: #fff7ed;
             border: 1px solid #ffedd5;
-            border-radius: 14px;
-            padding: 2px 8px;
-            font-size: 11px;
+            border-radius: 12px;
+            padding: 1px 7px;
+            font-size: 10px;
             font-weight: 700;
             color: var(--pos-primary);
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 3px;
             flex-shrink: 0;
             white-space: nowrap;
-            max-width: 48%;
+            max-width: 55%;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .pos-order-label {
             color: #9a3412;
             font-weight: 500;
-            font-size: 10.5px;
+            font-size: 9.5px;
         }
         .pos-order-val {
             color: var(--pos-primary);
@@ -566,25 +554,64 @@
         }
 
         .customer-details-box {
-            border: 1.5px solid var(--pos-primary) !important;
+            border: 1px solid #fed7aa !important;
             border-radius: 8px !important;
-            padding: 6px 10px 6px !important;
-            background: #ffffff !important;
-            margin-bottom: 6px !important;
-            box-shadow: 0 1px 4px rgba(255, 159, 67, 0.08) !important;
+            padding: 0 !important;
+            background: #fffaf5 !important;
+            margin-bottom: 4px !important;
+            box-shadow: none !important;
             flex-shrink: 0;
+            overflow: hidden;
+        }
+        .customer-details-box .customer-box-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            padding: 4px 8px;
+            background: #fff7ed;
+            border-bottom: 1px solid #ffedd5;
+            min-height: 26px;
+        }
+        .customer-details-box .customer-box-head .customer-box-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0;
+        }
+        .customer-details-box .customer-box-head .customer-box-title i {
+            color: #ff9f43;
+            font-size: 11px;
+        }
+        .customer-details-box .customer-box-body {
+            padding: 5px 6px 6px !important;
+            background: #ffffff;
         }
         .search_custom_product {
             flex-shrink: 0;
+            margin-bottom: 4px !important;
+        }
+        .search_custom_product .pos-search-input {
+            height: 32px !important;
+            min-height: 32px !important;
+            font-size: 12px !important;
+            padding-left: 34px !important;
+        }
+        .gst-header {
+            margin-bottom: 4px !important;
+            flex-shrink: 0;
         }
         .customer-details-box .row.g-2 {
-            --bs-gutter-y: 6px !important;
-            --bs-gutter-x: 8px !important;
+            --bs-gutter-y: 4px !important;
+            --bs-gutter-x: 6px !important;
             margin: 0 !important;
         }
         .customer-details-box .col-6 {
-            padding-left: 4px !important;
-            padding-right: 4px !important;
+            padding-left: 3px !important;
+            padding-right: 3px !important;
         }
         .customer-details-box .select-split {
             margin-bottom: 0 !important;
@@ -597,50 +624,51 @@
             width: 100% !important;
         }
         .customer-details-box label {
-            font-size: 11px !important;
+            font-size: 9.5px !important;
             font-weight: 600 !important;
-            color: #475569 !important;
-            margin-bottom: 2px !important;
-            line-height: 1.2 !important;
+            color: #64748b !important;
+            margin-bottom: 1px !important;
+            line-height: 1.1 !important;
             display: flex !important;
             align-items: center !important;
-            gap: 4px !important;
+            gap: 3px !important;
         }
         .customer-details-box label i {
-            font-size: 11px !important;
+            font-size: 9px !important;
+            margin-right: 0 !important;
         }
         .customer-details-box .form-control,
         .customer-details-box .select2-container .select2-selection--single {
-            border-radius: 6px !important;
-            font-size: 12px !important;
-            height: 31px !important;
-            min-height: 31px !important;
-            max-height: 31px !important;
-            padding: 2px 8px !important;
-            border: 1px solid #cbd5e1 !important;
+            border-radius: 5px !important;
+            font-size: 11.5px !important;
+            height: 28px !important;
+            min-height: 28px !important;
+            max-height: 28px !important;
+            padding: 1px 6px !important;
+            border: 1px solid #e2e8f0 !important;
             background-color: #ffffff !important;
             color: #1e293b !important;
         }
         .customer-details-box .select2-container--default .select2-selection--single {
-            border: 1px solid #cbd5e1 !important;
+            border: 1px solid #e2e8f0 !important;
         }
         .customer-details-box .select2-container .select2-selection--single .select2-selection__rendered {
-            line-height: 29px !important;
-            font-size: 12px !important;
+            line-height: 26px !important;
+            font-size: 11.5px !important;
             padding-left: 2px !important;
-            padding-right: 20px !important;
+            padding-right: 18px !important;
             color: #1e293b !important;
         }
         .customer-details-box .select2-container .select2-selection--single .select2-selection__arrow {
-            height: 29px !important;
+            height: 26px !important;
             top: 1px !important;
-            right: 4px !important;
+            right: 3px !important;
         }
         .customer-details-box span[class^="error_"] {
             display: none;
-            font-size: 10px !important;
+            font-size: 9px !important;
             line-height: 1 !important;
-            margin-top: 1px !important;
+            margin-top: 0 !important;
         }
         .customer-details-box span[class^="error_"]:not(:empty) {
             display: block !important;
@@ -651,13 +679,13 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 6px 0 !important;
-            border-top: 1px dashed var(--pos-border);
+            padding: 4px 0 !important;
+            border-top: none;
             border-bottom: 1px dashed var(--pos-border);
-            margin-bottom: 6px !important;
+            margin-bottom: 4px !important;
         }
         .totalitem h4 {
-            font-size: 12.5px !important;
+            font-size: 12px !important;
             font-weight: 700 !important;
             color: #1e293b;
             margin: 0;
@@ -962,12 +990,12 @@
             border: 1.5px solid #e2e8f0 !important;
             background: #ffffff !important;
             color: #475569 !important;
-            font-size: 11px !important;
+            font-size: 10.5px !important;
             font-weight: 600 !important;
-            min-height: 48px !important;
-            height: 48px !important;
-            border-radius: 8px !important;
-            padding: 4px 2px !important;
+            min-height: 40px !important;
+            height: 40px !important;
+            border-radius: 7px !important;
+            padding: 3px 2px !important;
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
@@ -1037,8 +1065,8 @@
             background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%) !important;
             color: #ffffff !important;
             border-radius: 8px !important;
-            padding: 10px 16px !important;
-            min-height: 44px !important;
+            padding: 8px 14px !important;
+            min-height: 40px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: space-between !important;
@@ -1112,7 +1140,7 @@
 }
 .product-lists {
     display: block !important;
-    padding: 8px 6px !important;
+    padding: 5px 4px !important;
     margin: 0 !important;
     border-bottom: 1px solid #f1f5f9;
 }
@@ -1129,10 +1157,10 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    margin: 0 0 8px 0 !important;
+    margin: 0 0 4px 0 !important;
     padding: 0 !important;
-    line-height: 1.3 !important;
-    font-size: 13.5px;
+    line-height: 1.25 !important;
+    font-size: 12.5px;
     font-weight: 700;
     color: #1e293b;
     text-transform: capitalize;
@@ -1152,9 +1180,9 @@
     display: flex !important;
     align-items: center !important;
     flex-wrap: nowrap !important;
-    gap: 8px !important;
+    gap: 6px !important;
     width: 100%;
-    min-height: 40px;
+    min-height: 32px;
 }
 .cart-item-controls > * {
     margin: 0 !important;
@@ -1163,12 +1191,12 @@
 
 /* Image */
 .cart-item-controls .productimgs {
-    width: 40px !important;
-    height: 40px !important;
+    width: 32px !important;
+    height: 32px !important;
     display: flex !important;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
+    border-radius: 6px;
     overflow: hidden;
     background: #f1f5f9;
     border: 1px solid #e2e8f0;
@@ -1177,8 +1205,8 @@
 .cart-item-controls .productimgs img {
     width: 100% !important;
     height: 100% !important;
-    max-width: 40px;
-    max-height: 40px;
+    max-width: 32px;
+    max-height: 32px;
     object-fit: cover;
     display: block;
     margin: 0 !important;
@@ -1192,10 +1220,10 @@
 .cart-item-controls .increment-decrement {
     display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
+    gap: 6px !important;
     flex: 1;
     min-width: 0;
-    height: 36px;
+    height: 28px;
     margin: 0 !important;
     padding: 0 !important;
 }
@@ -1203,16 +1231,16 @@
     margin: 0 !important;
 }
 .cart-item-controls .input-groups {
-    height: 32px !important;
+    height: 28px !important;
     margin: 0 !important;
 }
 .cart-item-controls .price-field {
-    height: 32px !important;
+    height: 28px !important;
     margin: 0 !important;
     line-height: 1 !important;
 }
 .cart-item-controls .cart-quantity-type {
-    height: 32px !important;
+    height: 28px !important;
     line-height: 1 !important;
 }
 
@@ -1437,8 +1465,8 @@
 
                 <div class="card card-order">
                     <div class="card-body body_space pos-order-body">
-                        <div class="gst-header mb-2"
-                            style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-shrink: 0;">
+                        <div class="gst-header"
+                            style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0;">
                             <div class="custom-gst-pill-group">
                                 <label class="custom-gst-btn">
                                     @php $defaultGst = ((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without'; @endphp
@@ -1461,35 +1489,36 @@
                         </div>
 
                         <!-- Product Search Bar -->
-                        <div class="header-search position-relative mb-2 search_custom_product">
-                            <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; pointer-events: none; z-index: 5;"></i>
+                        <div class="header-search position-relative search_custom_product">
+                            <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px; pointer-events: none; z-index: 5;"></i>
                             <input type="text" id="customerSearch1"
                                 class="form-control pos-search-input pos-product-search-input" placeholder="Search dishes, drinks, items..."
                                 autocomplete="off">
                             <div id="searchResults1"
                                 class="list-group bg-white position-absolute rounded-3 shadow mt-1 w-100 pos-search-results-box"
-                                style="z-index: 1050; max-height: 300px; overflow-y: auto; display: none; top: 100%; left: 0;">
+                                style="z-index: 1050; max-height: 260px; overflow-y: auto; display: none; top: 100%; left: 0;">
                             </div>
                         </div>
 
-                        <!-- Customer Details Title & Box -->
-                        <div class="customer-section-title">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-user-friends" style="color: #ff9f43; font-size: 15px;"></i>
-                                <span style="font-weight: 700; color: #1e293b; font-size: 13.5px;">Customer details</span>
-                            </div>
-                            <div class="pos-order-badge">
-                                <span class="pos-order-label">Order Type:</span>
-                                <span class="pos-order-val" id="orderTypeBadge">Delivery</span>
-                            </div>
-                        </div>
+                        <!-- Compact Customer Details -->
                         <div class="customer-details-box">
+                            <div class="customer-box-head">
+                                <div class="customer-box-title">
+                                    <i class="fas fa-user-friends"></i>
+                                    <span>Customer</span>
+                                </div>
+                                <div class="pos-order-badge">
+                                    <span class="pos-order-label">Type:</span>
+                                    <span class="pos-order-val" id="orderTypeBadge">Delivery</span>
+                                </div>
+                            </div>
+                            <div class="customer-box-body">
                             <div class="row g-2">
                                 <!-- Customer Name -->
                                 <div class="col-6">
                                     <div class="select-split">
                                         <div class="select-group w-100">
-                                            <label><i class="far fa-user-circle" style="color: #ff9f43; margin-right: 5px;"></i> Customer Name</label>
+                                            <label><i class="far fa-user-circle"></i> Name</label>
                                             <select id="customer_name_input" class="form-control select2_customer" name="customer_name">
                                                 <option value="">Select or Type Customer</option>
                                                 @foreach ($customers as $cust)
@@ -1505,9 +1534,9 @@
                                 <div class="col-6">
                                     <div class="select-split">
                                         <div class="select-group w-100">
-                                            <label><i class="fas fa-phone-alt" style="color: #ff9f43; margin-right: 5px;"></i> Customer Phone</label>
+                                            <label><i class="fas fa-phone-alt"></i> Phone</label>
                                             <input type="tel" id="customer_phone" class="form-control"
-                                                placeholder="Customer Phone" name="customer_phone"
+                                                placeholder="Phone" name="customer_phone"
                                                 maxlength="10" inputmode="numeric" pattern="[0-9]{10}"
                                                 oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"
                                                 onkeypress="return event.charCode >= 48 && event.charCode <= 57">
@@ -1520,7 +1549,7 @@
                                 <div class="col-6">
                                     <div class="select-split">
                                         <div class="select-group w-100">
-                                            <label><i class="fas fa-concierge-bell" style="color: #ff9f43; margin-right: 5px;"></i> Order Type</label>
+                                            <label><i class="fas fa-concierge-bell"></i> Order Type</label>
                                             <select id="order_type_select" name="order_type" class="form-control select2-fixed">
                                                 <option value="Delivery">Delivery</option>
                                                 <option value="Self Pickup">Self Pickup</option>
@@ -1533,7 +1562,7 @@
                                 <div class="col-6">
                                     <div class="select-split">
                                         <div class="select-group w-100">
-                                            <label><i class="fas fa-user-tie" style="color: #ff9f43; margin-right: 5px;"></i> Assigned Staff</label>
+                                            <label><i class="fas fa-user-tie"></i> Staff</label>
                                             <select name="assigned_staff_id" id="assigned_staff_id" class="form-control select2-fixed">
                                                 <option value="">- Unassigned -</option>
                                                 @foreach($staffList as $staff)
@@ -1543,6 +1572,7 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
                             </div>
                         </div>
 
