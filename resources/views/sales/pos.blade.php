@@ -519,6 +519,9 @@
                 flex: 1 1 100%;
                 margin: 0;
             }
+            .pos-header-actions {
+                order: 2;
+            }
         }
 
         /* Customer Section & Details Box — compact for more cart space */
@@ -601,8 +604,32 @@
             padding-left: 34px !important;
         }
         .gst-header {
-            margin-bottom: 4px !important;
-            flex-shrink: 0;
+            display: none !important;
+        }
+        .pos-header-actions {
+            flex-wrap: nowrap;
+        }
+        .pos-header-gst .custom-gst-btn span {
+            padding: 3px 8px;
+            font-size: 11px;
+        }
+        .page-header .dine-in-btn {
+            height: 30px;
+            white-space: nowrap;
+        }
+        @media (max-width: 1100px) {
+            .pos-header-gst .custom-gst-btn span {
+                padding: 3px 6px;
+                font-size: 10px;
+            }
+        }
+        @media (max-width: 768px) {
+            .pos-header-actions {
+                width: 100%;
+                justify-content: flex-end;
+                flex-wrap: wrap;
+                gap: 6px !important;
+            }
         }
         .customer-details-box .row.g-2 {
             --bs-gutter-y: 4px !important;
@@ -1408,7 +1435,23 @@
                 </div>
             </div>
 
-            <div class="d-flex align-items-center" style="flex-shrink: 0;">
+            <div class="pos-header-actions d-flex align-items-center" style="flex-shrink: 0; gap: 8px;">
+                <div class="custom-gst-pill-group pos-header-gst">
+                    <label class="custom-gst-btn">
+                        @php $defaultGst = ((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without'; @endphp
+                        <input type="radio" name="gst_option" id="without_gst" value="without" {{ $defaultGst === 'without' ? 'checked' : '' }} />
+                        <span>Without GST</span>
+                    </label>
+                    <label class="custom-gst-btn">
+                        <input type="radio" name="gst_option" id="with_gst" value="with" {{ $defaultGst === 'with' ? 'checked' : '' }} />
+                        <span>With GST</span>
+                    </label>
+                </div>
+                @if (app('hasPermission')(2, 'add'))
+                    <a href="{{ route('tables.create') }}" class="dine-in-btn">
+                        <i class="fas fa-chair"></i> Dine In
+                    </a>
+                @endif
                 <a href="{{ route('sales.list') }}" class="pos-back-btn">
                     <i class="fas fa-arrow-left"></i> Back
                 </a>
@@ -1465,41 +1508,6 @@
 
                 <div class="card card-order">
                     <div class="card-body body_space pos-order-body">
-                        <div class="gst-header"
-                            style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0;">
-                            <div class="custom-gst-pill-group">
-                                <label class="custom-gst-btn">
-                                    @php $defaultGst = ((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without'; @endphp
-                                    <input type="radio" name="gst_option" id="without_gst" value="without" {{ $defaultGst === 'without' ? 'checked' : '' }} />
-                                    <span>Without GST</span>
-                                </label>
-
-                                <label class="custom-gst-btn">
-                                    <input type="radio" name="gst_option" id="with_gst" value="with" {{ $defaultGst === 'with' ? 'checked' : '' }} />
-                                    <span>With GST</span>
-                                </label>
-                            </div>
-                            <div class="page-btn">
-                                @if (app('hasPermission')(2, 'add'))                                    
-                                    <a href="{{ route('tables.create') }}" class="dine-in-btn">
-                                        <i class="fas fa-chair"></i> Dine In
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-
-                        <!-- Product Search Bar -->
-                        <div class="header-search position-relative search_custom_product">
-                            <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px; pointer-events: none; z-index: 5;"></i>
-                            <input type="text" id="customerSearch1"
-                                class="form-control pos-search-input pos-product-search-input" placeholder="Search dishes, drinks, items..."
-                                autocomplete="off">
-                            <div id="searchResults1"
-                                class="list-group bg-white position-absolute rounded-3 shadow mt-1 w-100 pos-search-results-box"
-                                style="z-index: 1050; max-height: 260px; overflow-y: auto; display: none; top: 100%; left: 0;">
-                            </div>
-                        </div>
-
                         <!-- Compact Customer Details -->
                         <div class="customer-details-box">
                             <div class="customer-box-head">
