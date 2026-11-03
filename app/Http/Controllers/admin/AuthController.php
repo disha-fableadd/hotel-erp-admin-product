@@ -735,8 +735,8 @@ class AuthController extends Controller
             ->take(10)
             ->get(['id', 'name', 'email', 'profile_image', 'role']);
 
-        // Search products by name, include category_id
-        $products = Product::with('quantityType')
+        // Search products by name, include category_id + variants/add-ons for POS
+        $products = Product::with(['quantityType', 'variants', 'addons'])
             ->where('name', 'LIKE', "%{$query}%")
             ->where('isDeleted', 0)
             ->take(10)
@@ -787,11 +787,27 @@ class AuthController extends Controller
                     'id' => $product->id,
                     'name' => $product->name,
                     'price' => $formatCurrency($product->price), // formatted price
+                    'raw_price' => (float) $product->price,
                     'category_id' => $product->category_id,
                     'stock' => $product->quantity,
                     'quantity_type_id' => $product->quantity_type_id,
                     'quantity_type' => ($product->quantityType && $product->quantityType->quantity_type) ? $product->quantityType->quantity_type : '',
                     'image' => $imageFileName ? asset(env('ImagePath') . 'storage/' . $imageFileName) : asset(env('ImagePath') . 'admin/assets/img/product/noimage.png'),
+                    'variants' => ($product->variants ?? collect())->map(function ($v) {
+                        return [
+                            'id' => $v->id,
+                            'name' => $v->name,
+                            'sku' => $v->sku,
+                            'price' => (float) $v->price,
+                        ];
+                    })->values(),
+                    'addons' => ($product->addons ?? collect())->map(function ($a) {
+                        return [
+                            'id' => $a->id,
+                            'name' => $a->name,
+                            'price' => (float) $a->price,
+                        ];
+                    })->values(),
                 ];
             }),
             'orders' => $orders->map(function ($order) use ($formatCurrency) {

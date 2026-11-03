@@ -328,6 +328,42 @@
             flex-shrink: 0;
         }
 
+        #tableOrderModal .table-customer-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 8px 10px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        #tableOrderModal .table-customer-box .table-customer-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+        #tableOrderModal .table-customer-box .form-control,
+        #tableOrderModal .table-customer-box .select2-container--default .select2-selection--single {
+            min-height: 34px;
+            border-radius: 8px;
+            border: 1.5px solid #e2e8f0;
+            font-size: 13px;
+        }
+        #tableOrderModal .table-customer-box .select2-container {
+            width: 100% !important;
+        }
+        #tableOrderModal .table-customer-box label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 2px;
+        }
+
         #tableOrderModal .custom-gst-pill-group {
             width: 100%;
             display: grid;
@@ -2257,6 +2293,37 @@
                                     </div>
                                 </div>
 
+                                <div class="table-customer-box">
+                                    <div class="table-customer-label">
+                                        <i class="fas fa-user-friends" style="color:#ff9f43;"></i>
+                                        Customer (optional)
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-7">
+                                            <label for="table_customer_name">Name</label>
+                                            <select id="table_customer_name" class="form-control" name="customer_name">
+                                                <option value="">Walk-in / Select or type</option>
+                                                @foreach(($customers ?? collect()) as $cust)
+                                                    <option value="{{ $cust->name }}"
+                                                        data-phone="{{ $cust->phone }}"
+                                                        {{ strtolower($cust->name) == 'default customer' ? 'selected' : '' }}>
+                                                        {{ $cust->name }}@if($cust->phone) ({{ $cust->phone }})@endif
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                            <span class="error_customername" style="color:red;font-size:11px;"></span>
+                                        </div>
+                                        <div class="col-5">
+                                            <label for="table_customer_phone">Phone</label>
+                                            <input type="tel" id="table_customer_phone" class="form-control"
+                                                placeholder="Phone" name="customer_phone"
+                                                maxlength="10" inputmode="numeric"
+                                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);">
+                                            <span class="error_customerphone" style="color:red;font-size:11px;"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="header-search position-relative search_custom_product d-none">
                                     <img src="{{ env('ImagePath') . '/admin/assets/img/icons/search.svg' }}"
                                         alt="Search"
@@ -2561,6 +2628,73 @@
         const canItemDiscount = {{ !empty($can_item_discount) ? 'true' : 'false' }};
         const defaultGstOption = @json(((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without');
 
+        function getDineInCustomerPayload() {
+            var $sel = $('#table_customer_name');
+            var name = ($sel.val() || '').toString().trim();
+            if (name.toLowerCase() === 'default customer') {
+                // Keep name so API can resolve; phone optional
+            }
+            var phone = ($('#table_customer_phone').val() || '').toString().replace(/\D/g, '').slice(0, 10);
+            return {
+                customer_id: name || '',
+                customer_phone: phone || ''
+            };
+        }
+
+        function resetDineInCustomerFields() {
+            var $sel = $('#table_customer_name');
+            var defaultOpt = $sel.find('option').filter(function () {
+                return String($(this).val() || '').toLowerCase() === 'default customer';
+            }).first();
+            if (defaultOpt.length) {
+                $sel.val(defaultOpt.val()).trigger('change');
+            } else {
+                $sel.val('').trigger('change');
+                $('#table_customer_phone').val('');
+            }
+            $('.error_customername, .error_customerphone').text('');
+        }
+
+        function setDineInCustomerFields(name, phone) {
+            var $sel = $('#table_customer_name');
+            name = (name || '').toString().trim();
+            phone = (phone || '').toString().replace(/\D/g, '').slice(0, 10);
+            if (name && !$sel.find('option').filter(function () { return $(this).val() === name; }).length) {
+                var label = phone ? (name + ' (' + phone + ')') : name;
+                $sel.append(new Option(label, name, true, true));
+            }
+            if (name) {
+                $sel.val(name).trigger('change');
+            } else {
+                resetDineInCustomerFields();
+            }
+            if (phone) {
+                $('#table_customer_phone').val(phone);
+            }
+        }
+
+        $(document).ready(function () {
+            if ($.fn.select2 && $('#table_customer_name').length) {
+                $('#table_customer_name').select2({
+                    tags: true,
+                    placeholder: 'Select or type customer',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $('#tableOrderModal')
+                }).on('change', function () {
+                    var phone = $(this).find(':selected').data('phone');
+                    if (phone) {
+                        $('#table_customer_phone').val(String(phone).replace(/\D/g, '').slice(0, 10));
+                    }
+                });
+                // Sync phone for preselected Default Customer
+                var initPhone = $('#table_customer_name').find(':selected').data('phone');
+                if (initPhone) {
+                    $('#table_customer_phone').val(String(initPhone).replace(/\D/g, '').slice(0, 10));
+                }
+            }
+        });
+
         // Use event delegation to handle dynamically created elements
         $(document).ready(function () {
             $(document).on("click", ".paymentmethod", function () {
@@ -2609,6 +2743,14 @@
                 $('#discount').val(response.sales.discount).trigger('input');
             }
 
+            var custName = response.sales.customer_name || response.sales.user_name || '';
+            var custPhone = response.sales.customer_phone || response.sales.user_phone || '';
+            if (custName && String(custName).toLowerCase() === 'default customer' && !custPhone) {
+                resetDineInCustomerFields();
+            } else {
+                setDineInCustomerFields(custName, custPhone);
+            }
+
             $('.btn-totallabel').hide();
             $('.modal-order-edit').css('display', 'flex');
             $('.btn-totallabel_1').css('display', 'flex').attr('data-order_update_id', salse_id);
@@ -2655,6 +2797,7 @@
             $('input[name="gst_option"]').prop("checked", false);
             $(`input[name="gst_option"][value="${defaultGstOption || 'without'}"]`).prop("checked", true).trigger('change');
             $('#discount').val("").trigger('input');
+            resetDineInCustomerFields();
             tableOrderModal.show();
         }
 
@@ -2876,6 +3019,7 @@
 
                         // Clear discount
                         $('#discount').val("").trigger('input');
+                        resetDineInCustomerFields();
 
                         modal.show();
 
@@ -4023,7 +4167,7 @@
 
                 // Get form values
                 // let name = $("input[name='customer_name']").val().trim();
-                let name = $("#customer_name option:selected").val();
+                let name = $("#table_customer_name").val();
                 let selectedPayment = $("input[name='payment_method']:checked").val();
                 let subtotal = parseFloat($("input[name='subtotal']").val()) || 0;
                 let total = parseFloat($("input[name='total']").val()) || 0;
@@ -4128,9 +4272,11 @@
 
 
                 // Prepare order data
+                const dineCustomer = getDineInCustomerPayload();
                 let orderData = {
                     selectedSubAdminId: selectedSubAdminId,
-                    customer_id: '2',
+                    customer_id: dineCustomer.customer_id,
+                    customer_phone: dineCustomer.customer_phone,
                     payment_method: selectedPayment,
                     subtotal: subtotal,
                     discount: discount,
@@ -4239,7 +4385,7 @@
 
                 // Get form values
                 // let name = $("input[name='customer_name']").val().trim();
-                let name = $("#customer_name option:selected").val();
+                let name = $("#table_customer_name").val();
                 let selectedPayment = $("input[name='payment_method']:checked").val() || "pending";
                 let subtotal = parseFloat($("input[name='subtotal']").val()) || 0;
                 let total = parseFloat($("input[name='total']").val()) || 0;
@@ -4344,10 +4490,12 @@
 
 
                 // Prepare order data
+                const dineCustomer = getDineInCustomerPayload();
                 let orderData = {
                     selectedSubAdminId: selectedSubAdminId,
                     update_id: update_id,
-                    customer_id: '2',
+                    customer_id: dineCustomer.customer_id,
+                    customer_phone: dineCustomer.customer_phone,
                     payment_method: selectedPayment,
                     subtotal: subtotal,
                     discount: discount,
@@ -4446,7 +4594,7 @@
 
                 // Get form values
                 // let name = $("input[name='customer_name']").val().trim();
-                let name = $("#customer_name option:selected").val();
+                let name = $("#table_customer_name").val();
                 let selectedPayment = $("input[name='payment_method']:checked").val();
                 let subtotal = parseFloat($("input[name='subtotal']").val()) || 0;
                 let total = parseFloat($("input[name='total']").val()) || 0;
@@ -4555,10 +4703,12 @@
 
 
                 // Prepare order data
+                const dineCustomer = getDineInCustomerPayload();
                 let orderData = {
                     selectedSubAdminId: selectedSubAdminId,
                     update_id: update_id,
-                    customer_id: '2',
+                    customer_id: dineCustomer.customer_id,
+                    customer_phone: dineCustomer.customer_phone,
                     payment_method: selectedPayment,
                     subtotal: subtotal,
                     discount: discount,

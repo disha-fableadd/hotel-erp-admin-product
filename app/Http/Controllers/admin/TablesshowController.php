@@ -119,6 +119,12 @@ class TablesshowController extends Controller
 
         $can_item_discount = (bool) ($setting->allow_item_level_discount ?? false);
 
+        $customers = User::where('role', 'customer')
+            ->where('branch_id', $branchIdToUse)
+            ->where('isDeleted', 0)
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone']);
+
         return view('tables.tables_view', compact(
             'staff',
             'tables',
@@ -127,7 +133,8 @@ class TablesshowController extends Controller
             'currency_symbol',
             'categories',
             'can_item_discount',
-            'setting'
+            'setting',
+            'customers'
         ));
     }
     public function show($id)

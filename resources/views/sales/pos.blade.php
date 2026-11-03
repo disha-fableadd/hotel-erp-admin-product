@@ -1962,10 +1962,61 @@
         @push('js')
         <script>
             let selectedItems = new Map();
+            window.posProductOptionsById = window.posProductOptionsById || {};
             const canItemDiscount = {{ !empty($can_item_discount) ? 'true' : 'false' }};
             const defaultGstOption = @json(((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without');
             const posCurrencySymbol = @json($currency_symbol ?? '₹');
             const posCurrencyPosition = @json($currency_position ?? 'left');
+
+            function escapeHtmlAttr(str) {
+                return String(str == null ? '' : str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
+            function storePosProductOptions(productId, variants, addons) {
+                window.posProductOptionsById[String(productId)] = {
+                    variants: Array.isArray(variants) ? variants : [],
+                    addons: Array.isArray(addons) ? addons : []
+                };
+            }
+
+            function getPosProductOptions(productId, $el) {
+                var cached = window.posProductOptionsById[String(productId)];
+                if (cached && ((cached.variants && cached.variants.length) || (cached.addons && cached.addons.length))) {
+                    return cached;
+                }
+                var variants = [];
+                var addons = [];
+                if ($el && $el.length) {
+                    // Prefer jQuery auto-parsed data-* first
+                    var dv = $el.data('variants');
+                    var da = $el.data('addons');
+                    if (Array.isArray(dv)) variants = dv;
+                    if (Array.isArray(da)) addons = da;
+                    if (!variants.length) {
+                        try {
+                            var rawV = $el.attr('data-variants') || '[]';
+                            rawV = rawV.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+                            var parsedV = JSON.parse(rawV);
+                            if (Array.isArray(parsedV)) variants = parsedV;
+                        } catch (e) {}
+                    }
+                    if (!addons.length) {
+                        try {
+                            var rawA = $el.attr('data-addons') || '[]';
+                            rawA = rawA.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+                            var parsedA = JSON.parse(rawA);
+                            if (Array.isArray(parsedA)) addons = parsedA;
+                        } catch (e) {}
+                    }
+                }
+                storePosProductOptions(productId, variants, addons);
+                return window.posProductOptionsById[String(productId)];
+            }
 
             // ── Bank loader (global scope so all handlers can access it) ──
             function loadBanksInto(selector) {
@@ -2554,17 +2605,6 @@
                     return posCurrencyPosition === 'right' ? (price + posCurrencySymbol) : (posCurrencySymbol + price);
                 }
 
-                function parseProductOptionsAttr($el, key) {
-                    try {
-                        var raw = $el.attr(key) || '[]';
-                        raw = raw.replace(/&quot;/g, '"');
-                        var parsed = JSON.parse(raw);
-                        return Array.isArray(parsed) ? parsed : [];
-                    } catch (e) {
-                        return [];
-                    }
-                }
-
                 function addProductToCart(meta) {
                     var uniqueId = meta.uniqueId || meta.productId;
                     if (selectedItems.has(uniqueId)) {
@@ -2577,6 +2617,7 @@
                     }
                     updateTotalItems();
                 }
+                window.addProductToCart = addProductToCart;
 
                 var pendingPosProduct = null;
 
@@ -2603,9 +2644,10 @@
                     if (variants.length) {
                         $v.append('<label class="form-label fw-bold">Size / Variant</label>');
                         variants.forEach(function (v, idx) {
+                            var vName = escapeHtmlAttr(v.name || '');
                             $v.append(
                                 '<div class="form-check">' +
-                                '<input class="form-check-input" type="radio" name="pos_variant" id="pos_var_' + v.id + '" value="' + v.id + '" data-price="' + v.price + '" data-name="' + (v.name || '') + '" ' + (idx === 0 ? 'checked' : '') + '>' +
+                                '<input class="form-check-input" type="radio" name="pos_variant" id="pos_var_' + v.id + '" value="' + v.id + '" data-price="' + v.price + '" data-name="' + vName + '" ' + (idx === 0 ? 'checked' : '') + '>' +
                                 '<label class="form-check-label" for="pos_var_' + v.id + '">' + (v.name || '') + ' — ' + formatPosMoney(v.price) + '</label>' +
                                 '</div>'
                             );
@@ -2616,9 +2658,10 @@
                     if (addons.length) {
                         $a.append('<label class="form-label fw-bold">Add-ons</label>');
                         addons.forEach(function (ad) {
+                            var aName = escapeHtmlAttr(ad.name || '');
                             $a.append(
                                 '<div class="form-check">' +
-                                '<input class="form-check-input pos-addon-check" type="checkbox" id="pos_ad_' + ad.id + '" value="' + ad.id + '" data-price="' + ad.price + '" data-name="' + (ad.name || '') + '">' +
+                                '<input class="form-check-input pos-addon-check" type="checkbox" id="pos_ad_' + ad.id + '" value="' + ad.id + '" data-price="' + ad.price + '" data-name="' + aName + '">' +
                                 '<label class="form-check-label" for="pos_ad_' + ad.id + '">' + (ad.name || '') + ' (+' + formatPosMoney(ad.price) + ')</label>' +
                                 '</div>'
                             );
@@ -2627,8 +2670,13 @@
 
                     refreshPosOptionPrice();
                     var modalEl = document.getElementById('posVariantAddonModal');
+                    if (!modalEl) {
+                        console.error('posVariantAddonModal missing');
+                        return;
+                    }
                     bootstrap.Modal.getOrCreateInstance(modalEl).show();
                 }
+                window.openPosOptionModal = openPosOptionModal;
 
                 $(document).on('change', '#posVariantOptions input, #posAddonOptions input', refreshPosOptionPrice);
 
@@ -2762,8 +2810,9 @@
                         quantity_type_id = "";
                     }
                     var basePrice = parseFloat($product.attr('data-base-price')) || parseFloat(String(productPrice).replace(/[^0-9.-]+/g, '')) || 0;
-                    var variants = parseProductOptionsAttr($product, 'data-variants');
-                    var addons = parseProductOptionsAttr($product, 'data-addons');
+                    var opts = getPosProductOptions(productId, $product);
+                    var variants = opts.variants || [];
+                    var addons = opts.addons || [];
 
                     var meta = {
                         productId: productId,
@@ -2778,47 +2827,80 @@
                         basePrice: basePrice
                     };
 
+                    function addPlainOrIncrease() {
+                        var uniqueId = productId;
+                        if (selectedItems.has(uniqueId)) {
+                            var existingItem = selectedItems.get(uniqueId);
+                            if (existingItem.quantity < productStock) {
+                                existingItem.quantity++;
+                                selectedItems.set(uniqueId, existingItem);
+                                updateTotalItems();
+                            } else {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Stock Limit Reached',
+                                    text: 'Cannot exceed available stock (' + productStock + ')',
+                                    confirmButtonColor: '#ff9f43',
+                                    confirmButtonText: 'OK'
+                                });
+                            }
+                        } else {
+                            selectedItems.set(uniqueId, {
+                                id: uniqueId,
+                                productId: productId,
+                                categoryId: categoryId,
+                                name: productName,
+                                price: productPrice,
+                                image: productImage,
+                                code: productCode,
+                                quantity_type: quantity_type,
+                                quantity_type_id: quantity_type_id,
+                                quantity_type123: quantity_type123,
+                                quantity: 1,
+                                stock: productStock,
+                                item_discount_percent: 0
+                            });
+                            $checkIcon.addClass("selected");
+                            updateTotalItems();
+                        }
+                    }
+
                     if ((variants && variants.length) || (addons && addons.length)) {
                         openPosOptionModal(meta, variants || [], addons || []);
                         $checkIcon.addClass("selected");
                         return;
                     }
 
-                    var uniqueId = productId;
-                    if (selectedItems.has(uniqueId)) {
-                        var existingItem = selectedItems.get(uniqueId);
-                        if (existingItem.quantity < productStock) {
-                            existingItem.quantity++;
-                            selectedItems.set(uniqueId, existingItem);
-                            updateTotalItems();
-                        } else {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Stock Limit Reached',
-                                text: 'Cannot exceed available stock (' + productStock + ')',
-                                confirmButtonColor: '#ff9f43',
-                                confirmButtonText: 'OK'
+                    // Fallback: load variants from product API if grid cache missed them
+                    var authToken = localStorage.getItem("authToken");
+                    $.ajax({
+                        url: "/api/edit_product/" + productId,
+                        type: "GET",
+                        headers: { Authorization: "Bearer " + authToken },
+                        success: function (res) {
+                            var p = res.product || res.data || res;
+                            var loadedVariants = (p && p.variants) ? p.variants : (res.variants || []);
+                            var loadedAddons = (p && p.addons) ? p.addons : (res.addons || []);
+                            if (!Array.isArray(loadedVariants)) loadedVariants = [];
+                            if (!Array.isArray(loadedAddons)) loadedAddons = [];
+                            loadedVariants = loadedVariants.filter(function (v) { return !v.isDeleted; }).map(function (v) {
+                                return { id: v.id, name: v.name, sku: v.sku, price: parseFloat(v.price) || 0 };
                             });
+                            loadedAddons = loadedAddons.filter(function (a) { return !a.isDeleted; }).map(function (a) {
+                                return { id: a.id, name: a.name, price: parseFloat(a.price) || 0 };
+                            });
+                            storePosProductOptions(productId, loadedVariants, loadedAddons);
+                            if (loadedVariants.length || loadedAddons.length) {
+                                openPosOptionModal(meta, loadedVariants, loadedAddons);
+                                $checkIcon.addClass("selected");
+                            } else {
+                                addPlainOrIncrease();
+                            }
+                        },
+                        error: function () {
+                            addPlainOrIncrease();
                         }
-                    } else {
-                        selectedItems.set(uniqueId, {
-                            id: uniqueId,
-                            productId: productId,
-                            categoryId: categoryId,
-                            name: productName,
-                            price: productPrice,
-                            image: productImage,
-                            code: productCode,
-                            quantity_type: quantity_type,
-                            quantity_type_id: quantity_type_id,
-                            quantity_type123: quantity_type123,
-                            quantity: 1,
-                            stock: productStock,
-                            item_discount_percent: 0
-                        });
-                        $checkIcon.addClass("selected");
-                        updateTotalItems();
-                    }
+                    });
                 });
 
                 $(document).on("click", ".button-plus", function() {
@@ -3446,16 +3528,23 @@
                                 addButtonDisabled = 'disabled'; // disable button
                             }
 
-                            var variantsJson = JSON.stringify(product.variants || []).replace(/"/g, '&quot;');
-                            var addonsJson = JSON.stringify(product.addons || []).replace(/"/g, '&quot;');
+                            var variantsList = product.variants || [];
+                            var addonsList = product.addons || [];
+                            storePosProductOptions(product.id, variantsList, addonsList);
+                            var variantsJson = escapeHtmlAttr(JSON.stringify(variantsList));
+                            var addonsJson = escapeHtmlAttr(JSON.stringify(addonsList));
                             var basePriceNum = parseFloat(product.price || 0) || 0;
+                            var hasOptionsBadge = (variantsList.length || addonsList.length)
+                                ? `<div style="position:absolute;bottom:8px;left:8px;background:rgba(27,40,80,0.9);color:#fff;font-weight:600;padding:2px 7px;border-radius:4px;font-size:10px;z-index:10;">${variantsList.length ? variantsList.length + ' sizes' : 'Options'}</div>`
+                                : '';
 
                             productsHtml += `
                                         <div class="col-lg-3 col-sm-6 d-flex position-relative">
                                             <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                 ${outOfStockBadge}
+                                                ${hasOptionsBadge}
                                                 <div class="productsetimg">
-                                                    <img src="${productImage}" alt="${product.name}" class="productsetimgin">
+                                                    <img src="${productImage}" alt="${escapeHtmlAttr(product.name)}" class="productsetimgin">
                                                     <h6>Qty: ${formatStockQty(product.quantity)}</h6>
                                                 </div>
                                                 <div class="productsetcontent">
@@ -3587,20 +3676,26 @@
                                 `);
 
                                 data.products.forEach(product => {
+                                    storePosProductOptions(product.id, product.variants || [], product.addons || []);
+                                    var rawPrice = product.raw_price != null ? product.raw_price : (parseFloat(String(product.price).replace(/[^0-9.-]+/g, '')) || 0);
+                                    var optHint = (product.variants && product.variants.length)
+                                        ? ` · ${product.variants.length} sizes`
+                                        : '';
                                     $resultBox.append(`
                                         <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3" style="border-bottom: 1px solid #f1f5f9;">
                                             <div class="d-flex align-items-center gap-2" style="flex: 1; min-width: 0;">
                                                 <img src="${product.image}" alt="Item Image" class="rounded" style="width: 34px; height: 34px; object-fit: cover; flex-shrink: 0; border: 1px solid #f1f5f9;">
                                                 <div style="min-width: 0;">
                                                     <strong style="font-size: 13px; color: #1e293b; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${product.name ?? 'N/A'}</strong>
-                                                    <small style="font-size: 11.5px; color: #64748b; font-weight: 600;">Price: ${product.price ?? 'N/A'}</small>
+                                                    <small style="font-size: 11.5px; color: #64748b; font-weight: 600;">Price: ${product.price ?? 'N/A'}${optHint}</small>
                                                 </div>
                                             </div>
                                             <button class="btn btn-sm btn-primary add-product ms-2"
                                                 style="border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 12px; flex-shrink: 0;"
                                                 data-id="${product.id}"
-                                                data-name="${product.name}"
-                                                data-price="${product.price}"
+                                                data-name="${escapeHtmlAttr(product.name)}"
+                                                data-price="${escapeHtmlAttr(product.price)}"
+                                                data-raw-price="${rawPrice}"
                                                 data-quantity_type="${product.quantity_type || ''}"
                                                 data-quantity_type_id="${product.quantity_type_id || ''}"
                                                 data-quantity_type123="${product.quantity_type_id || ''}"
@@ -3652,12 +3747,37 @@
                     const productImage = $btn.data("image");
                     const productStock = parseInt($btn.data("stock")) || 0;
                     const categoryId = $btn.data("category");
+                    const basePrice = parseFloat($btn.attr('data-raw-price')) || parseFloat(String(productPrice).replace(/[^0-9.-]+/g, '')) || 0;
 
                     const quantity_type = ($btn.data("quantity_type") || "").toString().trim();
                     const quantity_type1 = ($btn.data("quantity_type_id") || "").toString().trim();
                     const quantity_type123 = ($btn.data("quantity_type123") || "").toString().trim();
 
-                    // Check if product is already selected
+                    const opts = getPosProductOptions(productId);
+                    const variants = opts.variants || [];
+                    const addons = opts.addons || [];
+
+                    $('.pos-search-results-box').hide().empty();
+                    $('.pos-product-search-input').val('');
+
+                    const meta = {
+                        productId: productId,
+                        categoryId: categoryId,
+                        name: productName,
+                        image: productImage,
+                        code: "PT001",
+                        quantity_type: (quantity_type && !['undefined', 'null'].includes(quantity_type.toLowerCase())) ? quantity_type : '',
+                        quantity_type_id: (quantity_type1 && !['undefined', 'null'].includes(quantity_type1.toLowerCase())) ? quantity_type1 : '',
+                        quantity_type123: (quantity_type123 && !['undefined', 'null'].includes(quantity_type123.toLowerCase())) ? quantity_type123 : '',
+                        stock: productStock,
+                        basePrice: basePrice
+                    };
+
+                    if ((variants.length || addons.length) && typeof window.openPosOptionModal === 'function') {
+                        window.openPosOptionModal(meta, variants, addons);
+                        return;
+                    }
+
                     if (selectedItems.has(productId)) {
                         var existingItem = selectedItems.get(productId);
                         if (existingItem.quantity < productStock) {
@@ -3681,22 +3801,16 @@
                             name: productName,
                             price: productPrice,
                             image: productImage,
-                            quantity_type: (quantity_type && !['undefined', 'null'].includes(quantity_type.toLowerCase())) ? quantity_type : '',
-                            quantity_type_id: (quantity_type1 && !['undefined', 'null'].includes(quantity_type1.toLowerCase())) ? quantity_type1 : '',
-                            quantity_type123: (quantity_type123 && !['undefined', 'null'].includes(quantity_type123.toLowerCase())) ? quantity_type123 : '',
-
-                            code: "PT001", // Default code
+                            quantity_type: meta.quantity_type,
+                            quantity_type_id: meta.quantity_type_id,
+                            quantity_type123: meta.quantity_type123,
+                            code: "PT001",
                             quantity: 1,
-                            stock: productStock
+                            stock: productStock,
+                            item_discount_percent: 0
                         });
-
-                        // Call existing function to update UI
                         updateTotalItems();
                     }
-
-                    // ✅ Close the search dropdown and reset input after adding product
-                    $('.pos-search-results-box').hide().empty();
-                    $('.pos-product-search-input').val('');
                 });
 
                 // Hide dropdown on outside click

@@ -406,21 +406,21 @@ class SalesController extends Controller
                     'kitchen_station' => $product->kitchen_station,
                     'variants' => ($product->variants ?? collect())->map(function ($v) {
                         return [
-                            'id' => $v->id,
-                            'name' => $v->name,
+                            'id' => (int) $v->id,
+                            'name' => (string) $v->name,
                             'sku' => $v->sku,
-                            'price' => $v->price,
+                            'price' => (float) $v->price,
                         ];
-                    })->values(),
+                    })->values()->all(),
                     'addons' => ($product->addons ?? collect())->map(function ($a) {
                         return [
-                            'id' => $a->id,
-                            'name' => $a->name,
-                            'price' => $a->price,
+                            'id' => (int) $a->id,
+                            'name' => (string) $a->name,
+                            'price' => (float) $a->price,
                         ];
-                    })->values(),
+                    })->values()->all(),
                 ];
-            }),
+            })->values(),
         ]);
     }
 
