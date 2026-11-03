@@ -10,6 +10,7 @@ class OrderItem extends Model
 {
     use HasFactory;
     protected $fillable = [
+        'client_uuid',
         'order_id',
         'user_id',
         'product_id',
@@ -29,6 +30,21 @@ class OrderItem extends Model
         'created_at',
         'updated_at',
     ];
+
+    protected $appends = [
+        'order_client_uuid',
+        'product_client_uuid',
+    ];
+
+    public function getOrderClientUuidAttribute()
+    {
+        return $this->attributes['order_client_uuid'] ?? $this->order?->client_uuid ?? null;
+    }
+
+    public function getProductClientUuidAttribute()
+    {
+        return $this->attributes['product_client_uuid'] ?? $this->product?->client_uuid ?? null;
+    }
 
     protected $casts = [
         'addons' => 'array',

@@ -337,6 +337,9 @@ class SyncController extends Controller
             if ($tableKey === 'orders') {
                 $query->with(['order_items', 'user', 'payments']);
             }
+            if ($tableKey === 'order_items') {
+                $query->with(['product:id,name,client_uuid,category_id', 'order:id,client_uuid,order_number']);
+            }
             if ($tableKey === 'payment_store') {
                 $query->with(['order:id,client_uuid']);
             }
@@ -672,10 +675,20 @@ class SyncController extends Controller
                     $order = \App\Models\Order::firstOrNew(['client_uuid' => $orderUuid]);
 
                     // Resolve customer / user
-                    $userId = $o['user_id'] ?? null;
-                    if (!empty($o['user_client_uuid'])) {
+                    $userId = $o['user_id'] ?? $o['customer_id'] ?? null;
+                    if (!$userId && !empty($o['user_client_uuid'])) {
                         $user = \App\Models\User::where('client_uuid', $o['user_client_uuid'])->first();
                         $userId = $user ? $user->id : null;
+                    }
+                    if (!$userId) {
+                        try {
+                            $userId = auth('api')->id() ?? auth()->id();
+                        } catch (\Throwable $e) {
+                            $userId = null;
+                        }
+                    }
+                    if (!$userId) {
+                        $userId = \App\Models\User::where('branch_id', $branchId)->value('id') ?? \App\Models\User::value('id') ?? 1;
                     }
 
                     // Avoid duplicate order number conflicts
@@ -687,11 +700,29 @@ class SyncController extends Controller
                         }
                     }
 
+                    // Resolve table_no safely (table_no in DB is BIGINT)
+                    $tableId = null;
+                    if (isset($o['table_no'])) {
+                        if (is_numeric($o['table_no'])) {
+                            $tableId = (int)$o['table_no'];
+                        } else {
+                            $foundTable = \App\Models\Table_no::where('table_name', $o['table_no'])->first();
+                            if (!$foundTable && preg_match('/\d+/', (string)$o['table_no'], $matches)) {
+                                $tableId = (int)$matches[0];
+                            } else {
+                                $tableId = $foundTable ? $foundTable->id : 0;
+                            }
+                        }
+                    } elseif (!empty($o['table_client_uuid'])) {
+                        $tbl = \App\Models\Table_no::where('client_uuid', $o['table_client_uuid'])->first();
+                        $tableId = $tbl ? $tbl->id : 0;
+                    }
+
                     $order->order_number = $orderNumber;
                     $order->user_id = $userId;
                     $order->customer_name = $o['customer_name'] ?? null;
                     $order->customer_phone = $o['customer_phone'] ?? null;
-                    $order->table_no = $o['table_no'] ?? null;
+                    $order->table_no = $tableId ?? 0;
                     $order->order_type = $o['order_type'] ?? 'Dine-In';
                     $order->type = $o['type'] ?? 'POS';
                     $order->discount = $o['discount'] ?? 0;
@@ -699,7 +730,10 @@ class SyncController extends Controller
                     $order->remaining_amount = $o['remaining_amount'] ?? 0;
                     $order->payment_status = $o['payment_status'] ?? 'completed';
                     $order->payment_method = $o['payment_method'] ?? 'cash';
-                    $order->delivery_status = $o['delivery_status'] ?? null;
+                    $order->delivery_status = $o['delivery_status'] ?? $order->delivery_status ?? 'running';
+                    if (isset($o['table_status'])) {
+                        $order->table_status = (int)$o['table_status'];
+                    }
                     $order->branch_id = $o['branch_id'] ?? $branchId;
                     if (!empty($o['created_at'])) {
                         $order->created_at = $o['created_at'];
@@ -714,37 +748,79 @@ class SyncController extends Controller
                     $itemMappings = [];
                     if (!empty($o['items']) || !empty($o['order_items'])) {
                         $itemsList = !empty($o['items']) ? $o['items'] : $o['order_items'];
-
-                        // Delete existing items if updating
-                        \App\Models\OrderItem::where('order_id', $order->id)->delete();
+                        $syncedItemUuids = [];
 
                         foreach ($itemsList as $it) {
                             $itemUuid = $it['client_uuid'] ?? (string) Str::uuid();
+                            $syncedItemUuids[] = $itemUuid;
+
+                            // Find existing item by client_uuid or create new
+                            $orderItem = \App\Models\OrderItem::firstOrNew(['client_uuid' => $itemUuid]);
 
                             // Resolve product_id
                             $productId = $it['product_id'] ?? null;
+                            $prd = null;
                             if (!$productId && !empty($it['product_client_uuid'])) {
                                 $prd = \App\Models\Product::where('client_uuid', $it['product_client_uuid'])->first();
                                 $productId = $prd ? $prd->id : null;
+                            } elseif ($productId) {
+                                $prd = \App\Models\Product::find($productId);
+                            }
+                            if (!$productId) {
+                                $productId = \App\Models\Product::where('branch_id', $branchId)->value('id') ?? \App\Models\Product::value('id') ?? 1;
                             }
 
-                            $orderItem = new \App\Models\OrderItem();
+                            // Resolve user_id (fixes Field 'user_id' doesn't have a default value)
+                            $itemUserId = $it['user_id'] 
+                                ?? $it['customer_id'] 
+                                ?? $order->user_id 
+                                ?? $userId 
+                                ?? 1;
+
+                            // Resolve category_id (NOT NULL constraint safe)
+                            $categoryId = $it['category_id'] 
+                                ?? $prd?->category_id 
+                                ?? \App\Models\Category::where('branch_id', $branchId)->value('id') 
+                                ?? \App\Models\Category::value('id') 
+                                ?? 1;
+
+                            $price = floatval($it['price'] ?? $it['unit_price'] ?? ($prd?->price ?? 0.0));
+                            $qty = intval($it['quantity'] ?? 1);
+                            $totalAmount = floatval($it['total_amount'] ?? ($qty * $price));
+
                             $orderItem->order_id = $order->id;
+                            $orderItem->user_id = $itemUserId;
                             $orderItem->product_id = $productId;
-                            $orderItem->quantity = $it['quantity'] ?? 1;
-                            $orderItem->price = $it['price'] ?? 0;
-                            $orderItem->total_amount = $it['total_amount'] ?? (($it['quantity'] ?? 1) * ($it['price'] ?? 0));
-                            $orderItem->category_id = $it['category_id'] ?? null;
-                            $orderItem->quantity_type_id = $it['quantity_type_id'] ?? null;
-                            $orderItem->branch_id = $o['branch_id'] ?? $branchId;
+                            $orderItem->category_id = $categoryId;
+                            $orderItem->quantity_type_id = $it['quantity_type_id'] ?? $prd?->quantity_type_id ?? null;
+                            $orderItem->price = $price;
+                            $orderItem->unit_price = floatval($it['unit_price'] ?? $price);
+                            $orderItem->quantity = $qty;
+                            $orderItem->total_amount = $totalAmount;
+                            $orderItem->branch_id = $it['branch_id'] ?? $o['branch_id'] ?? $branchId;
+                            $orderItem->created_by = $it['created_by'] ?? $order->user_id ?? $userId;
                             $orderItem->client_uuid = $itemUuid;
+
+                            if (isset($it['variant_id'])) $orderItem->variant_id = $it['variant_id'];
+                            if (isset($it['addons'])) $orderItem->addons = $it['addons'];
+                            if (isset($it['isDeleted'])) $orderItem->isDeleted = (int)$it['isDeleted'];
+
                             $orderItem->save();
 
-                            $itemMappings[] = [
+                            $mapping = [
                                 'local_id' => $it['local_id'] ?? null,
                                 'remote_id' => $orderItem->id,
                                 'client_uuid' => $itemUuid,
                             ];
+                            $itemMappings[] = $mapping;
+                            $syncedMappings['order_items'][] = $mapping;
+                        }
+
+                        // Remove items that were deleted from client order
+                        if (!empty($syncedItemUuids)) {
+                            \App\Models\OrderItem::where('order_id', $order->id)
+                                ->whereNotIn('client_uuid', $syncedItemUuids)
+                                ->delete();
                         }
                     }
 
@@ -753,6 +829,75 @@ class SyncController extends Controller
                         'remote_id' => $order->id,
                         'client_uuid' => $orderUuid,
                         'items' => $itemMappings,
+                    ];
+                }
+            }
+
+            // 7.5 Standalone Order Items (if pushed directly outside orders)
+            if (!empty($payload['order_items'])) {
+                foreach ($payload['order_items'] as $it) {
+                    $itemUuid = $it['client_uuid'] ?? (string) Str::uuid();
+                    $orderItem = \App\Models\OrderItem::firstOrNew(['client_uuid' => $itemUuid]);
+
+                    $orderId = $it['order_id'] ?? null;
+                    $parentOrd = null;
+                    if (!$orderId && !empty($it['order_client_uuid'])) {
+                        $parentOrd = \App\Models\Order::where('client_uuid', $it['order_client_uuid'])->first();
+                        $orderId = $parentOrd ? $parentOrd->id : null;
+                    } elseif ($orderId) {
+                        $parentOrd = \App\Models\Order::find($orderId);
+                    }
+
+                    $productId = $it['product_id'] ?? null;
+                    $prd = null;
+                    if (!$productId && !empty($it['product_client_uuid'])) {
+                        $prd = \App\Models\Product::where('client_uuid', $it['product_client_uuid'])->first();
+                        $productId = $prd ? $prd->id : null;
+                    } elseif ($productId) {
+                        $prd = \App\Models\Product::find($productId);
+                    }
+                    if (!$productId) {
+                        $productId = \App\Models\Product::where('branch_id', $branchId)->value('id') ?? \App\Models\Product::value('id') ?? 1;
+                    }
+
+                    $itemUserId = $it['user_id'] 
+                        ?? $it['customer_id'] 
+                        ?? ($parentOrd ? $parentOrd->user_id : null) 
+                        ?? 1;
+
+                    $categoryId = $it['category_id'] 
+                        ?? $prd?->category_id 
+                        ?? \App\Models\Category::where('branch_id', $branchId)->value('id') 
+                        ?? \App\Models\Category::value('id') 
+                        ?? 1;
+
+                    $price = floatval($it['price'] ?? $it['unit_price'] ?? ($prd?->price ?? 0.0));
+                    $qty = intval($it['quantity'] ?? 1);
+                    $totalAmount = floatval($it['total_amount'] ?? ($qty * $price));
+
+                    $orderItem->order_id = $orderId ?? 1;
+                    $orderItem->user_id = $itemUserId;
+                    $orderItem->product_id = $productId;
+                    $orderItem->category_id = $categoryId;
+                    $orderItem->quantity_type_id = $it['quantity_type_id'] ?? $prd?->quantity_type_id ?? null;
+                    $orderItem->price = $price;
+                    $orderItem->unit_price = floatval($it['unit_price'] ?? $price);
+                    $orderItem->quantity = $qty;
+                    $orderItem->total_amount = $totalAmount;
+                    $orderItem->branch_id = $it['branch_id'] ?? $branchId;
+                    $orderItem->created_by = $it['created_by'] ?? $itemUserId;
+                    $orderItem->client_uuid = $itemUuid;
+
+                    if (isset($it['variant_id'])) $orderItem->variant_id = $it['variant_id'];
+                    if (isset($it['addons'])) $orderItem->addons = $it['addons'];
+                    if (isset($it['isDeleted'])) $orderItem->isDeleted = (int)$it['isDeleted'];
+
+                    $orderItem->save();
+
+                    $syncedMappings['order_items'][] = [
+                        'local_id' => $it['local_id'] ?? null,
+                        'remote_id' => $orderItem->id,
+                        'client_uuid' => $itemUuid,
                     ];
                 }
             }
