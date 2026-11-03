@@ -381,7 +381,18 @@
     window.__QZ_CERT_URL = @json(url('/qz/certificate'));
     window.__QZ_SIGN_URL = @json(url('/qz/sign'));
     window.__QZ_INSTALL_BAT_URL = @json(url('/qz/install-qz-trust.bat'));
-    window.__INVOICE_PRINT_PREFS = @json(invoice_print_js_prefs());
+    window.__INVOICE_PRINT_PREFS = @json(function_exists('invoice_print_js_prefs') ? invoice_print_js_prefs() : [
+        'thermal' => true,
+        'copies' => 1,
+        'autoCut' => false,
+        'cashDrawer' => false,
+        'extraLines' => 0,
+        'textStyling' => true,
+        'defaultPrinter' => '',
+        'defaultPrinterLabel' => '',
+        'hindi' => false,
+        'template' => 1,
+    ]);
 
     function boot($) {
         if (!$ || window.InvoiceQzPrint) {

@@ -623,3 +623,60 @@ if (! function_exists('make_thermal_invoice_pdf')) {
             ->setOptions($options);
     }
 }
+
+if (! function_exists('invoice_print_js_prefs')) {
+    /**
+     * Printer defaults for QZ / Bluetooth bill print dialog (ported from pooja POS).
+     */
+    function invoice_print_js_prefs(): array
+    {
+        $defaults = [
+            'thermal' => true,
+            'copies' => 1,
+            'autoCut' => false,
+            'cashDrawer' => false,
+            'extraLines' => 0,
+            'textStyling' => true,
+            'defaultPrinter' => '',
+            'defaultPrinterLabel' => '',
+            'hindi' => false,
+            'template' => 1,
+        ];
+
+        try {
+            $branchId = null;
+            if (function_exists('auth') && auth()->check()) {
+                $user = auth()->user();
+                $role = $user->role ?? '';
+                if ($role === 'sub-admin') {
+                    $branchId = $user->id;
+                } elseif ($role === 'staff') {
+                    $branchId = $user->branch_id ?? null;
+                } elseif ($role === 'admin' && session()->has('selectedSubAdminId')) {
+                    $branchId = session('selectedSubAdminId');
+                } else {
+                    $branchId = $user->id ?? null;
+                }
+            }
+
+            $setting = null;
+            if (class_exists(\App\Models\Setting::class)) {
+                $query = \App\Models\Setting::query();
+                if ($branchId) {
+                    $setting = (clone $query)->where('branch_id', $branchId)->first();
+                }
+                if (! $setting) {
+                    $setting = $query->first();
+                }
+            }
+
+            if ($setting) {
+                $defaults['thermal'] = (($setting->invoice_size ?? 'small') === 'small');
+            }
+
+            return $defaults;
+        } catch (\Throwable $e) {
+            return $defaults;
+        }
+    }
+}
