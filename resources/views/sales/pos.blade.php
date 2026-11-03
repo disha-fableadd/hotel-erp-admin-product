@@ -82,8 +82,9 @@
             flex-wrap: nowrap !important;
             align-items: center !important;
             gap: 10px !important;
-            padding: 4px 4px 10px !important;
-            margin: 0 0 10px 0 !important;
+            /* Extra bottom padding so scrollbar sits UNDER pills, not through them */
+            padding: 6px 4px 12px !important;
+            margin: 0 0 8px 0 !important;
             list-style: none !important;
             width: 100% !important;
             max-width: 100% !important;
@@ -91,20 +92,27 @@
             overflow-y: hidden !important;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: thin !important;
-            scrollbar-color: #cbd5e1 #f8fafc !important;
+            scrollbar-color: #cbd5e1 transparent !important;
+            scrollbar-gutter: stable;
         }
         .tabs_wrapper ul.tabs::-webkit-scrollbar {
             display: block !important;
-            height: 5px !important;
+            height: 4px !important;
+            background: transparent !important;
+        }
+        .tabs_wrapper ul.tabs::-webkit-scrollbar-button {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
         }
         .tabs_wrapper ul.tabs::-webkit-scrollbar-track {
             background: #f1f5f9 !important;
             border-radius: 10px !important;
+            margin: 0 4px;
         }
         .tabs_wrapper ul.tabs::-webkit-scrollbar-thumb {
             background: #cbd5e1 !important;
             border-radius: 10px !important;
-            transition: background 0.2s;
         }
         .tabs_wrapper ul.tabs::-webkit-scrollbar-thumb:hover {
             background: #ff9f43 !important;
@@ -118,6 +126,7 @@
             padding: 0 !important;
             margin: 0 !important;
             transition: transform 0.2s ease !important;
+            align-self: center !important;
         }
         .tabs_wrapper ul.tabs li:active {
             transform: scale(0.96);
@@ -389,51 +398,69 @@
             min-height: 0;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             padding-right: 2px;
             margin-bottom: 6px;
         }
         .pos-order-scroll > .card-body.pt-0:first-child {
-            flex: 1 1 auto;
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            flex: 0 0 auto;
+            display: block;
+            overflow: visible;
             padding-bottom: 4px !important;
         }
         .pos-order-scroll .totalitem {
             flex-shrink: 0;
+            margin-bottom: 4px !important;
         }
-        /* Kill theme height:34vh + overflow:visible (items were spilling over Discount) */
+        /*
+         * Cart items scroller — fixed comfortable height (not flex-squeezed).
+         * Theme uses height:34vh; we replace with a clamped max-height.
+         */
         .card.card-order .product-table,
         .pos-order-scroll .product-table,
         .product-table {
             height: auto !important;
-            max-height: none !important;
-            flex: 1 1 auto;
-            min-height: 96px;
+            max-height: clamp(160px, 28vh, 300px) !important;
+            min-height: 0 !important;
+            flex: none !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: 8px;
-            margin-bottom: 0 !important;
+            padding: 2px 4px 8px 0 !important;
+            margin: 0 0 4px 0 !important;
+            border: 1px solid #f1f5f9;
+            border-radius: 8px;
+            background: #fcfcfd;
         }
-        .pos-order-scroll .product-table::-webkit-scrollbar {
-            width: 5px;
+        .pos-order-scroll .product-table::-webkit-scrollbar,
+        .product-table::-webkit-scrollbar {
+            width: 6px;
         }
-        .pos-order-scroll .product-table::-webkit-scrollbar-thumb {
+        .pos-order-scroll .product-table::-webkit-scrollbar-track,
+        .product-table::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .pos-order-scroll .product-table::-webkit-scrollbar-thumb,
+        .product-table::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 4px;
+        }
+        .pos-order-scroll .product-table::-webkit-scrollbar-thumb:hover,
+        .product-table::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
         .pos-order-scroll .body_space_two {
             flex-shrink: 0;
             position: relative;
             z-index: 2;
             background: #ffffff;
-            padding-top: 6px !important;
+            padding-top: 8px !important;
             padding-bottom: 4px !important;
             border-top: 1px solid #eef2f7;
-            margin-top: 2px;
+            margin-top: 4px;
         }
         .split-card {
             display: none !important;
@@ -1155,46 +1182,98 @@
             transform: translateX(3px) !important;
         }
 
-        /* Mobile adjustments */
+        /* Tablet / mobile — page scrolls; cart list keeps a clear scroller */
         @media screen and (max-width: 991px) {
+            .tabs_wrapper {
+                max-height: none;
+            }
+            .tabs_wrapper ul.tabs {
+                padding: 6px 2px 14px !important;
+                margin-bottom: 10px !important;
+                gap: 8px !important;
+            }
+            .product-details {
+                padding: 7px 14px;
+            }
+            .product-details h6 {
+                font-size: 12.5px;
+            }
+            .tabs_wrapper .tabs_container,
+            .tabs_container {
+                max-height: none;
+                min-height: 0;
+                overflow: visible !important;
+            }
             .card.card-order {
                 position: static;
                 margin-top: 16px;
                 max-height: none;
                 overflow: visible;
             }
+            .card.card-order > .card-body.body_space.pos-order-body,
             .card.card-order > .card-body.body_space {
                 overflow: visible !important;
                 max-height: none;
             }
             .pos-order-scroll {
-                max-height: 420px;
-                overflow: hidden;
+                max-height: none;
+                overflow: visible;
             }
             .card.card-order .product-table,
-            .pos-order-scroll .product-table {
-                max-height: 240px !important;
-            }
-            .tabs_wrapper,
-            .tabs_wrapper .tabs_container,
-            .tabs_container {
-                max-height: none;
+            .pos-order-scroll .product-table,
+            .product-table {
+                max-height: min(280px, 40vh) !important;
+                overflow-y: auto !important;
             }
             .setvaluecash ul {
-                grid-template-columns: repeat(3, 1fr) !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
             }
         }
         @media screen and (max-width: 576px) {
+            .tabs_wrapper ul.tabs {
+                gap: 6px !important;
+                padding-bottom: 14px !important;
+            }
+            .product-details {
+                padding: 6px 12px;
+            }
+            .card.card-order .product-table,
+            .pos-order-scroll .product-table,
+            .product-table {
+                max-height: min(240px, 38vh) !important;
+            }
             .setvaluecash ul {
-                grid-template-columns: repeat(2, 1fr) !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+            .payment_panel {
+                padding: 10px 8px !important;
+            }
+        }
+        /* Short viewports (laptops with low height) */
+        @media screen and (max-height: 760px) {
+            .card.card-order {
+                max-height: calc(100vh - 64px);
+            }
+            .card.card-order .product-table,
+            .pos-order-scroll .product-table,
+            .product-table {
+                max-height: clamp(120px, 22vh, 200px) !important;
+            }
+            .tabs_wrapper .tabs_container,
+            .tabs_container {
+                max-height: calc(100vh - 160px);
+                min-height: 180px;
             }
         }
    /* ===== Cart row: name on top, everything else on ONE aligned line ===== */
 .product-lists {
     display: block !important;
-    padding: 5px 4px !important;
-    margin: 0 !important;
-    border-bottom: 1px solid #f1f5f9;
+    padding: 8px 6px !important;
+    margin: 0 0 4px 0 !important;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    box-shadow: none !important;
+    background: transparent;
 }
 .product-lists > li.cart-row {
     display: block !important;
