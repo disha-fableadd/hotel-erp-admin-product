@@ -75,6 +75,7 @@
             display: flex;
             flex-direction: column;
             min-height: 0;
+            max-height: calc(100vh - 88px);
         }
         .tabs_wrapper ul.tabs {
             display: flex !important;
@@ -167,8 +168,8 @@
             display: block !important;
             width: 100% !important;
             flex: 1 1 auto;
-            max-height: calc(100vh - 280px);
-            min-height: 320px;
+            max-height: calc(100vh - 180px);
+            min-height: 240px;
             overflow-y: auto !important;
             overflow-x: hidden !important;
             padding-right: 4px;
@@ -349,21 +350,57 @@
             filter: grayscale(40%);
         }
 
-        /* --- Right Order / Billing Card --- */
+        /* --- Right Order / Billing Card (viewport-locked, internal scroll) --- */
         .card.card-order {
             background: #ffffff;
             border: 1px solid var(--pos-border);
             border-radius: 12px;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
             position: sticky;
-            top: 10px;
-            overflow: visible;
+            top: 8px;
+            max-height: calc(100vh - 88px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .card.card-order > .card-body.body_space.pos-order-body,
+        .card.card-order > .card-body.body_space {
+            padding: 10px 12px 8px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 auto;
+            min-height: 0 !important;
+            max-height: 100%;
+            overflow: hidden !important;
         }
         .card.card-order .card-body {
             padding: 10px 12px !important;
         }
         .card.card-order .card-body .card-body {
             padding: 0 !important;
+        }
+        .pos-order-scroll {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding-right: 2px;
+            margin-bottom: 6px;
+        }
+        .pos-order-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+        .pos-order-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .pos-order-scroll .product-table {
+            max-height: none !important;
+            overflow: visible !important;
+        }
+        .pos-order-scroll .body_space_two {
+            padding-bottom: 4px !important;
         }
         .split-card {
             display: none !important;
@@ -489,9 +526,16 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 8px;
             margin-top: 4px;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
             padding: 0 2px;
+            flex-wrap: nowrap;
+            min-height: 24px;
+        }
+        .customer-section-title > div:first-child {
+            min-width: 0;
+            flex: 1 1 auto;
         }
         .pos-order-badge {
             background: #fff7ed;
@@ -501,9 +545,14 @@
             font-size: 11px;
             font-weight: 700;
             color: var(--pos-primary);
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 4px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            max-width: 48%;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .pos-order-label {
             color: #9a3412;
@@ -523,6 +572,10 @@
             background: #ffffff !important;
             margin-bottom: 6px !important;
             box-shadow: 0 1px 4px rgba(255, 159, 67, 0.08) !important;
+            flex-shrink: 0;
+        }
+        .search_custom_product {
+            flex-shrink: 0;
         }
         .customer-details-box .row.g-2 {
             --bs-gutter-y: 6px !important;
@@ -848,23 +901,26 @@
             color: #10b981 !important;
         }
 
-        /* --- Payment Methods (Fixed Bottom Panel - Screenshot 3 Style) --- */
+        /* --- Payment Methods (pinned to bottom of order card, not page) --- */
         .payment_panel {
-            position: fixed;
-            bottom: 0;
+            position: relative !important;
+            bottom: auto !important;
+            left: auto !important;
+            right: auto !important;
+            width: 100% !important;
+            flex-shrink: 0;
             background-color: #ffffff !important;
-            z-index: 999;
-            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+            z-index: 5;
+            box-shadow: 0 -6px 14px rgba(15, 23, 42, 0.06);
             border: 1px solid var(--pos-border);
-            border-bottom: none;
-            border-radius: 12px 12px 0 0;
-            padding: 8px 12px 8px !important;
+            border-radius: 10px;
+            padding: 8px 10px !important;
             margin: 0 !important;
             box-sizing: border-box;
         }
 
         .card.card-order .card-body.body_space {
-            padding-bottom: 230px !important;
+            padding-bottom: 8px !important;
         }
         .payment_panel_header {
             display: flex;
@@ -1025,6 +1081,20 @@
             .card.card-order {
                 position: static;
                 margin-top: 16px;
+                max-height: none;
+                overflow: visible;
+            }
+            .card.card-order > .card-body.body_space {
+                overflow: visible !important;
+                max-height: none;
+            }
+            .pos-order-scroll {
+                max-height: 420px;
+            }
+            .tabs_wrapper,
+            .tabs_wrapper .tabs_container,
+            .tabs_container {
+                max-height: none;
             }
             .setvaluecash ul {
                 grid-template-columns: repeat(3, 1fr) !important;
@@ -1037,9 +1107,8 @@
         }
    /* ===== Cart row: name on top, everything else on ONE aligned line ===== */
 .product-table {
-    max-height: 300px;            /* was 220px, name was getting clipped */
-    overflow-y: auto;
-    overflow-x: hidden;
+    max-height: none;
+    overflow: visible;
 }
 .product-lists {
     display: block !important;
@@ -1367,9 +1436,9 @@
             <div class="col-lg-5 col-sm-12 ">
 
                 <div class="card card-order">
-                    <div class="card-body body_space">
+                    <div class="card-body body_space pos-order-body">
                         <div class="gst-header mb-2"
-                            style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                            style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-shrink: 0;">
                             <div class="custom-gst-pill-group">
                                 <label class="custom-gst-btn">
                                     @php $defaultGst = ((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without'; @endphp
@@ -1483,6 +1552,7 @@
                             //     document.getElementById('customer_phone').value = phone || '';
                             // });
                         </script>
+                        <div class="pos-order-scroll">
                         <div class="card-body pt-0">
                             <div class="totalitem">
                                 <h4>Total items : 4</h4>
@@ -1619,6 +1689,8 @@
                             </div> --}}
                             {{-- Default hidden type = takeaway so API still receives a value --}}
                             <input type="radio" name="type" value="takeaway" checked hidden>
+                            </div>{{-- /.body_space_two --}}
+                            </div>{{-- /.pos-order-scroll --}}
                             <div class="payment_panel">
                                 <div class="payment_panel_header">
                                     <span class="payment_panel_title">
@@ -1852,12 +1924,11 @@
                                                 d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8" />
                                         </svg></h5>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                            </div>{{-- /.payment_panel --}}
+                    </div>{{-- /.pos-order-body --}}
+                </div>{{-- /.card-order --}}
+            </div>{{-- /.col-lg-5 --}}
+        </div>{{-- /.row --}}
 
         {{-- ── Add Bank Modal ───────────────────────────────────────── --}}
         <div class="modal fade" id="addBankModal" tabindex="-1" aria-labelledby="addBankModalLabel" aria-hidden="true">
@@ -4108,37 +4179,20 @@
                 });
             });
 
-            // ── Keep Payment Panel pinned & perfectly aligned to right order card (Screenshot 3 Style) ──
+            // Payment panel stays inside the order card (internal scroll). Clear any old fixed styles.
             function updatePosPaymentPanelPosition() {
-                var $card = $('.card.card-order');
                 var $panel = $('.payment_panel');
-                if (!$card.length || !$panel.length) return;
-
-                if ($(window).width() >= 992) {
-                    var rect = $card[0].getBoundingClientRect();
-                    $panel.css({
-                        'position': 'fixed',
-                        'bottom': '0',
-                        'left': rect.left + 'px',
-                        'width': rect.width + 'px',
-                        'right': 'auto'
-                    });
-                } else {
-                    $panel.css({
-                        'position': 'fixed',
-                        'bottom': '0',
-                        'left': '8px',
-                        'right': '8px',
-                        'width': 'auto'
-                    });
-                }
+                if (!$panel.length) return;
+                $panel.css({
+                    position: 'relative',
+                    bottom: 'auto',
+                    left: 'auto',
+                    right: 'auto',
+                    width: '100%'
+                });
             }
 
-            $(window).on('resize scroll', updatePosPaymentPanelPosition);
-            $(document).on('click', '#toggle_btn, .bar-icon, #sidebar, .sidebar-menu, a.nav-link', function() {
-                setTimeout(updatePosPaymentPanelPosition, 100);
-                setTimeout(updatePosPaymentPanelPosition, 300);
-            });
+            $(window).on('resize', updatePosPaymentPanelPosition);
             $(document).ready(function() {
                 updatePosPaymentPanelPosition();
                 setTimeout(updatePosPaymentPanelPosition, 100);
