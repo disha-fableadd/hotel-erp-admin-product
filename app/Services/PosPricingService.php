@@ -82,6 +82,13 @@ class PosPricingService
         }
         $lineTotal = round(max(0, $gross - $itemDiscAmt), 2);
 
+        $qtyTypeId = $item['quantity_type_id'] ?? $item['quantity_type123'] ?? $product->quantity_type_id;
+        if ($qtyTypeId !== null && $qtyTypeId !== '') {
+            $qtyTypeId = is_numeric($qtyTypeId) ? (int) $qtyTypeId : null;
+        } else {
+            $qtyTypeId = is_numeric($product->quantity_type_id) ? (int) $product->quantity_type_id : null;
+        }
+
         return [
             'product' => $product,
             'variant_id' => $variantId,
@@ -91,7 +98,7 @@ class PosPricingService
             'item_discount_amount' => $itemDiscAmt,
             'line_total' => $lineTotal,
             'category_id' => $item['categoryId'] ?? $item['category_id'] ?? $product->category_id,
-            'quantity_type_id' => $item['quantity_type_id'] ?? $product->quantity_type_id,
+            'quantity_type_id' => $qtyTypeId,
             'quantity' => $qty,
         ];
     }

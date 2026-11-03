@@ -3453,8 +3453,8 @@
                                                             <div class="productsetcontent">
                                                                 <h4>${safeName}</h4>
                                                                 <h1 class="d-none">${product.categoryId || 'Uncategorized'}</h1>
-                                                                <h2 class="d-none">${product.quantity_type || 'pcs'}</h2>
-                                                                <h3 class="d-none">${product.quantity_type_id || 'pcs'}</h3>
+                                                                <h2 class="d-none">${product.quantity_type || ''}</h2>
+                                                                <h3 class="d-none">${product.quantity_type_id || ''}</h3>
 
                                                                 <div class="product-category-subtitle">
                                                                     ${safeCategory}
@@ -4221,7 +4221,13 @@
                         addon_ids: item.addon_ids || [],
                         addons: item.addon_ids || [],
                         quantity: item.quantity,
-                        quantity_type_id: item.quantity_type,
+                        quantity_type_id: (function () {
+                            var qt = item.quantity_type123 || item.quantity_type_id || null;
+                            if (qt === null || qt === undefined || qt === '') return null;
+                            qt = String(qt).trim();
+                            if (!/^\d+$/.test(qt)) return null;
+                            return parseInt(qt, 10);
+                        })(),
                         quantity_type123: item.quantity_type123,
                         categoryId: item.categoryId,
                         price: price,
@@ -4439,7 +4445,13 @@
                         addon_ids: item.addon_ids || [],
                         addons: item.addon_ids || [],
                         quantity: item.quantity,
-                        quantity_type_id: item.quantity_type,
+                        quantity_type_id: (function () {
+                            var qt = item.quantity_type123 || item.quantity_type_id || null;
+                            if (qt === null || qt === undefined || qt === '') return null;
+                            qt = String(qt).trim();
+                            if (!/^\d+$/.test(qt)) return null;
+                            return parseInt(qt, 10);
+                        })(),
                         quantity_type123: item.quantity_type123,
                         categoryId: item.categoryId,
                         price: price,
@@ -4652,7 +4664,13 @@
                         addon_ids: item.addon_ids || [],
                         addons: item.addon_ids || [],
                         quantity: item.quantity,
-                        quantity_type_id: item.quantity_type,
+                        quantity_type_id: (function () {
+                            var qt = item.quantity_type123 || item.quantity_type_id || null;
+                            if (qt === null || qt === undefined || qt === '') return null;
+                            qt = String(qt).trim();
+                            if (!/^\d+$/.test(qt)) return null;
+                            return parseInt(qt, 10);
+                        })(),
                         quantity_type123: item.quantity_type123,
                         categoryId: item.categoryId,
                         price: price,

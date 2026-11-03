@@ -3174,9 +3174,14 @@
 
 
                         const price = parseFloat(item.price.replace ? item.price.replace(/[^0-9.-]+/g, "") : item.price);
-                        // Use numeric quantity_type_id: prefer quantity_type123 (numeric ID from data attribute),
-                        // then quantity_type_id (set by search-add path), or fall back to quantity_type (text name)
-                        const qtId = item.quantity_type123 || item.quantity_type_id || item.quantity_type || null;
+                        // Only send numeric quantity_type_id (never unit labels like ML/PCS)
+                        let qtId = item.quantity_type123 || item.quantity_type_id || null;
+                        if (qtId !== null && qtId !== undefined && qtId !== '') {
+                            qtId = String(qtId).trim();
+                            qtId = /^\d+$/.test(qtId) ? parseInt(qtId, 10) : null;
+                        } else {
+                            qtId = null;
+                        }
                         var discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
                         var lineGross = price * item.quantity;
                         var lineTotal = lineGross - (lineGross * discPct / 100);
@@ -3187,7 +3192,7 @@
                             addons: item.addon_ids || [],
                             quantity: item.quantity,
                             quantity_type_id: qtId,
-                            quantity_type123: item.quantity_type123 || item.quantity_type_id,
+                            quantity_type123: qtId,
                             categoryId: item.categoryId,
                             price: price,
                             item_discount_percent: discPct,
