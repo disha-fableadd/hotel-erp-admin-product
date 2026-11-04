@@ -24,6 +24,7 @@ class PosPricingService
 
         $unitPrice = (float) $product->price;
         $variantId = !empty($item['variant_id']) ? (int) $item['variant_id'] : null;
+        $variantName = null;
 
         if ($variantId) {
             $variant = ProductVariant::where('product_id', $productId)
@@ -32,6 +33,7 @@ class PosPricingService
                 ->first();
             if ($variant) {
                 $unitPrice = (float) $variant->price;
+                $variantName = (string) $variant->name;
             } else {
                 $variantId = null;
             }
@@ -54,13 +56,16 @@ class PosPricingService
         if ($addonIds) {
             $addons = ProductAddon::whereIn('id', $addonIds)
                 ->where('isDeleted', 0)
-                ->where('status', 'active')
-                ->get();
+                ->where(function ($q) {
+                    $q->where('status', 'active')->orWhereNull('status');
+                })
+                ->get()
+                ->keyBy('id');
 
-            // Prefer product-linked addons when pivot exists; still allow matched catalog ids
-            $linkedIds = $product->addons->pluck('id')->all();
-            foreach ($addons as $addon) {
-                if ($linkedIds && !in_array($addon->id, $linkedIds, true)) {
+            // Keep client selection order; apply every explicitly chosen add-on
+            foreach ($addonIds as $aid) {
+                $addon = $addons->get($aid);
+                if (!$addon) {
                     continue;
                 }
                 $unitPrice += (float) $addon->price;
@@ -92,6 +97,7 @@ class PosPricingService
         return [
             'product' => $product,
             'variant_id' => $variantId,
+            'variant_name' => $variantName,
             'addons' => $addonPayload,
             'unit_price' => round($unitPrice, 2),
             'item_discount_percent' => $itemDiscPct,

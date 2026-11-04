@@ -134,7 +134,7 @@ class KotController extends Controller
     protected function kotPayload(Request $request, $orderId): array
     {
         $branchId = $this->branchIdToUse();
-        $order = Order::with(['order_items.product', 'tableNo'])
+        $order = Order::with(['order_items.product', 'order_items.variant', 'tableNo'])
             ->where('id', $orderId)
             ->where('branch_id', $branchId)
             ->firstOrFail();

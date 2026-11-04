@@ -44,6 +44,11 @@
                     $action = $item->kot_action ?? 'new';
                     $isCancel = $action === 'cancel';
                     $name = $item->product->name ?? ($item->product_name ?? 'Item');
+                    $vName = $item->variant_name
+                        ?? (method_exists($item, 'variantLabel') ? $item->variantLabel() : (optional($item->variant ?? null)->name ?? null));
+                    $aLines = !empty($item->addons_text)
+                        ? [ $item->addons_text ]
+                        : (method_exists($item, 'addonLines') ? $item->addonLines() : []);
                 @endphp
                 <tr>
                     <td class="{{ $isCancel ? 'badge-cancel' : '' }}">
@@ -51,11 +56,11 @@
                             <span class="badge-new">{{ $isCancel ? '[CANCEL]' : '[NEW]' }}</span>
                         @endif
                         {{ $name }}
-                        @if(!empty($item->variant_name))
-                            <br><span style="font-size:9px;">{{ $item->variant_name }}</span>
+                        @if(!empty($vName))
+                            <br><span style="font-size:9px;">{{ $vName }}</span>
                         @endif
-                        @if(!empty($item->addons_text))
-                            <br><span style="font-size:9px;">{{ $item->addons_text }}</span>
+                        @if(!empty($aLines))
+                            <br><span style="font-size:9px;">+ {{ is_array($aLines) ? implode(', ', $aLines) : $aLines }}</span>
                         @endif
                     </td>
                     <td class="qty {{ $isCancel ? 'badge-cancel' : '' }}">

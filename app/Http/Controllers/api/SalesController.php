@@ -464,11 +464,31 @@ class SalesController extends Controller
                 ->value('id');
 
             if ($existingActiveOrderId) {
-                $mergedByProduct = [];
+                $lineKey = static function ($productId, $variantId = null, $addons = null): string {
+                    $addonIds = [];
+                    foreach ((array) $addons as $a) {
+                        if (is_array($a) && isset($a['id'])) {
+                            $addonIds[] = (int) $a['id'];
+                        } elseif (is_numeric($a)) {
+                            $addonIds[] = (int) $a;
+                        }
+                    }
+                    $addonIds = array_values(array_unique($addonIds));
+                    sort($addonIds);
+                    return ((int) $productId) . ':v' . ((int) ($variantId ?? 0)) . ':a' . implode('_', $addonIds);
+                };
+
+                $mergedByLine = [];
 
                 foreach (OrderItem::where('order_id', $existingActiveOrderId)->get() as $old) {
-                    $mergedByProduct[$old->product_id] = [
+                    $key = $lineKey($old->product_id, $old->variant_id, $old->addons);
+                    $mergedByLine[$key] = [
                         'product_id' => $old->product_id,
+                        'variant_id' => $old->variant_id,
+                        'addon_ids' => collect((array) $old->addons)->map(function ($a) {
+                            return is_array($a) ? (int) ($a['id'] ?? 0) : (int) $a;
+                        })->filter()->values()->all(),
+                        'addons' => $old->addons,
                         'quantity' => (int) $old->quantity,
                         'quantity_type_id' => $old->quantity_type_id,
                         'quantity_type123' => $old->quantity_type_id,
@@ -483,15 +503,23 @@ class SalesController extends Controller
                     if (!$pid) {
                         continue;
                     }
+                    $variantId = $item['variant_id'] ?? null;
+                    $addonIds = $item['addon_ids'] ?? $item['addons'] ?? [];
+                    $key = $lineKey($pid, $variantId, $addonIds);
+                    $price = (float) ($item['price'] ?? 0);
+                    $qty = (int) ($item['quantity'] ?? 0);
 
-                    if (isset($mergedByProduct[$pid])) {
-                        $mergedByProduct[$pid]['quantity'] += (int) $item['quantity'];
-                        $mergedByProduct[$pid]['total'] = $mergedByProduct[$pid]['quantity'] * $mergedByProduct[$pid]['price'];
+                    if (isset($mergedByLine[$key])) {
+                        $mergedByLine[$key]['quantity'] += $qty;
+                        $unit = (float) ($mergedByLine[$key]['price'] ?: $price);
+                        $mergedByLine[$key]['price'] = $unit;
+                        $mergedByLine[$key]['total'] = $mergedByLine[$key]['quantity'] * $unit;
                     } else {
-                        $price = (float) ($item['price'] ?? 0);
-                        $qty = (int) ($item['quantity'] ?? 0);
-                        $mergedByProduct[$pid] = [
+                        $mergedByLine[$key] = [
                             'product_id' => $pid,
+                            'variant_id' => $variantId,
+                            'addon_ids' => $addonIds,
+                            'addons' => $addonIds,
                             'quantity' => $qty,
                             'quantity_type_id' => $item['quantity_type_id'] ?? null,
                             'quantity_type123' => $item['quantity_type123'] ?? null,
@@ -502,7 +530,7 @@ class SalesController extends Controller
                     }
                 }
 
-                $mergedItems = array_values($mergedByProduct);
+                $mergedItems = array_values($mergedByLine);
                 $mergedSubtotal = array_sum(array_map(static fn ($row) => (float) $row['total'], $mergedItems));
                 $discountPct = (float) ($request->discount ?? 0);
                 $discountAmount = $mergedSubtotal * ($discountPct / 100);
@@ -1737,16 +1765,48 @@ class SalesController extends Controller
             : null;
         // Fetch order items with product & include date
             $orderItems = OrderItem::where('order_id', $id)
-            ->with('product', 'quantityType')
+            ->with(['product', 'quantityType', 'variant'])
             ->get()
             ->map(function ($item) {
+                $addonRows = is_array($item->addons) ? $item->addons : [];
+                $addonIds = [];
+                $addonNames = [];
+                foreach ($addonRows as $a) {
+                    if (is_array($a)) {
+                        if (!empty($a['id'])) {
+                            $addonIds[] = (int) $a['id'];
+                        }
+                        if (!empty($a['name'])) {
+                            $addonNames[] = (string) $a['name'];
+                        }
+                    } elseif (is_numeric($a)) {
+                        $addonIds[] = (int) $a;
+                    }
+                }
+                $variantName = optional($item->variant)->name;
+                $displayName = (string) (optional($item->product)->name ?? 'Item');
+                if ($variantName) {
+                    $displayName .= ' (' . $variantName . ')';
+                }
+                if ($addonNames) {
+                    $displayName .= ' + ' . implode(', ', $addonNames);
+                }
+
                 return [
                     'id' => $item->id,
                     'product' => $item->product,
+                    'product_id' => $item->product_id,
+                    'variant_id' => $item->variant_id,
+                    'variant_name' => $variantName,
+                    'addon_ids' => $addonIds,
+                    'addons' => $addonRows,
+                    'addon_names' => $addonNames,
+                    'display_name' => $displayName,
                     'category_id' => $item->category_id,
                     'quantity' => $item->quantity,
                     'quantity_type' => $item->quantityType,
-                    'price' => $item->price,
+                    'price' => $item->unit_price ?? $item->price,
+                    'unit_price' => $item->unit_price ?? $item->price,
                     'total_amount' => $item->total_amount,
                     'date' => $item->created_at
                         ? $item->created_at->timezone('Asia/Kolkata')->format('Y-m-d h:i A')

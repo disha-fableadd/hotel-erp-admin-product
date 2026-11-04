@@ -3256,6 +3256,11 @@
                     }
 
                     const productId = product.id;
+                    const variantId = item.variant_id ? parseInt(item.variant_id, 10) : null;
+                    const addonIds = Array.isArray(item.addon_ids)
+                        ? item.addon_ids.map(function (id) { return parseInt(id, 10); }).filter(Boolean)
+                        : [];
+                    const uniqueId = String(productId) + '-v' + (variantId || 0) + '-a' + addonIds.join('_');
                     const qtyType = item.quantity_type;
                     const qtyTypeName = (qtyType && qtyType.quantity_type)
                         ? qtyType.quantity_type
@@ -3263,14 +3268,29 @@
                     const qtyTypeId = (qtyType && qtyType.id)
                         ? qtyType.id
                         : (product.quantity_type_id || null);
-                    const priceNum = parseFloat(item.price != null ? item.price : product.price) || 0;
+                    const priceNum = parseFloat(
+                        item.unit_price != null ? item.unit_price
+                            : (item.price != null ? item.price : product.price)
+                    ) || 0;
                     const availableStock = (parseInt(product.quantity, 10) || 0) + (parseInt(item.quantity, 10) || 0);
+                    const displayName = item.display_name
+                        || (function () {
+                            var n = product.name || 'Item';
+                            if (item.variant_name) n += ' (' + item.variant_name + ')';
+                            if (item.addon_names && item.addon_names.length) {
+                                n += ' + ' + item.addon_names.join(', ');
+                            }
+                            return n;
+                        })();
 
-                    selectedItems.set(productId, {
-                        id: productId,
+                    selectedItems.set(uniqueId, {
+                        id: uniqueId,
+                        uniqueId: uniqueId,
                         productId: productId,
+                        variant_id: variantId,
+                        addon_ids: addonIds,
                         categoryId: item.category_id || product.category_id || '',
-                        name: product.name || 'Item',
+                        name: displayName,
                         price: formatCurrency(priceNum.toFixed(2), currencySymbol, currencyPosition),
                         image: resolveProductImage(product.images || product.image || product.image_url),
                         code: product.product_code || 'PT001',
@@ -3278,7 +3298,8 @@
                         quantity_type_id: qtyTypeId,
                         quantity_type123: qtyTypeId,
                         quantity: parseInt(item.quantity, 10) || 1,
-                        stock: availableStock > 0 ? availableStock : 9999
+                        stock: availableStock > 0 ? availableStock : 9999,
+                        item_discount_percent: parseFloat(item.item_discount_percent || 0) || 0
                     });
 
                     $('.productset[data-id="' + productId + '"] .check-product i').addClass('selected');
@@ -3891,10 +3912,10 @@
                 var unit = parseFloat(pendingPosProduct.basePrice) || 0;
                 var $checkedVariant = $('#posVariantOptions input[name="pos_variant"]:checked');
                 if ($checkedVariant.length) {
-                    unit = parseFloat($checkedVariant.data('price')) || unit;
+                    unit = parseFloat($checkedVariant.attr('data-price')) || unit;
                 }
                 $('#posAddonOptions input.pos-addon-check:checked').each(function () {
-                    unit += parseFloat($(this).data('price')) || 0;
+                    unit += parseFloat($(this).attr('data-price')) || 0;
                 });
                 $('#posOptionLinePrice').text(formatPosMoney(unit));
                 pendingPosProduct.computedUnit = unit;
@@ -3945,13 +3966,13 @@
                 var $v = $('#posVariantOptions input[name="pos_variant"]:checked');
                 if ($v.length) {
                     variantId = parseInt($v.val(), 10);
-                    variantName = $v.data('name') || '';
+                    variantName = $v.attr('data-name') || '';
                 }
                 var addonIds = [];
                 var addonNames = [];
                 $('#posAddonOptions input.pos-addon-check:checked').each(function () {
                     addonIds.push(parseInt($(this).val(), 10));
-                    addonNames.push($(this).data('name'));
+                    addonNames.push($(this).attr('data-name') || '');
                 });
 
                 var unit = pendingPosProduct.computedUnit || pendingPosProduct.basePrice;

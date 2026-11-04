@@ -457,7 +457,9 @@
                     $qty = (float) $item->quantity;
                     $qtyLabel = fmod($qty, 1.0) == 0.0 ? number_format($qty, 0) : number_format($qty, 2);
                     $pName = $item->product->name ?? 'Product';
-                    $price = (float) $item->price;
+                    $variantLabel = method_exists($item, 'variantLabel') ? $item->variantLabel() : (optional($item->variant)->name ?? null);
+                    $addonLabels = method_exists($item, 'addonLines') ? $item->addonLines() : [];
+                    $price = (float) ($item->unit_price ?? $item->price);
                     $lineTotal = (float) ($item->total_amount ?? ($price * $qty));
                     $unit = $item->quantityType->name ?? ($item->product->unit->short_name ?? ($item->product->unit ?? ''));
                 @endphp
@@ -465,6 +467,12 @@
                     <td class="c-no">{{ $index + 1 }}</td>
                     <td class="c-item">
                         <div class="item-name">{{ $pName }}</div>
+                        @if (!empty($variantLabel))
+                            <div class="item-extra">{{ $variantLabel }}</div>
+                        @endif
+                        @if (!empty($addonLabels))
+                            <div class="item-extra">+ {{ implode(', ', $addonLabels) }}</div>
+                        @endif
                         @if (!empty($unit) && !in_array(strtolower($unit), ['pcs', 'piece', 'pieces']))
                             <div class="item-extra">({{ $unit }})</div>
                         @endif

@@ -596,7 +596,7 @@ class SalesController extends Controller
         };
 
         // âœ… Subtotal
-        $orderItems = OrderItem::with('product', 'quantityType')->where('order_id', $view_id)->get();
+        $orderItems = OrderItem::with(['product', 'quantityType', 'variant'])->where('order_id', $view_id)->get();
         $subtotal = $orderItems->sum('total_amount');
 
         // âœ… Discount
@@ -739,7 +739,7 @@ class SalesController extends Controller
         };
 
         // Order items
-        $orderItems = OrderItem::with('product', 'quantityType')->where('order_id', $view_id)->get();
+        $orderItems = OrderItem::with(['product', 'quantityType', 'variant'])->where('order_id', $view_id)->get();
         $subtotal   = $orderItems->sum('total_amount');
 
         // Discount

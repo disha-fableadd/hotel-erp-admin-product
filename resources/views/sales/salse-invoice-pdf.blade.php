@@ -377,18 +377,29 @@
                                         <img src="{{ $base64 }}" alt="img"
                                             style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; margin-right: 5px;">
                                     </td>
-                                    <td style="padding: 0 0 0 5px; vertical-align: middle; white-space: nowrap;">
-                                        {{ $item->product->name ?? 'Item' }}
+                                    <td style="padding: 0 0 0 5px; vertical-align: middle;">
+                                        <div>{{ $item->product->name ?? 'Item' }}</div>
+                                        @php
+                                            $vLabel = method_exists($item, 'variantLabel') ? $item->variantLabel() : (optional($item->variant)->name ?? null);
+                                            $aLabels = method_exists($item, 'addonLines') ? $item->addonLines() : [];
+                                        @endphp
+                                        @if (!empty($vLabel))
+                                            <div style="font-size:11px; color:#555;">{{ $vLabel }}</div>
+                                        @endif
+                                        @if (!empty($aLabels))
+                                            <div style="font-size:11px; color:#555;">+ {{ implode(', ', $aLabels) }}</div>
+                                        @endif
                                     </td>
                                 </tr>
                             </table>
                         </td>
 
                         <td style="padding:8px; text-align:right;">
+                            @php $unitPrice = $item->unit_price ?? $item->price; @endphp
                             @if (($setting?->currency_position ?? 'left') === 'right')
-                                {{ $item->price }}{{ $setting?->currency_symbol ?? '₹' }}
+                                {{ $unitPrice }}{{ $setting?->currency_symbol ?? '₹' }}
                             @else
-                                {{ $setting?->currency_symbol ?? '₹' }}{{ $item->price }}
+                                {{ $setting?->currency_symbol ?? '₹' }}{{ $unitPrice }}
                             @endif
                         </td>
 

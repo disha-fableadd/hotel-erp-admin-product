@@ -60,6 +60,55 @@ class OrderItem extends Model
     {
         return $this->belongsTo(ProductVariant::class, 'variant_id');
     }
+
+    /**
+     * Bill / KOT display helpers for size + add-ons.
+     */
+    public function variantLabel(): ?string
+    {
+        $name = optional($this->variant)->name;
+        if ($name) {
+            return (string) $name;
+        }
+        return null;
+    }
+
+    public function addonLines(): array
+    {
+        $raw = $this->addons;
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+        if (!is_array($raw)) {
+            return [];
+        }
+        $lines = [];
+        foreach ($raw as $a) {
+            if (is_array($a)) {
+                $n = trim((string) ($a['name'] ?? ''));
+                if ($n !== '') {
+                    $lines[] = $n;
+                }
+            } elseif (is_string($a) && trim($a) !== '') {
+                $lines[] = trim($a);
+            }
+        }
+        return $lines;
+    }
+
+    public function displayName(): string
+    {
+        $name = (string) (optional($this->product)->name ?? 'Item');
+        $variant = $this->variantLabel();
+        if ($variant) {
+            $name .= ' (' . $variant . ')';
+        }
+        $addons = $this->addonLines();
+        if ($addons) {
+            $name .= ' + ' . implode(', ', $addons);
+        }
+        return $name;
+    }
     // public function product()
     // {
     //     return $this->belongsTo(Product::class);
