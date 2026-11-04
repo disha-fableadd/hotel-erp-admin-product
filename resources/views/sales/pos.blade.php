@@ -1396,6 +1396,128 @@
     margin: 0 !important;
 }
 
+        /* —— Bill Generated modal (Petpooja-simple) —— */
+        .bill-gen-dialog { max-width: 820px; }
+        .bill-gen-content { border-radius: 16px; overflow: hidden; }
+        .bill-gen-header { background: #fff; padding: 16px 20px 8px; }
+        .bill-gen-preview {
+            height: min(480px, 52vh);
+            background: #e8eaed;
+            position: relative;
+        }
+        .bill-gen-loader {
+            position: absolute; inset: 0;
+            background: rgba(255,255,255,.85);
+            display: flex; align-items: center; justify-content: center; z-index: 10;
+        }
+        .bill-gen-footer {
+            background: #fff;
+            padding: 12px 16px 16px !important;
+            display: flex !important;
+            flex-direction: column;
+            gap: 10px;
+            align-items: stretch !important;
+        }
+        .bill-gen-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .bill-gen-summary-text {
+            font-size: 12.5px;
+            color: #64748b;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px 10px;
+            min-width: 0;
+        }
+        #posPrintSummaryLabel { color: #334155; font-weight: 600; }
+        .bill-gen-status:empty { display: none; }
+        .bill-gen-settings-toggle {
+            color: #64748b !important;
+            text-decoration: none !important;
+            font-weight: 600;
+            padding: 0 !important;
+            white-space: nowrap;
+        }
+        .bill-gen-settings-toggle:hover { color: #ff9f43 !important; }
+        .bill-gen-settings {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .bill-gen-settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .bill-gen-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        .bill-gen-field-row {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .bill-gen-field-row .form-select { flex: 1; min-width: 0; }
+        .bill-gen-settings-opts {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .bill-gen-check {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+            margin: 0;
+            cursor: pointer;
+        }
+        .bill-gen-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .bill-gen-btn-secondary {
+            font-weight: 600;
+            border-radius: 10px;
+            padding: 9px 16px;
+        }
+        .bill-gen-btn-primary {
+            background: #ff9f43 !important;
+            color: #fff !important;
+            font-weight: 700;
+            border: none !important;
+            border-radius: 10px;
+            padding: 10px 22px;
+            box-shadow: 0 4px 12px rgba(255, 159, 67, 0.28);
+        }
+        .bill-gen-btn-primary:hover {
+            background: #f08c2e !important;
+            color: #fff !important;
+        }
+        @media (max-width: 767px) {
+            .bill-gen-settings-grid { grid-template-columns: 1fr; }
+            .bill-gen-preview { height: min(380px, 48vh); }
+            .bill-gen-actions { width: 100%; }
+            .bill-gen-btn-primary { flex: 1 1 100%; }
+            .bill-gen-btn-secondary { flex: 1 1 auto; }
+        }
+
         /* Multi-bill tabs inside combined header */
         .pos-bill-tabs-bar {
             display: flex;
@@ -2158,15 +2280,15 @@
                 </div>
             </div>
         </div>
-        {{-- 🧾 Bill Generated Modal --}}
+        {{-- 🧾 Bill Generated Modal (Petpooja-simple: Print first, settings hidden) --}}
         <div class="modal fade" id="billGeneratedModal" tabindex="-1" aria-labelledby="billGeneratedModalLabel"
             aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-            <div class="modal-dialog modal-dialog-centered" style="max-width:860px;">
-                <div class="modal-content" style="border-radius:16px; overflow:hidden;">
-                    <div class="modal-header border-0 pb-0" style="background:#fff; padding:20px 24px 10px;">
+            <div class="modal-dialog modal-dialog-centered bill-gen-dialog">
+                <div class="modal-content bill-gen-content">
+                    <div class="modal-header border-0 bill-gen-header">
                         <div>
                             <h5 class="modal-title fw-bold fs-5 mb-0" id="billGeneratedModalLabel">Bill Generated</h5>
-                            <small class="text-muted">Select printer → Press <kbd>F10</kbd> or Print</small>
+                            <small class="text-muted">Press <kbd>F10</kbd> or Print — bill &amp; KOT together</small>
                         </div>
                         <button type="button" class="btn-close" id="closeBillModalBtn" aria-label="Close"></button>
                     </div>
@@ -2183,79 +2305,91 @@
                                 <div class="bt-printer-empty small text-muted">Looking for Wi‑Fi printers…</div>
                             </div>
                         </div>
-                        <div style="height:min(520px, 58vh); background:#e0e0e0; position:relative;">
+                        <div class="bill-gen-preview">
                             <iframe id="billPreviewIframe"
                                 src=""
                                 style="width:100%; height:100%; border:none; display:block;"
                                 title="Bill Preview">
                             </iframe>
-                            <div id="billIframeLoader"
-                                style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;z-index:10;">
+                            <div id="billIframeLoader" class="bill-gen-loader">
                                 <div class="spinner-border text-warning" role="status">
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer border-0 pt-2 pb-3 px-3 px-md-4" style="background:#fff;">
-                        <div class="w-100 d-flex flex-column gap-2">
-                            <div class="d-flex flex-wrap align-items-center gap-2">
-                                <label class="mb-0 small text-muted text-nowrap" for="posPrinterSelect">Bill printer</label>
-                                <select id="posPrinterSelect" class="form-select form-select-sm" style="min-width:140px;max-width:220px;flex:1 1 160px;">
-                                    <option value="">Connecting…</option>
-                                </select>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" id="posRefreshPrintersBtn" title="Refresh printer list">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                                <button type="button" class="btn btn-outline-primary btn-sm d-none d-md-inline-block desktop-bt-print-btn"
-                                    data-select="#posPrinterSelect" data-status="#posQzStatus" data-storage="posSelectedPrinter"
-                                    title="Bluetooth for bill printer">
-                                    <i class="fab fa-bluetooth-b"></i> Bluetooth
-                                </button>
-                                <div class="form-check mb-0 d-flex align-items-center gap-1">
-                                    <input class="form-check-input" type="checkbox" id="posThermalAutoCut">
-                                    <label class="form-check-label small" for="posThermalAutoCut">Auto cut</label>
+                    <div class="modal-footer border-0 bill-gen-footer">
+                        <div class="bill-gen-summary">
+                            <div class="bill-gen-summary-text">
+                                <span id="posPrintSummaryLabel">Ready to print</span>
+                                <span class="bill-gen-status" id="posQzStatus"></span>
+                                <span class="bill-gen-status" id="posKotQzStatus"></span>
+                            </div>
+                            <button type="button" class="btn btn-link btn-sm bill-gen-settings-toggle" id="posPrinterSettingsToggle">
+                                <i class="fas fa-cog"></i> Printer settings
+                            </button>
+                        </div>
+
+                        <div id="posPrinterSettingsPanel" class="bill-gen-settings" style="display:none;">
+                            <div class="bill-gen-settings-grid">
+                                <div class="bill-gen-field">
+                                    <label for="posPrinterSelect">Bill printer</label>
+                                    <div class="bill-gen-field-row">
+                                        <select id="posPrinterSelect" class="form-select form-select-sm">
+                                            <option value="">Connecting…</option>
+                                        </select>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="posRefreshPrintersBtn" title="Refresh">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm d-none d-md-inline-block desktop-bt-print-btn"
+                                            data-select="#posPrinterSelect" data-status="#posQzStatus" data-storage="posSelectedPrinter"
+                                            title="Bluetooth bill printer">
+                                            <i class="fab fa-bluetooth-b"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="form-check mb-0 d-flex align-items-center gap-1" title="Print kitchen KOT together with the bill">
-                                    <input class="form-check-input" type="checkbox" id="posPrintKotWithBill" checked>
-                                    <label class="form-check-label small" for="posPrintKotWithBill">Print KOT</label>
+                                <div class="bill-gen-field" id="posKotPrinterRow">
+                                    <label for="posKotPrinterSelect">Kitchen / KOT printer</label>
+                                    <div class="bill-gen-field-row">
+                                        <select id="posKotPrinterSelect" class="form-select form-select-sm">
+                                            <option value="">Same as bill</option>
+                                        </select>
+                                        <button type="button" class="btn btn-outline-primary btn-sm d-none d-md-inline-block desktop-bt-print-btn"
+                                            data-select="#posKotPrinterSelect" data-status="#posKotQzStatus" data-storage="posSelectedKotPrinter"
+                                            title="Bluetooth kitchen printer">
+                                            <i class="fab fa-bluetooth-b"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                                <span class="small text-nowrap" id="posQzStatus" style="color:#6c757d;"></span>
-                                <a href="https://qz.io/download/" target="_blank" rel="noopener" class="small text-nowrap" id="posQzInstallLink" style="display:none;">Install QZ Tray</a>
-                                <a href="{{ url('/qz/install-qz-trust.bat') }}" class="small text-nowrap d-none d-md-inline" id="posQzTrustLink" title="Fixes Allow disabled when Remember is checked">Fix Allow</a>
                             </div>
-                            <div id="posKotPrinterRow" class="d-flex flex-wrap align-items-center gap-2">
-                                <label class="mb-0 small text-muted text-nowrap" for="posKotPrinterSelect">Kitchen printer</label>
-                                <select id="posKotPrinterSelect" class="form-select form-select-sm" style="min-width:140px;max-width:220px;flex:1 1 160px;">
-                                    <option value="">Same as bill</option>
-                                </select>
-                                <button type="button" class="btn btn-outline-primary btn-sm d-none d-md-inline-block desktop-bt-print-btn"
-                                    data-select="#posKotPrinterSelect" data-status="#posKotQzStatus" data-storage="posSelectedKotPrinter"
-                                    title="Bluetooth for kitchen / KOT printer">
-                                    <i class="fab fa-bluetooth-b"></i> Kitchen BT
-                                </button>
-                                <span class="small text-nowrap" id="posKotQzStatus" style="color:#6c757d;"></span>
+                            <div class="bill-gen-settings-opts">
+                                <label class="bill-gen-check">
+                                    <input type="checkbox" id="posPrintKotWithBill" checked>
+                                    <span>Also print KOT</span>
+                                </label>
+                                <label class="bill-gen-check">
+                                    <input type="checkbox" id="posThermalAutoCut">
+                                    <span>Auto cut</span>
+                                </label>
+                                <a href="https://qz.io/download/" target="_blank" rel="noopener" class="small" id="posQzInstallLink" style="display:none;">Install QZ Tray</a>
+                                <a href="{{ url('/qz/install-qz-trust.bat') }}" class="small d-none d-md-inline" id="posQzTrustLink">Fix Allow</a>
                             </div>
-                            <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
-                                <button type="button" id="closeBillBtn" class="btn btn-secondary"
-                                    style="font-weight:600;border-radius:10px;padding:8px 18px;">
-                                    Close
-                                </button>
-                                <button type="button" id="detailsBillBtn" class="btn btn-outline-secondary"
-                                    style="font-weight:600;border-radius:10px;padding:8px 18px;"
-                                    onclick="if(window._billOrderId){ window.location.href='/sales-invoice/'+window._billOrderId; }">
-                                    Details
-                                </button>
-                                <button type="button" id="printKotOnlyBtn" class="btn btn-outline-dark"
-                                    style="font-weight:600;border-radius:10px;padding:8px 16px;"
-                                    title="Print kitchen ticket only on kitchen printer">
-                                    KOT only
-                                </button>
-                                <button type="button" id="printBillBtn" class="btn"
-                                    style="background:#ff9f43;color:#fff;font-weight:700;border:none;border-radius:10px;padding:8px 22px;">
-                                    Print (F10)
-                                </button>
-                            </div>
+                        </div>
+
+                        <div class="bill-gen-actions">
+                            <button type="button" id="closeBillBtn" class="btn btn-light bill-gen-btn-secondary">Close</button>
+                            <button type="button" id="detailsBillBtn" class="btn btn-outline-secondary bill-gen-btn-secondary"
+                                onclick="if(window._billOrderId){ window.location.href='/sales-invoice/'+window._billOrderId; }">
+                                Details
+                            </button>
+                            <button type="button" id="printKotOnlyBtn" class="btn btn-outline-dark bill-gen-btn-secondary" title="Kitchen ticket only">
+                                Print KOT
+                            </button>
+                            <button type="button" id="printBillBtn" class="btn bill-gen-btn-primary">
+                                <i class="fas fa-print me-1"></i>
+                                <span id="printBillBtnLabel">Print Bill + KOT</span>
+                                <small class="ms-1 opacity-75">(F10)</small>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3732,6 +3866,9 @@
                                         $('#posPrintKotWithBill').prop('checked', true);
                                     }
                                 } catch (e) {}
+                                if (typeof updateBillPrintUi === 'function') {
+                                    updateBillPrintUi();
+                                }
                                 // Close current bill tab (or clear cart if tabs unavailable)
                                 $("#paidTypeBox").hide();
                                 $("#cashOnlineBox").hide();
@@ -4412,10 +4549,37 @@
                 setTimeout(updatePosPaymentPanelPosition, 800);
             });
 
-            // ── Bill Generated Modal: QZ / Bluetooth print + KOT ─────────────
+            // ── Bill Generated Modal: simple Print UI + hidden printer settings ─
+            function shortPrinterName(name) {
+                name = String(name || '').trim();
+                if (!name) return '';
+                return name.length > 28 ? (name.slice(0, 26) + '…') : name;
+            }
+
+            function updateBillPrintUi() {
+                var alsoKot = $('#posPrintKotWithBill').is(':checked');
+                $('#printBillBtnLabel').text(alsoKot ? 'Print Bill + KOT' : 'Print Bill');
+                $('#posKotPrinterRow').css('opacity', alsoKot ? 1 : 0.45);
+                $('#posKotPrinterSelect, #posKotPrinterRow .desktop-bt-print-btn').prop('disabled', !alsoKot);
+
+                var billName = ($('#posPrinterSelect option:selected').text() || '').trim();
+                var billVal = ($('#posPrinterSelect').val() || '').trim();
+                if (!billVal) billName = 'Not set';
+                else billName = shortPrinterName(billName);
+
+                var summary = 'Bill → ' + billName;
+                if (alsoKot) {
+                    var kotVal = ($('#posKotPrinterSelect').val() || '').trim();
+                    var kotName = kotVal
+                        ? shortPrinterName(($('#posKotPrinterSelect option:selected').text() || '').trim())
+                        : 'Same as bill';
+                    summary += '  ·  KOT → ' + kotName;
+                }
+                $('#posPrintSummaryLabel').text(summary);
+            }
+
             function syncKotPrinterRowVisibility() {
-                var on = $('#posPrintKotWithBill').is(':checked');
-                $('#posKotPrinterRow').toggle(on);
+                updateBillPrintUi();
             }
 
             function syncKotPrinterOptionsFromBill() {
@@ -4443,6 +4607,7 @@
                 if (saved && hasVal(saved)) pick = saved;
                 else if (current && hasVal(current)) pick = current;
                 $kot.val(pick);
+                updateBillPrintUi();
             }
 
             function refreshPosPrinterList() {
@@ -4567,20 +4732,36 @@
                 refreshPosPrinterList();
             });
 
+            $(document).on('click', '#posPrinterSettingsToggle', function() {
+                var $panel = $('#posPrinterSettingsPanel');
+                var open = !$panel.is(':visible');
+                $panel.slideToggle(160);
+                $(this).html(open
+                    ? '<i class="fas fa-times"></i> Hide settings'
+                    : '<i class="fas fa-cog"></i> Printer settings');
+                if (open) {
+                    refreshPosPrinterList();
+                }
+            });
+
             $(document).on('change', '#posPrintKotWithBill', function() {
                 try {
                     localStorage.setItem('posPrintKotWithBill', $(this).is(':checked') ? '1' : '0');
                 } catch (e) {}
-                syncKotPrinterRowVisibility();
+                updateBillPrintUi();
             });
 
             $(document).on('change', '#posKotPrinterSelect', function() {
                 try {
                     localStorage.setItem('posSelectedKotPrinter', $(this).val() || '');
                 } catch (e) {}
+                updateBillPrintUi();
             });
 
             $(document).on('change', '#posPrinterSelect', function() {
+                try {
+                    localStorage.setItem('posSelectedPrinter', $(this).val() || '');
+                } catch (e) {}
                 syncKotPrinterOptionsFromBill();
             });
 
@@ -4601,16 +4782,30 @@
                 var bsModal = bootstrap.Modal.getInstance(modalEl);
                 if (bsModal) bsModal.hide();
                 $("#billPreviewIframe").attr("src", "");
+                $('#posPrinterSettingsPanel').hide();
+                $('#posPrinterSettingsToggle').html('<i class="fas fa-cog"></i> Printer settings');
             });
 
-            // When bill modal opens, refresh QZ printers
+            // When bill modal opens, refresh QZ printers quietly
             $(document).on('shown.bs.modal', '#billGeneratedModal', function() {
-                syncKotPrinterRowVisibility();
+                $('#posPrinterSettingsPanel').hide();
+                $('#posPrinterSettingsToggle').html('<i class="fas fa-cog"></i> Printer settings');
+                updateBillPrintUi();
                 var tries = 0;
                 (function waitQz() {
                     tries++;
                     if (window.InvoiceQzPrint || tries > 40) {
-                        refreshPosPrinterList();
+                        refreshPosPrinterList().then(function() {
+                            updateBillPrintUi();
+                            // First-time setup: open settings if no bill printer saved
+                            var billVal = ($('#posPrinterSelect').val() || '').trim();
+                            var saved = '';
+                            try { saved = localStorage.getItem('posSelectedPrinter') || ''; } catch (e) {}
+                            if (!billVal && !saved) {
+                                $('#posPrinterSettingsPanel').show();
+                                $('#posPrinterSettingsToggle').html('<i class="fas fa-times"></i> Hide settings');
+                            }
+                        });
                         if (window.InvoiceQzPrint && InvoiceQzPrint.preparePhonePrint) {
                             var frame = document.getElementById('billPreviewIframe');
                             if (frame && frame.src) {
