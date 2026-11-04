@@ -1397,8 +1397,14 @@
 }
 
         /* —— Bill Generated modal (Petpooja-simple) —— */
-        .bill-gen-dialog { max-width: 820px; }
-        .bill-gen-content { border-radius: 16px; overflow: hidden; }
+        .bill-gen-dialog { max-width: 820px; margin-top: 0 !important; }
+        #billGeneratedModal .modal-content.bill-gen-content,
+        .bill-gen-content {
+            border-radius: 16px;
+            overflow: hidden;
+            margin: 0 !important;
+            margin-top: 0 !important;
+        }
         .bill-gen-header { background: #fff; padding: 16px 20px 8px; }
         .bill-gen-preview {
             height: min(480px, 52vh);

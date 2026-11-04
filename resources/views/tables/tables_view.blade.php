@@ -2303,10 +2303,21 @@
                                             <label for="table_customer_name">Name</label>
                                             <select id="table_customer_name" class="form-control" name="customer_name">
                                                 <option value="">Walk-in / Select or type</option>
+                                                @php
+                                                    $hasUnregistered = collect($customers ?? [])->contains(function ($c) {
+                                                        return in_array(strtolower(trim((string) ($c->name ?? ''))), ['unregistered customer', 'default customer'], true);
+                                                    });
+                                                @endphp
+                                                @unless($hasUnregistered)
+                                                <option value="Unregistered Customer" data-phone="" selected>Unregistered Customer</option>
+                                                @endunless
                                                 @foreach(($customers ?? collect()) as $cust)
+                                                    @php
+                                                        $isDefaultCust = in_array(strtolower(trim((string) ($cust->name ?? ''))), ['unregistered customer', 'default customer'], true);
+                                                    @endphp
                                                     <option value="{{ $cust->name }}"
                                                         data-phone="{{ $cust->phone }}"
-                                                        {{ strtolower($cust->name) == 'default customer' ? 'selected' : '' }}>
+                                                        {{ $isDefaultCust ? 'selected' : '' }}>
                                                         {{ $cust->name }}@if($cust->phone) ({{ $cust->phone }})@endif
                                                     </option>
                                                 @endforeach
@@ -2620,6 +2631,8 @@
         </div>
     </div>
 
+    @include('partials.bill-generated-modal')
+
 @endsection
 @push('js')
     <script>
@@ -2631,12 +2644,16 @@
         function getDineInCustomerPayload() {
             var $sel = $('#table_customer_name');
             var name = ($sel.val() || '').toString().trim();
-            if (name.toLowerCase() === 'default customer') {
-                // Keep name so API can resolve; phone optional
+            if (!name || ['walk-in / select or type', 'select or type customer', 'choose', 'select'].indexOf(name.toLowerCase()) !== -1) {
+                name = 'Unregistered Customer';
+                if ($sel.find('option[value="Unregistered Customer"]').length === 0) {
+                    $sel.append(new Option('Unregistered Customer', 'Unregistered Customer', true, true));
+                }
+                $sel.val('Unregistered Customer').trigger('change.select2');
             }
             var phone = ($('#table_customer_phone').val() || '').toString().replace(/\D/g, '').slice(0, 10);
             return {
-                customer_id: name || '',
+                customer_id: name || 'Unregistered Customer',
                 customer_phone: phone || ''
             };
         }
@@ -2644,14 +2661,18 @@
         function resetDineInCustomerFields() {
             var $sel = $('#table_customer_name');
             var defaultOpt = $sel.find('option').filter(function () {
-                return String($(this).val() || '').toLowerCase() === 'default customer';
+                var n = String($(this).val() || '').toLowerCase();
+                return n === 'unregistered customer' || n === 'default customer';
             }).first();
             if (defaultOpt.length) {
                 $sel.val(defaultOpt.val()).trigger('change');
+            } else if ($sel.find('option[value="Unregistered Customer"]').length) {
+                $sel.val('Unregistered Customer').trigger('change');
             } else {
-                $sel.val('').trigger('change');
-                $('#table_customer_phone').val('');
+                $sel.append(new Option('Unregistered Customer', 'Unregistered Customer', true, true));
+                $sel.val('Unregistered Customer').trigger('change');
             }
+            $('#table_customer_phone').val('');
             $('.error_customername, .error_customerphone').text('');
         }
 
@@ -4330,27 +4351,32 @@
                             $("#cashOnlineBox").hide();
                             $("#discount").val("");
                             updateTotalItems();
-                            // Close modal immediately, then show toast
+                            // Dine-in: print KOT on place (kitchen), not on later billing
                             if (tableOrderModal) tableOrderModal.hide();
-                            Swal.fire({
-                                toast: true,
-                                position: 'top-end',
-                                icon: 'success',
-                                title: response.message || 'Order placed successfully!',
-                                showConfirmButton: false,
-                                timer: 2500,
-                                timerProgressBar: true
-                            }).then(() => { location.reload(); });
+                            var placeOrderId = response.order_id || orderId;
+                            var afterKot = function () {
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: 'success',
+                                    title: response.message || 'Order placed — KOT sent',
+                                    showConfirmButton: false,
+                                    timer: 2200,
+                                    timerProgressBar: true
+                                }).then(function () { location.reload(); });
+                            };
+                            if (placeOrderId && typeof window.printKotForOrder === 'function') {
+                                window.printKotForOrder(placeOrderId).then(afterKot).catch(afterKot);
+                            } else if (placeOrderId) {
+                                window.open('/kitchen/kot/' + placeOrderId + '/print', '_blank');
+                                afterKot();
+                            } else {
+                                afterKot();
+                            }
                         } else {
                             alert("Error: " + response.message);
                         }
                     },
-                    // error: function(xhr, status, error) {
-                    //     // Re-enable and reset the button
-                    //     $btn.html(originalText).prop('disabled', false);
-
-                    //     alert("Error placing order. Please try again.");
-                    // }
                     error: function (xhr, status, error) {
                         $btn.html(originalText).prop('disabled', false);
 
@@ -4555,17 +4581,28 @@
                             $("#cashOnlineBox").hide();
                             $("#discount").val("");
                             updateTotalItems();
-                            // Close modal immediately, then show toast
+                            // Dine-in: print KOT on Update (kitchen), not on Checkout billing
                             if (tableOrderModal) tableOrderModal.hide();
-                            Swal.fire({
-                                toast: true,
-                                position: 'top-end',
-                                icon: 'success',
-                                title: response.message || 'Order updated successfully!',
-                                showConfirmButton: false,
-                                timer: 2500,
-                                timerProgressBar: true
-                            }).then(() => { location.reload(); });
+                            var updateOrderId = response.order_id || orderId;
+                            var afterKotUpdate = function () {
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: 'success',
+                                    title: response.message || 'Order updated — KOT sent',
+                                    showConfirmButton: false,
+                                    timer: 2200,
+                                    timerProgressBar: true
+                                }).then(function () { location.reload(); });
+                            };
+                            if (updateOrderId && typeof window.printKotForOrder === 'function') {
+                                window.printKotForOrder(updateOrderId).then(afterKotUpdate).catch(afterKotUpdate);
+                            } else if (updateOrderId) {
+                                window.open('/kitchen/kot/' + updateOrderId + '/print', '_blank');
+                                afterKotUpdate();
+                            } else {
+                                afterKotUpdate();
+                            }
                         } else {
                             alert("Error: " + response.message);
                         }
@@ -4775,22 +4812,20 @@
                             $("#cashOnlineBox").hide();
                             $("#discount").val("");
                             updateTotalItems();
-                            // Close modal immediately, show toast, then open bill PDF
+                            // Checkout = customer bill only (KOT already printed on Place/Update)
                             if (tableOrderModal) tableOrderModal.hide();
-                            // Open the bill PDF in a new tab right away (before toast)
                             var billOrderId = response.order_id || orderId;
-                            if (billOrderId) {
-                                window.open('/table/bill/' + billOrderId, '_blank');
+                            if (billOrderId && typeof window.showBillGeneratedModal === 'function') {
+                                window.showBillGeneratedModal(billOrderId, {
+                                    reloadOnClose: true,
+                                    printKot: false
+                                });
+                            } else if (billOrderId) {
+                                window.open('/sales/invoice/pdf/' + billOrderId, '_blank');
+                                location.reload();
+                            } else {
+                                location.reload();
                             }
-                            Swal.fire({
-                                toast: true,
-                                position: 'top-end',
-                                icon: 'success',
-                                title: response.message || 'Checkout successful!',
-                                showConfirmButton: false,
-                                timer: 2500,
-                                timerProgressBar: true
-                            }).then(() => { location.reload(); });
                         } else {
                             alert("Error: " + response.message);
                         }
@@ -4837,4 +4872,6 @@
         });
 
     </script>
+    @include('partials.invoice-qz-print-script')
+    @include('partials.bill-generated-print-script')
 @endpush
