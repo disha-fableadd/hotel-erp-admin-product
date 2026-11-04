@@ -163,11 +163,48 @@ class KotController extends Controller
     }
 
     /**
-     * Petpooja-style: only qty increases (NEW) and decreases / removals (CANCEL).
+     * Petpooja-style: only what changed on the latest Update/Place fire ticket.
+     * Prefers order.kot_pending_cancels (full fire ticket with action=new|cancel).
+     * Falls back to quantity − kot_printed_qty.
      */
     protected function buildDeltaItems(Order $order, $activeItems, $station = null)
     {
         $rows = collect();
+        $pending = $order->kot_pending_cancels ?? [];
+
+        // Latest Update writes a full fire ticket (action=new|cancel). Use that only.
+        $hasFireTicket = is_array($pending) && collect($pending)->contains(function ($row) {
+            return isset($row['action']) && in_array($row['action'], ['new', 'cancel'], true);
+        });
+
+        if ($hasFireTicket) {
+            foreach ($pending as $line) {
+                $qty = (int) ($line['qty'] ?? $line['quantity'] ?? 0);
+                if ($qty <= 0) {
+                    continue;
+                }
+                $action = $line['action'] ?? 'new';
+                $name = $line['name'] ?? $line['product_name'] ?? 'Item';
+                $itemStation = $line['station'] ?? 'General';
+                if ($station && strcasecmp($itemStation, $station) !== 0) {
+                    continue;
+                }
+
+                $rows->push((object) [
+                    'quantity' => $qty,
+                    'kot_action' => $action,
+                    'variant_name' => $line['variant_name'] ?? null,
+                    'addons_text' => $line['addons_text'] ?? null,
+                    'product' => (object) [
+                        'name' => $name,
+                        'kitchen_station' => $itemStation,
+                    ],
+                    'product_name' => $name,
+                ]);
+            }
+
+            return $rows->values();
+        }
 
         foreach ($activeItems as $item) {
             $qty = (int) $item->quantity;
@@ -183,7 +220,6 @@ class KotController extends Controller
             $rows->push($clone);
         }
 
-        $pending = $order->kot_pending_cancels ?? [];
         if (is_array($pending)) {
             foreach ($pending as $cancel) {
                 $qty = (int) ($cancel['qty'] ?? $cancel['quantity'] ?? 0);

@@ -1207,20 +1207,24 @@ class SalesController extends Controller
             // Restore stock first from OLD items
             $oldItems = OrderItem::with('product')->where('order_id', $order_id)->get();
 
-            // Petpooja-style KOT: remember how much was already sent to kitchen per product/variant
+            // Petpooja-style KOT: this Update ticket = only qty changes vs previous table order
             $hasKotPrintedCol = \Illuminate\Support\Facades\Schema::hasColumn('order_items', 'kot_printed_qty');
             $oldKotPrinted = [];
+            $oldKotQty = [];
             $oldKotMeta = [];
             foreach ($oldItems as $old) {
                 $kotKey = ((int) $old->product_id) . ':' . ((int) ($old->variant_id ?? 0));
                 $printedQty = $hasKotPrintedCol ? (int) ($old->kot_printed_qty ?? 0) : 0;
+                $oldQty = (int) ($old->quantity ?? 0);
                 $oldKotPrinted[$kotKey] = $printedQty;
+                $oldKotQty[$kotKey] = $oldQty;
                 $oldKotMeta[$kotKey] = [
                     'product_id' => (int) $old->product_id,
                     'variant_id' => $old->variant_id ? (int) $old->variant_id : null,
                     'name' => optional($old->product)->name ?? 'Item',
                     'station' => optional($old->product)->kitchen_station ?? 'General',
                     'qty_printed' => $printedQty,
+                    'qty' => $oldQty,
                 ];
             }
 
@@ -1308,6 +1312,7 @@ class SalesController extends Controller
 
             // Insert updated order items & reduce stock
             $keptKotKeys = [];
+            $fireTicket = []; // exact lines for THIS Update's KOT (Petpooja: only what changed now)
             foreach ($resolvedLines as $line) {
                 $product = $line['product'];
                 $trackInventory = array_key_exists('track_inventory', $product->getAttributes())
@@ -1339,7 +1344,12 @@ class SalesController extends Controller
 
                 $kotKey = ((int) $product->id) . ':' . ((int) ($line['variant_id'] ?? 0));
                 $keptKotKeys[$kotKey] = true;
-                $printedCarry = (int) ($oldKotPrinted[$kotKey] ?? 0);
+                $newQty = (int) $line['quantity'];
+                $prevQty = (int) ($oldKotQty[$kotKey] ?? 0);
+                $prevPrinted = (int) ($oldKotPrinted[$kotKey] ?? 0);
+                // Items already on the table before this save are treated as already ticketed
+                // so KOT only shows what changed on THIS Update (e.g. only kadhi-khichdi).
+                $printedCarry = max($prevPrinted, $prevQty);
 
                 $itemPayload = [
                     'order_id' => $order->id,
@@ -1358,33 +1368,44 @@ class SalesController extends Controller
                     'branch_id' => $branchIdToUse,
                     'created_by' => $userData->id,
                 ];
-                // Keep prior kitchen-sent qty so Update KOT only shows NEW / CANCEL delta
                 if ($hasKotPrintedCol) {
                     $itemPayload['kot_printed_qty'] = $printedCarry;
                 }
                 OrderItem::create($itemPayload);
+
+                $diff = $newQty - $prevQty;
+                if ($diff !== 0) {
+                    $fireTicket[] = [
+                        'product_id' => (int) $product->id,
+                        'variant_id' => $line['variant_id'] ? (int) $line['variant_id'] : null,
+                        'name' => $product->name ?? 'Item',
+                        'station' => $product->kitchen_station ?? 'General',
+                        'qty' => abs($diff),
+                        'action' => $diff > 0 ? 'new' : 'cancel',
+                    ];
+                }
             }
 
-            // Fully removed items that were already sent to kitchen → CANCEL on next KOT
-            $pendingCancels = [];
+            // Fully removed items → CANCEL on this Update's KOT
             foreach ($oldKotMeta as $kotKey => $meta) {
                 if (!empty($keptKotKeys[$kotKey])) {
                     continue;
                 }
-                $printedQty = (int) ($meta['qty_printed'] ?? 0);
-                if ($printedQty <= 0) {
+                $removedQty = (int) ($meta['qty'] ?? 0);
+                if ($removedQty <= 0) {
                     continue;
                 }
-                $pendingCancels[] = [
+                $fireTicket[] = [
                     'product_id' => $meta['product_id'],
                     'variant_id' => $meta['variant_id'],
                     'name' => $meta['name'],
                     'station' => $meta['station'] ?? 'General',
-                    'qty' => $printedQty,
+                    'qty' => $removedQty,
+                    'action' => 'cancel',
                 ];
             }
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'kot_pending_cancels')) {
-                $order->kot_pending_cancels = $pendingCancels;
+                $order->kot_pending_cancels = $fireTicket;
                 $order->save();
             }
 
