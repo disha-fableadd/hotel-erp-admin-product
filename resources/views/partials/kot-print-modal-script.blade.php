@@ -7,6 +7,7 @@
     window._kotReloadOnClose = false;
     window._kotOrderId = null;
     window._kotUseDelta = true;
+    window._kotStation = '';
     window._kotPendingCount = null;
 
     function shortName(name) {
@@ -21,7 +22,10 @@
 
     function kotPdfUrl(orderId, useDelta) {
         var url = '/kitchen/kot/' + orderId + '/pdf';
-        if (useDelta) url += '?delta=1';
+        var params = [];
+        if (useDelta) params.push('delta=1');
+        if (window._kotStation) params.push('station=' + encodeURIComponent(window._kotStation));
+        if (params.length) url += '?' + params.join('&');
         return url;
     }
 
@@ -189,7 +193,8 @@
 
     /**
      * opts.delta !== false → Petpooja delta (default true for dine-in Place/Update)
-     * opts.reloadOnClose → reload tables after close
+     * opts.station → kitchen station filter for PDF
+     * opts.reloadOnClose → reload page after close
      * opts.skipIfEmpty → if no new items, toast + reload without modal (default true when delta)
      */
     window.showKotPrintModal = function(orderId, opts) {
@@ -197,6 +202,7 @@
         window._kotOrderId = orderId;
         window._kotReloadOnClose = !!opts.reloadOnClose;
         window._kotUseDelta = opts.delta !== false;
+        window._kotStation = opts.station ? String(opts.station) : '';
         window._kotPendingCount = null;
 
         var skipIfEmpty = opts.skipIfEmpty !== false && window._kotUseDelta;

@@ -35,13 +35,32 @@ class KotController extends Controller
     {
         $branchId = $this->branchIdToUse();
         $setting = Setting::where('branch_id', $branchId)->first();
-        $tickets = $this->buildTickets($branchId, $request->get('station'));
+        $filterStation = $request->get('station');
+        $filterType = $request->get('order_type');
+
+        $allTickets = $this->buildTickets($branchId);
+        $tickets = $allTickets
+            ->when($filterStation, fn ($c) => $c->filter(
+                fn ($t) => strcasecmp($t['station'], $filterStation) === 0
+            )->values())
+            ->when($filterType, fn ($c) => $c->filter(
+                fn ($t) => ($t['service_key'] ?? '') === $this->normalizeServiceKey($filterType)
+            )->values());
+
+        $orderTypeOptions = [
+            'dine_in' => 'Dine In',
+            'takeaway' => 'Takeaway',
+            'self_pickup' => 'Self Pickup',
+            'delivery' => 'Delivery',
+        ];
 
         return view('sales.kot_board', [
             'tickets' => $tickets,
-            'stations' => $tickets->pluck('station')->unique()->values(),
+            'stations' => $allTickets->pluck('station')->unique()->sort()->values(),
+            'orderTypeOptions' => $orderTypeOptions,
             'currency_symbol' => $setting->currency_symbol ?? '₹',
-            'filterStation' => $request->get('station'),
+            'filterStation' => $filterStation,
+            'filterType' => $filterType ? $this->normalizeServiceKey($filterType) : null,
         ]);
     }
 
@@ -249,9 +268,74 @@ class KotController extends Controller
         return $rows->values();
     }
 
+    /**
+     * Normalize order_type / type into a stable service key for KOT filters & badges.
+     */
+    protected function normalizeServiceKey($raw): string
+    {
+        $v = strtolower(trim((string) $raw));
+        $v = str_replace(['-', ' '], '_', $v);
+
+        if (in_array($v, ['dinein', 'dine_in', 'dining', 'dine'], true)) {
+            return 'dine_in';
+        }
+        if (in_array($v, ['takeaway', 'take_away', 'parcel'], true)) {
+            return 'takeaway';
+        }
+        if (in_array($v, ['self_pickup', 'selfpickup', 'pickup', 'pick_up'], true)) {
+            return 'self_pickup';
+        }
+        if (in_array($v, ['delivery', 'deliver'], true)) {
+            return 'delivery';
+        }
+
+        return $v !== '' ? $v : 'dine_in';
+    }
+
+    protected function resolveServiceMeta(Order $order): array
+    {
+        // Prefer explicit order_type; fall back to type / table presence
+        $raw = $order->order_type ?: $order->type;
+        if (empty($raw) && !empty($order->table_no)) {
+            $raw = 'dine_in';
+        }
+        if (empty($raw)) {
+            $raw = 'takeaway';
+        }
+
+        $key = $this->normalizeServiceKey($raw);
+
+        // Table dine-in wins when table is attached and type isn't clearly takeaway/delivery
+        if (!empty($order->table_no) && !in_array($key, ['takeaway', 'self_pickup', 'delivery'], true)) {
+            $key = 'dine_in';
+        }
+
+        $labels = [
+            'dine_in' => 'Dine In',
+            'takeaway' => 'Takeaway',
+            'self_pickup' => 'Self Pickup',
+            'delivery' => 'Delivery',
+        ];
+
+        $title = match ($key) {
+            'dine_in' => optional($order->tableNo)->table_name
+                ?: ($order->table_no ? ('Table #' . $order->table_no) : 'Dine In'),
+            'takeaway' => 'Takeaway',
+            'self_pickup' => 'Self Pickup',
+            'delivery' => 'Delivery',
+            default => $labels[$key] ?? ucwords(str_replace('_', ' ', $key)),
+        };
+
+        return [
+            'service_key' => $key,
+            'service_label' => $labels[$key] ?? ucwords(str_replace('_', ' ', $key)),
+            'title' => $title,
+        ];
+    }
+
     protected function buildTickets($branchId, $filterStation = null)
     {
-        $orders = Order::with(['order_items.product', 'tableNo'])
+        $orders = Order::with(['order_items.product', 'order_items.variant', 'tableNo'])
             ->where('isDeleted', 0)
             ->where('branch_id', $branchId)
             ->where(function ($q) {
@@ -264,6 +348,7 @@ class KotController extends Controller
 
         $rows = collect();
         foreach ($orders as $order) {
+            $service = $this->resolveServiceMeta($order);
             $grouped = [];
             foreach ($order->order_items as $item) {
                 if ((int) ($item->isDeleted ?? 0) === 1) {
@@ -280,7 +365,10 @@ class KotController extends Controller
                     'order' => $order,
                     'station' => $station,
                     'items' => $items,
-                    'table' => optional($order->tableNo)->table_name ?? ($order->type ?? 'Counter'),
+                    'table' => $service['title'],
+                    'service_key' => $service['service_key'],
+                    'service_label' => $service['service_label'],
+                    'title' => $service['title'],
                 ]);
             }
         }
