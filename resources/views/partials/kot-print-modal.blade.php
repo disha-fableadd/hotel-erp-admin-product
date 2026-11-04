@@ -124,7 +124,7 @@
                     <h5 class="modal-title fw-bold fs-5 mb-0" id="kotPrintModalLabel">
                         <i class="fas fa-utensils me-1" style="color:#ff9f43;"></i> Kitchen KOT
                     </h5>
-                    <small class="text-muted">Press <kbd>F10</kbd> or Print to send to kitchen</small>
+                    <small class="text-muted" id="kotPrintModalHint">Only new / changed items — Press <kbd>F10</kbd> or Print</small>
                 </div>
                 <button type="button" class="btn-close" id="closeKotModalBtn" aria-label="Close"></button>
             </div>

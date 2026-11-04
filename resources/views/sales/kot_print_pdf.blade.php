@@ -14,16 +14,21 @@
         th { font-size: 10px; }
         .qty { text-align: right; font-weight: 700; width: 28%; }
         .foot { margin-top: 8px; text-align: center; font-size: 9px; }
+        .badge-new { font-size: 9px; font-weight: 700; }
+        .badge-cancel { font-size: 9px; font-weight: 700; text-decoration: line-through; }
     </style>
 </head>
 <body>
-    <h2>KOT{{ !empty($station) ? ' · '.$station : '' }}</h2>
+    <h2>{{ $kotTitle ?? ('KOT' . (!empty($station) ? ' · '.$station : '')) }}</h2>
     <div class="meta">
         Order #{{ $order->order_number ?? $order->id }}<br>
         {{ optional($order->tableNo)->table_name ? 'Table: '.optional($order->tableNo)->table_name : ($order->type ?? 'Counter') }}
         @if(!empty($order->order_type)) · {{ $order->order_type }}@endif
         <br>
-        {{ optional($order->created_at)->format('d M Y, h:i A') }}
+        {{ now('Asia/Kolkata')->format('d M Y, h:i A') }}
+        @if(!empty($isDelta))
+            <br><strong>Only new / changed items</strong>
+        @endif
     </div>
     <div class="line"></div>
     <table>
@@ -35,9 +40,17 @@
         </thead>
         <tbody>
             @forelse($items as $item)
+                @php
+                    $action = $item->kot_action ?? 'new';
+                    $isCancel = $action === 'cancel';
+                    $name = $item->product->name ?? ($item->product_name ?? 'Item');
+                @endphp
                 <tr>
-                    <td>
-                        {{ $item->product->name ?? 'Item' }}
+                    <td class="{{ $isCancel ? 'badge-cancel' : '' }}">
+                        @if(!empty($isDelta))
+                            <span class="badge-new">{{ $isCancel ? '[CANCEL]' : '[NEW]' }}</span>
+                        @endif
+                        {{ $name }}
                         @if(!empty($item->variant_name))
                             <br><span style="font-size:9px;">{{ $item->variant_name }}</span>
                         @endif
@@ -45,14 +58,16 @@
                             <br><span style="font-size:9px;">{{ $item->addons_text }}</span>
                         @endif
                     </td>
-                    <td class="qty">{{ rtrim(rtrim(number_format((float) $item->quantity, 2, '.', ''), '0'), '.') }}</td>
+                    <td class="qty {{ $isCancel ? 'badge-cancel' : '' }}">
+                        {{ $isCancel ? '-' : '' }}{{ rtrim(rtrim(number_format((float) $item->quantity, 2, '.', ''), '0'), '.') }}
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="2">No items</td></tr>
+                <tr><td colspan="2" style="text-align:center;">No new / changed items for kitchen</td></tr>
             @endforelse
         </tbody>
     </table>
     <div class="line"></div>
-    <div class="foot">Kitchen Order Ticket</div>
+    <div class="foot">Kitchen Order Ticket{{ !empty($isDelta) ? ' · Delta' : '' }}</div>
 </body>
 </html>

@@ -35,8 +35,13 @@ class Order extends Model
         'delivered_by',
         'assigned_staff_id',
         'table_status',
+        'kot_pending_cancels',
         'created_at',
         'updated_at',
+    ];
+
+    protected $casts = [
+        'kot_pending_cancels' => 'array',
     ];
 
     public function order_items()

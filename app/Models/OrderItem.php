@@ -18,6 +18,7 @@ class OrderItem extends Model
         'addons',
         'category_id',
         'quantity',
+        'kot_printed_qty',
         'quantity_type_id',
         'price',
         'unit_price',

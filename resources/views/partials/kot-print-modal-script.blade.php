@@ -1,4 +1,4 @@
-{{-- KOT Print modal handlers (Dine In Place/Update) --}}
+{{-- KOT Print modal handlers (Dine In Place/Update) — Petpooja-style delta KOT --}}
 <script>
 (function($) {
     'use strict';
@@ -6,6 +6,8 @@
     window.__KOT_PRINT_MODAL_BOUND = true;
     window._kotReloadOnClose = false;
     window._kotOrderId = null;
+    window._kotUseDelta = true;
+    window._kotPendingCount = null;
 
     function shortName(name) {
         name = String(name || '').trim();
@@ -13,10 +15,27 @@
         return name.length > 32 ? (name.slice(0, 30) + '…') : name;
     }
 
+    function csrfToken() {
+        return $('meta[name="csrf-token"]').attr('content') || '';
+    }
+
+    function kotPdfUrl(orderId, useDelta) {
+        var url = '/kitchen/kot/' + orderId + '/pdf';
+        if (useDelta) url += '?delta=1';
+        return url;
+    }
+
     function updateKotPrintUi() {
         var val = ($('#kotPrinterSelect').val() || '').trim();
         var label = val ? shortName(($('#kotPrinterSelect option:selected').text() || '').trim()) : 'Not set';
-        $('#kotPrintSummaryLabel').text('Kitchen → ' + label);
+        var pending = window._kotPendingCount;
+        if (pending === 0) {
+            $('#kotPrintSummaryLabel').text('No new items for kitchen');
+        } else if (pending > 0) {
+            $('#kotPrintSummaryLabel').text(pending + ' new/changed · Kitchen → ' + label);
+        } else {
+            $('#kotPrintSummaryLabel').text('Kitchen → ' + label);
+        }
     }
 
     function refreshKotPrinterList() {
@@ -29,7 +48,6 @@
             status: '#kotQzStatus',
             storageKey: 'posSelectedKotPrinter'
         })).then(function() {
-            // Prefer saved kitchen printer; else leave first thermal if any
             try {
                 var saved = localStorage.getItem('posSelectedKotPrinter') || '';
                 if (saved) {
@@ -46,18 +64,52 @@
         });
     }
 
+    function markKotPrinted(orderId) {
+        if (!orderId) return Promise.resolve();
+        return $.ajax({
+            url: '/kitchen/kot/' + orderId + '/mark-printed',
+            type: 'POST',
+            dataType: 'json',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken(),
+                'Accept': 'application/json'
+            }
+        }).catch(function(err) {
+            console.warn('KOT mark-printed failed', err);
+        });
+    }
+
+    function fetchDeltaSummary(orderId) {
+        return $.ajax({
+            url: '/kitchen/kot/' + orderId + '/delta-summary',
+            type: 'GET',
+            dataType: 'json',
+            headers: { 'Accept': 'application/json' }
+        });
+    }
+
     function printKotFromModal() {
         var orderId = window._kotOrderId;
         if (!orderId) return;
 
+        if (window._kotPendingCount === 0) {
+            $('#kotQzStatus').text('Nothing new to send').css('color', '#ea5455');
+            return;
+        }
+
         var frame = document.getElementById('kotPreviewIframe');
-        var pdfUrl = frame && frame.src ? frame.src : ('/kitchen/kot/' + orderId + '/pdf');
+        var pdfUrl = frame && frame.src ? frame.src : kotPdfUrl(orderId, window._kotUseDelta);
         var printerName = ($('#kotPrinterSelect').val() || '').trim();
         var doAutoCut = $('#kotThermalAutoCut').is(':checked');
 
         if (!window.InvoiceQzPrint || !printerName) {
             window.open(pdfUrl, '_blank');
             $('#kotQzStatus').text(printerName ? 'Opened' : 'Select a kitchen printer').css('color', printerName ? '#28c76f' : '#ea5455');
+            // Still mark as sent when fallback print window opens (same as kitchen receiving ticket)
+            markKotPrinted(orderId).then(function() {
+                window._kotPendingCount = 0;
+                updateKotPrintUi();
+            });
             return;
         }
 
@@ -76,10 +128,18 @@
             storageKey: 'posSelectedKotPrinter'
         })).then(function() {
             $('#kotQzStatus').text('KOT printed').css('color', '#28c76f');
+            return markKotPrinted(orderId);
+        }).then(function() {
+            window._kotPendingCount = 0;
+            updateKotPrintUi();
         }).catch(function(err) {
             console.warn('KOT modal print failed', err);
             $('#kotQzStatus').text('Print failed — opened preview').css('color', '#ea5455');
             window.open(pdfUrl, '_blank');
+            return markKotPrinted(orderId).then(function() {
+                window._kotPendingCount = 0;
+                updateKotPrintUi();
+            });
         }).then(function() {
             $('#printKotModalBtn').prop('disabled', false);
         });
@@ -98,12 +158,8 @@
         }
     }
 
-    window.showKotPrintModal = function(orderId, opts) {
-        opts = opts || {};
-        window._kotOrderId = orderId;
-        window._kotReloadOnClose = !!opts.reloadOnClose;
-
-        var kotUrl = '/kitchen/kot/' + orderId + '/pdf';
+    function openKotModalUi(orderId, useDelta) {
+        var kotUrl = kotPdfUrl(orderId, useDelta);
         var $iframe = $('#kotPreviewIframe');
         var $loader = $('#kotIframeLoader');
         $loader.show();
@@ -118,6 +174,10 @@
         $('#kotPrinterSettingsPanel').hide();
         $('#kotPrinterSettingsToggle').html('<i class="fas fa-cog"></i> Printer settings');
         $('#kotQzStatus').text('');
+        $('#printKotModalBtn').prop('disabled', window._kotPendingCount === 0);
+        $('#kotPrintModalHint').html(useDelta
+            ? 'Only new / changed items — Press <kbd>F10</kbd> or Print'
+            : 'Press <kbd>F10</kbd> or Print to send to kitchen');
 
         var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('kotPrintModal'), {
             backdrop: 'static',
@@ -125,15 +185,68 @@
         });
         modal.show();
         updateKotPrintUi();
+    }
+
+    /**
+     * opts.delta !== false → Petpooja delta (default true for dine-in Place/Update)
+     * opts.reloadOnClose → reload tables after close
+     * opts.skipIfEmpty → if no new items, toast + reload without modal (default true when delta)
+     */
+    window.showKotPrintModal = function(orderId, opts) {
+        opts = opts || {};
+        window._kotOrderId = orderId;
+        window._kotReloadOnClose = !!opts.reloadOnClose;
+        window._kotUseDelta = opts.delta !== false;
+        window._kotPendingCount = null;
+
+        var skipIfEmpty = opts.skipIfEmpty !== false && window._kotUseDelta;
+
+        if (!window._kotUseDelta) {
+            openKotModalUi(orderId, false);
+            return;
+        }
+
+        fetchDeltaSummary(orderId).then(function(res) {
+            var count = (res && typeof res.count === 'number') ? res.count : 0;
+            window._kotPendingCount = count;
+            if (skipIfEmpty && count === 0) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'No new kitchen items',
+                        text: 'Everything on this order was already sent to kitchen.',
+                        icon: 'info',
+                        confirmButtonColor: '#ff9f43',
+                        timer: 2200,
+                        showConfirmButton: true
+                    }).then(function() {
+                        if (window._kotReloadOnClose) {
+                            window._kotReloadOnClose = false;
+                            location.reload();
+                        }
+                    });
+                } else {
+                    alert('No new kitchen items — already sent to kitchen.');
+                    if (window._kotReloadOnClose) {
+                        window._kotReloadOnClose = false;
+                        location.reload();
+                    }
+                }
+                return;
+            }
+            openKotModalUi(orderId, true);
+        }).catch(function() {
+            // If summary fails, still open full delta PDF preview
+            window._kotPendingCount = null;
+            openKotModalUi(orderId, true);
+        });
     };
 
-    // Keep silent print helper for callers that still need it
     window.printKotForOrder = function(orderId) {
         if (typeof window.showKotPrintModal === 'function') {
-            window.showKotPrintModal(orderId, { reloadOnClose: false });
+            window.showKotPrintModal(orderId, { reloadOnClose: false, delta: true });
             return Promise.resolve();
         }
-        window.open('/kitchen/kot/' + orderId + '/print', '_blank');
+        window.open('/kitchen/kot/' + orderId + '/print?delta=1', '_blank');
         return Promise.resolve();
     };
 
