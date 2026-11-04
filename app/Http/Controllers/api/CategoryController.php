@@ -30,8 +30,19 @@ class CategoryController extends Controller
         }
 
         $categories = Category::where('isDeleted', 0)
-            ->where('branch_id', $branchIdToUse)
-            ->orderBy('id', 'desc')->get();
+            ->where(function ($q) use ($branchIdToUse) {
+                $q->where('branch_id', $branchIdToUse)->orWhereNull('branch_id');
+            })
+            ->orderBy('name')
+            ->orderByDesc('id')
+            ->get();
+
+        if ($categories->isEmpty()) {
+            $categories = Category::where('isDeleted', 0)
+                ->orderBy('name')
+                ->orderByDesc('id')
+                ->get();
+        }
 
         return response()->json(['status' => true, 'data' => $categories], 200);
     }

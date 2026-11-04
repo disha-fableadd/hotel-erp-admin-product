@@ -38,9 +38,19 @@ class BrandController extends Controller
         }
 
         $brand = Brand::where('isDeleted', 0)
-            ->where('branch_id', $branchIdToUse)
-            ->orderBy('id', 'desc')
+            ->where(function ($q) use ($branchIdToUse) {
+                $q->where('branch_id', $branchIdToUse)->orWhereNull('branch_id');
+            })
+            ->orderBy('name')
+            ->orderByDesc('id')
             ->get();
+
+        if ($brand->isEmpty()) {
+            $brand = Brand::where('isDeleted', 0)
+                ->orderBy('name')
+                ->orderByDesc('id')
+                ->get();
+        }
 
         return response()->json([
             'status' => true,

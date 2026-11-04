@@ -31,9 +31,10 @@ class ProductController extends Controller
         $BranchId   = $user->branch_id ?? null;
        
         $subAdminId = session('selectedSubAdminId');
-        $categories = Category::where('isDeleted', 0)->get();
+        $categories = Category::where('isDeleted', 0)->orderBy('name')->get();
+        $brands     = Brand::where('isDeleted', 0)->orderBy('name')->get();
 
-        return view('product/addproduct', compact('categories'));
+        return view('product/addproduct', compact('categories', 'brands'));
     }
 
     public function edit_product($id)
@@ -44,9 +45,10 @@ class ProductController extends Controller
         $userId     = $user->id ?? null;
         $subAdminId = session('selectedSubAdminId');
 
-        $categories = Category::where('isDeleted', 0)->get();
+        $categories = Category::where('isDeleted', 0)->orderBy('name')->get();
+        $brands     = Brand::where('isDeleted', 0)->orderBy('name')->get();
 
-        return view('product/editproduct', compact('product', 'categories'));
+        return view('product/editproduct', compact('product', 'categories', 'brands'));
     }
 
     public function product_detail($id)

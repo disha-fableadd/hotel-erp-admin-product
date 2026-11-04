@@ -125,6 +125,9 @@
                             </div>
                             <select class="select" name="category_id" id="category_id">
                                 <option value="">Choose Category</option>
+                                @foreach(($categories ?? []) as $cat)
+                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                @endforeach
                             </select>
                             <span class="error_category_id text-danger"></span>
                         </div>
@@ -137,6 +140,9 @@
                             </div>
                             <select class="select" name="brand_id" id="brand_id">
                                 <option value="">Choose Brand</option>
+                                @foreach(($brands ?? []) as $brand)
+                                    <option value="{{ $brand->id }}">{{ $brand->name }}</option>
+                                @endforeach
                             </select>
                             <span class="error_brand_id text-danger"></span>
                         </div>
@@ -389,11 +395,40 @@
         const sub_branch_id = localStorage.getItem('selectedSubAdminId');
         var authToken = localStorage.getItem("authToken");
 
+        function refreshSelect2($el, placeholder) {
+            if (!$el.length || typeof $el.select2 !== 'function') return;
+            if ($el.hasClass('select2-hidden-accessible')) {
+                $el.select2('destroy');
+            }
+            $el.select2({
+                placeholder: placeholder,
+                tags: true,
+                width: '100%',
+                allowClear: true,
+            });
+        }
+
+        function fillSelectOptions($select, rows, blankLabel, selectedId, valueKey, textKey) {
+            valueKey = valueKey || 'id';
+            textKey = textKey || 'name';
+            var current = selectedId != null ? String(selectedId) : String($select.val() || '');
+            $select.empty().append('<option value="">' + blankLabel + '</option>');
+            $.each(rows || [], function(_, item) {
+                var id = item[valueKey];
+                var text = item[textKey];
+                if (id == null || text == null) return;
+                $select.append('<option value="' + id + '">' + $('<div/>').text(text).html() + '</option>');
+            });
+            if (current) {
+                $select.val(current);
+            }
+        }
+
         // 🔹 Fetch Categories
         function get_category(selectedId = null) {
             let url = `/api/get-category`;
             if (sub_branch_id) {
-                url += `?sub_admin_id=${sub_branch_id}`;
+                url += `?sub_admin_id=${encodeURIComponent(sub_branch_id)}&selectedSubAdminId=${encodeURIComponent(sub_branch_id)}`;
             }
 
             $.ajax({
@@ -405,16 +440,10 @@
                 success: function(response) {
                     if (response.status) {
                         let select = $("#category_id");
-                        select.empty().append('<option value="">Choose Category</option>');
-
-                        $.each(response.data, function(key, item) {
-                            select.append(
-                                `<option value="${item.id}">${item.name}</option>`
-                            );
-                        });
-
+                        fillSelectOptions(select, response.data, 'Choose Category', selectedId);
+                        refreshSelect2(select, 'Select or Add Category');
                         if (selectedId) {
-                            select.val(selectedId).trigger('change');
+                            select.val(String(selectedId)).trigger('change');
                         }
                     } else {
                         console.warn("No Category found.");
@@ -430,7 +459,7 @@
         function get_brand(selectedId = null) {
             let url = `/api/get-brand`;
             if (sub_branch_id) {
-                url += `?sub_admin_id=${sub_branch_id}`;
+                url += `?sub_admin_id=${encodeURIComponent(sub_branch_id)}&selectedSubAdminId=${encodeURIComponent(sub_branch_id)}`;
             }
 
             $.ajax({
@@ -442,16 +471,10 @@
                 success: function(response) {
                     if (response.status) {
                         let select = $("#brand_id");
-                        select.empty().append('<option value="">Choose Brand</option>');
-
-                        $.each(response.data, function(key, item) {
-                            select.append(
-                                `<option value="${item.id}">${item.name}</option>`
-                            );
-                        });
-
+                        fillSelectOptions(select, response.data, 'Choose Brand', selectedId);
+                        refreshSelect2(select, 'Select or Add Brand');
                         if (selectedId) {
-                            select.val(selectedId).trigger('change');
+                            select.val(String(selectedId)).trigger('change');
                         }
                     } else {
                         console.warn("No Brand found.");

@@ -1109,23 +1109,56 @@ class ProductController extends Controller
         ]);
     }
 
-    public function getCategory(Request $request)
+    /**
+     * Resolve which branch scope to use for category/brand catalogs.
+     */
+    protected function catalogBranchId(Request $request): ?int
     {
         $user = Auth::guard('api')->user();
-        $userRole = $user->role ?? '';
-        
-        $branchId = null;
+        $userRole = strtolower((string) ($user->role ?? ''));
+
         if ($userRole === 'sub-admin') {
-            $branchId = $user->id;
-        } elseif ($userRole === 'admin') {
-            $branchId = $request->sub_admin_id ?? $user->id;
-        } elseif (in_array(strtolower($userRole), ['staff', 'hr'])) {
-            $branchId = $user->branch_id;
+            return (int) $user->id;
+        }
+        if ($userRole === 'admin') {
+            $selected = $request->sub_admin_id
+                ?? $request->selectedSubAdminId
+                ?? $request->sub_branch_id
+                ?? null;
+            if (!empty($selected) && is_numeric($selected)) {
+                return (int) $selected;
+            }
+            return (int) $user->id;
+        }
+        if (in_array($userRole, ['staff', 'hr'], true)) {
+            return $user->branch_id ? (int) $user->branch_id : null;
         }
 
+        return $user->id ? (int) $user->id : null;
+    }
+
+    public function getCategory(Request $request)
+    {
+        $branchId = $this->catalogBranchId($request);
+
+        // Include current branch + global (null) rows so lists are never empty after branch switches
         $categories = Category::where('isDeleted', 0)
-            ->where('branch_id', $branchId)
-            ->get();
+            ->where(function ($q) use ($branchId) {
+                if ($branchId !== null) {
+                    $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+                } else {
+                    $q->whereNull('branch_id');
+                }
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'branch_id', 'image']);
+
+        // Fallback: if nothing for this branch, still return all active categories
+        if ($categories->isEmpty()) {
+            $categories = Category::where('isDeleted', 0)
+                ->orderBy('name')
+                ->get(['id', 'name', 'branch_id', 'image']);
+        }
 
         return response()->json([
             'status' => true,
@@ -1135,21 +1168,24 @@ class ProductController extends Controller
 
     public function getBrand(Request $request)
     {
-        $user = Auth::guard('api')->user();
-        $userRole = $user->role ?? '';
-        
-        $branchId = null;
-        if ($userRole === 'sub-admin') {
-            $branchId = $user->id;
-        } elseif ($userRole === 'admin') {
-            $branchId = $request->sub_admin_id ?? $user->id;
-        } elseif (in_array(strtolower($userRole), ['staff', 'hr'])) {
-            $branchId = $user->branch_id;
-        }
+        $branchId = $this->catalogBranchId($request);
 
         $brands = Brand::where('isDeleted', 0)
-            ->where('branch_id', $branchId)
-            ->get();
+            ->where(function ($q) use ($branchId) {
+                if ($branchId !== null) {
+                    $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+                } else {
+                    $q->whereNull('branch_id');
+                }
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'branch_id', 'logo']);
+
+        if ($brands->isEmpty()) {
+            $brands = Brand::where('isDeleted', 0)
+                ->orderBy('name')
+                ->get(['id', 'name', 'branch_id', 'logo']);
+        }
 
         return response()->json([
             'status' => true,
