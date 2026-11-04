@@ -2632,6 +2632,7 @@
     </div>
 
     @include('partials.bill-generated-modal')
+    @include('partials.kot-print-modal')
 
 @endsection
 @push('js')
@@ -4351,27 +4352,16 @@
                             $("#cashOnlineBox").hide();
                             $("#discount").val("");
                             updateTotalItems();
-                            // Dine-in: print KOT on place (kitchen), not on later billing
+                            // Dine-in: open KOT print modal on Place (kitchen)
                             if (tableOrderModal) tableOrderModal.hide();
                             var placeOrderId = response.order_id || orderId;
-                            var afterKot = function () {
-                                Swal.fire({
-                                    toast: true,
-                                    position: 'top-end',
-                                    icon: 'success',
-                                    title: response.message || 'Order placed — KOT sent',
-                                    showConfirmButton: false,
-                                    timer: 2200,
-                                    timerProgressBar: true
-                                }).then(function () { location.reload(); });
-                            };
-                            if (placeOrderId && typeof window.printKotForOrder === 'function') {
-                                window.printKotForOrder(placeOrderId).then(afterKot).catch(afterKot);
+                            if (placeOrderId && typeof window.showKotPrintModal === 'function') {
+                                window.showKotPrintModal(placeOrderId, { reloadOnClose: true });
                             } else if (placeOrderId) {
                                 window.open('/kitchen/kot/' + placeOrderId + '/print', '_blank');
-                                afterKot();
+                                location.reload();
                             } else {
-                                afterKot();
+                                location.reload();
                             }
                         } else {
                             alert("Error: " + response.message);
@@ -4581,27 +4571,16 @@
                             $("#cashOnlineBox").hide();
                             $("#discount").val("");
                             updateTotalItems();
-                            // Dine-in: print KOT on Update (kitchen), not on Checkout billing
+                            // Dine-in: open KOT print modal on Update (from this screen)
                             if (tableOrderModal) tableOrderModal.hide();
                             var updateOrderId = response.order_id || orderId;
-                            var afterKotUpdate = function () {
-                                Swal.fire({
-                                    toast: true,
-                                    position: 'top-end',
-                                    icon: 'success',
-                                    title: response.message || 'Order updated — KOT sent',
-                                    showConfirmButton: false,
-                                    timer: 2200,
-                                    timerProgressBar: true
-                                }).then(function () { location.reload(); });
-                            };
-                            if (updateOrderId && typeof window.printKotForOrder === 'function') {
-                                window.printKotForOrder(updateOrderId).then(afterKotUpdate).catch(afterKotUpdate);
+                            if (updateOrderId && typeof window.showKotPrintModal === 'function') {
+                                window.showKotPrintModal(updateOrderId, { reloadOnClose: true });
                             } else if (updateOrderId) {
                                 window.open('/kitchen/kot/' + updateOrderId + '/print', '_blank');
-                                afterKotUpdate();
+                                location.reload();
                             } else {
-                                afterKotUpdate();
+                                location.reload();
                             }
                         } else {
                             alert("Error: " + response.message);
@@ -4874,4 +4853,5 @@
     </script>
     @include('partials.invoice-qz-print-script')
     @include('partials.bill-generated-print-script')
+    @include('partials.kot-print-modal-script')
 @endpush
