@@ -833,6 +833,12 @@ class SyncController extends Controller
                     if (isset($o['table_status'])) {
                         $order->table_status = (int)$o['table_status'];
                     }
+                    // Petpooja-style KOT fire ticket (latest Update delta) — one sync API carries everything
+                    if (Schema::hasColumn('orders', 'kot_pending_cancels') && array_key_exists('kot_pending_cancels', $o)) {
+                        $order->kot_pending_cancels = $o['kot_pending_cancels'];
+                    } elseif (Schema::hasColumn('orders', 'kot_pending_cancels') && array_key_exists('kot_fire_ticket', $o)) {
+                        $order->kot_pending_cancels = $o['kot_fire_ticket'];
+                    }
                     $order->branch_id = $o['branch_id'] ?? $branchId;
                     if (!empty($o['created_at'])) {
                         $order->created_at = $o['created_at'];
@@ -903,6 +909,10 @@ class SyncController extends Controller
                             if (isset($it['variant_id'])) $orderItem->variant_id = $it['variant_id'];
                             if (isset($it['addons'])) $orderItem->addons = $it['addons'];
                             if (isset($it['isDeleted'])) $orderItem->isDeleted = (int)$it['isDeleted'];
+                            // KOT printed qty travels in the same sync push (no separate mark-printed API needed for Flutter)
+                            if (Schema::hasColumn('order_items', 'kot_printed_qty') && array_key_exists('kot_printed_qty', $it)) {
+                                $orderItem->kot_printed_qty = max(0, (int) $it['kot_printed_qty']);
+                            }
 
                             $orderItem->save();
 
@@ -990,6 +1000,9 @@ class SyncController extends Controller
                     if (isset($it['variant_id'])) $orderItem->variant_id = $it['variant_id'];
                     if (isset($it['addons'])) $orderItem->addons = $it['addons'];
                     if (isset($it['isDeleted'])) $orderItem->isDeleted = (int)$it['isDeleted'];
+                    if (Schema::hasColumn('order_items', 'kot_printed_qty') && array_key_exists('kot_printed_qty', $it)) {
+                        $orderItem->kot_printed_qty = max(0, (int) $it['kot_printed_qty']);
+                    }
 
                     $orderItem->save();
 
