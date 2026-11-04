@@ -610,12 +610,16 @@ class SalesController extends Controller
 
             if (!$customer_id) {
                 $defaultCustomer = User::where('role', 'customer')
-                    ->where('name', 'Default Customer')
+                    ->where(function ($q) {
+                        $q->where('name', 'Unregistered Customer')
+                            ->orWhere('name', 'Default Customer');
+                    })
+                    ->orderByRaw("CASE WHEN name = 'Unregistered Customer' THEN 0 ELSE 1 END")
                     ->first();
 
                 if (!$defaultCustomer) {
                     $defaultCustomer = User::create([
-                        'name' => 'Default Customer',
+                        'name' => 'Unregistered Customer',
                         'role' => 'customer',
                         'status' => 1,
                         'branch_id' => $branchIdToUse,
@@ -629,6 +633,9 @@ class SalesController extends Controller
                     ]);
                 }
                 $customer_id = $defaultCustomer->id;
+                if ($cust_name === '') {
+                    $cust_name = $defaultCustomer->name ?: 'Unregistered Customer';
+                }
             }
 
             if ($request->payment_method != 'pending') {
@@ -1160,12 +1167,16 @@ class SalesController extends Controller
 
             if (!$customer_id) {
                 $defaultCustomer = User::where('role', 'customer')
-                    ->where('name', 'Default Customer')
+                    ->where(function ($q) {
+                        $q->where('name', 'Unregistered Customer')
+                            ->orWhere('name', 'Default Customer');
+                    })
+                    ->orderByRaw("CASE WHEN name = 'Unregistered Customer' THEN 0 ELSE 1 END")
                     ->first();
 
                 if (!$defaultCustomer) {
                     $defaultCustomer = User::create([
-                        'name' => 'Default Customer',
+                        'name' => 'Unregistered Customer',
                         'role' => 'customer',
                         'status' => 1,
                         'branch_id' => $branchIdToUse,
@@ -1179,6 +1190,9 @@ class SalesController extends Controller
                     ]);
                 }
                 $customer_id = $defaultCustomer->id;
+                if ($cust_name === '') {
+                    $cust_name = $defaultCustomer->name ?: 'Unregistered Customer';
+                }
             }
 
             $order = Order::findOrFail($order_id);

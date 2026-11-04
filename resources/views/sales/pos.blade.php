@@ -1743,7 +1743,7 @@
                                 </div>
                                 <div class="pos-order-badge">
                                     <span class="pos-order-label">Type:</span>
-                                    <span class="pos-order-val" id="orderTypeBadge">Delivery</span>
+                                    <span class="pos-order-val" id="orderTypeBadge">Self Pickup</span>
                                 </div>
                             </div>
                             <div class="customer-box-body">
@@ -1755,8 +1755,19 @@
                                             <label><i class="far fa-user-circle"></i> Name</label>
                                             <select id="customer_name_input" class="form-control select2_customer" name="customer_name">
                                                 <option value="">Select or Type Customer</option>
+                                                @php
+                                                    $hasUnregistered = collect($customers)->contains(function ($c) {
+                                                        return in_array(strtolower(trim((string) ($c->name ?? ''))), ['unregistered customer', 'default customer'], true);
+                                                    });
+                                                @endphp
+                                                @unless($hasUnregistered)
+                                                <option value="Unregistered Customer" data-phone="" selected>Unregistered Customer</option>
+                                                @endunless
                                                 @foreach ($customers as $cust)
-                                                <option value="{{ $cust->name }}" data-phone="{{ $cust->phone }}" {{ strtolower($cust->name) == 'default customer' ? 'selected' : '' }}>{{ $cust->name }} ({{ $cust->phone }})</option>
+                                                @php
+                                                    $isDefaultCust = in_array(strtolower(trim((string) ($cust->name ?? ''))), ['unregistered customer', 'default customer'], true);
+                                                @endphp
+                                                <option value="{{ $cust->name }}" data-phone="{{ $cust->phone }}" {{ $isDefaultCust ? 'selected' : '' }}>{{ $cust->name }}@if(!empty($cust->phone)) ({{ $cust->phone }})@endif</option>
                                                 @endforeach
                                             </select>
                                             <span class="error_customername" style="color: red; font-size: 11px;"></span>
@@ -1786,7 +1797,7 @@
                                             <label><i class="fas fa-concierge-bell"></i> Order Type</label>
                                             <select id="order_type_select" name="order_type" class="form-control select2-fixed">
                                                 <option value="Delivery">Delivery</option>
-                                                <option value="Self Pickup">Self Pickup</option>
+                                                <option value="Self Pickup" selected>Self Pickup</option>
                                             </select>
                                         </div>
                                     </div>
@@ -3563,9 +3574,17 @@
                     $(".total-value .error_total").remove();
                     $("#enterAmountError, #debitBankError, #scanBankError, #cashOnlineEnterAmountError, #cashAmountError, #cashOnlineBankError, #paidTypeError, #cashOnlinePaidTypeError").text("");
 
-                    // Get form values
-                    let name = $("#customer_name_input").val().trim();
-                    let phone = $("input[name='customer_phone']").val().trim();
+                    // Get form values — empty customer → Unregistered Customer (walk-in)
+                    let name = ($("#customer_name_input").val() || "").toString().trim();
+                    if (!name || ['select or type customer', 'choose', 'select'].includes(name.toLowerCase())) {
+                        name = "Unregistered Customer";
+                        var $custSel = $("#customer_name_input");
+                        if ($custSel.find('option[value="Unregistered Customer"]').length === 0) {
+                            $custSel.append(new Option("Unregistered Customer", "Unregistered Customer", true, true));
+                        }
+                        $custSel.val("Unregistered Customer").trigger("change.select2");
+                    }
+                    let phone = ($("input[name='customer_phone']").val() || "").toString().trim();
                     let table_id = $("#table_no_select").val();
                     let selectedPayment = $("input[name='payment_method']:checked").val();
                     let selectedTableType = $("input[name='type']:checked").val();
@@ -3575,11 +3594,7 @@
 
                     // Validation
                     let isValid = true;
-
-                    if (name === "") {
-                        $(".error_customername").text("Customer name is required").css("color", "red");
-                        isValid = false;
-                    }
+                    $(".error_customername").text("");
 
                     if (phone !== "" && !/^\d{10}$/.test(phone)) {
                         $(".error_customerphone").text("Enter a valid 10-digit phone number").css("color", "red");
@@ -3809,7 +3824,7 @@
                         pending_amount: pendingAmt,
                         bank_id: bankId,
                         debit_remark: debitRemark,
-                        order_type: $('#order_type_select').val() || 'Delivery',
+                        order_type: $('#order_type_select').val() || 'Self Pickup',
                         assigned_staff_id: $('#assigned_staff_id').val() || null,
                         items: orderItems
                     };
@@ -4147,12 +4162,12 @@
                 minimumResultsForSearch: -1 // fixed options chhe, tethi search box nathi joito — remove this line if search joiye
             }).on('change', function() {
                 if ($(this).attr('id') === 'order_type_select') {
-                    $('#orderTypeBadge').text($(this).val() || 'Delivery');
+                    $('#orderTypeBadge').text($(this).val() || 'Self Pickup');
                 }
             });
 
             $(document).on('change', '#order_type_select', function() {
-                $('#orderTypeBadge').text($(this).val() || 'Delivery');
+                $('#orderTypeBadge').text($(this).val() || 'Self Pickup');
             });
             if ($('#order_type_select').length && $('#order_type_select').val()) {
                 $('#orderTypeBadge').text($('#order_type_select').val());
@@ -4853,7 +4868,7 @@
                         gstOption: defaultGstOption || 'without',
                         paymentMethod: 'pending',
                         discount: '',
-                        orderType: 'Delivery',
+                        orderType: 'Self Pickup',
                         staffId: ''
                     };
                 }
@@ -4906,7 +4921,7 @@
                         gstOption: $("input[name='gst_option']:checked").val() || 'without',
                         paymentMethod: $("input[name='payment_method']:checked").val() || 'pending',
                         discount: $('#discount').val() || '',
-                        orderType: $('#order_type_select').val() || 'Delivery',
+                        orderType: $('#order_type_select').val() || 'Self Pickup',
                         staffId: $('#assigned_staff_id').val() || ''
                     };
                 }
@@ -4985,7 +5000,7 @@
 
                     $('#discount').val(data.discount || '');
                     if ($('#order_type_select').length) {
-                        $('#order_type_select').val(data.orderType || 'Delivery').trigger('change');
+                        $('#order_type_select').val(data.orderType || 'Self Pickup').trigger('change');
                     }
                     if ($('#assigned_staff_id').length) {
                         $('#assigned_staff_id').val(data.staffId || '').trigger('change');
