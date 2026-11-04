@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\UserPermission;
 use App\Services\Tenancy\TenantManager;
 use App\Support\AppViewData;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
@@ -43,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Admin UI is Bootstrap — default Tailwind pagination SVGs render as huge broken bars
+        Paginator::useBootstrapFive();
+
         View::share('imagePath', config('app.image_path'));
 
         // Passport keys are shared by all tenants; pin the path before the

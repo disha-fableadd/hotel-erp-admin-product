@@ -1,23 +1,13 @@
-# Flutter KOT Sync Guide (One API)
+# Flutter KOT Sync Guide
 
-Flutter / desktop POS talks to the server through **one sync API only**.  
-Place order, update items, KOT delta, mark-as-printed, kitchen status, checkout — all go in **`POST /api/v1/sync/push`** (and come back via **`POST /api/v1/sync/pull`**).
-
-> Do **not** call separate web APIs (`order_sale`, `update_sale_order`, `/kitchen/kot/...`) from Flutter. Those are for the browser admin only.
+Flutter uses **only these two APIs** for orders + KOT.
 
 Base URL (example): `https://hotel-erp.fableadtech.com`
 
----
-
-## 1. The only APIs Flutter needs
-
 | Method | Path | Use |
 |--------|------|-----|
-| `POST` | `/api/v1/sync/login` | Login → Bearer token |
-| `POST` | `/api/v1/sync/verify-license` | License check |
 | `POST` | `/api/v1/sync/pull` | Download orders + items + masters |
 | `POST` | `/api/v1/sync/push` | Upload orders + items + KOT state |
-| `POST` | `/api/v1/sync/upload-image` | Images (optional) |
 
 ```http
 Authorization: Bearer {access_token}
@@ -25,31 +15,68 @@ Accept: application/json
 Content-Type: application/json
 ```
 
-Everything for KOT lives inside the **`payload.orders`** (+ nested **`items`**) of that single push.
+---
+
+## 1. Pull
+
+```http
+POST /api/v1/sync/pull
+```
+
+### Request
+
+```json
+{
+  "branch_id": 12,
+  "last_sync_timestamp": "2026-11-04 10:00:00",
+  "tables": ["orders", "order_items", "table_no", "products", "payment_store"]
+}
+```
+
+| Field | Notes |
+|-------|--------|
+| `branch_id` | Current branch |
+| `last_sync_timestamp` | Incremental sync (ISO / `Y-m-d H:i:s`) |
+| `tables` | Optional filter; omit to pull all mapped tables |
+
+### Response (shape)
+
+```json
+{
+  "status": true,
+  "server_time": "2026-11-04 13:00:00",
+  "data": {
+    "orders": [],
+    "order_items": [],
+    "table_no": [],
+    "products": [],
+    "payment_store": [],
+    "deleted_ids": {},
+    "deleted_records": {}
+  }
+}
+```
+
+Upsert locally by `client_uuid`. Apply `deleted_ids` / `deleted_records` to remove rows.
+
+Order / item fields you care about for KOT:
+
+- `orders.delivery_status` — `running` \| `ready` \| `served` \| …
+- `orders.table_status` — `1` occupied, `0` free
+- `orders.kot_pending_cancels` / fire ticket JSON (if present)
+- `order_items.quantity`, `kot_printed_qty`, `variant_id`, `addons`, `unit_price`
 
 ---
 
-## 2. One payload = place / update / KOT / checkout
-
-Flutter keeps the full order in Drift. On every change, push the **same order** with updated fields.
-
-| App action | What to put in the same `push` |
-|------------|--------------------------------|
-| **Place** (new table order) | New `orders[]` + all `items[]`, `delivery_status: "running"`, `table_status: 1`, `kot_printed_qty: 0` on items |
-| **Update** (add/remove/qty) | Same `client_uuid` order, updated `items[]`, build local KOT delta, then print locally |
-| **KOT printed** | Same push again with `kot_printed_qty = quantity` on printed lines (and clear `kot_fire_ticket`) |
-| **Kitchen ready/served** | Same order, change `delivery_status` → `ready` / `served` |
-| **Checkout** | `table_status: 0`, `payment_status: "completed"`, payments in `payment_store`, **no KOT reprint** |
-
-No second endpoint. Just mutate local DB → `sync/push`.
-
----
-
-## 3. Push request shape
+## 2. Push
 
 ```http
 POST /api/v1/sync/push
 ```
+
+One push covers: **place**, **update**, **KOT printed**, **kitchen status**, **checkout**.
+
+### Request
 
 ```json
 {
@@ -110,110 +137,20 @@ POST /api/v1/sync/push
 }
 ```
 
-You can also send standalone `payload.order_items` linked by `order_client_uuid` — same sync API.
+`kot_pending_cancels` is accepted as an alias of `kot_fire_ticket`.  
+Standalone `payload.order_items` (with `order_client_uuid`) is also OK.
 
-Alias accepted for fire ticket: `kot_pending_cancels` (same JSON as `kot_fire_ticket`).
+### What each app action puts in the same push
 
----
+| Action | In `payload.orders` / items |
+|--------|-----------------------------|
+| Place | New order + items, `delivery_status: "running"`, `table_status: 1`, `kot_printed_qty: 0` |
+| Update | Same `client_uuid`, updated `items`, `kot_fire_ticket` = **delta only** |
+| KOT printed | Same order, set `kot_printed_qty = quantity`, clear fire ticket |
+| Kitchen ready/served | Change `delivery_status` → `ready` / `served` |
+| Checkout | `table_status: 0`, `payment_status: "completed"`, fill `payment_store` (no KOT) |
 
-## 4. Field reference (all in that one push)
-
-### Order
-
-| Field | Meaning |
-|-------|---------|
-| `client_uuid` | Stable id (required) |
-| `table_no` | Table **id** (int). `"Table 5"` also accepted |
-| `table_status` | `1` occupied, `0` free after checkout |
-| `delivery_status` | KOT kitchen status: `running` → `ready` → `served` |
-| `payment_status` | `pending` while running; `completed` on checkout |
-| `kot_fire_ticket` | Latest delta lines for kitchen (`action`: `new` \| `cancel`) |
-
-### Order item
-
-| Field | Meaning |
-|-------|---------|
-| `client_uuid` | Stable line id (required) |
-| `quantity` | Current qty |
-| `kot_printed_qty` | Qty already sent to kitchen (Petpooja) |
-| `variant_id` | Size / variant |
-| `addons` | `[{id, name, price, qty}]` |
-| `unit_price` / `price` | Line unit price (variant + add-ons) |
-| `user_id` | Customer/user; server falls back if missing |
-| `category_id` | Falls back from product if missing |
-
-**Pending kitchen qty (local):**
-
-```text
-pending = quantity - kot_printed_qty
-```
-
-- `pending > 0` → print `[NEW]` that many  
-- `pending < 0` → print `[CANCEL]`  
-- After print → set `kot_printed_qty = quantity` and **push again** (same API)
-
----
-
-## 5. Flutter flow (still one API)
-
-```text
-┌─────────────────┐
-│  Local Drift DB │  place / update / print / status / checkout
-└────────┬────────┘
-         │  POST /api/v1/sync/push   ← only network call for data
-         ▼
-┌─────────────────┐
-│  Hotel ERP API  │  upserts by client_uuid
-└────────┬────────┘
-         │  POST /api/v1/sync/pull   ← get kitchen/other device updates
-         ▼
-┌─────────────────┐
-│  Local Drift DB │
-└─────────────────┘
-```
-
-### Place
-
-1. Insert order + items locally (`kot_printed_qty = 0`, `delivery_status = running`, `table_status = 1`).
-2. Build `kot_fire_ticket` = all lines as `action: "new"`.
-3. `sync/push`.
-4. Print KOT from `kot_fire_ticket` (local printer).
-5. Set each item `kot_printed_qty = quantity`, clear `kot_fire_ticket`, `sync/push` again.
-
-### Update (add one item, e.g. kadhi-khichdi)
-
-1. Change local items.
-2. Build `kot_fire_ticket` = **only this save’s changes** (not whole cart).
-3. `sync/push`.
-4. Print only fire ticket; then bump `kot_printed_qty`, clear ticket, `sync/push`.
-
-### Checkout
-
-1. Set `table_status = 0`, `payment_status = completed`, add `payment_store` rows.
-2. `sync/push`.
-3. Print **customer bill** locally — **do not** open KOT.
-
----
-
-## 6. Pull (same sync family)
-
-```http
-POST /api/v1/sync/pull
-```
-
-```json
-{
-  "branch_id": 12,
-  "last_sync_timestamp": "2026-11-04 10:00:00",
-  "tables": ["orders", "order_items", "table_no", "products", "payment_store"]
-}
-```
-
-Response `data.orders` / `data.order_items` include `delivery_status`, `kot_printed_qty`, `variant_id`, `addons`, etc. Upsert locally by `client_uuid`.
-
----
-
-## 7. Push response (id mapping)
+### Response
 
 ```json
 {
@@ -246,45 +183,50 @@ Response `data.orders` / `data.order_items` include `delivery_status`, `kot_prin
 }
 ```
 
-Save `remote_id` against each `client_uuid` in Drift.
+Save `remote_id` ↔ `client_uuid` in Drift after every push.
 
 ---
 
-## 8. Drift suggestions
+## 3. KOT fields (inside push/pull only)
 
-**orders:** `client_uuid`, `remote_id`, `table_no`, `delivery_status`, `table_status`, `payment_status`, `kot_fire_ticket_json`, `dirty`  
+| Field | Where | Meaning |
+|-------|--------|---------|
+| `delivery_status` | order | `running` → `ready` → `served` |
+| `table_status` | order | `1` running table, `0` after checkout |
+| `kot_fire_ticket` | order | Latest NEW/CANCEL lines for kitchen print |
+| `quantity` | item | Current qty |
+| `kot_printed_qty` | item | Already sent to kitchen |
+| `variant_id` / `addons` | item | Size + extras (price + labels) |
 
-**order_items:** `client_uuid`, `order_client_uuid`, `product_id`, `variant_id`, `addons_json`, `quantity`, `kot_printed_qty`, `unit_price`, `dirty`
-
-Cart line key (variants/add-ons):
+Local delta:
 
 ```text
-{productId}-v{variantId}-a{addonIds}
+pending = quantity - kot_printed_qty
+```
+
+After print → set `kot_printed_qty = quantity` → **push** again.
+
+---
+
+## 4. Flow
+
+```text
+Local change (place / update / print / status / checkout)
+        │
+        ▼
+POST /api/v1/sync/push
+        │
+        ▼
+POST /api/v1/sync/pull   (other devices / kitchen updates)
 ```
 
 ---
 
-## 9. Server rules (already handled)
+## 5. Checklist
 
-1. Upsert by `client_uuid` (no wipe of unrelated lines if uuids match).
-2. Missing `user_id` / `category_id` → safe fallbacks.
-3. `table_no` string like `"Table 5"` → resolved to id.
-4. `delivery_status` accepts `running` / `ready` / `served` (VARCHAR).
-5. `kot_printed_qty` + `kot_fire_ticket` / `kot_pending_cancels` saved on the **same** push.
-6. `variant_id` + `addons` stored for bill/KOT labels.
-
----
-
-## 10. Checklist
-
-- [ ] Flutter uses **only** `/api/v1/sync/push` + `/pull` (+ login/license)
-- [ ] No calls to `order_sale` / `update_sale_order` / `/kitchen/kot/*` from the app
-- [ ] Every order/item has `client_uuid`
-- [ ] Place: `kot_printed_qty = 0` then after print push with printed qty
-- [ ] Update: fire ticket = delta only; then mark printed via same push
+- [ ] Only `/api/v1/sync/pull` and `/api/v1/sync/push`
+- [ ] Every order/item has stable `client_uuid`
+- [ ] Place: `kot_printed_qty = 0`; after print push with printed qty
+- [ ] Update: `kot_fire_ticket` = this save’s changes only
 - [ ] Checkout: bill only; `table_status = 0`
-- [ ] Variants/add-ons always included on items
-
----
-
-*One API: `/api/v1/sync/push` carries order + items + KOT printed state + fire ticket + kitchen status + checkout.*
+- [ ] Always send `variant_id` + `addons` when used
