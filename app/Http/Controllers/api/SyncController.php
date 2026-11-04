@@ -127,6 +127,100 @@ class SyncController extends Controller
         return $tenancy->current();
     }
 
+    /**
+     * In-memory cache of existing database tables per database connection: [db_name => [table_name => true]]
+     * @var array<string, array<string, bool>>
+     */
+    protected static $cachedExistingTables = [];
+
+    /**
+     * In-memory cache of columns per table: [db_name => [table_name => [column_name => true]]]
+     * @var array<string, array<string, array<string, bool>>>
+     */
+    protected static $cachedTableColumns = [];
+
+    /**
+     * Check if a table exists quickly without querying heavy information_schema.tables.
+     * Prevents SQLSTATE[HY000] [2002] Operation not permitted on shared hosting (Hostinger).
+     */
+    protected function fastHasTable(string $tableName): bool
+    {
+        $db = DB::getDatabaseName() ?? 'default';
+        $lowTable = strtolower(trim($tableName));
+
+        if (!isset(self::$cachedExistingTables[$db])) {
+            try {
+                $driver = DB::getDriverName();
+                if ($driver === 'mysql') {
+                    // SHOW TABLES is instant (<1ms) and bypasses information_schema lock/limits
+                    $rows = DB::select('SHOW TABLES');
+                    self::$cachedExistingTables[$db] = [];
+                    foreach ($rows as $row) {
+                        $arr = (array) $row;
+                        $val = reset($arr);
+                        if ($val !== false && $val !== null) {
+                            self::$cachedExistingTables[$db][strtolower((string) $val)] = true;
+                        }
+                    }
+                } else {
+                    return Schema::hasTable($tableName);
+                }
+            } catch (\Throwable $e) {
+                try {
+                    return Schema::hasTable($tableName);
+                } catch (\Throwable $ex) {
+                    return false;
+                }
+            }
+        }
+
+        return isset(self::$cachedExistingTables[$db][$lowTable]);
+    }
+
+    /**
+     * Check if a column exists in a table with per-request in-memory caching.
+     * Executes SHOW COLUMNS at most once per table for the entire request.
+     */
+    protected function fastHasColumn(string $tableName, string $columnName): bool
+    {
+        $db = DB::getDatabaseName() ?? 'default';
+        $lowTable = strtolower(trim($tableName));
+        $lowCol = strtolower(trim($columnName));
+
+        // Fast table existence check first
+        if (!$this->fastHasTable($lowTable)) {
+            return false;
+        }
+
+        if (!isset(self::$cachedTableColumns[$db][$lowTable])) {
+            try {
+                $driver = DB::getDriverName();
+                if ($driver === 'mysql') {
+                    $cleanTable = preg_replace('/[^a-zA-Z0-9_]/', '', $tableName);
+                    $columns = DB::select("SHOW COLUMNS FROM `{$cleanTable}`");
+                    self::$cachedTableColumns[$db][$lowTable] = [];
+                    foreach ($columns as $c) {
+                        $arr = (array) $c;
+                        $f = $arr['Field'] ?? $arr['field'] ?? null;
+                        if ($f) {
+                            self::$cachedTableColumns[$db][$lowTable][strtolower((string) $f)] = true;
+                        }
+                    }
+                } else {
+                    return Schema::hasColumn($tableName, $columnName);
+                }
+            } catch (\Throwable $e) {
+                try {
+                    return Schema::hasColumn($tableName, $columnName);
+                } catch (\Throwable $ex) {
+                    return false;
+                }
+            }
+        }
+
+        return isset(self::$cachedTableColumns[$db][$lowTable][$lowCol]);
+    }
+
     // =============================================
     // VERIFY LICENSE: POST /api/v1/sync/verify-license
     // =============================================
@@ -306,17 +400,17 @@ class SyncController extends Controller
             $modelInstance = new $modelClass();
             $tableName = $modelInstance->getTable();
 
-            if (!Schema::hasTable($tableName)) {
+            if (!$this->fastHasTable($tableName)) {
                 continue;
             }
 
             $query = $modelClass::query();
 
-            $hasUpdated = Schema::hasColumn($tableName, 'updated_at');
-            $hasIsDeleted = Schema::hasColumn($tableName, 'isDeleted');
-            $hasIsDelete = Schema::hasColumn($tableName, 'is_delete');
-            $hasSoftDeletes = Schema::hasColumn($tableName, 'deleted_at');
-            $hasBranch = Schema::hasColumn($tableName, 'branch_id');
+            $hasUpdated = $this->fastHasColumn($tableName, 'updated_at');
+            $hasIsDeleted = $this->fastHasColumn($tableName, 'isDeleted');
+            $hasIsDelete = $this->fastHasColumn($tableName, 'is_delete');
+            $hasSoftDeletes = $this->fastHasColumn($tableName, 'deleted_at');
+            $hasBranch = $this->fastHasColumn($tableName, 'branch_id');
 
             // Delta time filter
             if ($lastSync && $hasUpdated) {
@@ -350,7 +444,12 @@ class SyncController extends Controller
                 $query->with(['table', 'order']);
             }
 
-            $records = $query->get();
+            try {
+                $records = $query->get();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Sync pull query failed for table [{$tableName} / {$tableKey}]: " . $e->getMessage());
+                continue;
+            }
 
             $active = [];
             $deleted = [];
@@ -643,10 +742,10 @@ class SyncController extends Controller
                     $product->quantity_type_id = $quantityTypeId;
                     $product->branch_id = $prodBranchId;
 
-                    if (Schema::hasColumn('products', 'unit_id')) {
+                    if ($this->fastHasColumn('products', 'unit_id')) {
                         $product->unit_id = $quantityTypeId;
                     }
-                    if (Schema::hasColumn('products', 'availability') && isset($p['availability'])) {
+                    if ($this->fastHasColumn('products', 'availability') && isset($p['availability'])) {
                         $product->availability = $p['availability'];
                     }
 
@@ -904,9 +1003,9 @@ class SyncController extends Controller
 
             // 8. Payment Store
             if (!empty($payload['payment_store'])) {
-                $hasAmountCol = Schema::hasColumn('payment_store', 'amount');
-                $hasBranchCol = Schema::hasColumn('payment_store', 'branch_id');
-                $hasClientUuidCol = Schema::hasColumn('payment_store', 'client_uuid');
+                $hasAmountCol = $this->fastHasColumn('payment_store', 'amount');
+                $hasBranchCol = $this->fastHasColumn('payment_store', 'branch_id');
+                $hasClientUuidCol = $this->fastHasColumn('payment_store', 'client_uuid');
 
                 foreach ($payload['payment_store'] as $p) {
                     $uuid = $p['client_uuid'] ?? (string) Str::uuid();
@@ -1234,7 +1333,7 @@ class SyncController extends Controller
         if (!$quantityTypeId && $qtName !== '') {
             $query = \App\Models\QuantityType::query()
                 ->whereRaw('LOWER(quantity_type) = ?', [mb_strtolower($qtName)]);
-            if ($branchId && Schema::hasColumn('quantity_types', 'branch_id')) {
+            if ($branchId && $this->fastHasColumn('quantity_types', 'branch_id')) {
                 $query->where(function ($q) use ($branchId) {
                     $q->where('branch_id', $branchId)->orWhereNull('branch_id');
                 });
@@ -1243,7 +1342,7 @@ class SyncController extends Controller
             if (!$qt) {
                 $qt = new \App\Models\QuantityType();
                 $qt->quantity_type = $qtName;
-                if (Schema::hasColumn('quantity_types', 'branch_id')) {
+                if ($this->fastHasColumn('quantity_types', 'branch_id')) {
                     $qt->branch_id = $branchId;
                 }
                 if (!empty($qtUuid)) {
