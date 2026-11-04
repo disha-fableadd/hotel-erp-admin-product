@@ -218,6 +218,7 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::get('/tables-view', [TablesshowController::class, 'create'])->name('tables.create');
     Route::get('/kitchen/kot', [KotController::class, 'index'])->name('kot.board');
     Route::get('/kitchen/kot/{orderId}/print', [KotController::class, 'print'])->name('kot.print');
+    Route::get('/kitchen/kot/{orderId}/pdf', [KotController::class, 'printPdf'])->name('kot.pdf');
 
     // Reservations list page
     Route::get('/reservations', [AdminReservationController::class, 'index'])->name('reservations.index');

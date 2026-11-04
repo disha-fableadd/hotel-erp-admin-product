@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Setting;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -45,6 +46,34 @@ class KotController extends Controller
 
     public function print(Request $request, $orderId)
     {
+        extract($this->kotPayload($request, $orderId));
+
+        return view('sales.kot_print', compact('order', 'items', 'station'));
+    }
+
+    /**
+     * Thermal KOT PDF for QZ / Bluetooth kitchen printers.
+     */
+    public function printPdf(Request $request, $orderId)
+    {
+        extract($this->kotPayload($request, $orderId));
+
+        $pdf = Pdf::loadView('sales.kot_print_pdf', compact('order', 'items', 'station'))
+            ->setPaper([0, 0, 226.77, max(280, 120 + (count($items) * 28))], 'portrait');
+
+        $filename = 'kot_' . $orderId . '.pdf';
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Cache-Control' => 'private, no-store, no-cache, must-revalidate',
+            'Pragma' => 'no-cache',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    protected function kotPayload(Request $request, $orderId): array
+    {
         $branchId = $this->branchIdToUse();
         $order = Order::with(['order_items.product', 'tableNo'])
             ->where('id', $orderId)
@@ -58,9 +87,9 @@ class KotController extends Controller
             }
             $itemStation = $item->product->kitchen_station ?? 'General';
             return !$station || strcasecmp($itemStation, $station) === 0;
-        });
+        })->values();
 
-        return view('sales.kot_print', compact('order', 'items', 'station'));
+        return compact('order', 'items', 'station');
     }
 
     protected function buildTickets($branchId, $filterStation = null)

@@ -2198,9 +2198,9 @@
                         </div>
                     </div>
                     <div class="modal-footer border-0 pt-2 pb-3 px-3 px-md-4" style="background:#fff;">
-                        <div class="w-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                            <div class="d-flex flex-wrap align-items-center gap-2" style="min-width:0; flex:1 1 280px;">
-                                <label class="mb-0 small text-muted text-nowrap" for="posPrinterSelect">Printer</label>
+                        <div class="w-100 d-flex flex-column gap-2">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <label class="mb-0 small text-muted text-nowrap" for="posPrinterSelect">Bill printer</label>
                                 <select id="posPrinterSelect" class="form-select form-select-sm" style="min-width:140px;max-width:220px;flex:1 1 160px;">
                                     <option value="">Connecting…</option>
                                 </select>
@@ -2209,14 +2209,14 @@
                                 </button>
                                 <button type="button" class="btn btn-outline-primary btn-sm d-none d-md-inline-block desktop-bt-print-btn"
                                     data-select="#posPrinterSelect" data-status="#posQzStatus" data-storage="posSelectedPrinter"
-                                    title="Choose a nearby Bluetooth printer">
+                                    title="Bluetooth for bill printer">
                                     <i class="fab fa-bluetooth-b"></i> Bluetooth
                                 </button>
                                 <div class="form-check mb-0 d-flex align-items-center gap-1">
                                     <input class="form-check-input" type="checkbox" id="posThermalAutoCut">
                                     <label class="form-check-label small" for="posThermalAutoCut">Auto cut</label>
                                 </div>
-                                <div class="form-check mb-0 d-flex align-items-center gap-1" title="Also open kitchen KOT print with the bill">
+                                <div class="form-check mb-0 d-flex align-items-center gap-1" title="Print kitchen KOT together with the bill">
                                     <input class="form-check-input" type="checkbox" id="posPrintKotWithBill" checked>
                                     <label class="form-check-label small" for="posPrintKotWithBill">Print KOT</label>
                                 </div>
@@ -2224,7 +2224,19 @@
                                 <a href="https://qz.io/download/" target="_blank" rel="noopener" class="small text-nowrap" id="posQzInstallLink" style="display:none;">Install QZ Tray</a>
                                 <a href="{{ url('/qz/install-qz-trust.bat') }}" class="small text-nowrap d-none d-md-inline" id="posQzTrustLink" title="Fixes Allow disabled when Remember is checked">Fix Allow</a>
                             </div>
-                            <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+                            <div id="posKotPrinterRow" class="d-flex flex-wrap align-items-center gap-2">
+                                <label class="mb-0 small text-muted text-nowrap" for="posKotPrinterSelect">Kitchen printer</label>
+                                <select id="posKotPrinterSelect" class="form-select form-select-sm" style="min-width:140px;max-width:220px;flex:1 1 160px;">
+                                    <option value="">Same as bill</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-primary btn-sm d-none d-md-inline-block desktop-bt-print-btn"
+                                    data-select="#posKotPrinterSelect" data-status="#posKotQzStatus" data-storage="posSelectedKotPrinter"
+                                    title="Bluetooth for kitchen / KOT printer">
+                                    <i class="fab fa-bluetooth-b"></i> Kitchen BT
+                                </button>
+                                <span class="small text-nowrap" id="posKotQzStatus" style="color:#6c757d;"></span>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
                                 <button type="button" id="closeBillBtn" class="btn btn-secondary"
                                     style="font-weight:600;border-radius:10px;padding:8px 18px;">
                                     Close
@@ -2236,8 +2248,8 @@
                                 </button>
                                 <button type="button" id="printKotOnlyBtn" class="btn btn-outline-dark"
                                     style="font-weight:600;border-radius:10px;padding:8px 16px;"
-                                    title="Print kitchen ticket only">
-                                    KOT
+                                    title="Print kitchen ticket only on kitchen printer">
+                                    KOT only
                                 </button>
                                 <button type="button" id="printBillBtn" class="btn"
                                     style="background:#ff9f43;color:#fff;font-weight:700;border:none;border-radius:10px;padding:8px 22px;">
@@ -4401,19 +4413,61 @@
             });
 
             // ── Bill Generated Modal: QZ / Bluetooth print + KOT ─────────────
+            function syncKotPrinterRowVisibility() {
+                var on = $('#posPrintKotWithBill').is(':checked');
+                $('#posKotPrinterRow').toggle(on);
+            }
+
+            function syncKotPrinterOptionsFromBill() {
+                var $bill = $('#posPrinterSelect');
+                var $kot = $('#posKotPrinterSelect');
+                if (!$bill.length || !$kot.length) return;
+                var saved = '';
+                try { saved = localStorage.getItem('posSelectedKotPrinter') || ''; } catch (e) {}
+                var current = $kot.val() || '';
+                $kot.empty();
+                $kot.append($('<option></option>').val('').text('Same as bill'));
+                $bill.find('option').each(function() {
+                    var v = $(this).val();
+                    if (!v) return;
+                    $kot.append($('<option></option>').val(v).text($(this).text()));
+                });
+                function hasVal(v) {
+                    var found = false;
+                    $kot.find('option').each(function() {
+                        if ($(this).val() === v) found = true;
+                    });
+                    return found;
+                }
+                var pick = '';
+                if (saved && hasVal(saved)) pick = saved;
+                else if (current && hasVal(current)) pick = current;
+                $kot.val(pick);
+            }
+
             function refreshPosPrinterList() {
                 if (!window.InvoiceQzPrint) {
                     $('#posQzStatus').text('QZ print loading…').css('color', '#6c757d');
                     return Promise.resolve();
                 }
-                return InvoiceQzPrint.refreshPrinters({
+                return Promise.resolve(InvoiceQzPrint.refreshPrinters({
                     select: '#posPrinterSelect',
                     status: '#posQzStatus',
                     installLink: '#posQzInstallLink',
                     storageKey: 'posSelectedPrinter',
                     list: '#posBtPrinterList',
                     wifiList: '#posWifiPrinterList'
+                })).then(function() {
+                    syncKotPrinterOptionsFromBill();
+                }).catch(function() {
+                    syncKotPrinterOptionsFromBill();
                 });
+            }
+
+            function resolveKotPrinterName() {
+                var kot = ($('#posKotPrinterSelect').val() || '').trim();
+                if (kot) return kot;
+                return ($('#posPrinterSelect').val() || '').trim();
             }
 
             function openKotPrintWindow(orderId) {
@@ -4421,7 +4475,6 @@
                 var kotUrl = "/kitchen/kot/" + orderId + "/print";
                 var w = window.open(kotUrl, "kot_print_" + orderId, "width=420,height=640,scrollbars=yes");
                 if (!w) {
-                    // popup blocked — open in hidden iframe as fallback
                     var $frame = $('#posKotSilentFrame');
                     if (!$frame.length) {
                         $frame = $('<iframe id="posKotSilentFrame" title="KOT print" style="position:absolute;width:0;height:0;border:0;left:-9999px;"></iframe>');
@@ -4429,6 +4482,37 @@
                     }
                     $frame.attr('src', kotUrl);
                 }
+            }
+
+            function printKotToKitchen(orderId) {
+                if (!orderId) return Promise.resolve();
+                var kotPdfUrl = "/kitchen/kot/" + orderId + "/pdf";
+                var kotPrinter = resolveKotPrinterName();
+                var doAutoCut = $('#posThermalAutoCut').is(':checked');
+
+                if (!window.InvoiceQzPrint || !kotPrinter) {
+                    openKotPrintWindow(orderId);
+                    return Promise.resolve();
+                }
+
+                try { localStorage.setItem('posSelectedKotPrinter', kotPrinter); } catch (e) {}
+                $('#posKotQzStatus').text('Printing KOT…').css('color', '#6c757d');
+
+                return Promise.resolve(InvoiceQzPrint.printInvoice({
+                    printerName: kotPrinter,
+                    pdfUrl: kotPdfUrl,
+                    autoCut: doAutoCut,
+                    status: '#posKotQzStatus',
+                    button: '#printKotOnlyBtn',
+                    select: '#posKotPrinterSelect',
+                    storageKey: 'posSelectedKotPrinter'
+                })).then(function() {
+                    $('#posKotQzStatus').text('KOT printed').css('color', '#28c76f');
+                }).catch(function(err) {
+                    console.warn('KOT QZ print failed', err);
+                    $('#posKotQzStatus').text('KOT fallback…').css('color', '#ea5455');
+                    openKotPrintWindow(orderId);
+                });
             }
 
             function printBillFromModal() {
@@ -4442,9 +4526,8 @@
                 var alsoKot = $('#posPrintKotWithBill').is(':checked');
 
                 function afterBillPrint() {
-                    if (alsoKot) {
-                        openKotPrintWindow(orderId);
-                    }
+                    if (!alsoKot) return Promise.resolve();
+                    return printKotToKitchen(orderId);
                 }
 
                 if (!window.InvoiceQzPrint) {
@@ -4454,8 +4537,7 @@
                 }
 
                 if (!printerName) {
-                    $('#posQzStatus').text('Select a printer (or Bluetooth)').css('color', '#ea5455');
-                    // Fallback browser print of PDF
+                    $('#posQzStatus').text('Select a bill printer').css('color', '#ea5455');
                     window.open(pdfUrl, "_blank");
                     afterBillPrint();
                     return;
@@ -4473,9 +4555,9 @@
                     list: '#posBtPrinterList',
                     storageKey: 'posSelectedPrinter'
                 })).then(function() {
-                    afterBillPrint();
+                    return afterBillPrint();
                 }).catch(function() {
-                    afterBillPrint();
+                    return afterBillPrint();
                 }).then(function() {
                     $('#printBillBtn').prop('disabled', false);
                 });
@@ -4489,6 +4571,17 @@
                 try {
                     localStorage.setItem('posPrintKotWithBill', $(this).is(':checked') ? '1' : '0');
                 } catch (e) {}
+                syncKotPrinterRowVisibility();
+            });
+
+            $(document).on('change', '#posKotPrinterSelect', function() {
+                try {
+                    localStorage.setItem('posSelectedKotPrinter', $(this).val() || '');
+                } catch (e) {}
+            });
+
+            $(document).on('change', '#posPrinterSelect', function() {
+                syncKotPrinterOptionsFromBill();
             });
 
             $(document).on('click', '#printBillBtn', function() {
@@ -4496,9 +4589,11 @@
             });
 
             $(document).on('click', '#printKotOnlyBtn', function() {
-                if (window._billOrderId) {
-                    openKotPrintWindow(window._billOrderId);
-                }
+                if (!window._billOrderId) return;
+                $('#printKotOnlyBtn').prop('disabled', true);
+                printKotToKitchen(window._billOrderId).then(function() {
+                    $('#printKotOnlyBtn').prop('disabled', false);
+                });
             });
 
             $(document).on('click', '#closeBillBtn, #closeBillModalBtn', function() {
@@ -4510,6 +4605,7 @@
 
             // When bill modal opens, refresh QZ printers
             $(document).on('shown.bs.modal', '#billGeneratedModal', function() {
+                syncKotPrinterRowVisibility();
                 var tries = 0;
                 (function waitQz() {
                     tries++;
