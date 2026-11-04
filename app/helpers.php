@@ -624,59 +624,173 @@ if (! function_exists('make_thermal_invoice_pdf')) {
     }
 }
 
+if (! function_exists('default_invoice_customization')) {
+    function default_invoice_customization(): array
+    {
+        return [
+            'show_logo' => true,
+            'logo_size' => 1.0,
+            'show_shop_gst' => true,
+            'show_fssai' => true,
+            'show_customer_gst' => false,
+            'show_salesman' => false,
+            'show_customer_name' => true,
+            'show_customer_phone' => true,
+            'show_customer_address' => true,
+            'show_customer_message' => false,
+            'enable_custom_heading' => false,
+            'custom_heading_text' => '',
+
+            'preferred_template' => 1,
+            'language' => 'english',
+            'font_size' => 8,
+            'left_margin_mm' => 0,
+            'print_copies' => 1,
+            'paper_size' => '3inch',
+
+            'show_serial' => true,
+            'show_item_barcode' => false,
+            'show_item_qty' => true,
+            'show_item_description' => false,
+            'show_hsn' => false,
+            'show_item_mrp' => false,
+            'show_item_sp' => true,
+            'sp_column_label' => 'Price',
+            'sp_price_source' => 'selling_price',
+            'show_item_total' => true,
+
+            'show_payment_mode' => true,
+            'show_upi_qr' => true,
+            'show_invoice_barcode' => false,
+            'show_savings' => false,
+            'savings_label' => 'You Saved',
+            'enable_terms' => false,
+
+            'product_name_wrap' => true,
+            'product_second_line' => false,
+            'savings_in_line_item' => false,
+            'show_total_item_count' => true,
+            'merge_product_items' => false,
+            'truncate_product_names' => false,
+            'instant_billing_mode' => true,
+            'enable_gst_billing' => false,
+            'decimal_places' => 2,
+            'round_off_quantity' => false,
+            'show_customer_outstanding' => false,
+
+            'show_company_name' => true,
+            'show_shop_phone' => true,
+            'show_shop_address' => true,
+            'show_shop_email' => false,
+            'bill_of_supply' => false,
+            'show_unit' => true,
+            'show_received' => true,
+            'show_balance' => true,
+            'show_tax_details' => true,
+            'show_amount_words' => false,
+            'amount_grouping' => true,
+            'amount_words_format' => 'indian',
+            'show_remarks' => false,
+            'extra_end_lines' => 0,
+            'text_styling' => true,
+            'auto_cut' => false,
+            'open_cash_drawer' => false,
+            'default_printer' => '',
+            'default_printer_label' => '',
+            'thermal_theme' => 0,
+        ];
+    }
+}
+
+if (! function_exists('invoice_settings_branch_id')) {
+    function invoice_settings_branch_id()
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return null;
+        }
+        $subAdminId = session('selectedSubAdminId');
+        if (($user->role ?? '') === 'sub-admin') {
+            return $user->id;
+        }
+        if (($user->role ?? '') === 'admin' && ! empty($subAdminId)) {
+            return $subAdminId;
+        }
+        if (($user->role ?? '') === 'staff' && ! empty($user->branch_id)) {
+            return $user->branch_id;
+        }
+
+        return $user->id;
+    }
+}
+
+if (! function_exists('invoice_settings_row')) {
+    function invoice_settings_row()
+    {
+        $branchId = invoice_settings_branch_id();
+        $row = $branchId ? \App\Models\Setting::where('branch_id', $branchId)->first() : null;
+
+        return $row ?: \App\Models\Setting::first();
+    }
+}
+
+if (! function_exists('invoice_custom')) {
+    /**
+     * @param  mixed  $setting
+     */
+    function invoice_custom($setting = null): array
+    {
+        $defaults = default_invoice_customization();
+        $saved = [];
+        if ($setting && is_object($setting) && ! empty($setting->invoice_customization)) {
+            $saved = is_array($setting->invoice_customization)
+                ? $setting->invoice_customization
+                : (json_decode((string) $setting->invoice_customization, true) ?: []);
+        } elseif (is_array($setting)) {
+            $saved = $setting;
+        }
+
+        return array_replace($defaults, array_intersect_key($saved, $defaults));
+    }
+}
+
 if (! function_exists('invoice_print_js_prefs')) {
     /**
-     * Printer defaults for QZ / Bluetooth bill print dialog (ported from pooja POS).
+     * Printer defaults for QZ / Bluetooth bill print dialog (from Customize Invoice).
      */
     function invoice_print_js_prefs(): array
     {
-        $defaults = [
-            'thermal' => true,
-            'copies' => 1,
-            'autoCut' => false,
-            'cashDrawer' => false,
-            'extraLines' => 0,
-            'textStyling' => true,
-            'defaultPrinter' => '',
-            'defaultPrinterLabel' => '',
-            'hindi' => false,
-            'template' => 1,
-        ];
-
         try {
-            $branchId = null;
-            if (function_exists('auth') && auth()->check()) {
-                $user = auth()->user();
-                $role = $user->role ?? '';
-                if ($role === 'sub-admin') {
-                    $branchId = $user->id;
-                } elseif ($role === 'staff') {
-                    $branchId = $user->branch_id ?? null;
-                } elseif ($role === 'admin' && session()->has('selectedSubAdminId')) {
-                    $branchId = session('selectedSubAdminId');
-                } else {
-                    $branchId = $user->id ?? null;
-                }
-            }
+            $setting = invoice_settings_row();
+            $inv = invoice_custom($setting);
 
-            $setting = null;
-            if (class_exists(\App\Models\Setting::class)) {
-                $query = \App\Models\Setting::query();
-                if ($branchId) {
-                    $setting = (clone $query)->where('branch_id', $branchId)->first();
-                }
-                if (! $setting) {
-                    $setting = $query->first();
-                }
-            }
-
-            if ($setting) {
-                $defaults['thermal'] = (($setting->invoice_size ?? 'small') === 'small');
-            }
-
-            return $defaults;
+            return [
+                'thermal' => (($setting->invoice_size ?? 'small') === 'small'),
+                'copies' => max(1, min(5, (int) ($inv['print_copies'] ?? 1))),
+                'autoCut' => ! empty($inv['auto_cut']),
+                'cashDrawer' => ! empty($inv['open_cash_drawer']),
+                'extraLines' => max(0, min(10, (int) ($inv['extra_end_lines'] ?? 0))),
+                'textStyling' => ! empty($inv['text_styling']),
+                'defaultPrinter' => (string) ($inv['default_printer'] ?? ''),
+                'defaultPrinterLabel' => (string) ($inv['default_printer_label'] ?? ''),
+                'hindi' => ($inv['language'] ?? 'english') === 'hindi',
+                'template' => max(1, min(5, (int) ($inv['thermal_theme'] ?? 0) ?: 1)),
+                'paperSize' => ($inv['paper_size'] ?? '3inch') === '2inch' ? '2inch' : '3inch',
+            ];
         } catch (\Throwable $e) {
-            return $defaults;
+            return [
+                'thermal' => true,
+                'copies' => 1,
+                'autoCut' => false,
+                'cashDrawer' => false,
+                'extraLines' => 0,
+                'textStyling' => true,
+                'defaultPrinter' => '',
+                'defaultPrinterLabel' => '',
+                'hindi' => false,
+                'template' => 1,
+                'paperSize' => '3inch',
+            ];
         }
     }
 }

@@ -18,6 +18,7 @@ use App\Http\Controllers\admin\SalesController;
 use App\Http\Controllers\admin\ProductsDeliveryController;
 use App\Http\Controllers\admin\VendorController;
 use App\Http\Controllers\admin\SettingController;
+use App\Http\Controllers\admin\InvoiceCustomizeController;
 use App\Http\Controllers\admin\SalesReturnController;
 use App\Http\Controllers\admin\PurchaseReturnController;
 use App\Http\Controllers\admin\AuthController;
@@ -260,6 +261,8 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::get('/settings/smtp', [SmtpSettingController::class, 'index'])
         ->name('setting.smtpsettings');
     Route::get('/setting/facebook-app-configuration', [SettingController::class, 'facebookappconfiguration'])->name('setting.facebookappconfiguration');
+    Route::get('/setting/customize-invoice', [InvoiceCustomizeController::class, 'index'])->name('setting.customize-invoice');
+    Route::post('/setting/customize-invoice', [InvoiceCustomizeController::class, 'save'])->name('setting.customize-invoice.save');
 
     // GST Export
     //Route::get('/gst/gstr1/export-excel', [Gstr1ExportController::class, 'export'])->name('exports.gstr1.excel');

@@ -653,11 +653,14 @@ class SalesController extends Controller
             ->where('isDeleted', 0)
             ->get();
 
+        $inv = function_exists('invoice_custom') ? invoice_custom($setting) : [];
+
         // âœ… Prepare data for view
         $pdfData = [
             'view_id' => $view_id,
             'sales' => $sales,
             'setting' => $setting,
+            'inv' => $inv,
             'orderItems' => $orderItems,
             'salesItems' => $orderItems,
             'customer' => $customer,
@@ -684,7 +687,8 @@ class SalesController extends Controller
             : 'sales.salse-invoice-pdf';
 
         if ($useSmallInvoice) {
-            $pdf = make_thermal_invoice_pdf($viewName, $pdfData, $orderItems, 226.77);
+            $widthPt = (($inv['paper_size'] ?? '3inch') === '2inch') ? 144.0 : 226.77;
+            $pdf = make_thermal_invoice_pdf($viewName, $pdfData, $orderItems, $widthPt);
         } else {
             $pdf = PDF::loadView($viewName, $pdfData);
             $pdf->setPaper('A4', 'portrait');
@@ -790,10 +794,13 @@ class SalesController extends Controller
             ->sum('payment_amount');
         $pendingAmount = $sales->remaining_amount ?? 0;
 
+        $inv = function_exists('invoice_custom') ? invoice_custom($setting) : [];
+
         $pdfData = [
             'view_id'                => $view_id,
             'sales'                  => $sales,
             'setting'                => $setting,
+            'inv'                    => $inv,
             'orderItems'             => $orderItems,
             'customer'               => $customer,
             'subtotal'               => $formatCurrency($subtotal),
@@ -809,7 +816,8 @@ class SalesController extends Controller
             'tableNo'                => $tableNo,
         ];
 
-        $pdf = make_thermal_invoice_pdf('sales.salse-invoice-small-pdf', $pdfData, $orderItems, 226.77);
+        $widthPt = (($inv['paper_size'] ?? '3inch') === '2inch') ? 144.0 : 226.77;
+        $pdf = make_thermal_invoice_pdf('sales.salse-invoice-small-pdf', $pdfData, $orderItems, $widthPt);
         return $pdf->stream('table-bill-' . $view_id . '.pdf');
     }
 

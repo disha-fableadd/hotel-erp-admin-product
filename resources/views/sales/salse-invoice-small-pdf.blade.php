@@ -393,14 +393,47 @@
     }
 
     $fssaiNo = $setting->cin_no ?? ($setting->fssai_no ?? '');
+    $inv = (isset($inv) && is_array($inv)) ? $inv : (function_exists('invoice_custom') ? invoice_custom($setting) : []);
+    $invOn = function (string $key, $default = true) use ($inv) {
+        return array_key_exists($key, $inv) ? !empty($inv[$key]) : (bool) $default;
+    };
+    $logoScale = max(0.5, min(2, (float) ($inv['logo_size'] ?? 1)));
+    $logoMaxH = (int) round(42 * $logoScale);
+    $logoMaxW = (int) round(140 * $logoScale);
+    $custPhone = trim((string) ($customer['phone'] ?? ($sales->customer_phone ?? '')));
+    $custAddr = trim((string) ($customer['address'] ?? ''));
+    $showLogo = $invOn('show_logo', true);
+    $showCompany = $invOn('show_company_name', true);
+    $showShopGst = $invOn('show_shop_gst', true);
+    $showShopAddr = $invOn('show_shop_address', false);
+    $showShopPhone = $invOn('show_shop_phone', true);
+    $showFssai = $invOn('show_fssai', false);
+    $showCustName = $invOn('show_customer_name', true);
+    $showCustPhone = $invOn('show_customer_phone', true);
+    $showCustAddr = $invOn('show_customer_address', true);
+    $showSerial = $invOn('show_serial', true);
+    $showQty = $invOn('show_item_qty', true);
+    $showSp = $invOn('show_item_sp', true);
+    $showItemTotal = $invOn('show_item_total', true);
+    $showTotalQty = $invOn('show_total_item_count', true);
+    $showPayMode = $invOn('show_payment_mode', true);
+    $showReceived = $invOn('show_received', true);
+    $showBalance = $invOn('show_balance', true);
+    $showUpiQr = $invOn('show_upi_qr', true);
+    $showTaxDetails = $invOn('show_tax_details', true); // hotel bills show GST by default
+    $dp = max(0, min(4, (int) ($inv['decimal_places'] ?? 2)));
+    $fontPx = max(6, min(14, (int) ($inv['font_size'] ?? 8)));
 @endphp
+<style>
+    body { font-size: {{ $fontPx }}px !important; }
+</style>
 
     <div class="header-section">
-        @if (!empty($logoBase64))
+        @if ($showLogo && !empty($logoBase64))
             <div style="margin-bottom: 2px;">
-                <img src="{{ $logoBase64 }}" style="max-height: 42px; max-width: 140px; display: inline-block;" alt="Logo">
+                <img src="{{ $logoBase64 }}" style="max-height: {{ $logoMaxH }}px; max-width: {{ $logoMaxW }}px; display: inline-block;" alt="Logo">
             </div>
-        @else
+        @elseif ($showLogo)
             <div>
                 <img src="{{ $forkKnifeIconDataUri }}" class="restaurant-icon" alt="Restaurant">
             </div>
@@ -408,25 +441,36 @@
             <div class="restaurant-tagline">Food &amp; Drinks</div>
         @endif
 
-        <div class="shop-name">{{ $setting->name ?? 'ABC CAFE & RESTRO' }}</div>
-        @if (!empty($setting->gst_num))
+        @if ($showCompany)
+            <div class="shop-name">{{ $setting->name ?? 'ABC CAFE & RESTRO' }}</div>
+        @endif
+        @if ($showShopGst && !empty($setting->gst_num))
             <div class="shop-gst">{{ $setting->gst_num }}</div>
         @endif
-        @if (!empty($setting->address))
+        @if ($showShopAddr && !empty($setting->address))
             <div class="shop-address">{!! nl2br(e($setting->address)) !!}</div>
         @endif
-        @if (!empty($setting->phone))
+        @if ($showShopPhone && !empty($setting->phone))
             <div class="shop-phone">Ph: {{ $setting->phone }}</div>
         @endif
     </div>
 
     <div class="divider"></div>
 
-    <div class="customer-row">
-        Name: {{ $custName !== '' ? $custName : '' }}
-    </div>
-
-    <div class="divider"></div>
+    @if ($showCustName || $showCustPhone || $showCustAddr)
+        @if ($showCustName)
+            <div class="customer-row">
+                Name: {{ $custName !== '' ? $custName : '' }}
+            </div>
+        @endif
+        @if ($showCustPhone && $custPhone !== '')
+            <div class="customer-row">Phone: {{ $custPhone }}</div>
+        @endif
+        @if ($showCustAddr && $custAddr !== '')
+            <div class="customer-row">Address: {{ $custAddr }}</div>
+        @endif
+        <div class="divider"></div>
+    @endif
 
     <table class="meta-table">
         <tr>
@@ -444,27 +488,31 @@
     <table class="item-table">
         <thead>
             <tr>
-                <th class="c-no">No.</th>
+                @if ($showSerial)<th class="c-no">No.</th>@endif
                 <th class="c-item">Item</th>
-                <th class="c-qty">Qty.</th>
-                <th class="c-price">Price</th>
-                <th class="c-amt">Amount</th>
+                @if ($showQty)<th class="c-qty">Qty.</th>@endif
+                @if ($showSp)<th class="c-price">{{ $inv['sp_column_label'] ?? 'Price' }}</th>@endif
+                @if ($showItemTotal)<th class="c-amt">Amount</th>@endif
             </tr>
         </thead>
         <tbody>
             @foreach ($orderItems as $index => $item)
                 @php
                     $qty = (float) $item->quantity;
-                    $qtyLabel = fmod($qty, 1.0) == 0.0 ? number_format($qty, 0) : number_format($qty, 2);
+                    $qtyLabel = fmod($qty, 1.0) == 0.0 ? number_format($qty, 0) : number_format($qty, $dp);
                     $pName = $item->product->name ?? 'Product';
+                    if (!empty($inv['truncate_product_names']) && mb_strlen($pName) > 22) {
+                        $pName = mb_substr($pName, 0, 22) . '…';
+                    }
                     $variantLabel = method_exists($item, 'variantLabel') ? $item->variantLabel() : (optional($item->variant)->name ?? null);
                     $addonLabels = method_exists($item, 'addonLines') ? $item->addonLines() : [];
                     $price = (float) ($item->unit_price ?? $item->price);
                     $lineTotal = (float) ($item->total_amount ?? ($price * $qty));
                     $unit = $item->quantityType->name ?? ($item->product->unit->short_name ?? ($item->product->unit ?? ''));
+                    $showUnit = $invOn('show_unit', true);
                 @endphp
                 <tr>
-                    <td class="c-no">{{ $index + 1 }}</td>
+                    @if ($showSerial)<td class="c-no">{{ $index + 1 }}</td>@endif
                     <td class="c-item">
                         <div class="item-name">{{ $pName }}</div>
                         @if (!empty($variantLabel))
@@ -473,31 +521,31 @@
                         @if (!empty($addonLabels))
                             <div class="item-extra">+ {{ implode(', ', $addonLabels) }}</div>
                         @endif
-                        @if (!empty($unit) && !in_array(strtolower($unit), ['pcs', 'piece', 'pieces']))
+                        @if ($showUnit && !empty($unit) && !in_array(strtolower($unit), ['pcs', 'piece', 'pieces']))
                             <div class="item-extra">({{ $unit }})</div>
                         @endif
                     </td>
-                    <td class="c-qty">{{ $qtyLabel }}</td>
-                    <td class="c-price">{{ number_format($price, 2) }}</td>
-                    <td class="c-amt">{{ number_format($lineTotal, 2) }}</td>
+                    @if ($showQty)<td class="c-qty">{{ $qtyLabel }}</td>@endif
+                    @if ($showSp)<td class="c-price">{{ number_format($price, $dp) }}</td>@endif
+                    @if ($showItemTotal)<td class="c-amt">{{ number_format($lineTotal, $dp) }}</td>@endif
                 </tr>
             @endforeach
             @if (isset($labourItems) && count($labourItems) > 0)
                 @foreach ($labourItems as $lIndex => $labour)
                     @php
                         $lQty = (float) $labour->qty;
-                        $lQtyLabel = fmod($lQty, 1.0) == 0.0 ? number_format($lQty, 0) : number_format($lQty, 2);
+                        $lQtyLabel = fmod($lQty, 1.0) == 0.0 ? number_format($lQty, 0) : number_format($lQty, $dp);
                         $lPrice = (float) $labour->price;
                         $lAmt = $lPrice * $lQty;
                     @endphp
                     <tr>
-                        <td class="c-no">{{ count($orderItems) + $lIndex + 1 }}</td>
+                        @if ($showSerial)<td class="c-no">{{ count($orderItems) + $lIndex + 1 }}</td>@endif
                         <td class="c-item">
                             <div class="item-name">{{ $labour->labourItem->item_name ?? 'Labour' }}</div>
                         </td>
-                        <td class="c-qty">{{ $lQtyLabel }}</td>
-                        <td class="c-price">{{ number_format($lPrice, 2) }}</td>
-                        <td class="c-amt">{{ number_format($lAmt, 2) }}</td>
+                        @if ($showQty)<td class="c-qty">{{ $lQtyLabel }}</td>@endif
+                        @if ($showSp)<td class="c-price">{{ number_format($lPrice, $dp) }}</td>@endif
+                        @if ($showItemTotal)<td class="c-amt">{{ number_format($lAmt, $dp) }}</td>@endif
                     </tr>
                 @endforeach
             @endif
@@ -508,18 +556,18 @@
 
     <table class="totals-table">
         <tr>
-            <td class="t-left">Total Qty: {{ $totalQtyFormatted }}</td>
+            <td class="t-left">@if ($showTotalQty)Total Qty: {{ $totalQtyFormatted }}@endif</td>
             <td class="t-mid">Sub Total</td>
-            <td class="t-right">{{ number_format($subTotal + $labourTotal, 2) }}</td>
+            <td class="t-right">{{ number_format($subTotal + $labourTotal, $dp) }}</td>
         </tr>
         @if ($totalDiscount > 0)
             <tr>
                 <td class="t-left"></td>
                 <td class="t-mid">Discount @if($discountPercent > 0)({{ rtrim(rtrim(number_format($discountPercent, 2), '0'), '.') }}%)@endif</td>
-                <td class="t-right">-{{ number_format($totalDiscount, 2) }}</td>
+                <td class="t-right">-{{ number_format($totalDiscount, $dp) }}</td>
             </tr>
         @endif
-        @if (!empty($taxDetails1) && count($taxDetails1) > 0)
+        @if ($showTaxDetails && !empty($taxDetails1) && count($taxDetails1) > 0)
             @foreach ($taxDetails1 as $tax)
                 @php
                     $tRate = !empty($tax['rate']) ? (rtrim(rtrim(number_format((float)$tax['rate'], 2), '0'), '.') . '%') : '';
@@ -527,21 +575,21 @@
                 <tr>
                     <td class="t-left"></td>
                     <td class="t-mid">{{ $tax['name'] ?? 'GST' }} &nbsp; {{ $tRate }}</td>
-                    <td class="t-right">{{ number_format((float)($tax['amount'] ?? 0), 2) }}</td>
+                    <td class="t-right">{{ number_format((float)($tax['amount'] ?? 0), $dp) }}</td>
                 </tr>
             @endforeach
-        @elseif ($totalGst > 0)
+        @elseif ($showTaxDetails && $totalGst > 0)
             <tr>
                 <td class="t-left"></td>
                 <td class="t-mid">GST</td>
-                <td class="t-right">{{ number_format($totalGst, 2) }}</td>
+                <td class="t-right">{{ number_format($totalGst, $dp) }}</td>
             </tr>
         @endif
         @if ($shippingCharge > 0)
             <tr>
                 <td class="t-left"></td>
                 <td class="t-mid">Shipping</td>
-                <td class="t-right">{{ number_format($shippingCharge, 2) }}</td>
+                <td class="t-right">{{ number_format($shippingCharge, $dp) }}</td>
             </tr>
         @endif
     </table>
@@ -551,27 +599,27 @@
     <table class="grand-total-table">
         <tr>
             <td style="width: 50%; text-align: right;">Grand Total</td>
-            <td style="width: 50%; text-align: right;">{{ $currencySymbol }} {{ number_format($grandTotal, 2) }}</td>
+            <td style="width: 50%; text-align: right;">{{ $currencySymbol }} {{ number_format($grandTotal, $dp) }}</td>
         </tr>
     </table>
 
     <div class="double-divider"></div>
 
-    @if ($paidAmount > 0 || $pendingAmount > 0 || !empty($payMode))
+    @if (($showReceived && $paidAmount > 0) || ($showBalance && $pendingAmount > 0) || ($showPayMode && !empty($payMode)))
         <table class="pay-summary-table">
-            @if ($paidAmount > 0)
+            @if ($showReceived && $paidAmount > 0)
                 <tr>
                     <td style="text-align: left;">Paid:</td>
-                    <td style="text-align: right;">{{ $currencySymbol }} {{ number_format($paidAmount, 2) }}</td>
+                    <td style="text-align: right;">{{ $currencySymbol }} {{ number_format($paidAmount, $dp) }}</td>
                 </tr>
             @endif
-            @if ($pendingAmount > 0)
+            @if ($showBalance && $pendingAmount > 0)
                 <tr>
                     <td style="text-align: left;">Balance Due:</td>
-                    <td style="text-align: right;">{{ $currencySymbol }} {{ number_format($pendingAmount, 2) }}</td>
+                    <td style="text-align: right;">{{ $currencySymbol }} {{ number_format($pendingAmount, $dp) }}</td>
                 </tr>
             @endif
-            @if (!empty($payMode))
+            @if ($showPayMode && !empty($payMode))
                 <tr>
                     <td style="text-align: left;">Payment Mode:</td>
                     <td style="text-align: right;">{{ $payMode }}</td>
@@ -581,13 +629,13 @@
         <div class="divider"></div>
     @endif
 
-    @if (!empty($fssaiNo))
+    @if ($showFssai && !empty($fssaiNo))
         <div class="fssai-row">
             FSSAI Lic No. {{ $fssaiNo }}
         </div>
     @endif
 
-    @if (!empty($qrBase64))
+    @if ($showUpiQr && !empty($qrBase64))
         <div class="qr-section">
             <div class="qr-title">Scan QR to Pay Bill:</div>
             <img src="{{ $qrBase64 }}" alt="QR Code">

@@ -66,8 +66,14 @@ class Setting extends Model
         'send_mail',
         'customer_whatsapp_message',
         'admin_whatsapp_message',
+        'invoice_size',
+        'invoice_customization',
         'created_at',
         'updated_at',
+    ];
+
+    protected $casts = [
+        'invoice_customization' => 'array',
     ];
 
     // Automatically append extra fields

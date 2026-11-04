@@ -829,7 +829,9 @@
                         $canFieldCustomization = in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']) && tenant_has_sub_module(['Field Customization', 'field-customization'], ['Settings', 'General Settings']);
                         $canSmtpSettings = tenant_has_sub_module(['Smtp Settings', 'smtp-settings'], ['Settings', 'General Settings']) && (!$settings || $settings->send_mail);
                         $canWhatsAppConfig = tenant_has_sub_module(['WhatsApp Configuration', 'whatsapp-configuration'], ['Settings', 'General Settings']) && (!$settings || $settings->customer_whatsapp_message || $settings->admin_whatsapp_message);
-                        $canCustomizeInvoice = tenant_has_sub_module(['Customize Invoice', 'customize-invoice'], ['Settings', 'General Settings']);
+                        $canCustomizeInvoice = tenant_has_sub_module(['Customize Invoice', 'customize-invoice'], ['Settings', 'General Settings'])
+                            || (tenant_has_module(['General Settings', 'Settings']) && app('hasPermission')(14, 'view'))
+                            || in_array(auth()->user()->role ?? '', ['admin', 'sub-admin']);
                         $canTaxRates = (tenant_has_module(['Tax Rates', 'Tax']) && app('hasPermission')(15, 'view')) || tenant_has_sub_module(['Tax Rates', 'tax-rates'], ['Settings', 'General Settings']);
                         $canDepartments = can_access_module(['Departments', 'Department'], ['Departments', 'departments'], ['Settings', 'HR', 'General Settings'], 14, 'view');
                         $canDesignations = can_access_module(['Designations', 'Designation'], ['Designations', 'designations'], ['Settings', 'HR', 'General Settings'], 14, 'view');
