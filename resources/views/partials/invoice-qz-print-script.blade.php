@@ -2681,17 +2681,55 @@
                 }
             })();
 
+            // QZ Tray downloads flavor:'file' without browser cookies → often HTML/login → "Cannot parse as PDF".
+            // Fetch with session cookies here, then send base64 to QZ.
+            function fetchPdfAsBase64(url) {
+                return fetch(url, {
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    headers: { 'Accept': 'application/pdf' }
+                }).then(function(res) {
+                    if (!res.ok) {
+                        throw new Error('Invoice download failed (HTTP ' + res.status + ')');
+                    }
+                    return res.arrayBuffer().then(function(buf) {
+                        var bytes = new Uint8Array(buf);
+                        if (!bytes.length) {
+                            throw new Error('Empty invoice PDF');
+                        }
+                        var head = '';
+                        for (var h = 0; h < Math.min(5, bytes.length); h++) {
+                            head += String.fromCharCode(bytes[h]);
+                        }
+                        if (head.indexOf('%PDF') !== 0) {
+                            throw new Error('Server did not return a PDF. Re-login and try again.');
+                        }
+                        var binary = '';
+                        var chunk = 0x8000;
+                        for (var i = 0; i < bytes.length; i += chunk) {
+                            binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.length)));
+                        }
+                        return btoa(binary);
+                    });
+                });
+            }
+
             return ensureConnected()
                 .then(function() {
                     try {
                         localStorage.setItem(storageKey, printerName);
                         localStorage.setItem('posThermalAutoCut', doAutoCut ? '1' : '0');
                     } catch (e) {}
+                    setStatus($status, 'Loading invoice…', false);
+                    return fetchPdfAsBase64(usbPdfUrl);
+                })
+                .then(function(b64) {
+                    setStatus($status, 'Printing…', false);
                     return qz.print(config, [{
                         type: 'pixel',
                         format: 'pdf',
-                        flavor: 'file',
-                        data: usbPdfUrl
+                        flavor: 'base64',
+                        data: b64
                     }]);
                 })
                 .then(function() {

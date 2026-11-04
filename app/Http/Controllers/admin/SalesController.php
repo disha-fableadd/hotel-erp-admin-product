@@ -689,7 +689,16 @@ class SalesController extends Controller
             $pdf = PDF::loadView($viewName, $pdfData);
             $pdf->setPaper('A4', 'portrait');
         }
-        return $pdf->stream('invoice_' . $view_id . '.pdf');
+
+        // Return raw PDF bytes with explicit headers (QZ / Bluetooth need a real PDF, not HTML).
+        $filename = 'invoice_' . $view_id . '.pdf';
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Cache-Control' => 'private, no-store, no-cache, must-revalidate',
+            'Pragma' => 'no-cache',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
 
