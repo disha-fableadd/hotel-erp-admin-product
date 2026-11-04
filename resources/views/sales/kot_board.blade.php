@@ -51,7 +51,32 @@
     .kot-actions { display: flex; gap: 8px; }
     .kot-actions .btn { font-size: 12px; font-weight: 600; }
     .kot-empty { background: #fff; border: 1px dashed #e2e8f0; border-radius: 12px; padding: 28px; text-align: center; color: #64748b; }
+    .kot-date-wrap {
+        display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .kot-date-wrap input[type="date"] {
+        border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 10px;
+        font-size: 13px; font-weight: 600; color: #334155; background: #fff;
+        min-height: 34px;
+    }
+    .kot-date-wrap input[type="date"]:focus {
+        outline: none; border-color: #ff9f43; box-shadow: 0 0 0 3px rgba(255,159,67,.15);
+    }
 </style>
+@php
+    $kotQs = function (array $extra = []) use ($filterDate, $filterStation, $filterType) {
+        // Keep date=all when viewing all dates so type/station chips don't snap back to today
+        $dateParam = array_key_exists('date', $extra)
+            ? $extra['date']
+            : ($filterDate ?? 'all');
+        unset($extra['date']);
+        return array_filter(array_merge([
+            'date' => $dateParam,
+            'station' => $filterStation,
+            'order_type' => $filterType,
+        ], $extra), fn ($v) => $v !== null && $v !== '');
+    };
+@endphp
 <div class="content kot-board">
     <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div class="page-title">
@@ -60,14 +85,38 @@
         <a href="{{ route('tables.create') }}" class="btn btn-sm" style="background:#ff9f43;color:#fff;">Tables</a>
     </div>
 
+    {{-- Date filter (defaults to today) --}}
+    <div class="kot-filters">
+        <span class="kot-filter-label">Date</span>
+        <form method="get" action="{{ route('kot.board') }}" class="kot-date-wrap" id="kotDateFilterForm">
+            @if(!empty($filterType))
+                <input type="hidden" name="order_type" value="{{ $filterType }}">
+            @endif
+            @if(!empty($filterStation))
+                <input type="hidden" name="station" value="{{ $filterStation }}">
+            @endif
+            <input type="date" name="date" id="kotFilterDate"
+                   value="{{ $filterDate ?? $todayDate }}"
+                   max="{{ $todayDate }}">
+            <button type="submit" class="kot-chip active" style="border:none;cursor:pointer;">
+                <i class="fa fa-calendar-day"></i> Apply
+            </button>
+            @if(($filterDate ?? '') !== ($todayDate ?? ''))
+                <a class="kot-chip" href="{{ route('kot.board', $kotQs(['date' => $todayDate])) }}">Today</a>
+            @endif
+            <a class="kot-chip {{ $filterDate === null ? 'active' : '' }}"
+               href="{{ route('kot.board', $kotQs(['date' => 'all'])) }}">All dates</a>
+        </form>
+    </div>
+
     {{-- Order type filters --}}
     <div class="kot-filters">
         <span class="kot-filter-label">Type</span>
         <a class="kot-chip {{ empty($filterType) ? 'active' : '' }}"
-           href="{{ route('kot.board', array_filter(['station' => $filterStation])) }}">All</a>
+           href="{{ route('kot.board', $kotQs(['order_type' => null])) }}">All</a>
         @foreach($orderTypeOptions as $key => $label)
             <a class="kot-chip {{ ($filterType ?? '') === $key ? 'active' : '' }}"
-               href="{{ route('kot.board', array_filter(['order_type' => $key, 'station' => $filterStation])) }}">
+               href="{{ route('kot.board', $kotQs(['order_type' => $key])) }}">
                 @if($key === 'dine_in') <i class="fa fa-utensils"></i>
                 @elseif($key === 'takeaway') <i class="fa fa-bag-shopping"></i>
                 @elseif($key === 'self_pickup') <i class="fa fa-hand-holding"></i>
@@ -82,15 +131,18 @@
     <div class="kot-filters">
         <span class="kot-filter-label">Station</span>
         <a class="kot-chip {{ empty($filterStation) ? 'active' : '' }}"
-           href="{{ route('kot.board', array_filter(['order_type' => $filterType])) }}">All stations</a>
+           href="{{ route('kot.board', $kotQs(['station' => null])) }}">All stations</a>
         @foreach($stations as $st)
             <a class="kot-chip {{ $filterStation === $st ? 'active' : '' }}"
-               href="{{ route('kot.board', array_filter(['station' => $st, 'order_type' => $filterType])) }}">{{ $st }}</a>
+               href="{{ route('kot.board', $kotQs(['station' => $st])) }}">{{ $st }}</a>
         @endforeach
     </div>
 
     @if($tickets->isEmpty())
-        <div class="kot-empty">No open kitchen tickets right now.</div>
+        <div class="kot-empty">
+            No kitchen tickets for
+            {{ $filterDate ? \Carbon\Carbon::parse($filterDate)->format('d M Y') : 'all dates' }}.
+        </div>
     @else
         <div class="kot-grid">
             @foreach($tickets as $ticket)
@@ -151,6 +203,10 @@
 @include('partials.kot-print-modal-script')
 <script>
 (function ($) {
+    $(document).on('change', '#kotFilterDate', function () {
+        $('#kotDateFilterForm').trigger('submit');
+    });
+
     $(document).on('click', '.js-kot-board-print', function () {
         var orderId = $(this).data('order-id');
         var station = $(this).data('station') || '';

@@ -76,9 +76,12 @@
 
 <script>
     $(document).ready(function () {
-        setTimeout(function () {
-            $('#global-loader').fadeOut('fast');
-        }, 800);
+        // Hide global loader immediately (no artificial delay)
+        if (typeof window.hideGlobalLoader === 'function') {
+            window.hideGlobalLoader();
+        } else {
+            $('#global-loader').stop(true, true).hide().addClass('is-hidden');
+        }
         var $sidebarMenu = $('#sidebar-menu');
         var $searchInput = $('#sidebar-module-search');
 

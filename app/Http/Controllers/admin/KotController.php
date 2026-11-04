@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Setting;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -38,7 +39,19 @@ class KotController extends Controller
         $filterStation = $request->get('station');
         $filterType = $request->get('order_type');
 
-        $allTickets = $this->buildTickets($branchId);
+        // Default: today (Asia/Kolkata). Pass date=all to see every open ticket.
+        $today = Carbon::now('Asia/Kolkata')->toDateString();
+        $rawDate = $request->get('date', $today);
+        $filterDate = null;
+        if ($rawDate !== null && strtolower((string) $rawDate) !== 'all' && trim((string) $rawDate) !== '') {
+            try {
+                $filterDate = Carbon::parse($rawDate, 'Asia/Kolkata')->toDateString();
+            } catch (\Throwable $e) {
+                $filterDate = $today;
+            }
+        }
+
+        $allTickets = $this->buildTickets($branchId, null, $filterDate);
         $tickets = $allTickets
             ->when($filterStation, fn ($c) => $c->filter(
                 fn ($t) => strcasecmp($t['station'], $filterStation) === 0
@@ -46,6 +59,9 @@ class KotController extends Controller
             ->when($filterType, fn ($c) => $c->filter(
                 fn ($t) => ($t['service_key'] ?? '') === $this->normalizeServiceKey($filterType)
             )->values());
+
+        // Stations for chips: from today's (or selected date) tickets
+        $stations = $allTickets->pluck('station')->unique()->sort()->values();
 
         $orderTypeOptions = [
             'dine_in' => 'Dine In',
@@ -56,11 +72,13 @@ class KotController extends Controller
 
         return view('sales.kot_board', [
             'tickets' => $tickets,
-            'stations' => $allTickets->pluck('station')->unique()->sort()->values(),
+            'stations' => $stations,
             'orderTypeOptions' => $orderTypeOptions,
             'currency_symbol' => $setting->currency_symbol ?? '₹',
             'filterStation' => $filterStation,
             'filterType' => $filterType ? $this->normalizeServiceKey($filterType) : null,
+            'filterDate' => $filterDate,
+            'todayDate' => $today,
         ]);
     }
 
@@ -333,7 +351,7 @@ class KotController extends Controller
         ];
     }
 
-    protected function buildTickets($branchId, $filterStation = null)
+    protected function buildTickets($branchId, $filterStation = null, $filterDate = null)
     {
         $orders = Order::with(['order_items.product', 'order_items.variant', 'tableNo'])
             ->where('isDeleted', 0)
@@ -342,8 +360,15 @@ class KotController extends Controller
                 $q->where('table_status', 1)
                     ->orWhereIn('payment_status', ['pending', 'partial', 'partially_paid']);
             })
+            ->when($filterDate, function ($q) use ($filterDate) {
+                // Orders store created_at in Asia/Kolkata wall time
+                $q->whereBetween('created_at', [
+                    $filterDate . ' 00:00:00',
+                    $filterDate . ' 23:59:59',
+                ]);
+            })
             ->orderByDesc('id')
-            ->limit(80)
+            ->limit(60)
             ->get();
 
         $rows = collect();

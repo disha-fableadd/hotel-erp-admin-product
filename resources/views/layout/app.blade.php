@@ -84,6 +84,40 @@
     <div id="global-loader">
         <div class="whirly-loader"></div>
     </div>
+    <style>
+        /* Fast dismiss — avoid long full-screen block */
+        #global-loader.is-hidden,
+        #global-loader.hidden {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            opacity: 0 !important;
+        }
+        #global-loader {
+            transition: opacity .12s ease;
+        }
+    </style>
+    <script>
+        (function () {
+            var hidden = false;
+            window.hideGlobalLoader = function () {
+                if (hidden) return;
+                hidden = true;
+                var el = document.getElementById('global-loader');
+                if (!el) return;
+                el.classList.add('is-hidden');
+                el.style.display = 'none';
+            };
+            // Hide as soon as DOM is interactive (don't wait for images / slow JS)
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', window.hideGlobalLoader);
+            } else {
+                window.hideGlobalLoader();
+            }
+            // Safety: never stick longer than 1.2s even if scripts hang
+            setTimeout(window.hideGlobalLoader, 1200);
+        })();
+    </script>
 
     <div class="main-wrapper" style="flex: 1;">
         @include('layout.header')
