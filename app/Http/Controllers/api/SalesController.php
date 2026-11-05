@@ -93,7 +93,12 @@ class SalesController extends Controller
     {
         $status = strtolower(trim((string) $status));
 
-        return in_array($status, [Table_no::STATUS_BLANK, Table_no::STATUS_RUNNING, Table_no::STATUS_RESERVED], true)
+        return in_array($status, [
+            Table_no::STATUS_BLANK,
+            Table_no::STATUS_RUNNING,
+            Table_no::STATUS_RESERVED,
+            Table_no::STATUS_PRINTED,
+        ], true)
             ? $status
             : Table_no::STATUS_BLANK;
     }
@@ -103,6 +108,7 @@ class SalesController extends Controller
         return match ($this->normalizeTableStatus($status)) {
             Table_no::STATUS_RUNNING => 'running-table',
             Table_no::STATUS_RESERVED => 'reserved-table',
+            Table_no::STATUS_PRINTED => 'printed-table',
             default => 'blank-table',
         };
     }
@@ -116,24 +122,75 @@ class SalesController extends Controller
             ];
         }
 
-        $activeOrderId = Order::where('table_no', $tableId)
+        $activeOrder = Order::where('table_no', $tableId)
             ->where('isDeleted', 0)
             ->where('table_status', 1)
             ->orderByDesc('id')
-            ->value('id');
+            ->first(['id', 'bill_printed', 'payment_status', 'remaining_amount']);
 
-        $status = $activeOrderId ? Table_no::STATUS_RUNNING : Table_no::STATUS_BLANK;
+        $activeOrderId = $activeOrder?->id;
 
-        Table_no::where('id', $tableId)->update([
-            'status' => $status,
-            'table_status' => $status === Table_no::STATUS_RUNNING ? 1 : 0,
+        if (! $activeOrderId) {
+            $status = Table_no::STATUS_BLANK;
+        } elseif (! empty($activeOrder->bill_printed)) {
+            // Bill printed / awaiting settlement → yellow (Petpooja-style)
+            $status = Table_no::STATUS_PRINTED;
+        } else {
+            $status = Table_no::STATUS_RUNNING;
+        }
+
+        $payload = [
+            'table_status' => Table_no::statusToInt($status),
             'order_id' => $activeOrderId,
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('table_no', 'status')) {
+            $payload['status'] = $status;
+        }
+
+        Table_no::where('id', $tableId)->update($payload);
 
         return [
             'status' => $status,
             'class' => $this->tableStatusClass($status),
+            'order_id' => $activeOrderId,
+            'bill_total' => $activeOrderId
+                ? (float) Order::where('id', $activeOrderId)->value('total_amount')
+                : null,
         ];
+    }
+
+    /**
+     * Mark dine-in customer bill as printed → table turns yellow until settled / items change.
+     */
+    public function markBillPrinted(Request $request, $id)
+    {
+        $order = Order::find($id);
+        if (! $order || (int) ($order->isDeleted ?? 0) === 1) {
+            return response()->json(['status' => false, 'message' => 'Order not found'], 404);
+        }
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
+            $order->bill_printed = 1;
+            // Keep table order active while awaiting settlement
+            if (! empty($order->table_no)) {
+                $order->table_status = 1;
+            }
+            $order->save();
+        }
+
+        $tableSync = ['status' => null, 'class' => null, 'order_id' => null, 'bill_total' => null];
+        if (! empty($order->table_no)) {
+            $tableSync = $this->syncTableStatus((int) $order->table_no);
+        }
+
+        return response()->json([
+            'status' => true,
+            'order_id' => $order->id,
+            'table_id' => $order->table_no,
+            'table_status' => $tableSync['status'] ?? null,
+            'table_status_class' => $tableSync['class'] ?? null,
+            'total_amount' => $order->total_amount,
+        ]);
     }
 
     // public function getAllSales(Request $request)
@@ -1381,6 +1438,7 @@ class SalesController extends Controller
             }
 
             $isCheckout = ($request->table_checkout ?? '') === 'checkout';
+            $fullySettled = $isCheckout && $payment_status === 'completed' && (float) $remain <= 0;
 
             // Update order
             $orderUpdate = [
@@ -1394,9 +1452,13 @@ class SalesController extends Controller
                 'payment_status' => $payment_status,
                 'table_no' => $request->table_id ?? null,
                 'type' => $request->table_type ?? 'dinein',
-                // Mark the order inactive only when the table is checked out.
-                'table_status' => $isCheckout ? 0 : 1,
+                // Free table only when checkout is fully paid; otherwise keep active (bill-in-progress = yellow).
+                'table_status' => $fullySettled ? 0 : 1,
             ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
+                // Checkout / print bill → yellow; adding items again → green occupied
+                $orderUpdate['bill_printed'] = $isCheckout ? 1 : 0;
+            }
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'tax_breakdown')) {
                 $orderUpdate['tax_breakdown'] = $money['tax_breakdown'] ?? [];
             }
@@ -1516,19 +1578,11 @@ class SalesController extends Controller
                 $order->save();
             }
 
-            // Update table status (dine-in only)
-            if (!empty($request->table_id) && is_numeric($request->table_id)) {
-                $this->syncTableStatus((int) $request->table_id);
-            }
-
             // Delete old payment entries
             PaymentStore::where('order_id', $order->id)->delete();
 
             // Insert updated payment entries
             if ($isCheckout) {
-                if (!empty($request->table_id) && is_numeric($request->table_id)) {
-                    $this->syncTableStatus((int) $request->table_id);
-                }
                 $paymentType = $request->paid_type ?? (($request->payment_method === 'cash+online') ? 'partially' : 'fully');
                 if ($request->payment_method != 'pending') {
 
@@ -1583,6 +1637,12 @@ class SalesController extends Controller
                 }
             }
 
+            // Sync floor map colour (green occupied / yellow bill printed / blank free)
+            $tableSync = ['status' => null, 'class' => null];
+            if (! empty($request->table_id) && is_numeric($request->table_id)) {
+                $tableSync = $this->syncTableStatus((int) $request->table_id);
+            }
+
             DB::commit();
 
             try {
@@ -1597,8 +1657,8 @@ class SalesController extends Controller
                 'order_id' => $order->id,
                 'total_amount' => $order->total_amount,
                 'table_id' => $request->table_id ?? null,
-                'table_status' => !empty($request->table_id) ? ($isCheckout ? Table_no::STATUS_BLANK : Table_no::STATUS_RUNNING) : null,
-                'table_status_class' => !empty($request->table_id) ? ($isCheckout ? 'blank-table' : 'running-table') : null,
+                'table_status' => $tableSync['status'] ?? null,
+                'table_status_class' => $tableSync['class'] ?? null,
             ]);
 
         } catch (\Exception $e) {
@@ -1841,12 +1901,19 @@ class SalesController extends Controller
         $orderItemModels = OrderItem::where('order_id', $id)
             ->with(['product.tax', 'quantityType', 'variant'])
             ->get();
-        $money = $this->posPricing()->calculateFromOrderItems(
-            $orderItemModels,
-            (float) ($sales->discount ?? 0),
-            $withGst,
-            $this->gstOptionsFromOrder($sales)
-        );
+        $frozenBreakdown = is_array($sales->tax_breakdown ?? null) ? $sales->tax_breakdown : [];
+        if (! empty($frozenBreakdown)) {
+            $money = [
+                'tax_breakdown' => PosPricingService::expandCgstSgstBreakdown($frozenBreakdown),
+            ];
+        } else {
+            $money = $this->posPricing()->calculateFromOrderItems(
+                $orderItemModels,
+                (float) ($sales->discount ?? 0),
+                $withGst,
+                $this->gstOptionsFromOrder($sales)
+            );
+        }
         $taxDetails = collect($money['tax_breakdown'] ?? [])->map(function ($row) {
             return [
                 'id' => $row['id'] ?? null,

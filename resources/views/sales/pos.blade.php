@@ -3140,33 +3140,69 @@
                         let totalTax = 0;
                         const gstOption = $("input[name='gst_option']:checked").val();
 
-                        // Reset all tax rows first — only show rates used by cart products
-                        $(".taxList").hide().each(function() {
+                        // Reset static tax-master rows; CGST/SGST rows are rendered dynamically
+                        $(".taxList").not('[data-tax-id="cgst"], [data-tax-id="sgst"], [data-dynamic-gst="1"]').hide().each(function() {
                             const taxEl = $(this).find(".tax-value");
                             taxEl.html(formatCurrency("0.00", taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
                         });
+                        $('.taxList[data-dynamic-gst="1"]').remove();
+
+                        function upsertSplitGstRow(key, label, amount) {
+                            let $row = $('.taxList[data-tax-id="' + key + '"]');
+                            if (!$row.length) {
+                                const $anchor = $(".setvalue").find(".taxList").first();
+                                const html = `<li class="taxList" data-tax-id="${key}" data-dynamic-gst="1">
+                                    <h5>${label}</h5>
+                                    <h6 class="tax-value" data-symbol="${currencySymbol}" data-position="${currencyPosition}">${formatCurrency("0.00", currencySymbol, currencyPosition)}</h6>
+                                </li>`;
+                                if ($anchor.length) {
+                                    $anchor.before(html);
+                                } else {
+                                    $(".setvalue").append(html);
+                                }
+                                $row = $('.taxList[data-tax-id="' + key + '"]');
+                            } else {
+                                $row.attr('data-dynamic-gst', '1');
+                                $row.find('h5').text(label);
+                            }
+                            const taxEl = $row.find(".tax-value");
+                            taxEl.html(formatCurrency(amount.toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
+                            $row.show();
+                        }
+
+                        function renderCgstSgstFromAgg(rateAmountMap) {
+                            // rateAmountMap: { "5": 34.95, "18": 100 }
+                            const splitAgg = {};
+                            Object.keys(rateAmountMap).forEach(function(rateKey) {
+                                const fullRate = parseFloat(rateKey) || 0;
+                                const amount = parseFloat(rateAmountMap[rateKey]) || 0;
+                                if (amount <= 0 && fullRate <= 0) return;
+                                const halfRate = Math.round((fullRate / 2) * 10000) / 10000;
+                                const cgstAmt = Math.round((amount / 2) * 100) / 100;
+                                const sgstAmt = Math.round((amount - cgstAmt) * 100) / 100;
+                                const hk = String(halfRate);
+                                if (!splitAgg[hk]) splitAgg[hk] = { rate: halfRate, cgst: 0, sgst: 0 };
+                                splitAgg[hk].cgst += cgstAmt;
+                                splitAgg[hk].sgst += sgstAmt;
+                            });
+                            Object.keys(splitAgg).forEach(function(hk) {
+                                const row = splitAgg[hk];
+                                const rateLabel = String(row.rate).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+                                upsertSplitGstRow('cgst-' + hk, 'CGST (' + rateLabel + '%)', row.cgst);
+                                upsertSplitGstRow('sgst-' + hk, 'SGST (' + rateLabel + '%)', row.sgst);
+                                totalTax += row.cgst + row.sgst;
+                            });
+                        }
 
                         if (gstOption === "with" && subtotal > 0) {
                             if (gstApplyMode === 'overall') {
                                 const rate = parseFloat(overallGstRate) || 0;
-                                totalTax = priceAfterDiscount * (rate / 100);
-                                let $overallRow = $('.taxList[data-tax-id="overall"]');
-                                if (!$overallRow.length) {
-                                    $(".setvalue").find(".taxList").first().before(
-                                        `<li class="taxList" data-tax-id="overall">
-                                            <h5>${overallGstName || 'GST'} (${rate}%) Tax</h5>
-                                            <h6 class="tax-value" data-symbol="${currencySymbol}" data-position="${currencyPosition}">${formatCurrency("0.00", currencySymbol, currencyPosition)}</h6>
-                                        </li>`
-                                    );
-                                    $overallRow = $('.taxList[data-tax-id="overall"]');
-                                } else {
-                                    $overallRow.find('h5').text((overallGstName || 'GST') + ' (' + rate + '%) Tax');
-                                }
-                                const taxEl = $overallRow.find(".tax-value");
-                                taxEl.html(formatCurrency(totalTax.toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
-                                $overallRow.show();
+                                const amount = priceAfterDiscount * (rate / 100);
+                                const rateMap = {};
+                                rateMap[String(rate)] = amount;
+                                renderCgstSgstFromAgg(rateMap);
                             } else {
-                                const taxAgg = {};
+                                const rateMap = {};
                                 selectedItems.forEach(function(item) {
                                     const taxId = item.tax_id || null;
                                     const taxRatePct = parseFloat(item.tax_rate);
@@ -3185,22 +3221,10 @@
                                     } else {
                                         lineTax = lineShare * (taxRatePct / 100);
                                     }
-                                    if (!taxAgg[taxId]) {
-                                        taxAgg[taxId] = { rate: taxRatePct, amount: 0 };
-                                    }
-                                    taxAgg[taxId].amount += lineTax;
+                                    const rk = String(taxRatePct);
+                                    rateMap[rk] = (rateMap[rk] || 0) + lineTax;
                                 });
-
-                                Object.keys(taxAgg).forEach(function(taxId) {
-                                    const amount = taxAgg[taxId].amount;
-                                    totalTax += amount;
-                                    const $row = $('.taxList[data-tax-id="' + taxId + '"]');
-                                    if ($row.length) {
-                                        const taxEl = $row.find(".tax-value");
-                                        taxEl.html(formatCurrency(amount.toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
-                                        $row.show();
-                                    }
-                                });
+                                renderCgstSgstFromAgg(rateMap);
                             }
                         } else {
                             totalTax = 0;

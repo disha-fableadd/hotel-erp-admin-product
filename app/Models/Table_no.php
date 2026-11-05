@@ -15,6 +15,8 @@ class Table_no extends Model
     public const STATUS_BLANK = 'blank';
     public const STATUS_RUNNING = 'running';
     public const STATUS_RESERVED = 'reserved';
+    /** Bill printed / awaiting settlement (Petpooja-style yellow) */
+    public const STATUS_PRINTED = 'printed';
 
     protected $fillable = [
         'table_name',
@@ -44,14 +46,25 @@ class Table_no extends Model
     {
         $status = strtolower(trim((string) ($this->status ?? '')));
 
-        if (in_array($status, [self::STATUS_BLANK, self::STATUS_RUNNING, self::STATUS_RESERVED], true)) {
+        if (in_array($status, [self::STATUS_BLANK, self::STATUS_RUNNING, self::STATUS_RESERVED, self::STATUS_PRINTED], true)) {
             return $status;
         }
 
         return match ((int) ($this->table_status ?? 0)) {
             1 => self::STATUS_RUNNING,
             2 => self::STATUS_RESERVED,
+            3 => self::STATUS_PRINTED,
             default => self::STATUS_BLANK,
+        };
+    }
+
+    public static function statusToInt(string $status): int
+    {
+        return match ($status) {
+            self::STATUS_RUNNING => 1,
+            self::STATUS_RESERVED => 2,
+            self::STATUS_PRINTED => 3,
+            default => 0,
         };
     }
 

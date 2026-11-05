@@ -387,7 +387,10 @@ class SalesController extends Controller
             'overall_gst_name' => 'GST',
         ];
         if (! empty($frozenBreakdown)) {
-            $money = ['tax_breakdown' => $frozenBreakdown, 'total' => (float) ($sales->total_amount ?? $totalAmount)];
+            $money = [
+                'tax_breakdown' => PosPricingService::expandCgstSgstBreakdown($frozenBreakdown),
+                'total' => (float) ($sales->total_amount ?? $totalAmount),
+            ];
         } else {
             $money = app(PosPricingService::class)->calculateFromOrderItems(
                 $orderItems,
@@ -637,7 +640,7 @@ class SalesController extends Controller
             $money = [
                 'discount_amount' => $discountAmount,
                 'subtotal' => $subtotal,
-                'tax_breakdown' => $frozenBreakdown,
+                'tax_breakdown' => PosPricingService::expandCgstSgstBreakdown($frozenBreakdown),
                 'total' => (float) ($sales->total_amount ?? $subtotal),
             ];
         } else {
@@ -667,7 +670,7 @@ class SalesController extends Controller
             ? (float) $sales->total_amount
             : (float) ($money['total'] ?? ($afterDiscount + collect($taxDetails)->sum('amount')));
 
-        // âœ… Prepare formatted values
+        // Prepare formatted values
         $formattedSubtotal = $formatCurrency($subtotal);
         $formattedDiscountAmount = $formatCurrency($discountAmount);
         $formattedAfterDiscount = $formatCurrency($afterDiscount);
@@ -797,7 +800,7 @@ class SalesController extends Controller
             $money = [
                 'discount_amount' => $discountAmount,
                 'subtotal' => $subtotal,
-                'tax_breakdown' => $frozenBreakdown,
+                'tax_breakdown' => PosPricingService::expandCgstSgstBreakdown($frozenBreakdown),
                 'total' => (float) ($sales->total_amount ?? $subtotal),
             ];
         } else {

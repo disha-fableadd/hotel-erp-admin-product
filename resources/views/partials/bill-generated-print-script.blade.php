@@ -202,6 +202,34 @@
             } catch (e) {}
         }
 
+        // Petpooja-style: mark bill printed → floor map table turns yellow
+        if (opts.markBillPrinted !== false && orderId) {
+            try {
+                var authToken = localStorage.getItem('authToken') || '';
+                $.ajax({
+                    url: '/api/orders/' + orderId + '/mark-bill-printed',
+                    type: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken,
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(res) {
+                        if (!res || !res.status) return;
+                        var tid = opts.tableId || res.table_id || window.selectedTableId;
+                        if (tid && typeof window.updateTableCardStatus === 'function') {
+                            window.updateTableCardStatus(
+                                tid,
+                                res.table_status_class || 'printed-table',
+                                res.table_status || 'printed',
+                                res.order_id || orderId,
+                                res.total_amount
+                            );
+                        }
+                    }
+                });
+            } catch (e) {}
+        }
+
         var billUrl = "/sales/invoice/pdf/" + orderId;
         var $iframe = $("#billPreviewIframe");
         var $loader = $("#billIframeLoader");

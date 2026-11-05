@@ -38,6 +38,7 @@ class Order extends Model
         'delivered_by',
         'assigned_staff_id',
         'table_status',
+        'bill_printed',
         'kot_pending_cancels',
         'created_at',
         'updated_at',

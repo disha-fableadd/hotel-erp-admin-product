@@ -1,18 +1,22 @@
 @php
     $statusClass = $statusClass ?? 'blank-table';
     $statusKey = match (true) {
+        str_contains($statusClass, 'printed') => 'printed',
         str_contains($statusClass, 'running') => 'running',
         str_contains($statusClass, 'reserved') => 'reserved',
         default => 'blank',
     };
     $statusLabel = match ($statusKey) {
         'running' => 'Occupied',
+        'printed' => 'Bill Printed',
         'reserved' => 'Reserved',
         default => 'Available',
     };
     $isAvailable = $statusKey === 'blank';
     $isOccupied = $statusKey === 'running';
-    $billTotal = $isOccupied ? (float) optional($table->order)->total_amount : null;
+    $isPrinted = $statusKey === 'printed';
+    $showBill = ($isOccupied || $isPrinted);
+    $billTotal = $showBill ? (float) optional($table->order)->total_amount : null;
     $currencySymbol = $currencySymbol ?? ($currency_symbol ?? '₹');
     $currencyPosition = $currencyPosition ?? ($currency_position ?? 'left');
     $formattedBill = $billTotal !== null
@@ -57,7 +61,7 @@
                     </svg>
                 </div>
                 <div class="table-card__name">{{ $table->table_name }}</div>
-                <div class="table-card__bill {{ $isOccupied && $billTotal !== null ? 'is-visible' : '' }}">
+                <div class="table-card__bill {{ $showBill && $billTotal !== null ? 'is-visible' : '' }}">
                     <span class="table-card__bill-label">Total</span>
                     <strong class="table-card__bill-total">{{ $formattedBill }}</strong>
                 </div>
@@ -74,7 +78,7 @@
                     <i class="fa-regular fa-calendar-check"></i>
                     <span>Reserve</span>
                 </button>
-            @elseif($isOccupied)
+            @elseif($isOccupied || $isPrinted)
                 <a href="javascript:void(0);"
                     class="print-table-order table-card__action table-card__action--print"
                     data-table_no_invoice="{{ $table->id }}"

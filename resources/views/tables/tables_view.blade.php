@@ -1684,6 +1684,7 @@
 
         .legend .blank-table::before { background: #94a3b8; }
         .legend .running-table::before { background: #22c55e; }
+        .legend .printed-table::before { background: #eab308; }
         .legend .reserved-table::before { background: #f59e0b; }
 
         .legend .blank-table,
@@ -1711,8 +1712,16 @@
             border-color: #bbf7d0;
         }
 
-        .reserved-table,
+        /* Bill printed / in progress — Petpooja-style yellow */
         .printed-table {
+            --table-accent: #eab308;
+            --table-soft: #fefce8;
+            background: #ffffff;
+            color: #0f172a;
+            border-color: #fde047;
+        }
+
+        .reserved-table {
             --table-accent: #f59e0b;
             --table-soft: #fffbeb;
             background: #ffffff;
@@ -1816,6 +1825,16 @@
             box-shadow: 0 12px 26px -14px rgba(22, 163, 74, 0.35);
         }
 
+        .table-box.table-card.printed-table {
+            border-color: #facc15;
+            background: linear-gradient(180deg, #fefce8 0%, #ffffff 42%);
+        }
+
+        .table-box.table-card.printed-table:hover {
+            border-color: #eab308;
+            box-shadow: 0 12px 26px -14px rgba(202, 138, 4, 0.35);
+        }
+
         .table-box.table-card.reserved-table {
             border-color: #fcd34d;
             background: linear-gradient(180deg, #fffbeb 0%, #ffffff 42%);
@@ -1865,6 +1884,11 @@
             color: #15803d;
         }
 
+        .table-box.table-card.printed-table .table-card__badge {
+            background: #fef08a;
+            color: #a16207;
+        }
+
         .table-box.table-card.reserved-table .table-card__badge {
             background: #fef3c7;
             color: #b45309;
@@ -1902,6 +1926,10 @@
 
         .table-box.table-card.running-table .table-card__visual {
             color: #16a34a;
+        }
+
+        .table-box.table-card.printed-table .table-card__visual {
+            color: #ca8a04;
         }
 
         .table-box.table-card.reserved-table .table-card__visual {
@@ -2148,12 +2176,19 @@
                     $status = match ((int) ($table->table_status ?? 0)) {
                         1 => 'running',
                         2 => 'reserved',
+                        3 => 'printed',
                         default => 'blank',
                     };
                 }
 
+                // Prefer live order.bill_printed when status string is stale
+                if ($status === 'running' && !empty(optional($table->order)->bill_printed)) {
+                    $status = 'printed';
+                }
+
                 return match ($status) {
                     'running' => 'running-table',
+                    'printed' => 'printed-table',
                     'reserved' => 'reserved-table',
                     default => 'blank-table',
                 };
@@ -2179,6 +2214,7 @@
                 <div class="legend">
                     <span class="blank-table">Available</span>
                     <span class="running-table">Occupied</span>
+                    <span class="printed-table">Bill Printed</span>
                     <span class="reserved-table">Reserved</span>
                 </div>
             </div>
@@ -2912,10 +2948,10 @@
             tableOrderModalEl.querySelector('.js-table-name').textContent = tableName;
             document.getElementById('table_id').value = tableId;
 
-            if (tableCard && tableCard.classList.contains("running-table")) {
+            if (tableCard && (tableCard.classList.contains("running-table") || tableCard.classList.contains("printed-table"))) {
                 const salse_id = tableCard.getAttribute('data-order-id');
                 if (!salse_id) {
-                    console.error("Running table has no order id");
+                    console.error("Running/printed table has no order id");
                     return;
                 }
                 $.ajax({
@@ -2960,14 +2996,16 @@
             return currencyPosition === 'right' ? (fixed + currencySymbol) : (currencySymbol + fixed);
         }
 
-        function updateTableCardStatus(tableId, statusClass, statusValue, orderId, billTotal) {
+        window.updateTableCardStatus = function updateTableCardStatus(tableId, statusClass, statusValue, orderId, billTotal) {
             const $card = $(".table-box123[data-table-id='" + tableId + "']");
             if (!$card.length) return;
             const nextClass = statusClass || 'blank-table';
             const nextStatus = (statusValue || 'blank').toLowerCase();
             const badgeLabel = nextStatus === 'running'
                 ? 'Occupied'
-                : (nextStatus === 'reserved' ? 'Reserved' : 'Available');
+                : (nextStatus === 'printed'
+                    ? 'Bill Printed'
+                    : (nextStatus === 'reserved' ? 'Reserved' : 'Available'));
 
             $card.removeClass('blank-table running-table reserved-table printed-table')
                 .addClass(nextClass)
@@ -2977,12 +3015,12 @@
             $card.find('.table-card__badge').text(badgeLabel);
 
             const $bill = $card.find('.table-card__bill');
-            if (nextStatus === 'running' && billTotal !== undefined && billTotal !== null && billTotal !== '') {
+            if ((nextStatus === 'running' || nextStatus === 'printed') && billTotal !== undefined && billTotal !== null && billTotal !== '') {
                 const formatted = formatTableBillAmount(billTotal);
                 $card.attr('data-bill-total', parseFloat(billTotal).toFixed(2));
                 $bill.addClass('is-visible');
                 $bill.find('.table-card__bill-total').text(formatted);
-            } else if (nextStatus !== 'running') {
+            } else if (nextStatus !== 'running' && nextStatus !== 'printed') {
                 $card.attr('data-bill-total', '');
                 $bill.removeClass('is-visible');
                 $bill.find('.table-card__bill-total').text('');
@@ -2997,7 +3035,7 @@
                     ' data-table-id="' + tableId + '" data-table-name="' + String(tableName).replace(/"/g, '&quot;') + '">' +
                     '<i class="fa-regular fa-calendar-check"></i><span>Reserve</span></button>'
                 );
-            } else if (nextStatus === 'running') {
+            } else if (nextStatus === 'running' || nextStatus === 'printed') {
                 $actions.append(
                     '<a href="javascript:void(0);" class="print-table-order table-card__action table-card__action--print"' +
                     ' data-table_no_invoice="' + tableId + '" title="Print / view orders">' +
@@ -3006,7 +3044,7 @@
             } else {
                 $actions.append('<span class="table-card__action-spacer"></span>');
             }
-        }
+        };
 
         function reserveSelectedTable(payload) {
             const tableCard = document.querySelector(
@@ -3129,11 +3167,11 @@
                     tableOrderModalEl.querySelector('.js-table-name').textContent = tableName;
                     document.getElementById('table_id').value = tableId;
 
-                    // Check class first
-                    if (this.classList.contains("running-table")) {
+                    // Occupied (green) or bill-printed (yellow) → reopen running order
+                    if (this.classList.contains("running-table") || this.classList.contains("printed-table")) {
                         const salse_id = this.getAttribute('data-order-id');
                         if (!salse_id) {
-                            console.error("Running table has no order id");
+                            console.error("Running/printed table has no order id");
                             return;
                         }
                         $.ajax({
@@ -3834,32 +3872,67 @@
                     let totalTax = 0;
                     const gstOption = $("input[name='gst_option']:checked").val();
 
-                    $(".taxList").hide().each(function () {
+                    $(".taxList").not('[data-dynamic-gst="1"]').hide().each(function () {
                         const taxEl = $(this).find(".tax-value");
                         taxEl.html(formatCurrency("0.00", taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
                     });
+                    $('.taxList[data-dynamic-gst="1"]').remove();
+
+                    function upsertSplitGstRow(key, label, amount) {
+                        let $row = $('.taxList[data-tax-id="' + key + '"]');
+                        if (!$row.length) {
+                            const $anchor = $(".setvalue").find(".taxList").first();
+                            const html = `<li class="taxList" data-tax-id="${key}" data-dynamic-gst="1">
+                                <h5>${label}</h5>
+                                <h6 class="tax-value" data-symbol="${currencySymbol}" data-position="${currencyPosition}">${formatCurrency("0.00", currencySymbol, currencyPosition)}</h6>
+                            </li>`;
+                            if ($anchor.length) {
+                                $anchor.before(html);
+                            } else {
+                                $(".setvalue").append(html);
+                            }
+                            $row = $('.taxList[data-tax-id="' + key + '"]');
+                        } else {
+                            $row.attr('data-dynamic-gst', '1');
+                            $row.find('h5').text(label);
+                        }
+                        const taxEl = $row.find(".tax-value");
+                        taxEl.html(formatCurrency(amount.toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
+                        $row.show();
+                    }
+
+                    function renderCgstSgstFromAgg(rateAmountMap) {
+                        const splitAgg = {};
+                        Object.keys(rateAmountMap).forEach(function (rateKey) {
+                            const fullRate = parseFloat(rateKey) || 0;
+                            const amount = parseFloat(rateAmountMap[rateKey]) || 0;
+                            if (amount <= 0 && fullRate <= 0) return;
+                            const halfRate = Math.round((fullRate / 2) * 10000) / 10000;
+                            const cgstAmt = Math.round((amount / 2) * 100) / 100;
+                            const sgstAmt = Math.round((amount - cgstAmt) * 100) / 100;
+                            const hk = String(halfRate);
+                            if (!splitAgg[hk]) splitAgg[hk] = { rate: halfRate, cgst: 0, sgst: 0 };
+                            splitAgg[hk].cgst += cgstAmt;
+                            splitAgg[hk].sgst += sgstAmt;
+                        });
+                        Object.keys(splitAgg).forEach(function (hk) {
+                            const row = splitAgg[hk];
+                            const rateLabel = String(row.rate).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+                            upsertSplitGstRow('cgst-' + hk, 'CGST (' + rateLabel + '%)', row.cgst);
+                            upsertSplitGstRow('sgst-' + hk, 'SGST (' + rateLabel + '%)', row.sgst);
+                            totalTax += row.cgst + row.sgst;
+                        });
+                    }
 
                     if (gstOption === "with" && subtotal > 0) {
                         if (gstApplyMode === 'overall') {
                             const rate = parseFloat(overallGstRate) || 0;
-                            totalTax = priceAfterDiscount * (rate / 100);
-                            let $overallRow = $('.taxList[data-tax-id="overall"]');
-                            if (!$overallRow.length) {
-                                $(".setvalue").find(".taxList").first().before(
-                                    `<li class="taxList" data-tax-id="overall">
-                                        <h5>${overallGstName || 'GST'} (${rate}%) Tax</h5>
-                                        <h6 class="tax-value" data-symbol="${currencySymbol}" data-position="${currencyPosition}">${formatCurrency("0.00", currencySymbol, currencyPosition)}</h6>
-                                    </li>`
-                                );
-                                $overallRow = $('.taxList[data-tax-id="overall"]');
-                            } else {
-                                $overallRow.find('h5').text((overallGstName || 'GST') + ' (' + rate + '%) Tax');
-                            }
-                            const taxEl = $overallRow.find(".tax-value");
-                            taxEl.html(formatCurrency(totalTax.toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
-                            $overallRow.show();
+                            const amount = priceAfterDiscount * (rate / 100);
+                            const rateMap = {};
+                            rateMap[String(rate)] = amount;
+                            renderCgstSgstFromAgg(rateMap);
                         } else {
-                            const taxAgg = {};
+                            const rateMap = {};
                             selectedItems.forEach(function (item) {
                                 const taxId = item.tax_id || null;
                                 const taxRatePct = parseFloat(item.tax_rate);
@@ -3878,21 +3951,10 @@
                                 } else {
                                     lineTax = lineShare * (taxRatePct / 100);
                                 }
-                                if (!taxAgg[taxId]) {
-                                    taxAgg[taxId] = { amount: 0 };
-                                }
-                                taxAgg[taxId].amount += lineTax;
+                                const rk = String(taxRatePct);
+                                rateMap[rk] = (rateMap[rk] || 0) + lineTax;
                             });
-                            Object.keys(taxAgg).forEach(function (taxId) {
-                                const amount = taxAgg[taxId].amount;
-                                totalTax += amount;
-                                const $row = $('.taxList[data-tax-id="' + taxId + '"]');
-                                if ($row.length) {
-                                    const taxEl = $row.find(".tax-value");
-                                    taxEl.html(formatCurrency(amount.toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
-                                    $row.show();
-                                }
-                            });
+                            renderCgstSgstFromAgg(rateMap);
                         }
                     } else {
                         totalTax = 0;
@@ -4565,7 +4627,7 @@
                                     window.selectedTableId,
                                     response.table_status_class || 'blank-table',
                                     response.table_status || 'blank',
-                                    response.table_status_class === 'running-table' ? response.order_id : '',
+                                    (response.table_status_class === 'running-table' || response.table_status_class === 'printed-table') ? response.order_id : '',
                                     response.total_amount
                                 );
                             }
@@ -4785,7 +4847,7 @@
                                     window.selectedTableId,
                                     response.table_status_class || 'blank-table',
                                     response.table_status || 'blank',
-                                    response.table_status_class === 'running-table' ? response.order_id : '',
+                                    (response.table_status_class === 'running-table' || response.table_status_class === 'printed-table') ? response.order_id : '',
                                     response.total_amount
                                 );
                             }
@@ -5006,7 +5068,7 @@
                                     window.selectedTableId,
                                     response.table_status_class || 'blank-table',
                                     response.table_status || 'blank',
-                                    response.table_status_class === 'running-table' ? response.order_id : '',
+                                    (response.table_status_class === 'running-table' || response.table_status_class === 'printed-table') ? response.order_id : '',
                                     response.total_amount
                                 );
                             }
@@ -5024,7 +5086,9 @@
                             if (billOrderId && typeof window.showBillGeneratedModal === 'function') {
                                 window.showBillGeneratedModal(billOrderId, {
                                     reloadOnClose: true,
-                                    printKot: false
+                                    printKot: false,
+                                    markBillPrinted: true,
+                                    tableId: window.selectedTableId || null
                                 });
                             } else if (billOrderId) {
                                 window.open('/sales/invoice/pdf/' + billOrderId, '_blank');

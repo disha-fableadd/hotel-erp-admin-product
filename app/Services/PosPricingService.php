@@ -275,6 +275,9 @@ class PosPricingService
 
         $grand = round($afterDiscount + $taxTotal, 2);
 
+        // Bill display: split combined GST into CGST + SGST (half each)
+        $taxBreakdown = self::expandCgstSgstBreakdown(array_values($taxBreakdown));
+
         return [
             'subtotal' => round($subtotal, 2),
             'discount' => $discountPercent,
@@ -286,6 +289,69 @@ class PosPricingService
             'overall_gst_rate' => $mode === 'overall' ? $overallRate : null,
             'total' => $grand,
         ];
+    }
+
+    /**
+     * Split a combined GST row into CGST + SGST (equal halves).
+     * Rows already named CGST / SGST / IGST are left as-is.
+     *
+     * @param  array<int, array{id?: mixed, name?: string, rate?: float, amount?: float}>  $taxBreakdown
+     * @return array<int, array{id: mixed, name: string, rate: float, amount: float}>
+     */
+    public static function expandCgstSgstBreakdown(array $taxBreakdown): array
+    {
+        $expanded = [];
+
+        foreach ($taxBreakdown as $row) {
+            $name = strtoupper(trim((string) ($row['name'] ?? 'GST')));
+            $amount = round((float) ($row['amount'] ?? 0), 2);
+            $rate = (float) ($row['rate'] ?? 0);
+
+            if ($amount <= 0 && $rate <= 0) {
+                continue;
+            }
+
+            // Already component taxes — keep
+            if (str_contains($name, 'CGST') || str_contains($name, 'SGST') || str_contains($name, 'IGST')) {
+                $expanded[] = [
+                    'id' => $row['id'] ?? null,
+                    'name' => (string) ($row['name'] ?? $name),
+                    'rate' => $rate,
+                    'amount' => $amount,
+                ];
+                continue;
+            }
+
+            $halfRate = round($rate / 2, 4);
+            $cgstAmt = round($amount / 2, 2);
+            $sgstAmt = round($amount - $cgstAmt, 2);
+
+            $expanded[] = [
+                'id' => null,
+                'name' => 'CGST',
+                'rate' => $halfRate,
+                'amount' => $cgstAmt,
+            ];
+            $expanded[] = [
+                'id' => null,
+                'name' => 'SGST',
+                'rate' => $halfRate,
+                'amount' => $sgstAmt,
+            ];
+        }
+
+        // Merge identical name + rate lines (e.g. multiple 5% products → one CGST 2.5%)
+        $merged = [];
+        foreach ($expanded as $row) {
+            $key = strtoupper((string) $row['name']).'|'.rtrim(rtrim(number_format((float) $row['rate'], 4, '.', ''), '0'), '.');
+            if (! isset($merged[$key])) {
+                $merged[$key] = $row;
+            } else {
+                $merged[$key]['amount'] = round((float) $merged[$key]['amount'] + (float) $row['amount'], 2);
+            }
+        }
+
+        return array_values($merged);
     }
 
     /**

@@ -97,7 +97,7 @@ class TablesshowController extends Controller
 
         // ---- TABLE GROUPING LOGIC ----
         $tables = Table_no::with(['order' => function ($q) {
-                $q->select('id', 'total_amount', 'table_status', 'isDeleted');
+                $q->select('id', 'total_amount', 'table_status', 'bill_printed', 'isDeleted');
             }])
             ->where(function($q) use ($branchIdToUse) {
                 if (! empty($branchIdToUse)) {
@@ -118,7 +118,7 @@ class TablesshowController extends Controller
                 $query->where('branch_id', $branchIdToUse);
             })
             ->orderByDesc('id')
-            ->get(['id', 'table_no', 'total_amount'])
+            ->get(['id', 'table_no', 'total_amount', 'bill_printed'])
             ->unique('table_no')
             ->keyBy('table_no');
 
@@ -126,7 +126,15 @@ class TablesshowController extends Controller
             $order = $runningOrders->get($table->id);
             if ($order) {
                 $table->order_id = $order->id;
+                $table->setRelation('order', $order);
                 $table->running_amount = $order->total_amount;
+                if (! empty($order->bill_printed)) {
+                    $table->status = 'printed';
+                    $table->table_status = 3;
+                } elseif ((string) ($table->status ?? '') !== 'reserved') {
+                    $table->status = 'running';
+                    $table->table_status = 1;
+                }
             }
         });
 
