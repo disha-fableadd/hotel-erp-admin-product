@@ -1733,12 +1733,72 @@
             background: #9BD4FF;
         }
 
-        .tables-zone {
-            margin-bottom: 28px;
+        .tables-type-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 0 0 16px;
+            padding: 6px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
         }
 
-        .tables-zone:last-child {
+        .tables-type-tab {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            line-height: 1;
+            transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+        }
+
+        .tables-type-tab:hover {
+            background: #fff;
+            color: #0f172a;
+        }
+
+        .tables-type-tab.is-active {
+            background: #fff;
+            color: #0f172a;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(255, 159, 67, 0.35);
+        }
+
+        .tables-type-tab__count {
+            min-width: 22px;
+            height: 22px;
+            padding: 0 7px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            color: #334155;
+            font-size: 11px;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tables-type-tab.is-active .tables-type-tab__count {
+            background: rgba(255, 159, 67, 0.18);
+            color: #c2410c;
+        }
+
+        .tables-zone {
             margin-bottom: 0;
+            display: none;
+        }
+
+        .tables-zone.is-active {
+            display: block;
         }
 
         .tables-zone__head {
@@ -2219,76 +2279,76 @@
                 </div>
             </div>
 
-            {{-- ========================= A/C SECTION ========================= --}}
-            @if(isset($tables['AC']) && $tables['AC']->count())
-                <section class="tables-zone">
-                    <div class="tables-zone__head">
-                        <h5 class="section-title">A/C</h5>
-                        <span class="tables-zone__count">{{ $tables['AC']->count() }} tables</span>
-                    </div>
-                    <div class="table-container">
-                        @foreach($tables['AC'] as $table)
-                            @include('tables.partials.table_card', [
-                                'table' => $table,
-                                'statusClass' => $tableStatusClass($table),
-                            ])
-                        @endforeach
-                    </div>
-                </section>
-            @endif
+            @php
+                $tableTypeLabels = [
+                    'AC' => 'A/C',
+                    'Non AC' => 'Non A/C',
+                    'Premium' => 'Premium',
+                    'Rooftop' => 'Rooftop',
+                ];
+                $orderedTableTypes = [];
+                foreach (\App\Models\Table_no::TABLE_TYPES as $typeKey) {
+                    if (isset($tables[$typeKey]) && $tables[$typeKey]->count()) {
+                        $orderedTableTypes[] = $typeKey;
+                    }
+                }
+                foreach ($tables as $typeKey => $typeTables) {
+                    if (!in_array($typeKey, $orderedTableTypes, true) && $typeTables->count()) {
+                        $orderedTableTypes[] = $typeKey;
+                    }
+                }
+                $defaultTableType = $orderedTableTypes[0] ?? null;
+            @endphp
 
-            {{-- ========================= NON A/C SECTION ========================= --}}
-            @if(isset($tables['Non AC']) && $tables['Non AC']->count())
-                <section class="tables-zone">
-                    <div class="tables-zone__head">
-                        <h5 class="section-title">Non A/C</h5>
-                        <span class="tables-zone__count">{{ $tables['Non AC']->count() }} tables</span>
-                    </div>
-                    <div class="table-container">
-                        @foreach($tables['Non AC'] as $table)
-                            @include('tables.partials.table_card', [
-                                'table' => $table,
-                                'statusClass' => $tableStatusClass($table),
-                            ])
-                        @endforeach
-                    </div>
-                </section>
-            @endif
+            @if(count($orderedTableTypes))
+                <div class="tables-type-tabs" role="tablist" aria-label="Table types">
+                    @foreach($orderedTableTypes as $typeKey)
+                        @php
+                            $typeLabel = $tableTypeLabels[$typeKey] ?? $typeKey;
+                            $typeCount = $tables[$typeKey]->count();
+                            $typeSlug = \Illuminate\Support\Str::slug($typeKey ?: 'other');
+                        @endphp
+                        <button
+                            type="button"
+                            class="tables-type-tab{{ $typeKey === $defaultTableType ? ' is-active' : '' }}"
+                            role="tab"
+                            aria-selected="{{ $typeKey === $defaultTableType ? 'true' : 'false' }}"
+                            data-table-type-tab="{{ $typeSlug }}"
+                        >
+                            <span>{{ $typeLabel }}</span>
+                            <span class="tables-type-tab__count">{{ $typeCount }}</span>
+                        </button>
+                    @endforeach
+                </div>
 
-            {{-- ========================= Premium SECTION ========================= --}}
-            @if(isset($tables['Premium']) && $tables['Premium']->count())
-                <section class="tables-zone">
-                    <div class="tables-zone__head">
-                        <h5 class="section-title">Premium</h5>
-                        <span class="tables-zone__count">{{ $tables['Premium']->count() }} tables</span>
-                    </div>
-                    <div class="table-container">
-                        @foreach($tables['Premium'] as $table)
-                            @include('tables.partials.table_card', [
-                                'table' => $table,
-                                'statusClass' => $tableStatusClass($table),
-                            ])
-                        @endforeach
-                    </div>
-                </section>
-            @endif
-
-            {{-- ========================= Rooftop SECTION ========================= --}}
-            @if(isset($tables['Rooftop']) && $tables['Rooftop']->count())
-                <section class="tables-zone">
-                    <div class="tables-zone__head">
-                        <h5 class="section-title">Rooftop</h5>
-                        <span class="tables-zone__count">{{ $tables['Rooftop']->count() }} tables</span>
-                    </div>
-                    <div class="table-container">
-                        @foreach($tables['Rooftop'] as $table)
-                            @include('tables.partials.table_card', [
-                                'table' => $table,
-                                'statusClass' => $tableStatusClass($table),
-                            ])
-                        @endforeach
-                    </div>
-                </section>
+                @foreach($orderedTableTypes as $typeKey)
+                    @php
+                        $typeLabel = $tableTypeLabels[$typeKey] ?? $typeKey;
+                        $typeCount = $tables[$typeKey]->count();
+                        $typeSlug = \Illuminate\Support\Str::slug($typeKey ?: 'other');
+                    @endphp
+                    <section
+                        class="tables-zone{{ $typeKey === $defaultTableType ? ' is-active' : '' }}"
+                        data-table-type-panel="{{ $typeSlug }}"
+                        role="tabpanel"
+                        @if($typeKey !== $defaultTableType) hidden @endif
+                    >
+                        <div class="tables-zone__head">
+                            <h5 class="section-title">{{ $typeLabel }}</h5>
+                            <span class="tables-zone__count">{{ $typeCount }} tables</span>
+                        </div>
+                        <div class="table-container">
+                            @foreach($tables[$typeKey] as $table)
+                                @include('tables.partials.table_card', [
+                                    'table' => $table,
+                                    'statusClass' => $tableStatusClass($table),
+                                ])
+                            @endforeach
+                        </div>
+                    </section>
+                @endforeach
+            @else
+                <div class="alert alert-light border text-muted mb-0">No tables found for this branch.</div>
             @endif
         </div>
 
@@ -2766,6 +2826,40 @@
 @endsection
 @push('js')
     <script>
+        (function initTablesTypeTabs() {
+            var storageKey = 'tablesViewActiveType';
+            var $tabs = $('.tables-type-tab');
+            var $panels = $('[data-table-type-panel]');
+            if (!$tabs.length || !$panels.length) {
+                return;
+            }
+
+            function activateType(slug, persist) {
+                if (!slug) return;
+                var $targetPanel = $panels.filter('[data-table-type-panel="' + slug + '"]');
+                if (!$targetPanel.length) return;
+
+                $tabs.removeClass('is-active').attr('aria-selected', 'false');
+                $tabs.filter('[data-table-type-tab="' + slug + '"]').addClass('is-active').attr('aria-selected', 'true');
+                $panels.removeClass('is-active').attr('hidden', true);
+                $targetPanel.addClass('is-active').removeAttr('hidden');
+
+                if (persist !== false) {
+                    try { localStorage.setItem(storageKey, slug); } catch (e) {}
+                }
+            }
+
+            $tabs.on('click', function () {
+                activateType($(this).attr('data-table-type-tab'), true);
+            });
+
+            var saved = null;
+            try { saved = localStorage.getItem(storageKey); } catch (e) {}
+            if (saved && $panels.filter('[data-table-type-panel="' + saved + '"]').length) {
+                activateType(saved, false);
+            }
+        })();
+
         const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
         var authToken = localStorage.getItem("authToken");
         const pageTenantId = ($('meta[name="tenant-id"]').attr('content') || '').trim();
