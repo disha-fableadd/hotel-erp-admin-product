@@ -65,6 +65,10 @@ Order / item fields you care about for KOT:
 - `orders.table_status` — `1` occupied, `0` free
 - `orders.kot_pending_cancels` / fire ticket JSON (if present)
 - `order_items.quantity`, `kot_printed_qty`, `variant_id`, `addons`, `unit_price`
+- `table_no.table_type` — `AC` \| `Non AC` \| `Premium` \| `Rooftop` (same as web Add Table)
+- `table_no.status` / `table_status` — `blank`/`0`, `running`/`1`, `reserved`/`2`, `printed`/`3` (bill printed)
+
+Also available for UI lists: `GET /api/get-all-tables` returns `table_types` + rows with `client_uuid` (same fields sync uses).
 
 ---
 

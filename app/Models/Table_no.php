@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 class Table_no extends Model
 {
@@ -18,6 +19,9 @@ class Table_no extends Model
     /** Bill printed / awaiting settlement (Petpooja-style yellow) */
     public const STATUS_PRINTED = 'printed';
 
+    /** Allowed seating types (web + Flutter sync / get-all-tables) */
+    public const TABLE_TYPES = ['AC', 'Non AC', 'Premium', 'Rooftop'];
+
     protected $fillable = [
         'table_name',
         'table_type',
@@ -26,6 +30,7 @@ class Table_no extends Model
         'order_id',
         'branch_id',
         'isDeleted',
+        'client_uuid',
     ];
 
     protected $casts = [
@@ -39,6 +44,16 @@ class Table_no extends Model
     {
         static::addGlobalScope('active', function (Builder $builder) {
             $builder->where('isDeleted', 0);
+        });
+
+        // Flutter Drift sync keys rows by client_uuid — always set on web/API create
+        static::creating(function (Table_no $table) {
+            if (empty($table->client_uuid)) {
+                $table->client_uuid = (string) Str::uuid();
+            }
+            if ($table->status === null || $table->status === '') {
+                $table->status = self::STATUS_BLANK;
+            }
         });
     }
 

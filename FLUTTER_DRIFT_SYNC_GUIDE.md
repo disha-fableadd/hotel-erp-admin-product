@@ -135,11 +135,13 @@ mixin SyncColumns on Table {
 ### 4.2. Hotel Dining & POS Operations
 ```dart
 // 1. Dining Tables
+// tableType values (web + API): AC | Non AC | Premium | Rooftop
+// tableStatus / status: 0 blank | 1 running | 2 reserved | 3 printed (bill printed / yellow)
 class TableNoTable extends Table with SyncColumns {
   TextColumn get tableName => text().withLength(min: 1, max: 100)();
-  TextColumn get tableType => text().nullable().withDefault(const Constant('Dine-In'))();
-  IntColumn get tableStatus => integer().withDefault(const Constant(0))(); // 0: Blank, 1: Running, 2: Reserved
-  TextColumn get status => text().withDefault(const Constant('blank'))();
+  TextColumn get tableType => text().nullable().withDefault(const Constant('AC'))();
+  IntColumn get tableStatus => integer().withDefault(const Constant(0))(); // 0 blank, 1 running, 2 reserved, 3 printed
+  TextColumn get status => text().withDefault(const Constant('blank'))(); // blank|running|reserved|printed
   IntColumn get orderId => integer().nullable()();
   TextColumn get orderClientUuid => text().nullable()();
   IntColumn get branchId => integer().nullable()();
@@ -1059,7 +1061,7 @@ class HotelUniversalSyncService {
             }
           }
 
-          // Example: Dining Tables (table_no)
+          // Example: Dining Tables (table_no) — includes Rooftop type + printed status
           if (tableKey == 'table_no') {
             for (var row in rows) {
               await db.into(db.tableNoTable).insertOnConflictUpdate(
@@ -1067,8 +1069,10 @@ class HotelUniversalSyncService {
                   remoteId: Value(row['id']),
                   clientUuid: row['client_uuid'],
                   tableName: row['table_name'],
+                  tableType: Value(row['table_type'] ?? 'AC'),
                   tableStatus: Value(row['table_status'] ?? 0),
                   status: Value(row['status'] ?? 'blank'),
+                  branchId: Value(row['branch_id']),
                   isDirty: const Value(false),
                   syncedAt: Value(DateTime.parse(serverTime)),
                 ),

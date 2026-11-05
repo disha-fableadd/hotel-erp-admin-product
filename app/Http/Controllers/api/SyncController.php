@@ -404,7 +404,10 @@ class SyncController extends Controller
                 continue;
             }
 
-            $query = $modelClass::query();
+            // table_no: include soft-deleted so Flutter gets deleted_ids / deleted_records
+            $query = ($tableKey === 'table_no')
+                ? $modelClass::withoutGlobalScope('active')
+                : $modelClass::query();
 
             $hasUpdated = $this->fastHasColumn($tableName, 'updated_at');
             $hasIsDeleted = $this->fastHasColumn($tableName, 'isDeleted');
@@ -661,15 +664,36 @@ class SyncController extends Controller
                 }
             }
 
-            // 5. Restaurant Tables (table_no)
+            // 5. Restaurant Tables (table_no) — same fields as web / get-all-tables (incl. Rooftop + printed)
             if (!empty($payload['table_no'])) {
                 foreach ($payload['table_no'] as $t) {
                     $uuid = $t['client_uuid'] ?? (string) Str::uuid();
-                    $table = \App\Models\Table_no::firstOrNew(['client_uuid' => $uuid]);
+                    $table = \App\Models\Table_no::withoutGlobalScope('active')
+                        ->firstOrNew(['client_uuid' => $uuid]);
                     $table->table_name = $t['table_name'];
-                    $table->table_type = $t['table_type'] ?? 'Dine-In';
-                    $table->table_status = $t['table_status'] ?? 0;
-                    $table->status = $t['status'] ?? 'blank';
+                    // Free-text type; web + Flutter use AC | Non AC | Premium | Rooftop
+                    $table->table_type = $t['table_type'] ?? 'AC';
+
+                    $rawStatus = strtolower(trim((string) ($t['status'] ?? '')));
+                    if (in_array($rawStatus, [
+                        \App\Models\Table_no::STATUS_BLANK,
+                        \App\Models\Table_no::STATUS_RUNNING,
+                        \App\Models\Table_no::STATUS_RESERVED,
+                        \App\Models\Table_no::STATUS_PRINTED,
+                    ], true)) {
+                        $table->status = $rawStatus;
+                        $table->table_status = \App\Models\Table_no::statusToInt($rawStatus);
+                    } else {
+                        $tableStatusInt = (int) ($t['table_status'] ?? 0);
+                        $table->table_status = $tableStatusInt;
+                        $table->status = match ($tableStatusInt) {
+                            1 => \App\Models\Table_no::STATUS_RUNNING,
+                            2 => \App\Models\Table_no::STATUS_RESERVED,
+                            3 => \App\Models\Table_no::STATUS_PRINTED,
+                            default => \App\Models\Table_no::STATUS_BLANK,
+                        };
+                    }
+
                     $table->branch_id = $t['branch_id'] ?? $branchId;
 
                     // Resolve order if linked

@@ -97,26 +97,58 @@ class CustomerController extends Controller
     {
         $branchId = $this->resolveBranchId($request);
 
-        $tables = Table_no::select('id', 'table_name', 'table_type', 'table_status', 'status', 'created_at', 'updated_at')
+        $tables = Table_no::select(
+                'id',
+                'table_name',
+                'table_type',
+                'table_status',
+                'status',
+                'order_id',
+                'branch_id',
+                'client_uuid',
+                'created_at',
+                'updated_at'
+            )
             ->when($branchId, function ($query) use ($branchId) {
                 $query->where('branch_id', $branchId);
             })
-            ->orderBy('id', 'desc')
             ->get()
+            // Natural numeric order within type: Rooftop 1, 2, 3… (not 1, 10, 51…)
+            ->sortBy(function ($table) {
+                $type = mb_strtolower((string) ($table->table_type ?? ''));
+                $name = (string) ($table->table_name ?? '');
+                preg_match('/(\d+)/', $name, $m);
+                $num = isset($m[1]) ? (int) $m[1] : PHP_INT_MAX;
+
+                return sprintf('%s-%010d-%s', $type, $num, mb_strtolower($name));
+            })
+            ->values()
             ->map(function ($table) {
+                if (empty($table->client_uuid)) {
+                    $table->client_uuid = (string) \Illuminate\Support\Str::uuid();
+                    $table->saveQuietly();
+                }
+                $resolved = $table->resolved_status;
+
                 return [
-                    'id'         => $table->id,
-                    'table_name' => $table->table_name,
-                    'table_type' => $table->table_type,
-                    'status'     => $table->resolved_status,
-                    'created_at' => $table->created_at,
-                    'updated_at' => $table->updated_at,
+                    'id'           => $table->id,
+                    'client_uuid'  => $table->client_uuid,
+                    'table_name'   => $table->table_name,
+                    'table_type'   => $table->table_type,
+                    'table_status' => Table_no::statusToInt($resolved),
+                    'status'       => $resolved,
+                    'order_id'     => $table->order_id,
+                    'branch_id'    => $table->branch_id,
+                    'created_at'   => $table->created_at,
+                    'updated_at'   => $table->updated_at,
                 ];
             });
 
         return response()->json([
             'status' => true,
-            'data'   => $tables
+            // Same type list as web Add Table — Flutter can bind dropdown from here
+            'table_types' => Table_no::TABLE_TYPES,
+            'data'   => $tables,
         ]);
     }
 
