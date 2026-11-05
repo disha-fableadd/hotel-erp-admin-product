@@ -212,7 +212,24 @@
                                             $rowTaxInclusive = false;
                                         }
                                     @endphp
+                                    @php
+                                        $rowVariantId = $item->variant_id ?? null;
+                                        $rowAddonIds = [];
+                                        if (!empty($item->addons) && is_array($item->addons)) {
+                                            foreach ($item->addons as $ad) {
+                                                if (is_array($ad) && !empty($ad['id'])) {
+                                                    $rowAddonIds[] = (int) $ad['id'];
+                                                } elseif (is_numeric($ad)) {
+                                                    $rowAddonIds[] = (int) $ad;
+                                                }
+                                            }
+                                        }
+                                        $rowLineKey = $item->product_id . '-v' . ((int) ($rowVariantId ?: 0)) . '-a' . implode('_', $rowAddonIds);
+                                    @endphp
                                     <tr data-product-id="{{ $item->product_id }}"
+                                        data-line-key="{{ $rowLineKey }}"
+                                        data-variant-id="{{ $rowVariantId ?? '' }}"
+                                        data-addon-ids="{{ json_encode($rowAddonIds) }}"
                                         data-category-id="{{ $item->category_id ?? ($rowProduct->category_id ?? '') }}"
                                         data-tax-id="{{ $rowTaxId ?? '' }}"
                                         data-tax-rate="{{ $rowTaxRate !== null ? $rowTaxRate : '' }}"
@@ -383,6 +400,28 @@
             </div>
         </div>
     </div>
+
+    {{-- Same variant / add-on picker as Order & Dine-in --}}
+    <div class="modal fade" id="posVariantAddonModal" tabindex="-1" aria-hidden="true" style="z-index: 1065;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Choose options — <span id="posOptionProductName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="posOptionProductId">
+                    <div id="posVariantOptions" class="mb-3"></div>
+                    <div id="posAddonOptions" class="mb-2"></div>
+                    <div class="fw-bold">Line price: <span id="posOptionLinePrice">0.00</span></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning text-white" id="posOptionConfirmAdd">Add to order</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 @push('js')
     <script>
@@ -492,11 +531,137 @@
                 }
             }
 
-            // Add product to table (or bump qty if already present) — same behaviour as POS cart
+            window.editProductOptionsById = window.editProductOptionsById || {};
+            var pendingEditProduct = null;
+
+            function formatEditMoney(amount) {
+                const n = (parseFloat(amount) || 0).toFixed(2);
+                return editCurrencyPosition === 'right' ? (n + editCurrencySymbol) : (editCurrencySymbol + n);
+            }
+
+            function storeEditProductOptions(productId, variants, addons) {
+                window.editProductOptionsById[String(productId)] = {
+                    variants: Array.isArray(variants) ? variants : [],
+                    addons: Array.isArray(addons) ? addons : []
+                };
+            }
+
+            function getEditProductOptions(productId) {
+                return window.editProductOptionsById[String(productId)] || { variants: [], addons: [] };
+            }
+
+            function refreshEditOptionPrice() {
+                if (!pendingEditProduct) return;
+                var unit = parseFloat(pendingEditProduct.basePrice) || 0;
+                var $checkedVariant = $('#posVariantOptions input[name="pos_variant"]:checked');
+                if ($checkedVariant.length) {
+                    unit = parseFloat($checkedVariant.data('price')) || unit;
+                }
+                $('#posAddonOptions input.pos-addon-check:checked').each(function () {
+                    unit += parseFloat($(this).data('price')) || 0;
+                });
+                $('#posOptionLinePrice').text(formatEditMoney(unit));
+                pendingEditProduct.computedUnit = unit;
+            }
+
+            function openEditOptionModal(meta, variants, addons) {
+                pendingEditProduct = meta;
+                $('#posOptionProductName').text(meta.name);
+                $('#posOptionProductId').val(meta.productId);
+
+                var $v = $('#posVariantOptions').empty();
+                if (variants.length) {
+                    $v.append('<label class="form-label fw-bold">Size / Variant</label>');
+                    variants.forEach(function (v, idx) {
+                        var vName = escapeHtmlAttr(v.name || '');
+                        $v.append(
+                            '<div class="form-check">' +
+                            '<input class="form-check-input" type="radio" name="pos_variant" id="edit_pos_var_' + v.id + '" value="' + v.id + '" data-price="' + v.price + '" data-name="' + vName + '" ' + (idx === 0 ? 'checked' : '') + '>' +
+                            '<label class="form-check-label" for="edit_pos_var_' + v.id + '">' + escapeHtmlText(v.name || '') + ' — ' + formatEditMoney(v.price) + '</label>' +
+                            '</div>'
+                        );
+                    });
+                }
+
+                var $a = $('#posAddonOptions').empty();
+                if (addons.length) {
+                    $a.append('<label class="form-label fw-bold">Add-ons</label>');
+                    addons.forEach(function (ad) {
+                        var aName = escapeHtmlAttr(ad.name || '');
+                        $a.append(
+                            '<div class="form-check">' +
+                            '<input class="form-check-input pos-addon-check" type="checkbox" id="edit_pos_ad_' + ad.id + '" value="' + ad.id + '" data-price="' + ad.price + '" data-name="' + aName + '">' +
+                            '<label class="form-check-label" for="edit_pos_ad_' + ad.id + '">' + escapeHtmlText(ad.name || '') + ' (+' + formatEditMoney(ad.price) + ')</label>' +
+                            '</div>'
+                        );
+                    });
+                }
+
+                refreshEditOptionPrice();
+                var modalEl = document.getElementById('posVariantAddonModal');
+                if (!modalEl) return;
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            }
+
+            $(document).on('change', '#posVariantOptions input, #posAddonOptions input', refreshEditOptionPrice);
+
+            $(document).on('click', '#posOptionConfirmAdd', function () {
+                if (!pendingEditProduct) return;
+                var variantId = null;
+                var variantName = '';
+                var $v = $('#posVariantOptions input[name="pos_variant"]:checked');
+                if ($v.length) {
+                    variantId = parseInt($v.val(), 10);
+                    variantName = $v.attr('data-name') || $v.data('name') || '';
+                }
+                var addonIds = [];
+                var addonNames = [];
+                $('#posAddonOptions input.pos-addon-check:checked').each(function () {
+                    addonIds.push(parseInt($(this).val(), 10));
+                    addonNames.push($(this).attr('data-name') || $(this).data('name') || '');
+                });
+
+                var unit = pendingEditProduct.computedUnit || pendingEditProduct.basePrice;
+                var displayName = pendingEditProduct.name;
+                if (variantName) displayName += ' (' + variantName + ')';
+                if (addonNames.length) displayName += ' + ' + addonNames.join(', ');
+
+                var uniqueId = String(pendingEditProduct.productId) + '-v' + (variantId || 0) + '-a' + addonIds.join('_');
+                addProductToTable(
+                    pendingEditProduct.productId,
+                    displayName,
+                    pendingEditProduct.image,
+                    unit,
+                    pendingEditProduct.quantity_type,
+                    pendingEditProduct.quantity_type_id,
+                    {
+                        category_id: pendingEditProduct.category_id,
+                        tax_id: pendingEditProduct.tax_id,
+                        tax_rate: pendingEditProduct.tax_rate,
+                        tax_name: pendingEditProduct.tax_name,
+                        tax_inclusive: pendingEditProduct.tax_inclusive,
+                        gst_applicable: pendingEditProduct.gst_applicable,
+                        variant_id: variantId,
+                        addon_ids: addonIds,
+                        unique_id: uniqueId
+                    }
+                );
+
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('posVariantAddonModal')).hide();
+                pendingEditProduct = null;
+                $('.pos-search-results-box').hide().empty();
+                $('.pos-product-search-input').val('').focus();
+            });
+
+            // Add product to table (or bump qty if same product+variant line exists)
             function addProductToTable(productId, productName, productImage, productPrice, productQtyType, productQtyTypeId, taxMeta) {
                 taxMeta = taxMeta || {};
                 productId = String(productId);
-                const $existing = $('#product-table-body tr[data-product-id="' + productId + '"]');
+                var uniqueId = taxMeta.unique_id || (String(productId) + '-v0-a');
+                var variantId = taxMeta.variant_id || '';
+                var addonIds = Array.isArray(taxMeta.addon_ids) ? taxMeta.addon_ids : [];
+
+                const $existing = $('#product-table-body tr[data-line-key="' + uniqueId.replace(/"/g, '\\"') + '"]');
                 if ($existing.length) {
                     const $qty = $existing.find('.quantity-input');
                     $qty.val((parseFloat($qty.val()) || 0) + 1);
@@ -508,6 +673,9 @@
                 const gstOn = !(taxMeta.gst_applicable === false || taxMeta.gst_applicable === 0 || taxMeta.gst_applicable === '0');
                 const newRow = `
             <tr data-product-id="${productId}"
+                data-line-key="${escapeHtmlAttr(uniqueId)}"
+                data-variant-id="${variantId || ''}"
+                data-addon-ids="${escapeHtmlAttr(JSON.stringify(addonIds))}"
                 data-category-id="${taxMeta.category_id || ''}"
                 data-tax-id="${taxMeta.tax_id || ''}"
                 data-tax-rate="${taxMeta.tax_rate != null && taxMeta.tax_rate !== '' ? taxMeta.tax_rate : ''}"
@@ -524,7 +692,7 @@
                 </td>
                 <td>
                     <input type="number"
-                           name="quantities[${productId}]"
+                           name="quantities[${escapeHtmlAttr(uniqueId)}]"
                            class="form-control quantity-input"
                            value="1"
                            step="1"
@@ -533,7 +701,7 @@
                            style="width: 80px;">
                 </td>
                 <td class="text-uppercase">${escapeHtmlText(productQtyType || 'N/A')}
-                  <input type="hidden" name="quantity_type_id[${productId}]" value="${escapeHtmlAttr(productQtyTypeId || '')}">
+                  <input type="hidden" name="quantity_type_id[${escapeHtmlAttr(uniqueId)}]" value="${escapeHtmlAttr(productQtyTypeId || '')}">
                 </td>
                 <td>
                     <input type="number" class="form-control price-input" value="${priceNum.toFixed(2)}" min="0" step="0.01">
@@ -574,6 +742,9 @@
                         <button type="button" class="btn-close-search btn btn-sm btn-light" title="Close"><i class="fas fa-times"></i></button>
                     </div>`);
                 products.forEach(function (product) {
+                    var variants = product.variants || [];
+                    var addons = product.addons || [];
+                    storeEditProductOptions(product.id, variants, addons);
                     var rawPrice = product.raw_price != null ? product.raw_price : (parseFloat(String(product.price).replace(/[^0-9.-]+/g, '')) || 0);
                     var displayPrice = product.price;
                     if (typeof displayPrice === 'number') {
@@ -581,6 +752,7 @@
                             ? (Number(displayPrice).toFixed(2) + editCurrencySymbol)
                             : (editCurrencySymbol + Number(displayPrice).toFixed(2));
                     }
+                    var optHint = variants.length ? (' · ' + variants.length + ' sizes') : (addons.length ? ' · Options' : '');
                     var img = product.image || product.image_url || EDIT_NO_IMAGE;
                     $resultBox.append(`
                         <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3" style="border-bottom:1px solid #f1f5f9;">
@@ -589,7 +761,7 @@
                                     onerror="this.onerror=null;this.src='${escapeHtmlAttr(EDIT_NO_IMAGE)}';">
                                 <div style="min-width:0;">
                                     <strong style="font-size:13px;color:#1e293b;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtmlText(product.name || 'N/A')}</strong>
-                                    <small style="font-size:11.5px;color:#64748b;font-weight:600;">Price: ${escapeHtmlText(displayPrice || 'N/A')}</small>
+                                    <small style="font-size:11.5px;color:#64748b;font-weight:600;">Price: ${escapeHtmlText(displayPrice || 'N/A')}${escapeHtmlText(optHint)}</small>
                                 </div>
                             </div>
                             <button type="button" class="btn btn-sm btn-primary js-edit-add-product ms-2"
@@ -681,26 +853,79 @@
 
             $(document).on('click', '.js-edit-add-product', function (e) {
                 e.preventDefault();
+                e.stopPropagation();
                 const $btn = $(this);
+                const productId = $btn.data('id');
                 const taxRateAttr = $btn.attr('data-tax-rate');
-                addProductToTable(
-                    $btn.data('id'),
-                    $btn.attr('data-name') || $btn.data('name'),
-                    $btn.attr('data-image'),
-                    parseFloat($btn.attr('data-raw-price')) || 0,
-                    $btn.attr('data-quantity_type') || '',
-                    $btn.attr('data-quantity_type_id') || '',
-                    {
-                        category_id: $btn.attr('data-category-id') || '',
-                        tax_id: $btn.attr('data-tax-id') || '',
-                        tax_rate: (taxRateAttr === '' || taxRateAttr == null) ? null : parseFloat(taxRateAttr),
-                        tax_name: $btn.attr('data-tax-name') || '',
-                        tax_inclusive: $btn.attr('data-tax-inclusive') === '1',
-                        gst_applicable: $btn.attr('data-gst-applicable') !== '0'
+                const meta = {
+                    productId: productId,
+                    name: $btn.attr('data-name') || $btn.data('name'),
+                    image: $btn.attr('data-image'),
+                    basePrice: parseFloat($btn.attr('data-raw-price')) || 0,
+                    quantity_type: $btn.attr('data-quantity_type') || '',
+                    quantity_type_id: $btn.attr('data-quantity_type_id') || '',
+                    category_id: $btn.attr('data-category-id') || '',
+                    tax_id: $btn.attr('data-tax-id') || '',
+                    tax_rate: (taxRateAttr === '' || taxRateAttr == null) ? null : parseFloat(taxRateAttr),
+                    tax_name: $btn.attr('data-tax-name') || '',
+                    tax_inclusive: $btn.attr('data-tax-inclusive') === '1',
+                    gst_applicable: $btn.attr('data-gst-applicable') !== '0'
+                };
+
+                var opts = getEditProductOptions(productId);
+                var variants = opts.variants || [];
+                var addons = opts.addons || [];
+
+                function addPlain() {
+                    addProductToTable(
+                        meta.productId,
+                        meta.name,
+                        meta.image,
+                        meta.basePrice,
+                        meta.quantity_type,
+                        meta.quantity_type_id,
+                        {
+                            category_id: meta.category_id,
+                            tax_id: meta.tax_id,
+                            tax_rate: meta.tax_rate,
+                            tax_name: meta.tax_name,
+                            tax_inclusive: meta.tax_inclusive,
+                            gst_applicable: meta.gst_applicable,
+                            unique_id: String(meta.productId) + '-v0-a'
+                        }
+                    );
+                    $('.pos-search-results-box').hide().empty();
+                    $('.pos-product-search-input').val('').focus();
+                }
+
+                if (variants.length || addons.length) {
+                    $('.pos-search-results-box').hide();
+                    openEditOptionModal(meta, variants, addons);
+                    return;
+                }
+
+                // Options cache miss — fetch product detail (same as POS)
+                var authToken = localStorage.getItem('authToken');
+                $.ajax({
+                    url: '/api/edit_product/' + productId,
+                    type: 'GET',
+                    headers: authToken ? { Authorization: 'Bearer ' + authToken } : {},
+                    success: function (res) {
+                        var p = res.product || res.data || res;
+                        var loadedVariants = (p && p.variants) ? p.variants : [];
+                        var loadedAddons = (p && p.addons) ? p.addons : [];
+                        storeEditProductOptions(productId, loadedVariants, loadedAddons);
+                        if (loadedVariants.length || loadedAddons.length) {
+                            $('.pos-search-results-box').hide();
+                            openEditOptionModal(meta, loadedVariants, loadedAddons);
+                        } else {
+                            addPlain();
+                        }
+                    },
+                    error: function () {
+                        addPlain();
                     }
-                );
-                $('.pos-search-results-box').hide().empty();
-                $('.pos-product-search-input').val('').focus();
+                });
             });
 
             $(document).on('click', function (e) {
@@ -861,18 +1086,40 @@
                 const quantities = {};
                 const quantityTypeIds = {};
                 const unitPrices = {};
+                const lineItems = [];
                 $('#product-table-body tr[data-product-id]').each(function () {
                     const $row = $(this);
                     const productId = String($row.data('product-id'));
                     if (!productId) return;
-                    productIds.push(productId);
                     syncRowPriceFromInput($row);
-                    quantities[productId] = $row.find('.quantity-input').val();
-                    quantityTypeIds[productId] = $row.find('input[name^="quantity_type_id"]').val() || '';
-                    unitPrices[productId] = parseFloat($row.find('.quantity-input').attr('data-price')) || 0;
+                    const qty = parseFloat($row.find('.quantity-input').val()) || 0;
+                    const unitPrice = parseFloat($row.find('.quantity-input').attr('data-price')) || 0;
+                    const qtyTypeId = $row.find('input[name^="quantity_type_id"]').val() || '';
+                    let addonIds = [];
+                    try {
+                        addonIds = JSON.parse($row.attr('data-addon-ids') || '[]');
+                    } catch (err) {
+                        addonIds = [];
+                    }
+                    const variantId = $row.attr('data-variant-id') || null;
+                    const displayName = $row.find('td').eq(1).find('a').last().text().trim();
+
+                    productIds.push(productId);
+                    quantities[productId] = qty;
+                    quantityTypeIds[productId] = qtyTypeId;
+                    unitPrices[productId] = unitPrice;
+                    lineItems.push({
+                        product_id: productId,
+                        quantity: qty,
+                        unit_price: unitPrice,
+                        quantity_type_id: qtyTypeId,
+                        variant_id: variantId ? parseInt(variantId, 10) : null,
+                        addon_ids: addonIds,
+                        display_name: displayName
+                    });
                 });
 
-                if (!productIds.length) {
+                if (!lineItems.length) {
                     Swal.fire({
                         title: 'No items',
                         text: 'Add at least one product before updating the order.',
@@ -890,6 +1137,7 @@
                     quantities: quantities,
                     quantity_type_id: quantityTypeIds,
                     unit_prices: unitPrices,
+                    items: lineItems,
                     discount: $('#discount-input').val(),
                     payment_method: $('select[name="payment_method"]').val(),
                     status: $('select[name="status"]').val(),
@@ -904,14 +1152,18 @@
 
           
 
-                // Send AJAX request to update order
+                // Send AJAX request to update order (JSON so variant line items serialize cleanly)
                 $.ajax({
                     url: `/api/update_sale`,
                     type: "POST",
+                    contentType: 'application/json',
+                    dataType: 'json',
                     headers: {
                         "Authorization": "Bearer " + authToken,
+                        "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr('content') || '',
+                        "Accept": "application/json"
                     },
-                    data: formData,
+                    data: JSON.stringify(formData),
                     success: function(response) {
                         if (response.success) {
                             Swal.fire({

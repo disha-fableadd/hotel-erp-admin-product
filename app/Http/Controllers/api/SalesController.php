@@ -2387,43 +2387,91 @@ class SalesController extends Controller
             DB::beginTransaction();
 
             $order = Order::findOrFail($request->update_id);
-            $products = Product::whereIn('id', $request->product_ids)->get();
+
+            // Prefer line items (supports variants / add-ons like POS). Fall back to product_ids map.
+            $rawItems = $request->input('items');
+            $lineItems = [];
+            if (is_array($rawItems) && count($rawItems)) {
+                foreach ($rawItems as $row) {
+                    if (! is_array($row) || empty($row['product_id'])) {
+                        continue;
+                    }
+                    $lineItems[] = [
+                        'product_id' => (int) $row['product_id'],
+                        'quantity' => (float) ($row['quantity'] ?? 0),
+                        'unit_price' => isset($row['unit_price']) && is_numeric($row['unit_price'])
+                            ? (float) $row['unit_price']
+                            : null,
+                        'quantity_type_id' => $row['quantity_type_id'] ?? null,
+                        'variant_id' => ! empty($row['variant_id']) ? (int) $row['variant_id'] : null,
+                        'addon_ids' => array_values(array_filter(array_map('intval', (array) ($row['addon_ids'] ?? [])))),
+                        'display_name' => trim((string) ($row['display_name'] ?? '')),
+                    ];
+                }
+            }
+            if (! $lineItems) {
+                $unitPricesFallback = $request->input('unit_prices', []);
+                foreach ($request->product_ids ?? [] as $productId) {
+                    $lineItems[] = [
+                        'product_id' => (int) $productId,
+                        'quantity' => (float) ($request->quantities[$productId] ?? 0),
+                        'unit_price' => isset($unitPricesFallback[$productId]) && is_numeric($unitPricesFallback[$productId])
+                            ? (float) $unitPricesFallback[$productId]
+                            : null,
+                        'quantity_type_id' => $request->quantity_type_id[$productId] ?? null,
+                        'variant_id' => null,
+                        'addon_ids' => [],
+                        'display_name' => '',
+                    ];
+                }
+            }
+
+            $productIds = array_values(array_unique(array_column($lineItems, 'product_id')));
+            $products = Product::whereIn('id', $productIds)->get();
 
             // Fetch old order items
             $oldItems = OrderItem::where('order_id', $order->id)->get();
-            $oldQuantities = $oldItems->pluck('quantity', 'product_id')->toArray();
-            // dd($oldQuantities);
-            // Calculate subtotal & adjust stock (prefer edited unit_prices like POS)
-            $unitPrices = $request->input('unit_prices', []);
+            $oldQuantities = $oldItems->groupBy('product_id')->map(function ($group) {
+                return (float) $group->sum('quantity');
+            })->toArray();
+
+            // Aggregate new qty by product for stock
+            $newQtyByProduct = [];
+            foreach ($lineItems as $line) {
+                $pid = $line['product_id'];
+                $newQtyByProduct[$pid] = ($newQtyByProduct[$pid] ?? 0) + $line['quantity'];
+            }
+
             $subtotal = 0;
-            foreach ($request->product_ids as $productId) {
+            foreach ($lineItems as $line) {
+                $product = $products->firstWhere('id', $line['product_id']);
+                if (! $product) {
+                    continue;
+                }
+                $unitPrice = $line['unit_price'] !== null ? $line['unit_price'] : (float) $product->price;
+                $subtotal += $unitPrice * $line['quantity'];
+            }
+
+            foreach ($newQtyByProduct as $productId => $quantity) {
                 $product = $products->firstWhere('id', $productId);
-                if ($product) {
-                    $quantity = $request->quantities[$productId] ?? 0;
-                    $oldQty = $oldQuantities[$productId] ?? 0;
-                    $unitPrice = isset($unitPrices[$productId]) && is_numeric($unitPrices[$productId])
-                        ? (float) $unitPrices[$productId]
-                        : (float) $product->price;
+                if (! $product) {
+                    continue;
+                }
+                $oldQty = $oldQuantities[$productId] ?? 0;
+                $difference = $quantity - $oldQty;
 
-                    $difference = $quantity - $oldQty;
+                if ($difference > 0 && $product->shouldBlockSaleForQty($difference)) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Stock Quantity Exceeded. Only {$product->quantity} quantity are available for '{$product->name}'.",
+                    ], 422);
+                }
 
-                    // Check if stock is available for increment (skip when oversell / prepared food)
-                    if ($difference > 0 && $product->shouldBlockSaleForQty($difference)) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => "Stock Quantity Exceeded. Only {$product->quantity} quantity are available for '{$product->name}'.",
-                        ], 422);
-                    }
-
-                    // Stock adjustment (negative selling allowed)
-                    if ($difference > 0 && $product->tracksInventory()) {
-                        $product->decrement('quantity', $difference);
-                    } elseif ($difference < 0 && $product->tracksInventory()) {
-                        $product->increment('quantity', abs($difference));
-                    }
-
-                    $subtotal += $unitPrice * $quantity;
+                if ($difference > 0 && $product->tracksInventory()) {
+                    $product->decrement('quantity', $difference);
+                } elseif ($difference < 0 && $product->tracksInventory()) {
+                    $product->increment('quantity', abs($difference));
                 }
             }
 
@@ -2449,15 +2497,13 @@ class SalesController extends Controller
             if ($request->gst_option === 'with_gst' || $request->gst_option === 'with') {
                 $products->loadMissing(['tax', 'category']);
                 $resolvedForTax = [];
-                foreach ($request->product_ids ?? [] as $productId) {
-                    $product = $products->firstWhere('id', $productId);
+                foreach ($lineItems as $line) {
+                    $product = $products->firstWhere('id', $line['product_id']);
                     if (! $product) {
                         continue;
                     }
-                    $qty = (float) ($request->quantities[$productId] ?? 0);
-                    $unitPrice = isset($unitPrices[$productId]) && is_numeric($unitPrices[$productId])
-                        ? (float) $unitPrices[$productId]
-                        : (float) $product->price;
+                    $qty = (float) $line['quantity'];
+                    $unitPrice = $line['unit_price'] !== null ? $line['unit_price'] : (float) $product->price;
                     $catId = PosPricingService::safeCategoryId($product->category_id ?? null);
                     $gstApplicable = PosPricingService::categoryGstApplicable($catId);
                     $snap = $gstApplicable
@@ -2538,61 +2584,74 @@ class SalesController extends Controller
             // Remove old order items
             OrderItem::where('order_id', $order->id)->delete();
 
-            // Reinsert updated order items
-            foreach ($request->product_ids as $productId) {
-                $product = $products->firstWhere('id', $productId);
-                if ($product) {
-                    $quantity = $request->quantities[$productId] ?? 0;
-                    $quantity_type_id = $request->quantity_type_id[$productId] ?? null;
-                    $price = isset($unitPrices[$productId]) && is_numeric($unitPrices[$productId])
-                        ? (float) $unitPrices[$productId]
-                        : (float) $product->price;
-                    $total = $price * $quantity;
-                    $catId = PosPricingService::safeCategoryId($product->category_id ?? null);
-                    $gstApplicable = PosPricingService::categoryGstApplicable($catId);
-                    $taxSnap = $gstApplicable
-                        ? PosPricingService::taxSnapshotFromProduct($product)
-                        : [
-                            'tax_id' => null,
-                            'tax_name' => null,
-                            'tax_rate' => null,
-                            'tax_inclusive' => false,
-                        ];
+            // Reinsert updated order items (supports variants / add-ons like POS)
+            $inventoryLogged = [];
+            foreach ($lineItems as $line) {
+                $product = $products->firstWhere('id', $line['product_id']);
+                if (! $product) {
+                    continue;
+                }
+                $quantity = $line['quantity'];
+                $quantity_type_id = $line['quantity_type_id'];
+                $price = $line['unit_price'] !== null ? $line['unit_price'] : (float) $product->price;
+                $total = $price * $quantity;
+                $catId = PosPricingService::safeCategoryId($product->category_id ?? null);
+                $gstApplicable = PosPricingService::categoryGstApplicable($catId);
+                $taxSnap = $gstApplicable
+                    ? PosPricingService::taxSnapshotFromProduct($product)
+                    : [
+                        'tax_id' => null,
+                        'tax_name' => null,
+                        'tax_rate' => null,
+                        'tax_inclusive' => false,
+                    ];
+                $displayName = $line['display_name'] !== ''
+                    ? $line['display_name']
+                    : (string) ($product->name ?? 'Item');
 
-                    try {
-                        $snapLine = [
-                            'product' => $product,
-                            'product_name' => (string) ($product->name ?? 'Item'),
-                            'unit_price' => $price,
-                            'gst_applicable' => $gstApplicable,
-                        ] + $taxSnap;
-                        $itemPayload = [
-                            'order_id' => $order->id,
-                            'user_id' => $order->user_id ?? null,
-                            'category_id' => $catId,
-                            'product_id' => $product->id, // use $product->id to ensure valid integer
-                            'quantity' => $quantity,
-                            'quantity_type_id' => $quantity_type_id,
-                            'price' => $price,
-                            'total_amount' => $total,
-                            'branch_id' => $branchIdToUse,
-                            'created_by' => $userData->id,
-                        ];
-                        if (\Illuminate\Support\Facades\Schema::hasColumn('order_items', 'unit_price')) {
-                            $itemPayload['unit_price'] = $price;
-                        }
-                        OrderItem::create(array_merge(
-                            $itemPayload,
-                            PosPricingService::applyOverallSnapshotToLineFields(
-                                PosPricingService::orderItemSnapshotFields($snapLine),
-                                $gstOptsLegacy
-                            )
-                        ));
-                    } catch (\Exception $e) {
-                        \Log::error("Failed to insert OrderItem for product ID: " . $productId . " error: " . $e->getMessage());
-                        throw $e;
+                try {
+                    $snapLine = [
+                        'product' => $product,
+                        'product_name' => $displayName,
+                        'unit_price' => $price,
+                        'gst_applicable' => $gstApplicable,
+                    ] + $taxSnap;
+                    $itemPayload = [
+                        'order_id' => $order->id,
+                        'user_id' => $order->user_id ?? null,
+                        'category_id' => $catId,
+                        'product_id' => $product->id,
+                        'quantity' => $quantity,
+                        'quantity_type_id' => $quantity_type_id,
+                        'price' => $price,
+                        'total_amount' => $total,
+                        'branch_id' => $branchIdToUse,
+                        'created_by' => $userData->id,
+                    ];
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('order_items', 'unit_price')) {
+                        $itemPayload['unit_price'] = $price;
                     }
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('order_items', 'variant_id') && ! empty($line['variant_id'])) {
+                        $itemPayload['variant_id'] = $line['variant_id'];
+                    }
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('order_items', 'addons') && ! empty($line['addon_ids'])) {
+                        $itemPayload['addons'] = array_map(function ($id) {
+                            return ['id' => (int) $id];
+                        }, $line['addon_ids']);
+                    }
+                    OrderItem::create(array_merge(
+                        $itemPayload,
+                        PosPricingService::applyOverallSnapshotToLineFields(
+                            PosPricingService::orderItemSnapshotFields($snapLine),
+                            $gstOptsLegacy
+                        )
+                    ));
+                } catch (\Exception $e) {
+                    \Log::error('Failed to insert OrderItem for product ID: '.$line['product_id'].' error: '.$e->getMessage());
+                    throw $e;
+                }
 
+                if (! isset($inventoryLogged[$product->id])) {
                     $lastInventory = ProductInventory::where('product_id', $product->id)
                         ->orderBy('id', 'desc')
                         ->first();
@@ -2606,6 +2665,7 @@ class SalesController extends Controller
                         'type' => 'Update Sale',
                         'date' => now(),
                     ]);
+                    $inventoryLogged[$product->id] = true;
                 }
             }
 

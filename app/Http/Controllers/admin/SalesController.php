@@ -201,6 +201,7 @@ class SalesController extends Controller
             'order_items.product.quantityType',
             'order_items.product.tax',
             'order_items.product.category',
+            'order_items.variant',
         ])->find($id);
         if (!$sales) {
             return redirect()->route('sales.list')->with('error', 'Sales record not found.');

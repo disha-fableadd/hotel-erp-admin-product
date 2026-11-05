@@ -693,9 +693,7 @@
             fill: #c2410c !important;
         }
 
-        #tableOrderModal .btn-totallabel,
-        #tableOrderModal .btn-totallabel_1,
-        #tableOrderModal .btn-totallabel_2 {
+        #tableOrderModal .btn-totallabel {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -712,11 +710,7 @@
         }
 
         #tableOrderModal .btn-totallabel h6,
-        #tableOrderModal .btn-totallabel_1 h6,
-        #tableOrderModal .btn-totallabel_2 h6,
-        #tableOrderModal .btn-totallabel h5,
-        #tableOrderModal .btn-totallabel_1 h5,
-        #tableOrderModal .btn-totallabel_2 h5 {
+        #tableOrderModal .btn-totallabel h5 {
             margin: 0 !important;
             color: #fff !important;
             font-size: 13px !important;
@@ -724,34 +718,74 @@
             white-space: nowrap;
         }
 
-        #tableOrderModal .btn-totallabel_1 h6,
-        #tableOrderModal .btn-totallabel_2 h6 {
-            font-size: 12.5px !important;
-        }
-
+        /* Update + Checkout side-by-side (same as before) */
         #tableOrderModal .modal-order-edit {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 8px !important;
-            margin-top: 0 !important;
+            margin-top: 8px !important;
             align-items: stretch;
         }
 
+        #tableOrderModal .modal-order-edit .btn-totallabel_1,
+        #tableOrderModal .modal-order-edit .btn-totallabel_2 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex: 1 1 0;
+            width: auto !important;
+            min-width: 0;
+            margin: 0 !important;
+            padding: 11px 12px !important;
+            border-radius: 10px !important;
+            color: #fff !important;
+            border: 0 !important;
+            cursor: pointer;
+        }
+
+        #tableOrderModal .modal-order-edit .btn-totallabel_1 h6,
+        #tableOrderModal .modal-order-edit .btn-totallabel_2 h6,
+        #tableOrderModal .modal-order-edit .btn-totallabel_1 h5,
+        #tableOrderModal .modal-order-edit .btn-totallabel_2 h5 {
+            margin: 0 !important;
+            color: #fff !important;
+            font-size: 12.5px !important;
+            font-weight: 700 !important;
+            white-space: nowrap;
+        }
+
+        #tableOrderModal .btn-totallabel_1 {
+            background: linear-gradient(135deg, #1b2850 0%, #0f172a 100%) !important;
+            box-shadow: 0 4px 12px rgba(27, 40, 80, 0.25) !important;
+        }
+
+        #tableOrderModal .btn-totallabel_2 {
+            background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%) !important;
+            box-shadow: 0 4px 14px rgba(255, 159, 67, 0.35) !important;
+        }
+
+        /* Clear Bill — header (next to close) */
         #tableOrderModal .btn-clear-dine-bill {
-            width: 100%;
             border: 1px solid #fecaca;
             background: #fff1f2;
             color: #b91c1c;
-            border-radius: 10px;
-            padding: 10px 12px;
-            font-size: 12.5px;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
             font-weight: 700;
-            display: inline-flex;
+            display: none;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             cursor: pointer;
+            line-height: 1.2;
+            white-space: nowrap;
             transition: background .15s ease, color .15s ease, border-color .15s ease;
+        }
+
+        #tableOrderModal .btn-clear-dine-bill.is-visible {
+            display: inline-flex;
         }
 
         #tableOrderModal .btn-clear-dine-bill:hover {
@@ -760,13 +794,10 @@
             color: #fff;
         }
 
-        #tableOrderModal .btn-totallabel_1 {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
-            box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.55) !important;
-        }
-
-        #tableOrderModal .btn-totallabel_2 {
-            background: linear-gradient(135deg, #ff9f43 0%, #ff821c 100%) !important;
+        #tableOrderModal .modal-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         @media (max-width: 991px) {
@@ -2416,7 +2447,13 @@
                             Table: <span class="badge bg-warning text-dark px-2 py-1 js-table-name ms-1" style="font-size: 13px; font-weight: 700;"></span>
                         </h5>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="modal-header-actions">
+                        <button type="button" class="btn-clear-dine-bill" id="btnClearDineBill" title="Clear current bill">
+                            <i class="fas fa-trash-alt"></i>
+                            <span>Clear Bill</span>
+                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
                 </div>
 
                 <div class="modal-body">
@@ -2728,15 +2765,11 @@
                                     </div>
 
                                     <div class="modal-order-edit" style="display: none;">
-                                        <button type="button" class="btn-clear-dine-bill" id="btnClearDineBill" title="Clear current bill">
-                                            <i class="fas fa-trash-alt"></i>
-                                            <span>Clear Bill</span>
-                                        </button>
-                                        <div class="btn-totallabel_1" data-order_update_id="" style="width: 49%;">
+                                        <div class="btn-totallabel_1" data-order_update_id="">
                                             <h6>Update · {{ $currency_symbol }}0.00</h6>
                                             <h5><i class="fas fa-check"></i></h5>
                                         </div>
-                                        <div class="btn-totallabel_2" data-order_payment_update_id="" style="width: 49%;">
+                                        <div class="btn-totallabel_2" data-order_payment_update_id="">
                                             <h6>Checkout · {{ $currency_symbol }}0.00</h6>
                                             <h5><i class="fas fa-arrow-right"></i></h5>
                                         </div>
@@ -3118,6 +3151,7 @@
 
             $('.btn-totallabel').hide();
             $('.modal-order-edit').css('display', 'flex');
+            $('#btnClearDineBill').addClass('is-visible');
             $('.btn-totallabel_1').css('display', 'flex').attr('data-order_update_id', salse_id);
             $('.btn-totallabel_2').css('display', 'flex').attr('data-order_payment_update_id', salse_id);
             $('.setvaluecash').show();
@@ -3159,6 +3193,7 @@
             $('.clear_items').trigger('click');
             $('.btn-totallabel').css('display', 'flex');
             $('.modal-order-edit').hide();
+            $('#btnClearDineBill').removeClass('is-visible');
             $('.btn-totallabel_1').hide();
             $('.btn-totallabel_2').hide();
             $('.setvaluecash').hide();
@@ -3242,6 +3277,7 @@
                             $('.clear_items').trigger('click');
                             $('.btn-totallabel').css('display', 'flex');
                             $('.modal-order-edit').hide();
+                            $('#btnClearDineBill').removeClass('is-visible');
                             $('.btn-totallabel_1').hide().attr('data-order_update_id', '');
                             $('.btn-totallabel_2').hide().attr('data-order_payment_update_id', '');
                             Swal.fire({
@@ -3526,6 +3562,7 @@
                         $('.clear_items').trigger('click');
                         $('.btn-totallabel').css('display', 'flex');
                         $('.modal-order-edit').hide();
+                        $('#btnClearDineBill').removeClass('is-visible');
                         $('.btn-totallabel_1').hide();
                         $('.btn-totallabel_2').hide();
                         $('.setvaluecash').hide();
