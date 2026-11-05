@@ -2242,6 +2242,114 @@ class SalesController extends Controller
         ]);
     }
 
+    /**
+     * Clear / void the current dine-in table bill (running or bill-printed).
+     * Restores stock, soft-deletes the order, and frees the table.
+     */
+    public function clearDineInOrder(Request $request, $id)
+    {
+        $this->ensureTenantDatabaseFromSession($request);
+
+        $order = Order::where('id', $id)->where('isDeleted', 0)->first();
+        if (! $order) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Order not found.',
+            ], 404);
+        }
+
+        if (empty($order->table_no)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This is not a dine-in table order.',
+            ], 422);
+        }
+
+        // Only clear active table bills (occupied / bill printed)
+        if ((int) ($order->table_status ?? 0) !== 1) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Only the current running table bill can be cleared. Use Orders → Update Bill for closed bills.',
+            ], 422);
+        }
+
+        $userData = Auth::guard('api')->user() ?: Auth::guard('web')->user();
+        $branchIdToUse = $userData
+            ? (($userData->role === 'staff' && $userData->branch_id) ? $userData->branch_id : $userData->id)
+            : ($order->branch_id ?? null);
+
+        DB::beginTransaction();
+        try {
+            try {
+                $this->recipeStock()->reverseForOrder($order);
+            } catch (\Throwable $e) {
+                Log::error('Clear dine-in recipe reverse: ' . $e->getMessage());
+            }
+
+            $items = OrderItem::where('order_id', $order->id)->where('isDeleted', 0)->get();
+            foreach ($items as $item) {
+                $product = Product::find($item->product_id);
+                if (! $product) {
+                    continue;
+                }
+                if ($product->tracksInventory()) {
+                    $beforeQty = (float) $product->quantity;
+                    $product->quantity = $beforeQty + (float) $item->quantity;
+                    if ((float) $product->quantity > 0) {
+                        $product->availablility = 'in_stock';
+                    }
+                    $product->save();
+
+                    ProductInventory::create([
+                        'product_id' => $product->id,
+                        'initial_stock' => $beforeQty,
+                        'current_stock' => $product->quantity,
+                        'branch_id' => $branchIdToUse,
+                        'create_by' => $userData->id ?? 0,
+                        'type' => 'Dine-in Bill Cleared (Restore)',
+                        'date' => now(),
+                    ]);
+                }
+            }
+
+            OrderItem::where('order_id', $order->id)->update(['isDeleted' => 1]);
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('payment_stores', 'isDeleted')) {
+                PaymentStore::where('order_id', $order->id)->update(['isDeleted' => 1]);
+            }
+
+            $order->isDeleted = 1;
+            $order->table_status = 0;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
+                $order->bill_printed = 0;
+            }
+            $order->save();
+
+            $tableId = (int) $order->table_no;
+            $tableSync = $this->syncTableStatus($tableId);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Current bill cleared. Table is now available.',
+                'order_id' => $order->id,
+                'table_id' => $tableId,
+                'table_status' => $tableSync['status'] ?? Table_no::STATUS_BLANK,
+                'table_status_class' => $tableSync['class'] ?? 'blank-table',
+                'total_amount' => null,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Clear dine-in order failed: ' . $e->getMessage());
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to clear bill. Please try again.',
+            ], 500);
+        }
+    }
+
     public function update_sale(Request $request)
     {
         // dd($request->all());

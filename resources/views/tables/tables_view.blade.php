@@ -731,8 +731,33 @@
 
         #tableOrderModal .modal-order-edit {
             display: flex;
+            flex-wrap: wrap;
             gap: 8px !important;
             margin-top: 0 !important;
+            align-items: stretch;
+        }
+
+        #tableOrderModal .btn-clear-dine-bill {
+            width: 100%;
+            border: 1px solid #fecaca;
+            background: #fff1f2;
+            color: #b91c1c;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 12.5px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: background .15s ease, color .15s ease, border-color .15s ease;
+        }
+
+        #tableOrderModal .btn-clear-dine-bill:hover {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: #fff;
         }
 
         #tableOrderModal .btn-totallabel_1 {
@@ -2085,6 +2110,30 @@
             color: #fff;
         }
 
+        .table-card__action--update-last {
+            color: #c2410c;
+            border-color: rgba(255, 159, 67, 0.4);
+            background: rgba(255, 159, 67, 0.1);
+        }
+
+        .table-card__action--update-last:hover {
+            background: #ff9f43;
+            border-color: #ff9f43;
+            color: #fff;
+        }
+
+        .table-card__action--clear-bill {
+            color: #b91c1c;
+            border-color: rgba(239, 68, 68, 0.35);
+            background: rgba(254, 226, 226, 0.65);
+        }
+
+        .table-card__action--clear-bill:hover {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: #fff;
+        }
+
         .table-card__action-spacer {
             flex: 1;
             min-height: 36px;
@@ -2679,6 +2728,10 @@
                                     </div>
 
                                     <div class="modal-order-edit" style="display: none;">
+                                        <button type="button" class="btn-clear-dine-bill" id="btnClearDineBill" title="Clear current bill">
+                                            <i class="fas fa-trash-alt"></i>
+                                            <span>Clear Bill</span>
+                                        </button>
                                         <div class="btn-totallabel_1" data-order_update_id="" style="width: 49%;">
                                             <h6>Update · {{ $currency_symbol }}0.00</h6>
                                             <h5><i class="fas fa-check"></i></h5>
@@ -3129,6 +3182,123 @@
             return currencyPosition === 'right' ? (fixed + currencySymbol) : (currencySymbol + fixed);
         }
 
+        function clearDineInBill(orderId, tableId, tableName) {
+            if (!orderId) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No bill',
+                    text: 'No current bill found for this table.',
+                    confirmButtonColor: '#ff9f43'
+                });
+                return;
+            }
+
+            var label = tableName ? ('Table ' + tableName) : 'this table';
+            Swal.fire({
+                icon: 'warning',
+                title: 'Clear current bill?',
+                html: 'This will <b>void the current bill</b> for <b>' + $('<div>').text(label).html() + '</b>, restore stock, and free the table.<br><br>This cannot be undone.',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, clear bill',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                reverseButtons: true,
+                focusCancel: true
+            }).then(function (result) {
+                if (!result.isConfirmed) {
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Clearing bill…',
+                    allowOutsideClick: false,
+                    didOpen: function () { Swal.showLoading(); }
+                });
+
+                $.ajax({
+                    url: '/api/orders/' + orderId + '/clear-dine',
+                    type: 'POST',
+                    dataType: 'json',
+                    headers: posApiHeaders(),
+                    data: JSON.stringify({
+                        selectedSubAdminId: selectedSubAdminId || localStorage.getItem('selectedSubAdminId')
+                    }),
+                    success: function (response) {
+                        if (response && response.status) {
+                            var tid = tableId || response.table_id || window.selectedTableId;
+                            if (tid) {
+                                updateTableCardStatus(
+                                    tid,
+                                    response.table_status_class || 'blank-table',
+                                    response.table_status || 'blank',
+                                    '',
+                                    ''
+                                );
+                            }
+                            if (tableOrderModal) {
+                                tableOrderModal.hide();
+                            }
+                            $('.clear_items').trigger('click');
+                            $('.btn-totallabel').css('display', 'flex');
+                            $('.modal-order-edit').hide();
+                            $('.btn-totallabel_1').hide().attr('data-order_update_id', '');
+                            $('.btn-totallabel_2').hide().attr('data-order_payment_update_id', '');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Bill cleared',
+                                text: response.message || 'Table is now available.',
+                                confirmButtonColor: '#ff9f43',
+                                timer: 1800,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Could not clear',
+                                text: (response && response.message) ? response.message : 'Please try again.',
+                                confirmButtonColor: '#ff9f43'
+                            });
+                        }
+                    },
+                    error: function (xhr) {
+                        var msg = (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.error))
+                            ? (xhr.responseJSON.message || xhr.responseJSON.error)
+                            : 'Failed to clear bill.';
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: msg,
+                            confirmButtonColor: '#ff9f43'
+                        });
+                    }
+                });
+            });
+        }
+
+        $(document).on('click', '.js-clear-dine-bill', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            clearDineInBill(
+                $(this).attr('data-order-id') || $(this).data('order-id'),
+                $(this).attr('data-table-id') || $(this).data('table-id') || window.selectedTableId,
+                $(this).attr('data-table-name') || $(this).data('table-name') || ($('.js-table-name').text() || '')
+            );
+        });
+
+        $(document).on('click', '#btnClearDineBill', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var orderId = $('.btn-totallabel_1').attr('data-order_update_id')
+                || $('.btn-totallabel_2').attr('data-order_payment_update_id')
+                || '';
+            clearDineInBill(
+                orderId,
+                window.selectedTableId,
+                ($('.js-table-name').text() || '').trim()
+            );
+        });
+
         window.updateTableCardStatus = function updateTableCardStatus(tableId, statusClass, statusValue, orderId, billTotal) {
             const $card = $(".table-box123[data-table-id='" + tableId + "']");
             if (!$card.length) return;
@@ -3140,20 +3310,21 @@
                     ? 'Bill Printed'
                     : (nextStatus === 'reserved' ? 'Reserved' : 'Available'));
 
+            const isActiveTable = (nextStatus === 'running' || nextStatus === 'printed');
             $card.removeClass('blank-table running-table reserved-table printed-table')
                 .addClass(nextClass)
-                .attr('data-order-id', orderId || '')
+                .attr('data-order-id', isActiveTable ? (orderId || '') : '')
                 .attr('data-table-status', nextStatus);
 
             $card.find('.table-card__badge').text(badgeLabel);
 
             const $bill = $card.find('.table-card__bill');
-            if ((nextStatus === 'running' || nextStatus === 'printed') && billTotal !== undefined && billTotal !== null && billTotal !== '') {
+            if (isActiveTable && billTotal !== undefined && billTotal !== null && billTotal !== '') {
                 const formatted = formatTableBillAmount(billTotal);
                 $card.attr('data-bill-total', parseFloat(billTotal).toFixed(2));
                 $bill.addClass('is-visible');
                 $bill.find('.table-card__bill-total').text(formatted);
-            } else if (nextStatus !== 'running' && nextStatus !== 'printed') {
+            } else if (!isActiveTable) {
                 $card.attr('data-bill-total', '');
                 $bill.removeClass('is-visible');
                 $bill.find('.table-card__bill-total').text('');
@@ -3161,14 +3332,41 @@
 
             const $actions = $card.find('.table-card__actions');
             const tableName = $card.data('table-name') || $card.attr('data-table-name') || '';
+            const canEditBill = {{ app('hasPermission')(2, 'edit') ? 'true' : 'false' }};
+            // When table becomes free after checkout, remember that bill as last order
+            if ((nextStatus === 'blank' || nextStatus === 'available') && orderId) {
+                $card.attr('data-last-order-id', orderId);
+            }
+            const lastOrderId = $card.attr('data-last-order-id') || '';
+            const activeOrderId = isActiveTable ? (orderId || '') : '';
             $actions.empty();
             if (nextStatus === 'blank' || nextStatus === 'available') {
+                if (canEditBill && lastOrderId) {
+                    $actions.append(
+                        '<a href="/edit-sales/' + lastOrderId + '" class="table-card__action table-card__action--update-last js-update-last-bill"' +
+                        ' title="Update last bill for this table" data-order-id="' + lastOrderId + '">' +
+                        '<i class="fa-solid fa-pen-to-square"></i><span>Update Last</span></a>'
+                    );
+                }
                 $actions.append(
                     '<button type="button" class="table-card__action table-card__action--reserve js-reserve-table" title="Reserve this table"' +
                     ' data-table-id="' + tableId + '" data-table-name="' + String(tableName).replace(/"/g, '&quot;') + '">' +
                     '<i class="fa-regular fa-calendar-check"></i><span>Reserve</span></button>'
                 );
             } else if (nextStatus === 'running' || nextStatus === 'printed') {
+                if (canEditBill && activeOrderId) {
+                    $actions.append(
+                        '<a href="/edit-sales/' + activeOrderId + '" class="table-card__action table-card__action--update-last js-update-last-bill"' +
+                        ' title="Update this table bill" data-order-id="' + activeOrderId + '">' +
+                        '<i class="fa-solid fa-pen-to-square"></i><span>Update</span></a>'
+                    );
+                    $actions.append(
+                        '<button type="button" class="table-card__action table-card__action--clear-bill js-clear-dine-bill"' +
+                        ' title="Clear current bill" data-order-id="' + activeOrderId + '" data-table-id="' + tableId + '"' +
+                        ' data-table-name="' + String(tableName).replace(/"/g, '&quot;') + '">' +
+                        '<i class="fa-solid fa-trash-can"></i><span>Clear</span></button>'
+                    );
+                }
                 $actions.append(
                     '<a href="javascript:void(0);" class="print-table-order table-card__action table-card__action--print"' +
                     ' data-table_no_invoice="' + tableId + '" title="Print / view orders">' +
@@ -3287,7 +3485,7 @@
             document.querySelectorAll('.table-box123').forEach(function (box) {
                 box.addEventListener('click', function (e) {
                     // Reserve / Print live inside the card — don't open dine-in for those
-                    if (e.target.closest('.table-card__actions, .js-reserve-table, .print-table-order')) {
+                    if (e.target.closest('.table-card__actions, .js-reserve-table, .print-table-order, .js-update-last-bill, .js-clear-dine-bill')) {
                         return;
                     }
 
@@ -5179,11 +5377,12 @@
                             var checkoutStatus = response.table_status || 'blank';
                             var checkoutKeepsTable = (checkoutStatusClass === 'running-table' || checkoutStatusClass === 'printed-table');
                             if (window.selectedTableId) {
+                                // Always pass order id so free tables can keep "Update Last"
                                 updateTableCardStatus(
                                     window.selectedTableId,
                                     checkoutStatusClass,
                                     checkoutStatus,
-                                    checkoutKeepsTable ? response.order_id : '',
+                                    response.order_id || orderId || '',
                                     checkoutKeepsTable ? response.total_amount : ''
                                 );
                             }

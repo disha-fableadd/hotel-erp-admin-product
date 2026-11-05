@@ -2883,13 +2883,11 @@
                         @endif
 
                         let editBtnHtml = '';
-                        if (!order.has_payment || order.has_payment === 0) {
-                            @if(app('hasPermission')(2, 'edit'))
-                            editBtnHtml = `<a class="dd-item" href="/edit-sales/${order.id}">
-                                <span class="dd-icon"><i class="fas fa-edit" style="color:#fd7e14"></i></span> Edit
-                            </a>`;
-                            @endif
-                        }
+                        @if(app('hasPermission')(2, 'edit'))
+                        editBtnHtml = `<a class="dd-item" href="/edit-sales/${order.id}">
+                            <span class="dd-icon"><i class="fas fa-edit" style="color:#fd7e14"></i></span> Update Bill
+                        </a>`;
+                        @endif
 
                         let invoiceBtnHtml = '';
                         @if(app('hasPermission')(2, 'view'))
@@ -3479,13 +3477,11 @@
             </a>`;
             @endif
             let editBtnHtml2 = '';
-            if (!order.has_payment || order.has_payment === 0) {
-                @if(app('hasPermission')(2, 'edit'))
-                editBtnHtml2 = `<a class="dd-item" href="/edit-sales/${order.id}">
-                    <span class="dd-icon"><i class="fas fa-edit" style="color:#fd7e14"></i></span> Edit
-                </a>`;
-                @endif
-            }
+            @if(app('hasPermission')(2, 'edit'))
+            editBtnHtml2 = `<a class="dd-item" href="/edit-sales/${order.id}">
+                <span class="dd-icon"><i class="fas fa-edit" style="color:#fd7e14"></i></span> Update Bill
+            </a>`;
+            @endif
             let invBtnHtml2 = '';
             @if(app('hasPermission')(2, 'view'))
             invBtnHtml2 = `<a class="dd-item" href="/sales-invoice/${order.id}">
@@ -3638,13 +3634,11 @@
             </a>`;
             @endif
             let editBtnHtml3 = '';
-            if (!order.has_payment || order.has_payment === 0) {
-                @if(app('hasPermission')(2, 'edit'))
-                editBtnHtml3 = `<a class="dd-item" href="/edit-sales/${order.id}">
-                    <span class="dd-icon"><i class="fas fa-edit" style="color:#fd7e14"></i></span> Edit
-                </a>`;
-                @endif
-            }
+            @if(app('hasPermission')(2, 'edit'))
+            editBtnHtml3 = `<a class="dd-item" href="/edit-sales/${order.id}">
+                <span class="dd-icon"><i class="fas fa-edit" style="color:#fd7e14"></i></span> Update Bill
+            </a>`;
+            @endif
             let invBtnHtml3 = '';
             @if(app('hasPermission')(2, 'view'))
             invBtnHtml3 = `<a class="dd-item" href="/sales-invoice/${order.id}">

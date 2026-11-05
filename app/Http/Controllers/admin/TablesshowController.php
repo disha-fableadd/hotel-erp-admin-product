@@ -130,7 +130,22 @@ class TablesshowController extends Controller
             ->unique('table_no')
             ->keyBy('table_no');
 
-        $tableCollection->each(function ($table) use ($runningOrders) {
+        // Latest closed/paid bill per table (for "Update Last" on available tables)
+        $lastClosedOrders = Order::whereIn('table_no', $tableCollection->pluck('id'))
+            ->where('isDeleted', 0)
+            ->where(function ($q) {
+                $q->where('table_status', 0)
+                    ->orWhereNull('table_status');
+            })
+            ->when(! empty($branchIdToUse), function ($query) use ($branchIdToUse) {
+                $query->where('branch_id', $branchIdToUse);
+            })
+            ->orderByDesc('id')
+            ->get(['id', 'table_no', 'total_amount', 'payment_status'])
+            ->unique('table_no')
+            ->keyBy('table_no');
+
+        $tableCollection->each(function ($table) use ($runningOrders, $lastClosedOrders) {
             $order = $runningOrders->get($table->id);
             if ($order) {
                 $table->order_id = $order->id;
@@ -144,6 +159,9 @@ class TablesshowController extends Controller
                     $table->table_status = 1;
                 }
             }
+
+            $lastClosed = $lastClosedOrders->get($table->id);
+            $table->last_order_id = $lastClosed ? (int) $lastClosed->id : null;
         });
 
         $can_item_discount = (bool) ($setting->allow_item_level_discount ?? false);

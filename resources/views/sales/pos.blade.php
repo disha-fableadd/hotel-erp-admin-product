@@ -1277,7 +1277,7 @@
             }
             .card.card-order .product-table,
             .pos-order-scroll .product-table,
-            .product-table {
+.product-table {
                 max-height: clamp(120px, 22vh, 200px) !important;
             }
             .tabs_wrapper .tabs_container,
@@ -1658,7 +1658,7 @@
         .pos-add-bill-tab:hover { background: #ff9f43; }
         @media (max-width: 992px) {
             .pos-bill-tabs-bar { max-width: min(55vw, 280px); }
-        }
+}
     </style>
         <div class="content">
         <div class="page-header d-flex justify-content-between align-items-center">
@@ -1668,7 +1668,7 @@
                     <button type="button" class="pos-add-bill-tab" id="posAddBillTabBtn" title="New bill (Shift + T)">+</button>
                 </div>
                 <span class="pos-header-divider" aria-hidden="true"></span>
-                <div class="page-title d-flex align-items-center gap-2 m-0" style="flex-shrink: 0;">
+            <div class="page-title d-flex align-items-center gap-2 m-0" style="flex-shrink: 0;">
                     <i class="fas fa-utensils" style="color: var(--pos-primary); font-size: 16px;"></i>
                     <h4 style="margin-bottom: 0; font-weight: 700; color: #1e293b; font-size: 15px;">Add Order</h4>
                 </div>
@@ -1779,12 +1779,12 @@
                                 <div class="customer-box-title">
                                     <i class="fas fa-user-friends"></i>
                                     <span>Customer</span>
-                                </div>
-                                <div class="pos-order-badge">
+                            </div>
+                            <div class="pos-order-badge">
                                     <span class="pos-order-label">Type:</span>
                                     <span class="pos-order-val" id="orderTypeBadge">Self Pickup</span>
-                                </div>
                             </div>
+                        </div>
                             <div class="customer-box-body">
                             <div class="row g-2">
                                 <!-- Customer Name -->
@@ -1854,9 +1854,9 @@
                                                 @endforeach
                                             </select>
                                         </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
                             </div>
                         </div>
 
@@ -2386,7 +2386,7 @@
                             </div>
                             <button type="button" class="btn btn-link btn-sm bill-gen-settings-toggle" id="posPrinterSettingsToggle">
                                 <i class="fas fa-cog"></i> Printer settings
-                            </button>
+                        </button>
                         </div>
 
                         <div id="posPrinterSettingsPanel" class="bill-gen-settings" style="display:none;">
@@ -2438,9 +2438,9 @@
                         <div class="bill-gen-actions">
                             <button type="button" id="closeBillBtn" class="btn btn-light bill-gen-btn-secondary">Close</button>
                             <button type="button" id="detailsBillBtn" class="btn btn-outline-secondary bill-gen-btn-secondary"
-                                onclick="if(window._billOrderId){ window.location.href='/sales-invoice/'+window._billOrderId; }">
-                                Details
-                            </button>
+                            onclick="if(window._billOrderId){ window.location.href='/sales-invoice/'+window._billOrderId; }">
+                            Details
+                        </button>
                             <button type="button" id="printKotOnlyBtn" class="btn btn-outline-dark bill-gen-btn-secondary" title="Kitchen ticket only">
                                 Print KOT
                             </button>
@@ -2448,7 +2448,7 @@
                                 <i class="fas fa-print me-1"></i>
                                 <span id="printBillBtnLabel">Print Bill + KOT</span>
                                 <small class="ms-1 opacity-75">(F10)</small>
-                            </button>
+                        </button>
                         </div>
                     </div>
                 </div>
@@ -3146,7 +3146,7 @@
 
                         // Reset static tax-master rows; CGST/SGST rows are rendered dynamically
                         $(".taxList").not('[data-tax-id="cgst"], [data-tax-id="sgst"], [data-dynamic-gst="1"]').hide().each(function() {
-                            const taxEl = $(this).find(".tax-value");
+                                const taxEl = $(this).find(".tax-value");
                             taxEl.html(formatCurrency("0.00", taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
                         });
                         $('.taxList[data-dynamic-gst="1"]').remove();
@@ -3205,7 +3205,7 @@
                                 const rateMap = {};
                                 rateMap[String(rate)] = amount;
                                 renderCgstSgstFromAgg(rateMap);
-                            } else {
+                        } else {
                                 const rateMap = {};
                                 selectedItems.forEach(function(item) {
                                     const taxId = item.tax_id || null;
@@ -3571,36 +3571,36 @@
                     };
 
                     function addPlainOrIncrease() {
-                        var uniqueId = productId;
-                        if (selectedItems.has(uniqueId)) {
-                            var existingItem = selectedItems.get(uniqueId);
+                    var uniqueId = productId;
+                    if (selectedItems.has(uniqueId)) {
+                        var existingItem = selectedItems.get(uniqueId);
                             // Negative selling: always allow increase
                             existingItem.quantity++;
                             selectedItems.set(uniqueId, existingItem);
                             updateTotalItems();
-                        } else {
-                            selectedItems.set(uniqueId, {
-                                id: uniqueId,
-                                productId: productId,
-                                categoryId: categoryId,
-                                name: productName,
-                                price: productPrice,
-                                image: productImage,
-                                code: productCode,
-                                quantity_type: quantity_type,
-                                quantity_type_id: quantity_type_id,
-                                quantity_type123: quantity_type123,
-                                quantity: 1,
+                    } else {
+                        selectedItems.set(uniqueId, {
+                            id: uniqueId,
+                            productId: productId,
+                            categoryId: categoryId,
+                            name: productName,
+                            price: productPrice,
+                            image: productImage,
+                            code: productCode,
+                            quantity_type: quantity_type,
+                            quantity_type_id: quantity_type_id,
+                            quantity_type123: quantity_type123,
+                            quantity: 1,
                                 stock: productStock,
                                 item_discount_percent: 0,
                                 tax_id: productTaxId,
                                 tax_rate: productTaxRate,
                                 tax_name: productTaxName,
                                 tax_inclusive: productTaxInclusive
-                            });
-                            $checkIcon.addClass("selected");
-                            updateTotalItems();
-                        }
+                        });
+                        $checkIcon.addClass("selected");
+                        updateTotalItems();
+                    }
                     }
 
                     if ((variants && variants.length) || (addons && addons.length)) {
@@ -3646,9 +3646,9 @@
                     if (selectedItems.has(itemId)) {
                         var item = selectedItems.get(itemId);
                         // Negative selling: no hard stock cap
-                        item.quantity++;
-                        selectedItems.set(itemId, item);
-                        updateTotalItems();
+                            item.quantity++;
+                            selectedItems.set(itemId, item);
+                            updateTotalItems();
                     }
                 });
 
@@ -4091,7 +4091,7 @@
                                     $(".check-product i").removeClass("selected");
                                     $("input[name='customer_name'], input[name='customer_phone']").val("");
                                     $("#discount").val("");
-                                    updateTotalItems();
+                                updateTotalItems();
                                 }
                             } else {
                                 alert("Error: " + response.message);
@@ -4374,14 +4374,14 @@
                         return;
                     }
 
-                    $resultBox.append(`
-                        <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 bg-white" style="border-bottom: 2px solid #f1f5f9; position: sticky; top: 0; z-index: 10;">
+                                $resultBox.append(`
+                                    <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 bg-white" style="border-bottom: 2px solid #f1f5f9; position: sticky; top: 0; z-index: 10;">
                             <span class="fw-bold" style="font-size: 13.5px; color: #1e293b;">Products (${products.length})</span>
-                            <button type="button" class="btn-close-search" style="background: none; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; cursor: pointer;" title="Close">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    `);
+                                        <button type="button" class="btn-close-search" style="background: none; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; cursor: pointer;" title="Close">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                `);
 
                     products.forEach(function(product) {
                         storePosProductOptions(product.id, product.variants || [], product.addons || []);
@@ -4400,24 +4400,24 @@
                         var stockVal = (typeof posEffectiveStock === 'function')
                             ? posEffectiveStock(product.stock != null ? product.stock : product.quantity, product)
                             : 999999;
-                        $resultBox.append(`
-                            <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3" style="border-bottom: 1px solid #f1f5f9;">
-                                <div class="d-flex align-items-center gap-2" style="flex: 1; min-width: 0;">
+                                    $resultBox.append(`
+                                        <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3" style="border-bottom: 1px solid #f1f5f9;">
+                                            <div class="d-flex align-items-center gap-2" style="flex: 1; min-width: 0;">
                                     <img src="${searchImg}" alt="" class="rounded" style="width: 34px; height: 34px; object-fit: cover; flex-shrink: 0; border: 1px solid #f1f5f9;" data-fallback="${searchNoImg}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')||window.POS_NO_IMAGE;">
-                                    <div style="min-width: 0;">
+                                                <div style="min-width: 0;">
                                         <strong style="font-size: 13px; color: #1e293b; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtmlText(product.name ?? 'N/A')}</strong>
                                         <small style="font-size: 11.5px; color: #64748b; font-weight: 600;">Price: ${escapeHtmlText(displayPrice ?? 'N/A')}${optHint}</small>
-                                    </div>
-                                </div>
-                                <button class="btn btn-sm btn-primary add-product ms-2"
-                                    style="border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 12px; flex-shrink: 0;"
-                                    data-id="${product.id}"
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-sm btn-primary add-product ms-2"
+                                                style="border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 12px; flex-shrink: 0;"
+                                                data-id="${product.id}"
                                     data-name="${escapeHtmlAttr(product.name)}"
                                     data-price="${escapeHtmlAttr(displayPrice)}"
                                     data-raw-price="${rawPrice}"
-                                    data-quantity_type="${product.quantity_type || ''}"
-                                    data-quantity_type_id="${product.quantity_type_id || ''}"
-                                    data-quantity_type123="${product.quantity_type_id || ''}"
+                                                data-quantity_type="${product.quantity_type || ''}"
+                                                data-quantity_type_id="${product.quantity_type_id || ''}"
+                                                data-quantity_type123="${product.quantity_type_id || ''}"
                                     data-image="${searchImg}"
                                     data-stock="${stockVal}"
                                     data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}"
@@ -4427,10 +4427,10 @@
                                     data-tax-name="${escapeHtmlAttr(product.tax_name || '')}"
                                     data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}"
                                     data-category="${product.category_id || product.categoryId || 0}">+ Add</button>
-                            </div>
-                        `);
-                    });
-                    $resultBox.show();
+                                        </div>
+                                    `);
+                                });
+                                $resultBox.show();
                 }
 
                 function executeProductSearch($input, $resultBox) {
@@ -4483,14 +4483,14 @@
                         },
                         error: function() {
                             if (reqId !== posSearchReqId) return;
-                            $resultBox.html(`
-                                <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3">
+                                $resultBox.html(`
+                                    <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3">
                                     <span style="font-size: 13px; color: #ef4444;">Search failed. Please try again.</span>
-                                    <button type="button" class="btn-close-search" style="background: none; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; cursor: pointer;" title="Close">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            `).show();
+                                        <button type="button" class="btn-close-search" style="background: none; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; cursor: pointer;" title="Close">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                `).show();
                         }
                     });
                 }
@@ -4502,7 +4502,7 @@
                     if (!$resultBox.length) return;
                     clearTimeout(posSearchTimer);
                     posSearchTimer = setTimeout(function() {
-                        executeProductSearch($input, $resultBox);
+                    executeProductSearch($input, $resultBox);
                     }, 250);
                 });
 
@@ -4571,9 +4571,9 @@
 
                     if (selectedItems.has(productId)) {
                         var existingItem = selectedItems.get(productId);
-                        existingItem.quantity++;
-                        selectedItems.set(productId, existingItem);
-                        updateTotalItems();
+                            existingItem.quantity++;
+                            selectedItems.set(productId, existingItem);
+                            updateTotalItems();
                     } else {
                         selectedItems.set(productId, {
                             id: productId,
@@ -4796,7 +4796,7 @@
             function updatePosPaymentPanelPosition() {
                 var $panel = $('.payment_panel');
                 if (!$panel.length) return;
-                $panel.css({
+                    $panel.css({
                     position: 'relative',
                     bottom: 'auto',
                     left: 'auto',
