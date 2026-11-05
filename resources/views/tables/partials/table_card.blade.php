@@ -72,13 +72,26 @@
         <div class="table-card__actions">
             @if($isAvailable)
                 @if(!empty($table->last_order_id) && app('hasPermission')(2, 'edit'))
-                    <a href="{{ url('/edit-sales/' . $table->last_order_id) }}"
-                        class="table-card__action table-card__action--update-last js-update-last-bill"
-                        title="Update last bill for this table"
-                        data-order-id="{{ $table->last_order_id }}">
-                        <i class="fa-solid fa-pen-to-square"></i>
-                        <span>Update Last</span>
-                    </a>
+                    <button type="button"
+                        class="table-card__action table-card__action--reoccupy js-reoccupy-last-bill"
+                        title="Put last bill back on this table (Occupied)"
+                        data-order-id="{{ $table->last_order_id }}"
+                        data-table-id="{{ $table->id }}"
+                        data-table-name="{{ $table->table_name }}"
+                        data-open-dine="0">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>Re-occupy</span>
+                    </button>
+                    <button type="button"
+                        class="table-card__action table-card__action--update-last js-reoccupy-last-bill"
+                        title="Re-occupy last bill and continue add/edit in dine-in"
+                        data-order-id="{{ $table->last_order_id }}"
+                        data-table-id="{{ $table->id }}"
+                        data-table-name="{{ $table->table_name }}"
+                        data-open-dine="1">
+                        <i class="fa-solid fa-utensils"></i>
+                        <span>Continue</span>
+                    </button>
                 @endif
                 <button type="button"
                     class="table-card__action table-card__action--reserve js-reserve-table"
@@ -90,13 +103,15 @@
                 </button>
             @elseif($isOccupied || $isPrinted)
                 @if(app('hasPermission')(2, 'edit') && !empty($table->order_id))
-                    <a href="{{ url('/edit-sales/' . $table->order_id) }}"
-                        class="table-card__action table-card__action--update-last js-update-last-bill"
-                        title="Update this table bill"
-                        data-order-id="{{ $table->order_id }}">
-                        <i class="fa-solid fa-pen-to-square"></i>
-                        <span>Update</span>
-                    </a>
+                    <button type="button"
+                        class="table-card__action table-card__action--update-last js-open-dine-bill"
+                        title="Continue add/edit items in dine-in"
+                        data-order-id="{{ $table->order_id }}"
+                        data-table-id="{{ $table->id }}"
+                        data-table-name="{{ $table->table_name }}">
+                        <i class="fa-solid fa-utensils"></i>
+                        <span>Continue</span>
+                    </button>
                     <button type="button"
                         class="table-card__action table-card__action--clear-bill js-clear-dine-bill"
                         title="Clear current bill"

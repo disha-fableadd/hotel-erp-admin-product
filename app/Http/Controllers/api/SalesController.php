@@ -2251,6 +2251,125 @@ class SalesController extends Controller
     }
 
     /**
+     * Re-attach a closed/paid dine-in bill to its table (mistaken checkout recovery).
+     * Puts the table back to Occupied / Running so staff can continue add/edit in dine-in.
+     */
+    public function reoccupyDineInOrder(Request $request, $id)
+    {
+        $this->ensureTenantDatabaseFromSession($request);
+
+        $order = Order::where('id', $id)->where('isDeleted', 0)->first();
+        if (! $order) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Order not found.',
+            ], 404);
+        }
+
+        $tableId = (int) ($request->input('table_id') ?: ($order->table_no ?? 0));
+        if ($tableId <= 0) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This is not a dine-in table order.',
+            ], 422);
+        }
+
+        // Order must belong to this table (or have no table_no yet — bind it)
+        if (! empty($order->table_no) && (int) $order->table_no !== $tableId) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This bill belongs to a different table.',
+            ], 422);
+        }
+
+        // Another active bill already on this table?
+        $otherActive = Order::where('table_no', $tableId)
+            ->where('isDeleted', 0)
+            ->where('table_status', 1)
+            ->where('id', '!=', $order->id)
+            ->orderByDesc('id')
+            ->first(['id']);
+
+        if ($otherActive) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This table already has a running bill. Clear or checkout that bill first.',
+            ], 422);
+        }
+
+        // Already the active bill — just return sync (idempotent)
+        if ((int) ($order->table_status ?? 0) === 1 && (int) ($order->table_no ?? 0) === $tableId) {
+            $tableSync = $this->syncTableStatus($tableId);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Bill is already active on this table.',
+                'order_id' => $order->id,
+                'table_id' => $tableId,
+                'table_status' => $tableSync['status'] ?? Table_no::STATUS_RUNNING,
+                'table_status_class' => $tableSync['class'] ?? 'running-table',
+                'total_amount' => $order->total_amount,
+                'already_active' => true,
+            ]);
+        }
+
+        DB::beginTransaction();
+        try {
+            $order->table_no = $tableId;
+            $order->table_status = 1;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
+                // Back to green occupied (not yellow bill-printed)
+                $order->bill_printed = 0;
+            }
+            // Re-open payment so staff can keep adding / settle again after mistaken checkout
+            $paidSoFar = 0.0;
+            try {
+                $paidQuery = PaymentStore::where('order_id', $order->id);
+                if (\Illuminate\Support\Facades\Schema::hasColumn('payment_stores', 'isDeleted')) {
+                    $paidQuery->where('isDeleted', 0);
+                }
+                $paidSoFar = (float) $paidQuery->sum('payment_amount');
+            } catch (\Throwable $e) {
+                $paidSoFar = 0.0;
+            }
+            $totalAmt = (float) ($order->total_amount ?? 0);
+            $remain = max(0, round($totalAmt - $paidSoFar, 2));
+            $order->remaining_amount = $remain;
+            if ($remain > 0.00001) {
+                $order->payment_status = 'pending';
+                if (strtolower((string) ($order->payment_method ?? '')) === 'completed'
+                    || in_array(strtolower((string) ($order->payment_method ?? '')), ['', 'null'], true)) {
+                    $order->payment_method = 'pending';
+                }
+            }
+            $order->save();
+
+            $tableSync = $this->syncTableStatus($tableId);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Last bill re-occupied on this table. You can continue adding items.',
+                'order_id' => $order->id,
+                'table_id' => $tableId,
+                'table_status' => $tableSync['status'] ?? Table_no::STATUS_RUNNING,
+                'table_status_class' => $tableSync['class'] ?? 'running-table',
+                'total_amount' => $order->total_amount,
+                'already_active' => false,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Reoccupy dine-in order failed: '.$e->getMessage());
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to re-occupy table bill. Please try again.',
+            ], 500);
+        }
+    }
+
+    /**
      * Clear / void the current dine-in table bill (running or bill-printed).
      * Restores stock, soft-deletes the order, and frees the table.
      */

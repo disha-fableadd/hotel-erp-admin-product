@@ -2153,6 +2153,18 @@
             color: #fff;
         }
 
+        .table-card__action--reoccupy {
+            color: #1d4ed8;
+            border-color: rgba(59, 130, 246, 0.4);
+            background: rgba(219, 234, 254, 0.7);
+        }
+
+        .table-card__action--reoccupy:hover {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: #fff;
+        }
+
         .table-card__action--clear-bill {
             color: #b91c1c;
             border-color: rgba(239, 68, 68, 0.35);
@@ -3322,6 +3334,105 @@
             );
         });
 
+        function reoccupyLastDineBill(orderId, tableId, tableName, openDine) {
+            if (!orderId || !tableId) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Missing bill',
+                    text: 'No last bill found for this table.',
+                    confirmButtonColor: '#ff9f43'
+                });
+                return;
+            }
+            $.ajax({
+                url: '/api/orders/' + orderId + '/reoccupy-dine',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    table_id: tableId,
+                    selectedSubAdminId: selectedSubAdminId || ''
+                },
+                headers: {
+                    'Authorization': 'Bearer ' + authToken,
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || ''
+                },
+                success: function (response) {
+                    if (!(response && response.status)) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Could not re-occupy',
+                            text: (response && response.message) ? response.message : 'Please try again.',
+                            confirmButtonColor: '#ff9f43'
+                        });
+                        return;
+                    }
+                    var statusClass = response.table_status_class || 'running-table';
+                    var status = response.table_status || 'running';
+                    updateTableCardStatus(
+                        tableId,
+                        statusClass,
+                        status,
+                        response.order_id || orderId,
+                        response.total_amount || ''
+                    );
+                    var $card = $('.table-box123[data-table-id="' + tableId + '"]');
+                    $card.attr('data-order-id', response.order_id || orderId);
+                    $card.attr('data-last-order-id', response.order_id || orderId);
+
+                    if (openDine) {
+                        var cardEl = document.querySelector('.table-box123[data-table-id="' + tableId + '"]');
+                        openDineInFlow(tableId, tableName || ($card.data('table-name') || ''), cardEl);
+                        return;
+                    }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Table occupied again',
+                        text: response.message || 'Last bill is active on this table.',
+                        confirmButtonColor: '#ff9f43',
+                        timer: 1600,
+                        showConfirmButton: false
+                    });
+                },
+                error: function (xhr) {
+                    var msg = (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.error))
+                        ? (xhr.responseJSON.message || xhr.responseJSON.error)
+                        : 'Failed to re-occupy bill.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: msg,
+                        confirmButtonColor: '#ff9f43'
+                    });
+                }
+            });
+        }
+
+        $(document).on('click', '.js-reoccupy-last-bill', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var $btn = $(this);
+            var openDine = String($btn.attr('data-open-dine') || $btn.data('open-dine') || '0') === '1';
+            reoccupyLastDineBill(
+                $btn.attr('data-order-id') || $btn.data('order-id'),
+                $btn.attr('data-table-id') || $btn.data('table-id'),
+                $btn.attr('data-table-name') || $btn.data('table-name') || '',
+                openDine
+            );
+        });
+
+        $(document).on('click', '.js-open-dine-bill', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var $btn = $(this);
+            var tableId = $btn.attr('data-table-id') || $btn.data('table-id');
+            var tableName = $btn.attr('data-table-name') || $btn.data('table-name') || '';
+            var cardEl = document.querySelector('.table-box123[data-table-id="' + tableId + '"]');
+            if (cardEl) {
+                openDineInFlow(tableId, tableName, cardEl);
+            }
+        });
+
         $(document).on('click', '#btnClearDineBill', function (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -3376,30 +3487,39 @@
             const lastOrderId = $card.attr('data-last-order-id') || '';
             const activeOrderId = isActiveTable ? (orderId || '') : '';
             $actions.empty();
+            var safeTableName = String(tableName).replace(/"/g, '&quot;');
             if (nextStatus === 'blank' || nextStatus === 'available') {
                 if (canEditBill && lastOrderId) {
                     $actions.append(
-                        '<a href="/edit-sales/' + lastOrderId + '" class="table-card__action table-card__action--update-last js-update-last-bill"' +
-                        ' title="Update last bill for this table" data-order-id="' + lastOrderId + '">' +
-                        '<i class="fa-solid fa-pen-to-square"></i><span>Update Last</span></a>'
+                        '<button type="button" class="table-card__action table-card__action--reoccupy js-reoccupy-last-bill"' +
+                        ' title="Put last bill back on this table (Occupied)" data-order-id="' + lastOrderId + '"' +
+                        ' data-table-id="' + tableId + '" data-table-name="' + safeTableName + '" data-open-dine="0">' +
+                        '<i class="fa-solid fa-rotate-left"></i><span>Re-occupy</span></button>'
+                    );
+                    $actions.append(
+                        '<button type="button" class="table-card__action table-card__action--update-last js-reoccupy-last-bill"' +
+                        ' title="Re-occupy last bill and continue add/edit in dine-in" data-order-id="' + lastOrderId + '"' +
+                        ' data-table-id="' + tableId + '" data-table-name="' + safeTableName + '" data-open-dine="1">' +
+                        '<i class="fa-solid fa-utensils"></i><span>Continue</span></button>'
                     );
                 }
                 $actions.append(
                     '<button type="button" class="table-card__action table-card__action--reserve js-reserve-table" title="Reserve this table"' +
-                    ' data-table-id="' + tableId + '" data-table-name="' + String(tableName).replace(/"/g, '&quot;') + '">' +
+                    ' data-table-id="' + tableId + '" data-table-name="' + safeTableName + '">' +
                     '<i class="fa-regular fa-calendar-check"></i><span>Reserve</span></button>'
                 );
             } else if (nextStatus === 'running' || nextStatus === 'printed') {
                 if (canEditBill && activeOrderId) {
                     $actions.append(
-                        '<a href="/edit-sales/' + activeOrderId + '" class="table-card__action table-card__action--update-last js-update-last-bill"' +
-                        ' title="Update this table bill" data-order-id="' + activeOrderId + '">' +
-                        '<i class="fa-solid fa-pen-to-square"></i><span>Update</span></a>'
+                        '<button type="button" class="table-card__action table-card__action--update-last js-open-dine-bill"' +
+                        ' title="Continue add/edit items in dine-in" data-order-id="' + activeOrderId + '"' +
+                        ' data-table-id="' + tableId + '" data-table-name="' + safeTableName + '">' +
+                        '<i class="fa-solid fa-utensils"></i><span>Continue</span></button>'
                     );
                     $actions.append(
                         '<button type="button" class="table-card__action table-card__action--clear-bill js-clear-dine-bill"' +
                         ' title="Clear current bill" data-order-id="' + activeOrderId + '" data-table-id="' + tableId + '"' +
-                        ' data-table-name="' + String(tableName).replace(/"/g, '&quot;') + '">' +
+                        ' data-table-name="' + safeTableName + '">' +
                         '<i class="fa-solid fa-trash-can"></i><span>Clear</span></button>'
                     );
                 }
@@ -3521,7 +3641,7 @@
             document.querySelectorAll('.table-box123').forEach(function (box) {
                 box.addEventListener('click', function (e) {
                     // Reserve / Print live inside the card — don't open dine-in for those
-                    if (e.target.closest('.table-card__actions, .js-reserve-table, .print-table-order, .js-update-last-bill, .js-clear-dine-bill')) {
+                    if (e.target.closest('.table-card__actions, .js-reserve-table, .print-table-order, .js-update-last-bill, .js-clear-dine-bill, .js-reoccupy-last-bill, .js-open-dine-bill')) {
                         return;
                     }
 
