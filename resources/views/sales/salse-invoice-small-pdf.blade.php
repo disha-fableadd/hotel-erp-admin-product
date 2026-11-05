@@ -422,6 +422,8 @@
     $showItemTotal = $invOn('show_item_total', true);
     $showItemGst = $invOn('show_item_gst', true);
     $orderWithGst = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
+    // Overall-bill GST: tax is only in footer (CGST/SGST) — hide per-item "(GST %)"
+    $isOverallGst = (($sales->gst_apply_mode ?? '') === 'overall');
     $showTotalQty = $invOn('show_total_item_count', true);
     $showPayMode = $invOn('show_payment_mode', true);
     $showReceived = $invOn('show_received', true);
@@ -520,7 +522,7 @@
                     $lineTotal = (float) ($item->total_amount ?? ($price * $qty));
                     $unit = $item->quantityType->name ?? ($item->product->unit->short_name ?? ($item->product->unit ?? ''));
                     $showUnit = $invOn('show_unit', true);
-                    $gstLabel = ($showItemGst && $orderWithGst)
+                    $gstLabel = ($showItemGst && $orderWithGst && ! $isOverallGst)
                         ? \App\Services\PosPricingService::itemGstLabel($item, true)
                         : '';
                 @endphp

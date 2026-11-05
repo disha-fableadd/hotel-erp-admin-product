@@ -1954,7 +1954,10 @@ class SalesController extends Controller
                 if ($addonNames) {
                     $displayName .= ' + ' . implode(', ', $addonNames);
                 }
-                $gstLabel = PosPricingService::itemGstLabel($item, $withGst);
+                // Overall-bill GST: do not show per-item "(GST %)" — tax is only in totals
+                $gstLabel = (($sales->gst_apply_mode ?? '') === 'overall')
+                    ? ''
+                    : PosPricingService::itemGstLabel($item, $withGst);
 
                 return [
                     'id' => $item->id,

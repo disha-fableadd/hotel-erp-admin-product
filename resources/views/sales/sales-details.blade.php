@@ -567,6 +567,7 @@
                                         <a href="/product-view/${product.id || ''}" class="d-flex align-items-center text-decoration-none text-dark">
                                             <img src="${imagePath}" alt="${product.name || 'product'}" class="me-2" style="width:40px; height:40px; object-fit: cover; border-radius: 4px;" onerror="this.onerror=null; this.src='${defaultProductImage}';">
                                             ${item.display_name || product.name || 'N/A'}${item.gst_label ? ` <small class="text-muted">(${item.gst_label})</small>` : (() => {
+                                                if (sale.gst_apply_mode === 'overall') return '';
                                                 const rate = product.tax && product.tax.tax_rate != null ? parseFloat(product.tax.tax_rate) : null;
                                                 if (sale.gst_option !== 'with_gst' && sale.gst_option !== 'with') return '';
                                                 const label = product.tax && product.tax.tax_name ? product.tax.tax_name : 'GST';

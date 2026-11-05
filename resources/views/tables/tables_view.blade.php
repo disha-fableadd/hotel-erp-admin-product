@@ -4055,15 +4055,10 @@
                     var safeCartImage = escapeHtmlAttr(resolveProductImage(item.image));
                     var safeCartName = escapeHtmlAttr(item.name);
                     var gstCartSuffix = '';
-                    if ($("input[name='gst_option']:checked").val() === 'with') {
-                        var cartRate, cartTaxName;
-                        if (gstApplyMode === 'overall') {
-                            cartRate = parseFloat(overallGstRate);
-                            cartTaxName = overallGstName || 'GST';
-                        } else {
-                            cartRate = item.tax_rate != null && item.tax_rate !== '' ? parseFloat(item.tax_rate) : NaN;
-                            cartTaxName = (item.tax_name && String(item.tax_name).trim()) ? String(item.tax_name).trim() : 'GST';
-                        }
+                    // Overall GST: show tax only in totals (CGST/SGST), not after item name
+                    if ($("input[name='gst_option']:checked").val() === 'with' && gstApplyMode !== 'overall') {
+                        var cartRate = item.tax_rate != null && item.tax_rate !== '' ? parseFloat(item.tax_rate) : NaN;
+                        var cartTaxName = (item.tax_name && String(item.tax_name).trim()) ? String(item.tax_name).trim() : 'GST';
                         var cartRateStr = isNaN(cartRate) ? '0' : String(cartRate).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
                         gstCartSuffix = ` <small class="text-muted">(${escapeHtmlAttr(cartTaxName)} ${escapeHtmlAttr(cartRateStr)}%)</small>`;
                     }
