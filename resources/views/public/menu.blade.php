@@ -192,9 +192,6 @@
         @if(!empty($setting->address))
             <p class="meta">{{ $setting->address }}</p>
         @endif
-        @if(!empty($setting->phone))
-            <p class="meta">Ph: {{ $setting->phone }}</p>
-        @endif
         <div class="search-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
             <input type="search" id="menuSearch" placeholder="Search dishes…" autocomplete="off" value="{{ $search }}">
