@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductAddon;
 use App\Models\ProductVariant;
@@ -16,59 +17,29 @@ class PosPricingService
      * @param  array  $item  Request item: product_id, quantity, variant_id?, addon_ids?|addons?
      * @return array{product: Product, variant_id: ?int, addons: array, unit_price: float, line_total: float, category_id: mixed, quantity_type_id: mixed}
      */
+    /**
+     * FK-safe category id for order_items (null when missing / deleted).
+     */
+    public static function safeCategoryId($categoryId): ?int
+    {
+        if ($categoryId === null || $categoryId === '' || !is_numeric($categoryId)) {
+            return null;
+        }
+        $id = (int) $categoryId;
+        if ($id <= 0) {
+            return null;
+        }
+
+        return Category::where('id', $id)->exists() ? $id : null;
+    }
+
     public function resolveLine(array $item): array
     {
         $productId = (int) ($item['product_id'] ?? 0);
         $qty = max(1, (int) ($item['quantity'] ?? 1));
 
-        $product = Product::with(['variants', 'addons', 'tax'])->find($productId);
-
-        // Running table merge/update can re-send historical lines whose product was removed.
-        // Keep the sale using the client/unit price snapshot instead of failing Place Order.
-        if (!$product) {
-            $unitPrice = (float) ($item['price'] ?? $item['unit_price'] ?? 0);
-            $gross = round($unitPrice * $qty, 2);
-            $itemDiscPct = max(0, min(100, (float) ($item['item_discount_percent'] ?? 0)));
-            $itemDiscAmt = round($gross * ($itemDiscPct / 100), 2);
-            $lineTotal = round(max(0, $gross - $itemDiscAmt), 2);
-            $qtyTypeId = $item['quantity_type_id'] ?? $item['quantity_type123'] ?? null;
-            $qtyTypeId = (is_numeric($qtyTypeId) ? (int) $qtyTypeId : null);
-            $cat = $item['categoryId'] ?? $item['category_id'] ?? null;
-            $cat = is_numeric($cat) ? (int) $cat : null;
-
-            $stub = new Product([
-                'name' => (string) ($item['name'] ?? $item['product_name'] ?? 'Item'),
-                'price' => $unitPrice,
-                'quantity' => 9999,
-                'track_inventory' => false,
-                'product_kind' => 'general',
-                'category_id' => $cat,
-                'quantity_type_id' => $qtyTypeId,
-            ]);
-            $stub->id = $productId;
-            $stub->exists = false;
-
-            return [
-                'product' => $stub,
-                'product_name' => (string) ($stub->name ?? 'Item'),
-                'variant_id' => !empty($item['variant_id']) && is_numeric($item['variant_id'])
-                    ? (int) $item['variant_id']
-                    : null,
-                'variant_name' => null,
-                'addons' => [],
-                'unit_price' => round($unitPrice, 2),
-                'item_discount_percent' => $itemDiscPct,
-                'item_discount_amount' => $itemDiscAmt,
-                'line_total' => $lineTotal,
-                'category_id' => $cat,
-                'quantity_type_id' => $qtyTypeId,
-                'quantity' => $qty,
-                'tax_id' => null,
-                'tax_name' => null,
-                'tax_rate' => null,
-                'tax_inclusive' => false,
-            ];
-        }
+        // Caller must only pass product_ids that exist (FK on order_items.product_id).
+        $product = Product::with(['variants', 'addons', 'tax'])->findOrFail($productId);
 
         $unitPrice = (float) $product->price;
         $variantId = !empty($item['variant_id']) ? (int) $item['variant_id'] : null;
@@ -154,7 +125,9 @@ class PosPricingService
             'item_discount_percent' => $itemDiscPct,
             'item_discount_amount' => $itemDiscAmt,
             'line_total' => $lineTotal,
-            'category_id' => $item['categoryId'] ?? $item['category_id'] ?? $product->category_id,
+            'category_id' => self::safeCategoryId(
+                $item['categoryId'] ?? $item['category_id'] ?? $product->category_id
+            ),
             'quantity_type_id' => $qtyTypeId,
             'quantity' => $qty,
             'tax_id' => $snap['tax_id'],

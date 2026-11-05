@@ -329,7 +329,9 @@ class TenantManager
 
         $dbUsername = $db['username'] ?? 'root';
         $dbPassword = (string) ($db['password'] ?? '');
-        $databaseName = $db['database'];
+        // Prefer sticky/session-resolved name when present so product load and Place Order
+        // never flip between u123_hotelerpdb (empty) and hotelerpdb (real data).
+        $databaseName = (string) ($db['resolved_database'] ?? $db['database']);
 
         // On local development, allow using local MySQL credentials (e.g. XAMPP root with blank password)
         // Try connecting with tenant's specific DB credentials first
@@ -363,22 +365,13 @@ class TenantManager
 
         if ($pdo) {
             try {
-                $stmt = $pdo->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = " . $pdo->quote($databaseName));
-                if (!$stmt || !$stmt->fetch()) {
-                    // Check if stripped prefix database exists locally (e.g. u573967329_hoteldb -> hoteldb)
-                    $cleanDbName = preg_replace('/^u\d+_/', '', $databaseName);
-                    $checkCleanStmt = $pdo->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = " . $pdo->quote($cleanDbName));
-                    if ($checkCleanStmt && $checkCleanStmt->fetch()) {
-                        $databaseName = $cleanDbName;
-                    } else {
-                        // Database was dropped or not yet created: auto-recreate it!
-                        if (preg_match('/^[a-zA-Z0-9_]+$/', $databaseName)) {
-                            $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$databaseName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-                        }
-                    }
-                }
-            } catch (\Throwable) {
-                // Keep default
+                $preferred = (string) ($db['database'] ?? $databaseName);
+                $databaseName = $this->pickBestExistingDatabase($pdo, $preferred, $databaseName);
+            } catch (\Throwable $e) {
+                Log::warning('Tenant DB pick failed: ' . $e->getMessage(), [
+                    'tenant_id' => (int) ($tenant['id'] ?? 0),
+                    'preferred' => $databaseName,
+                ]);
             }
         }
 
@@ -390,15 +383,95 @@ class TenantManager
             "database.connections.{$connection}.password" => $dbPassword,
         ]);
         DB::purge($connection);
+        try {
+            DB::connection($connection)->getPdo();
+        } catch (\Throwable) {
+            // First query path will reconnect; purge already cleared stale PDO.
+        }
 
         $this->isolateFilesystem((int) $tenant['id']);
 
-        Log::shareContext(['tenant_id' => (int) $tenant['id']]);
+        // Persist the actual schema we connected to so later requests stay on the same DB.
+        $tenant['db'] = array_merge($db, [
+            'host' => $dbHost,
+            'port' => (int) ($db['port'] ?? 3306),
+            'database' => $db['database'] ?? $databaseName,
+            'resolved_database' => $databaseName,
+            'username' => $dbUsername,
+            'password' => $dbPassword,
+        ]);
+
+        Log::shareContext([
+            'tenant_id' => (int) $tenant['id'],
+            'tenant_db' => $databaseName,
+        ]);
 
         $this->tenant = $tenant;
         app()->instance('tenant', $tenant);
 
         return $tenant;
+    }
+
+    /**
+     * Choose the live schema for this tenant.
+     * Avoids empty auto-created "u123_xxx" DBs when a populated local "xxx" copy exists.
+     */
+    private function pickBestExistingDatabase(\PDO $pdo, string $preferred, string $sticky = ''): string
+    {
+        $candidates = [];
+        foreach ([$sticky, $preferred, preg_replace('/^u\d+_/', '', $preferred)] as $name) {
+            $name = trim((string) $name);
+            if ($name !== '' && preg_match('/^[a-zA-Z0-9_]+$/', $name) && !in_array($name, $candidates, true)) {
+                $candidates[] = $name;
+            }
+        }
+
+        $existing = [];
+        foreach ($candidates as $name) {
+            $stmt = $pdo->query('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ' . $pdo->quote($name));
+            if ($stmt && $stmt->fetch()) {
+                $existing[] = $name;
+            }
+        }
+
+        if (!$existing) {
+            // Do NOT auto-create empty DBs on HTTP requests — that caused product_id "invalid"
+            // when Place Order hit a fresh empty schema while the UI loaded from another DB.
+            return $preferred;
+        }
+
+        // Prefer sticky when it still exists (session consistency).
+        if ($sticky !== '' && in_array($sticky, $existing, true)) {
+            return $sticky;
+        }
+
+        $best = $existing[0];
+        $bestScore = -1;
+        foreach ($existing as $name) {
+            $score = -1;
+            try {
+                $countStmt = $pdo->query('SELECT COUNT(*) FROM `' . str_replace('`', '``', $name) . '`.`products`');
+                if ($countStmt) {
+                    $score = (int) $countStmt->fetchColumn();
+                }
+            } catch (\Throwable) {
+                $score = -1;
+            }
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $name;
+            }
+        }
+
+        if ($best !== $preferred) {
+            Log::info('Tenant DB resolved to alternate local schema', [
+                'preferred' => $preferred,
+                'resolved' => $best,
+                'product_rows' => $bestScore,
+            ]);
+        }
+
+        return $best;
     }
 
     public function forgetCachedHost(string $host): void

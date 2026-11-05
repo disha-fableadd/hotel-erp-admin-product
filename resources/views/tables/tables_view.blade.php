@@ -2768,6 +2768,24 @@
     <script>
         const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
         var authToken = localStorage.getItem("authToken");
+        const pageTenantId = ($('meta[name="tenant-id"]').attr('content') || '').trim();
+        const pageTenantDb = ($('meta[name="tenant-db"]').attr('content') || '').trim();
+
+        function posApiHeaders(extra) {
+            var headers = Object.assign({
+                "Authorization": "Bearer " + authToken,
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr('content')
+            }, extra || {});
+            if (pageTenantId) {
+                headers["X-Tenant-Id"] = pageTenantId;
+            }
+            if (pageTenantDb) {
+                headers["X-Tenant-Db"] = pageTenantDb;
+            }
+            return headers;
+        }
+
         const canItemDiscount = {{ !empty($can_item_discount) ? 'true' : 'false' }};
         const defaultGstOption = @json(((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without');
         const gstApplyMode = @json(((optional($setting)->gst_apply_mode ?? 'product') === 'overall') ? 'overall' : 'product');
@@ -3585,9 +3603,7 @@
                     url: "/api/getProductsByCategory/" + categoryId,
                     type: "GET",
                     dataType: "json",
-                    headers: {
-                        "Authorization": "Bearer " + authToken,
-                    },
+                    headers: posApiHeaders(),
                     success: function (response) {
                         const currencySymbol = response.currency_symbol || tableOrderProductCurrency.symbol || '₹';
                         const currencyPosition = response.currency_position || tableOrderProductCurrency.position || 'left';
@@ -4668,11 +4684,7 @@
                     url: "/api/order_sale",
                     type: "POST",
                     dataType: "json",
-                    headers: {
-                        "Authorization": "Bearer " + authToken,
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr('content')
-                    },
+                    headers: posApiHeaders(),
                     data: JSON.stringify(orderData),
                     success: function (response) {
                         $btn.html(originalText).prop('disabled', false);
@@ -4867,11 +4879,7 @@
                     url: "/api/update_sale_order",
                     type: "POST",
                     dataType: "json",
-                    headers: {
-                        "Authorization": "Bearer " + authToken,
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr('content')
-                    },
+                    headers: posApiHeaders(),
                     data: JSON.stringify(orderData),
                     success: function (response) {
                         $btn.html(originalText).prop('disabled', false);
@@ -5067,11 +5075,7 @@
                     url: "/api/update_sale_order",
                     type: "POST",
                     dataType: "json",
-                    headers: {
-                        "Authorization": "Bearer " + authToken,
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr('content')
-                    },
+                    headers: posApiHeaders(),
                     data: JSON.stringify(orderData),
                     success: function (response) {
                         $btn.html(originalText).prop('disabled', false);

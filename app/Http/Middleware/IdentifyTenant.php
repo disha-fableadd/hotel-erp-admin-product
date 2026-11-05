@@ -37,11 +37,29 @@ class IdentifyTenant
         if (!empty($licenseKey)) {
             try {
                 $tenant = $this->tenancy->resolveByLicenseKey($licenseKey);
+                if ($request->hasSession()) {
+                    $tenant = $this->stickSessionDatabase($request, $tenant);
+                }
                 $request->attributes->set('tenant', $tenant);
                 AppViewData::share();
                 return $next($request);
             } catch (TenantResolutionException $e) {
                 return $this->deny($request, $e);
+            }
+        }
+
+        // Browser POS sends X-Tenant-Id so we can detect session/tenant mismatch early
+        $headerTenantId = (int) ($request->header('X-Tenant-Id') ?: 0);
+        if ($headerTenantId > 0 && $request->hasSession() && $request->session()->has('tenant_id')) {
+            $sessionTenantId = (int) $request->session()->get('tenant_id');
+            if ($sessionTenantId > 0 && $sessionTenantId !== $headerTenantId) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Hotel session mismatch. Please refresh the page and login again.',
+                    'tenant_error' => 'TENANT_MISMATCH',
+                    'session_tenant_id' => $sessionTenantId,
+                    'request_tenant_id' => $headerTenantId,
+                ], 409);
             }
         }
 
@@ -52,6 +70,7 @@ class IdentifyTenant
                 $forceFresh = $request->has('refresh_tenant') || $request->has('refresh_permissions');
 
                 $tenant = $this->tenancy->resolveById($tenantId, $forceFresh);
+                $tenant = $this->stickSessionDatabase($request, $tenant);
                 $request->session()->put('tenant', $tenant);
 
                 AppViewData::share();
@@ -61,6 +80,7 @@ class IdentifyTenant
                 $cachedTenant = $request->session()->get('tenant');
                 if (is_array($cachedTenant) && !empty($cachedTenant['db']['database']) && $e->reason === 'UNREACHABLE') {
                     try {
+                        $cachedTenant = $this->stickSessionDatabase($request, $cachedTenant);
                         $this->tenancy->activate($cachedTenant);
                         AppViewData::share();
                         return $next($request);
@@ -71,7 +91,7 @@ class IdentifyTenant
 
                 // If tenant is expired/inactive, logout and deny
                 if ($request->hasSession()) {
-                    $request->session()->forget(['tenant_id', 'tenant']);
+                    $request->session()->forget(['tenant_id', 'tenant', 'tenant_resolved_database']);
                 }
                 \Illuminate\Support\Facades\Auth::guard('web')->logout();
                 return $this->deny($request, $e);
@@ -85,6 +105,7 @@ class IdentifyTenant
             if ($user && !empty($user->email)) {
                 try {
                     $tenant = $this->tenancy->resolveByEmail($user->email);
+                    $tenant = $this->stickSessionDatabase($request, $tenant);
                     $request->session()->put('tenant_id', $tenant['id']);
                     $request->session()->put('tenant', $tenant);
 
@@ -155,6 +176,42 @@ class IdentifyTenant
         AppViewData::share();
 
         return $next($request);
+    }
+
+    /**
+     * Keep the same MySQL schema for the whole browser session.
+     * Prevents product list / Place Order flipping between empty u123_* and populated local DBs.
+     */
+    private function stickSessionDatabase(Request $request, array $tenant): array
+    {
+        if (! $request->hasSession()) {
+            return $tenant;
+        }
+
+        $tenantId = (int) ($tenant['id'] ?? 0);
+        $resolved = (string) ($tenant['db']['resolved_database']
+            ?? config('database.connections.' . config('database.default') . '.database')
+            ?? ($tenant['db']['database'] ?? ''));
+
+        $stickyTenantId = (int) $request->session()->get('tenant_resolved_for', 0);
+        $stickyDb = (string) $request->session()->get('tenant_resolved_database', '');
+
+        if ($tenantId > 0 && $stickyTenantId === $tenantId && $stickyDb !== '') {
+            $current = (string) ($tenant['db']['resolved_database'] ?? $tenant['db']['database'] ?? '');
+            if ($current !== $stickyDb) {
+                $tenant['db']['resolved_database'] = $stickyDb;
+                $tenant = $this->tenancy->activate($tenant);
+            }
+
+            return $tenant;
+        }
+
+        if ($tenantId > 0 && $resolved !== '') {
+            $request->session()->put('tenant_resolved_for', $tenantId);
+            $request->session()->put('tenant_resolved_database', $resolved);
+        }
+
+        return $tenant;
     }
 
     private function deny(Request $request, TenantResolutionException $e): Response

@@ -15,6 +15,10 @@
     <meta name="author" content="Fablead Developers Technolab">
     <meta name="robots" content="noindex, nofollow">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @if(session()->has('tenant_id'))
+    <meta name="tenant-id" content="{{ (int) session('tenant_id') }}">
+    <meta name="tenant-db" content="{{ session('tenant_resolved_database') ?: (session('tenant')['db']['resolved_database'] ?? session('tenant')['db']['database'] ?? '') }}">
+    @endif
     
     <title>@yield('title', 'Default Title')</title>
 

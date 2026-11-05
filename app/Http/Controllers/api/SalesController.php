@@ -93,8 +93,37 @@ class SalesController extends Controller
     }
 
     /**
+     * Force the active MySQL schema to the one sticky for this browser session.
+     * Stops Place Order validating product_ids against a different DB than product browse.
+     */
+    protected function ensureTenantDatabaseFromSession(Request $request): void
+    {
+        if (! config('tenant.enabled') || ! $request->hasSession()) {
+            return;
+        }
+
+        $tenant = $request->session()->get('tenant');
+        if (! is_array($tenant) || empty($tenant['db']['database'])) {
+            return;
+        }
+
+        $stickyDb = (string) $request->session()->get('tenant_resolved_database', '');
+        if ($stickyDb !== '') {
+            $tenant['db']['resolved_database'] = $stickyDb;
+        }
+
+        try {
+            app(\App\Services\Tenancy\TenantManager::class)->activate($tenant);
+            $request->session()->put('tenant', app(\App\Services\Tenancy\TenantManager::class)->current() ?? $tenant);
+        } catch (\Throwable $e) {
+            Log::warning('ensureTenantDatabaseFromSession failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Coerce POS cart line IDs before validation.
-     * Handles uniqueId-style product_id ("12-v0-a"), blank/"Uncategorized" categoryId, etc.
+     * Drops lines whose product_id is missing (order_items.product_id has an FK),
+     * and nulls orphaned category_id values (order_items.category_id FK).
      */
     protected function normalizeSaleOrderItems(Request $request): void
     {
@@ -103,7 +132,8 @@ class SalesController extends Controller
             return;
         }
 
-        $normalized = [];
+        $candidateIds = [];
+        $parsed = [];
         foreach ($items as $item) {
             if (!is_array($item)) {
                 continue;
@@ -116,6 +146,9 @@ class SalesController extends Controller
                 $pid = (int) $pid;
             } else {
                 $pid = null;
+            }
+            if (!$pid) {
+                continue;
             }
 
             $cat = $item['categoryId'] ?? $item['category_id'] ?? null;
@@ -136,6 +169,27 @@ class SalesController extends Controller
             $item['categoryId'] = $cat;
             $item['category_id'] = $cat;
             $item['variant_id'] = $variantId;
+            $parsed[] = $item;
+            $candidateIds[] = $pid;
+        }
+
+        $existingIds = [];
+        if ($candidateIds) {
+            $existingIds = Product::whereIn('id', array_values(array_unique($candidateIds)))
+                ->pluck('id')
+                ->all();
+            $existingIds = array_fill_keys(array_map('intval', $existingIds), true);
+        }
+
+        $normalized = [];
+        foreach ($parsed as $item) {
+            $pid = (int) $item['product_id'];
+            if (!isset($existingIds[$pid])) {
+                continue;
+            }
+            $cat = PosPricingService::safeCategoryId($item['categoryId'] ?? null);
+            $item['categoryId'] = $cat;
+            $item['category_id'] = $cat;
             $normalized[] = $item;
         }
 
@@ -515,8 +569,10 @@ class SalesController extends Controller
     }
 
     // In your controller
-    public function getProductsByCategory($categoryId)
+    public function getProductsByCategory(Request $request, $categoryId)
     {
+        $this->ensureTenantDatabaseFromSession($request);
+
         $settings = DB::table('settings')->first();
         $currencySymbol = $settings->currency_symbol ?? '₹';
         $currencyPosition = $settings->currency_position ?? 'left';
@@ -591,7 +647,20 @@ class SalesController extends Controller
     {
         // dd($request->all());
 
+        // Re-bind tenant DB from session before validating products (avoids cross-DB product_id mismatch).
+        $this->ensureTenantDatabaseFromSession($request);
+
         $this->normalizeSaleOrderItems($request);
+
+        if (empty($request->input('items'))) {
+            $dbName = config('database.connections.' . config('database.default') . '.database');
+
+            return response()->json([
+                'status' => false,
+                'message' => 'No valid products in the cart for this hotel database (' . $dbName . '). Refresh the page and try again.',
+                'tenant_db' => $dbName,
+            ], 422);
+        }
 
         // Validate the request data
         $request->validate([
@@ -605,7 +674,8 @@ class SalesController extends Controller
             'tax.*.rate' => 'nullable|numeric|min:0',
             'tax.*.amount' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|integer|exists:products,id',
+            // product_id existence already enforced in normalizeSaleOrderItems()
+            'items.*.product_id' => 'required|integer',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
             'items.*.total' => 'required|numeric|min:0',
@@ -646,7 +716,24 @@ class SalesController extends Controller
 
                 $mergedByLine = [];
 
+                $oldProductIds = OrderItem::where('order_id', $existingActiveOrderId)
+                    ->pluck('product_id')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+                $aliveOldProductIds = $oldProductIds
+                    ? array_fill_keys(
+                        Product::whereIn('id', $oldProductIds)->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                        true
+                    )
+                    : [];
+
                 foreach (OrderItem::where('order_id', $existingActiveOrderId)->get() as $old) {
+                    // Skip lines whose product was deleted — product_id FK would block the update.
+                    if (!isset($aliveOldProductIds[(int) $old->product_id])) {
+                        continue;
+                    }
                     $key = $lineKey($old->product_id, $old->variant_id, $old->addons);
                     $mergedByLine[$key] = [
                         'product_id' => $old->product_id,
@@ -658,7 +745,7 @@ class SalesController extends Controller
                         'quantity' => (int) $old->quantity,
                         'quantity_type_id' => $old->quantity_type_id,
                         'quantity_type123' => $old->quantity_type_id,
-                        'categoryId' => $old->category_id,
+                        'categoryId' => PosPricingService::safeCategoryId($old->category_id),
                         'price' => (float) $old->price,
                         'total' => (float) $old->total_amount,
                     ];
@@ -960,7 +1047,7 @@ class SalesController extends Controller
                 OrderItem::create(array_merge([
                     'order_id' => $order->id,
                     'user_id' => $customer_id ?? null,
-                    'category_id' => $line['category_id'] ?? null,
+                    'category_id' => PosPricingService::safeCategoryId($line['category_id'] ?? null),
                     'product_id' => $product->id,
                     'variant_id' => $line['variant_id'],
                     'addons' => $line['addons'] ?: null,
@@ -1292,9 +1379,16 @@ class SalesController extends Controller
             DB::rollBack();
             Log::error('Order placement error: ' . $e->getMessage());
 
+            $friendly = 'Failed to place order. Please try again.';
+            if (str_contains($e->getMessage(), 'order_items_category_id_foreign')) {
+                $friendly = 'Failed to place order: a product category is missing. Refresh and try again.';
+            } elseif (str_contains($e->getMessage(), 'order_items_product_id_foreign')) {
+                $friendly = 'Failed to place order: a product was deleted. Remove it from the cart and try again.';
+            }
+
             return response()->json([
                 'status' => false,
-                'message' => 'Failed to place order. ' . $e->getMessage(),
+                'message' => $friendly,
             ], 500);
         }
     }
@@ -1304,11 +1398,21 @@ class SalesController extends Controller
         // dd($request->all());
         $order_id = $request->update_id;
 
+        $this->ensureTenantDatabaseFromSession($request);
         $this->normalizeSaleOrderItems($request);
 
+        if (empty($request->input('items'))) {
+            $dbName = config('database.connections.' . config('database.default') . '.database');
+
+            return response()->json([
+                'status' => false,
+                'message' => 'No valid products in the cart for this hotel database (' . $dbName . '). Refresh the page and try again.',
+                'tenant_db' => $dbName,
+            ], 422);
+        }
+
         // Validate request.
-        // Do NOT require exists:products,id here: merging into a running table order
-        // re-sends prior line items; deleted/orphaned products must not block updates.
+        // product_id / category_id FK safety handled in normalizeSaleOrderItems().
         $request->validate([
             'customer_id' => 'nullable|string|max:255',
             'payment_method' => 'required|string',
@@ -1613,7 +1717,7 @@ class SalesController extends Controller
                 $itemPayload = array_merge([
                     'order_id' => $order->id,
                     'user_id' => $customer_id,
-                    'category_id' => $line['category_id'] ?? null,
+                    'category_id' => PosPricingService::safeCategoryId($line['category_id'] ?? null),
                     'product_id' => $product->id,
                     'variant_id' => $line['variant_id'],
                     'addons' => $line['addons'] ?: null,
@@ -2311,7 +2415,7 @@ class SalesController extends Controller
                         OrderItem::create(array_merge([
                             'order_id' => $order->id,
                             'user_id' => $order->user_id ?? null,
-                            'category_id' => $product->category_id ?? null,
+                            'category_id' => PosPricingService::safeCategoryId($product->category_id ?? null),
                             'product_id' => $product->id, // use $product->id to ensure valid integer
                             'quantity' => $quantity,
                             'quantity_type_id' => $quantity_type_id,
