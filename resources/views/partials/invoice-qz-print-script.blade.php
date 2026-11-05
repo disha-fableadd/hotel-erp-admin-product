@@ -377,7 +377,7 @@
  */
 (function(window) {
     'use strict';
-    window.__INVOICE_QZ_PRINT_VER = '2026-11-05a';
+    window.__INVOICE_QZ_PRINT_VER = '2026-11-05b';
     window.__QZ_CERT_URL = @json(url('/qz/certificate'));
     window.__QZ_SIGN_URL = @json(url('/qz/sign'));
     window.__QZ_INSTALL_BAT_URL = @json(url('/qz/install-qz-trust.bat'));
@@ -1963,15 +1963,14 @@
                     }
                 }
                 function gap(rows) {
-                    raw(0x1D, 0x76, 0x30, 0x00, 1, 0, rows, 0);
-                    for (var i = 0; i < rows; i++) out.push(0);
+                    // Text newlines only — GS v 0 raster spacing prints as garbage on some POS80s
+                    var n = Math.max(1, Math.min(8, Math.ceil((rows || 1) / 24)));
+                    for (var i = 0; i < n; i++) out.push(10);
                     printedRows += rows;
                 }
                 function solidRule() {
-                    var w = ruleBytes;
-                    raw(0x1D, 0x76, 0x30, 0x00, w, 0, 2, 0);
-                    for (var i = 0; i < w * 2; i++) out.push(0xFF);
-                    gap(4);
+                    // ASCII dashes only (no bitmap rule) for max printer compatibility
+                    println(new Array(cols + 1).join('-'));
                 }
 
                 var boldOn = fast.bold !== false ? 0x01 : 0x00;
@@ -2088,7 +2087,13 @@
                     gap(6);
                     para(fast.outstanding);
                 }
-                if (images[1]) {
+                var printQrRaster = false;
+                try {
+                    printQrRaster = localStorage.getItem('btPrintQr') === '1'
+                        || localStorage.getItem('posPrintQr') === '1';
+                } catch (eQr) {}
+                // QR/logo graphics → garbage text on weak POS80; opt-in only
+                if (printQrRaster && images[1]) {
                     gap(12);
                     println('Scan QR to Pay Bill:');
                     align(true);

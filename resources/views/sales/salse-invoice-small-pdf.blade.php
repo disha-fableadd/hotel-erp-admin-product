@@ -407,22 +407,15 @@
     $logoMaxW = (int) round(140 * $logoScale);
     $custPhone = trim((string) ($customer['phone'] ?? ($sales->customer_phone ?? '')));
     $custAddr = trim((string) ($customer['address'] ?? ''));
-    $showLogo = $invOn('show_logo', true);
+    // Small/thermal invoice: NEVER embed logo/SVG/images in the header.
+    // On some POS80 printers, image bytes print as garbage (|, ?, black blocks) at the top.
+    // Opt-in only: ?force_logo=1 (for printers that handle graphics correctly).
+    $showLogo = $invOn('show_logo', true) && request()->boolean('force_logo');
     $showCompany = $invOn('show_company_name', true);
-    // Thermal / QZ USB print: logo/SVG raster becomes garbage text on many POS80 printers.
-    // Prefer text shop name only for those jobs.
-    $isThermalUsb = request()->boolean('usb_print') || request()->boolean('thermal') || request()->boolean('no_logo');
-    if ($isThermalUsb) {
-        $showLogo = false;
-        if (! $showCompany) {
-            $showCompany = true; // always show shop name when logo is suppressed
-        }
+    if (! $showCompany) {
+        $showCompany = true; // text shop name is the safe header for thermal
     }
-    // Never embed SVG placeholder logo on thermal bills (DomPDF SVG → some printers print binary as text)
-    $logoIsSvg = is_string($logoBase64) && (str_contains($logoBase64, 'image/svg') || str_contains($logoBase64, 'svg+xml'));
-    if ($logoIsSvg) {
-        $logoBase64 = null;
-    }
+    $logoBase64 = null; // hard-disable image header on this template
     $showShopGst = $invOn('show_shop_gst', true);
     $showShopAddr = $invOn('show_shop_address', false);
     $showShopPhone = $invOn('show_shop_phone', true);
@@ -442,7 +435,10 @@
     $showPayMode = $invOn('show_payment_mode', true);
     $showReceived = $invOn('show_received', true);
     $showBalance = $invOn('show_balance', true);
-    $showUpiQr = $invOn('show_upi_qr', true);
+    $showUpiQr = $invOn('show_upi_qr', true) && request()->boolean('force_qr');
+    if (! $showUpiQr) {
+        $qrBase64 = null; // QR raster also garbles on the same weak POS80 printers
+    }
     $showTaxDetails = $invOn('show_tax_details', true); // hotel bills show GST by default
     $dp = max(0, min(4, (int) ($inv['decimal_places'] ?? 2)));
     $fontPx = max(6, min(14, (int) ($inv['font_size'] ?? 8)));
