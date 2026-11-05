@@ -118,9 +118,13 @@ Route::get('/api/face-login-data', [FaceLoginController::class, 'getFaceData']);
 Route::post('/auth/face-login', [LoginController::class, 'faceLogin'])->name('auth.face-login');
 
 // Public digital menu (QR / share link — no login)
-Route::get('/m/{token}', [PublicMenuController::class, 'show'])
-    ->where('token', '[A-Za-z0-9_-]+')
+// Tenant id is required on central host so guest requests can open the correct DB.
+Route::get('/m/{tenant}/{token}', [PublicMenuController::class, 'show'])
+    ->where(['tenant' => '[0-9]+', 'token' => '[A-Za-z0-9_-]+'])
     ->name('public.menu');
+Route::get('/m/{token}', [PublicMenuController::class, 'legacy'])
+    ->where('token', '[A-Za-z0-9_-]+')
+    ->name('public.menu.legacy');
 
 // QZ Tray print signing + trust install (Bluetooth / thermal printers)
 Route::get('/qz/override.crt', [\App\Http\Controllers\QzTrayController::class, 'overrideCrt'])->name('qz.override');

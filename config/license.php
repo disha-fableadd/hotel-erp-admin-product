@@ -103,6 +103,8 @@ return [
         'license',
         'license/*',
         'up',
+        'm',
+        'm/*',
     ],
 
     /*

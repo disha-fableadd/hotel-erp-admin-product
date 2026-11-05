@@ -95,6 +95,12 @@ class DigitalMenuController extends Controller
             return null;
         }
 
+        // Central host needs tenant id in the path so guests (no login) open the right DB
+        $tenantId = (int) (session('tenant_id') ?? 0);
+        if ($tenantId > 0) {
+            return url('/m/' . $tenantId . '/' . $token);
+        }
+
         return url('/m/' . $token);
     }
 }

@@ -104,8 +104,24 @@ class IdentifyTenant
         // If request is on central domain or localhost and not yet authenticated, handle public endpoints
         $centralHost = static::isCentralHost($request->getHost());
 
-        // For public login, logout, face login, attendance and sync endpoints, allow passing through
-        if ($request->is('/') || $request->is('login') || $request->is('logout') || $request->is('auth/*') || $request->is('face-login*') || $request->is('api/face-login-data') || $request->is('iclock/*') || $request->is('attendance/biometric*') || $request->is('face-photo/*') || $request->is('api/v1/sync*') || $request->is('api/sync*')) {
+        // For public login, logout, face login, attendance, sync, and digital menu (QR) endpoints
+        if ($request->is('/') || $request->is('login') || $request->is('logout') || $request->is('auth/*') || $request->is('face-login*') || $request->is('api/face-login-data') || $request->is('iclock/*') || $request->is('attendance/biometric*') || $request->is('face-photo/*') || $request->is('api/v1/sync*') || $request->is('api/sync*') || $request->is('m') || $request->is('m/*')) {
+            // Digital menu on central host: /m/{tenantId}/{token} — activate tenant DB for guests (no login)
+            if ($request->is('m/*')) {
+                $segments = $request->segments(); // [m, tenantId, token]
+                $tenantFromUrl = isset($segments[1]) && ctype_digit((string) $segments[1]) ? (int) $segments[1] : null;
+                if ($tenantFromUrl) {
+                    try {
+                        $this->tenancy->resolveById($tenantFromUrl);
+                        AppViewData::share();
+                    } catch (TenantResolutionException $e) {
+                        return $this->deny($request, $e);
+                    }
+
+                    return $next($request);
+                }
+            }
+
             if (! $centralHost) {
                 // If on a client subdomain, resolve that client's branding/theme
                 try {

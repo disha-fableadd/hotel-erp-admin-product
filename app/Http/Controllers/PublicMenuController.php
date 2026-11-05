@@ -11,9 +11,26 @@ class PublicMenuController extends Controller
 {
     /**
      * Guest-facing digital menu (scan QR → this page).
-     * URL: /m/{token}
+     * URL: /m/{tenantId}/{token}
      */
-    public function show(Request $request, string $token)
+    public function show(Request $request, int $tenant, string $token)
+    {
+        return $this->renderMenu($request, $token);
+    }
+
+    /**
+     * Legacy /m/{token} — only works when tenant session already exists (logged-in browser).
+     */
+    public function legacy(Request $request, string $token)
+    {
+        if (! session()->has('tenant_id')) {
+            abort(404, 'Menu link is outdated. Please scan the latest QR from Digital Menu settings.');
+        }
+
+        return $this->renderMenu($request, $token);
+    }
+
+    protected function renderMenu(Request $request, string $token)
     {
         $token = trim($token);
         if ($token === '' || ! Schema::hasColumn('settings', 'menu_public_token')) {
