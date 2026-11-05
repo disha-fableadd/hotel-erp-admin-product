@@ -893,7 +893,9 @@ class SalesController extends Controller
             ->with(['products' => function ($q) use ($branchIdToUse) {
                 $q->where('isDeleted', 0)
                     ->where('status', 'active')
-                    ->where('branch_id', $branchIdToUse)
+                    ->where(function ($branch) use ($branchIdToUse) {
+                        $branch->where('branch_id', $branchIdToUse)->orWhereNull('branch_id');
+                    })
                     ->where(function ($pos) {
                         $pos->where('is_pos_available', 1)->orWhereNull('is_pos_available');
                     });

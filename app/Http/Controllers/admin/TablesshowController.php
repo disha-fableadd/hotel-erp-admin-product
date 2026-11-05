@@ -77,12 +77,16 @@ class TablesshowController extends Controller
             ->where('branch_id', $branchIdToUse)
             ->get();
 
+        // Same category set as takeaway POS: active POS products (qty 0 allowed)
         $categories = Category::where('isDeleted', 0)
             ->where('branch_id', $branchIdToUse)
             ->with(['products' => function ($q) use ($branchIdToUse) {
                 $q->where('isDeleted', 0)
                     ->where('status', 'active')
-                    ->where('branch_id', $branchIdToUse)
+                    ->where(function ($branch) use ($branchIdToUse) {
+                        // Match takeaway API: admin may see branch products; also include null branch rows
+                        $branch->where('branch_id', $branchIdToUse)->orWhereNull('branch_id');
+                    })
                     ->where(function ($pos) {
                         $pos->where('is_pos_available', 1)->orWhereNull('is_pos_available');
                     });

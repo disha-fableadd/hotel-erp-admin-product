@@ -98,7 +98,8 @@
 
         #tableOrderModal .table-order-menu-toolbar {
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            align-items: stretch;
             gap: 10px;
             flex-shrink: 0;
             margin: 0 0 10px !important;
@@ -107,18 +108,28 @@
         }
 
         #tableOrderModal .tabs_wrapper ul.tabs {
+            display: flex !important;
+            flex-wrap: wrap !important;
             gap: 8px;
             padding: 0 !important;
             margin: 0 !important;
             border-bottom: none !important;
-            flex: 1 1 auto;
+            flex: 0 0 auto;
+            width: 100%;
             min-width: 0;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
+        }
+
+        #tableOrderModal .tabs_wrapper ul.tabs li {
+            flex: 0 0 auto;
         }
 
         #tableOrderModal .table-order-product-search {
             position: relative;
-            flex: 0 0 210px;
-            max-width: 42%;
+            flex: 0 0 auto;
+            width: 100%;
+            max-width: 100%;
         }
 
         #tableOrderModal .table-order-product-search input {
@@ -732,6 +743,10 @@
 
             #tableOrderModal .table-order-menu-toolbar {
                 flex-wrap: wrap;
+            }
+
+            #tableOrderModal .tabs_wrapper ul.tabs {
+                flex-wrap: wrap !important;
             }
 
             #tableOrderModal .table-order-product-search {
@@ -2248,11 +2263,23 @@
 
                         <div class="table-order-menu-toolbar">
                             <ul class="tabs border-0 mb-0">
+                                @php
+                                    foreach ($categories as $cat) {
+                                        if ($posCategoryProductCount($cat) > 0) {
+                                            $hasProducts = true;
+                                            break;
+                                        }
+                                    }
+                                @endphp
+                                @if ($hasProducts)
+                                    <li id="all">
+                                        <div class="product-details">
+                                            <h6 style="color: #000;">All Products</h6>
+                                        </div>
+                                    </li>
+                                @endif
                                 @foreach ($categories as $cat)
                                     @if ($posCategoryProductCount($cat) > 0)
-                                        @php
-                                            $hasProducts = true;
-                                        @endphp
                                         <li id="{{ $cat->id }}">
                                             <div class="product-details">
                                                 <h6 style="text-transform: capitalize; color: #000;">{{ $cat->name }}</h6>
