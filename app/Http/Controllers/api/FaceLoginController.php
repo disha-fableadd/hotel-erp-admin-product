@@ -147,7 +147,7 @@ class FaceLoginController extends Controller
         // ----------------------------------
 
         // 1. Log the user in via session (web guard)
-        Auth::guard('web')->login($user);
+        Auth::guard('web')->login($user, true);
 
         // 2. Generate a Passport API token for localStorage use
         $token = $user->createToken('FaceLoginToken')->accessToken;

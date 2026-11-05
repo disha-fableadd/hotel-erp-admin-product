@@ -76,12 +76,16 @@
 
 <script>
     (function () {
-        // Keep API Bearer token alive while the web session is still logged in.
-        // Fixes frequent 401 Unauthorized that forced logout/login.
+        // Keep web session + API Bearer alive until explicit logout.
+        // Stops idle timeout / 401 from flipping to another hotel DB or login popup.
         var csrf = $('meta[name="csrf-token"]').attr('content') || '';
         var refreshUrl = @json(auth()->check() ? route('auth.refresh-api-token') : '');
+        var keepAliveUrl = @json(auth()->check() ? route('auth.keep-alive') : '');
+        var pageTenantId = String(($('meta[name="tenant-id"]').attr('content') || '')).trim();
+        var pageTenantDb = String(($('meta[name="tenant-db"]').attr('content') || '')).trim();
         var refreshPromise = null;
         var webLoggedIn = @json(auth()->check());
+        var keepAliveTimer = null;
 
         function currentToken() {
             var t = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
@@ -96,6 +100,16 @@
             localStorage.setItem('token', token);
         }
 
+        function attachTenantHeaders(headers) {
+            if (!headers) return;
+            if (pageTenantId && !headers.has('X-Tenant-Id')) {
+                headers.set('X-Tenant-Id', pageTenantId);
+            }
+            if (pageTenantDb && !headers.has('X-Tenant-Db')) {
+                headers.set('X-Tenant-Db', pageTenantDb);
+            }
+        }
+
         window.refreshAuthToken = function () {
             if (!webLoggedIn || !refreshUrl) {
                 return Promise.reject(new Error('Not logged in'));
@@ -108,7 +122,8 @@
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': csrf,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-Tenant-Id': pageTenantId || ''
                 },
                 body: '{}'
             }).then(function (res) {
@@ -132,24 +147,98 @@
             return window.refreshAuthToken().catch(function () { return ''; });
         };
 
+        window.keepSessionAlive = function () {
+            if (!webLoggedIn || !keepAliveUrl) return Promise.resolve(false);
+            return fetch(keepAliveUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf,
+                    'Content-Type': 'application/json',
+                    'X-Tenant-Id': pageTenantId || ''
+                },
+                body: '{}'
+            }).then(function (res) {
+                if (res.status === 401) {
+                    // True session death — only then force re-login
+                    return false;
+                }
+                return res.ok;
+            }).catch(function () { return false; });
+        };
+
+        function startSessionHeartbeat() {
+            if (!webLoggedIn || keepAliveTimer) return;
+            // Touch session every 10 minutes while tab is open
+            keepAliveTimer = setInterval(function () {
+                if (document.hidden) return;
+                window.keepSessionAlive();
+            }, 10 * 60 * 1000);
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden) {
+                    window.keepSessionAlive();
+                    window.ensureAuthToken();
+                }
+            });
+            window.addEventListener('focus', function () {
+                window.keepSessionAlive();
+            });
+        }
+
         if (window.$ && $.ajaxSetup) {
             $.ajaxSetup({
                 headers: {
                     'X-CSRF-TOKEN': csrf
                 },
-                beforeSend: function (xhr) {
+                beforeSend: function (xhr, settings) {
                     var t = currentToken();
                     if (t) {
                         xhr.setRequestHeader('Authorization', 'Bearer ' + t);
                     }
+                    if (pageTenantId) {
+                        xhr.setRequestHeader('X-Tenant-Id', pageTenantId);
+                    }
+                    if (pageTenantDb) {
+                        xhr.setRequestHeader('X-Tenant-Db', pageTenantDb);
+                    }
                 }
             });
 
-            // On 401: silently refresh Bearer for next calls (web session fallback also accepts the request)
+            // On 401: refresh token and retry the same AJAX once (avoids wrong-DB empty responses)
             $(document).ajaxError(function (event, jqXHR, settings) {
-                if (!jqXHR || jqXHR.status !== 401 || !webLoggedIn) return;
-                if (settings && settings.url && String(settings.url).indexOf('refresh-api-token') !== -1) return;
-                window.refreshAuthToken().catch(function () {});
+                if (!jqXHR || !webLoggedIn || !settings) return;
+                if (settings.__authRetried) return;
+                var url = String(settings.url || '');
+                if (url.indexOf('refresh-api-token') !== -1 || url.indexOf('keep-alive') !== -1) return;
+
+                if (jqXHR.status === 409) {
+                    try {
+                        var body = jqXHR.responseJSON || {};
+                        if (body.tenant_error === 'TENANT_MISMATCH') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Hotel session mismatch',
+                                text: body.message || 'Please refresh and continue on the correct hotel.',
+                                confirmButtonColor: '#ff9f43'
+                            }).then(function () { window.location.reload(); });
+                        }
+                    } catch (e) {}
+                    return;
+                }
+
+                if (jqXHR.status !== 401) return;
+                settings.__authRetried = true;
+                window.refreshAuthToken().then(function (token) {
+                    var headers = $.extend({}, settings.headers || {});
+                    headers['Authorization'] = 'Bearer ' + token;
+                    headers['X-CSRF-TOKEN'] = csrf;
+                    if (pageTenantId) headers['X-Tenant-Id'] = pageTenantId;
+                    return $.ajax($.extend(true, {}, settings, { headers: headers }));
+                }).catch(function () {
+                    window.keepSessionAlive();
+                });
             });
         }
 
@@ -166,12 +255,29 @@
                 if (csrf && !headers.has('X-CSRF-TOKEN')) {
                     headers.set('X-CSRF-TOKEN', csrf);
                 }
+                attachTenantHeaders(headers);
                 init.headers = headers;
                 init.credentials = init.credentials || 'same-origin';
 
                 return rawFetch(input, init).then(function (res) {
                     var url = typeof input === 'string' ? input : (input && input.url) || '';
-                    if (res.status !== 401 || !webLoggedIn || String(url).indexOf('refresh-api-token') !== -1) {
+                    if (url.indexOf('refresh-api-token') !== -1 || url.indexOf('keep-alive') !== -1) {
+                        return res;
+                    }
+                    if (res.status === 409 && webLoggedIn) {
+                        return res.clone().json().then(function (body) {
+                            if (body && body.tenant_error === 'TENANT_MISMATCH') {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Hotel session mismatch',
+                                    text: body.message || 'Please refresh and continue on the correct hotel.',
+                                    confirmButtonColor: '#ff9f43'
+                                }).then(function () { window.location.reload(); });
+                            }
+                            return res;
+                        }).catch(function () { return res; });
+                    }
+                    if (res.status !== 401 || !webLoggedIn) {
                         return res;
                     }
                     if (init.__authRetried) return res;
@@ -179,6 +285,7 @@
                         var retryInit = Object.assign({}, init, { __authRetried: true });
                         var retryHeaders = new Headers(retryInit.headers || {});
                         retryHeaders.set('Authorization', 'Bearer ' + token);
+                        attachTenantHeaders(retryHeaders);
                         retryInit.headers = retryHeaders;
                         return rawFetch(input, retryInit);
                     }).catch(function () {
@@ -188,9 +295,11 @@
             };
         }
 
-        // Warm token as soon as the layout loads
+        // Warm token + start heartbeat as soon as the layout loads
         if (webLoggedIn) {
             window.ensureAuthToken();
+            window.keepSessionAlive();
+            startSessionHeartbeat();
         }
 
         // Clear API token on logout so the next login starts clean
@@ -199,6 +308,10 @@
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('token');
             } catch (e) {}
+            if (keepAliveTimer) {
+                clearInterval(keepAliveTimer);
+                keepAliveTimer = null;
+            }
         });
     })();
 </script>

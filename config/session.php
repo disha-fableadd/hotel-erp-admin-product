@@ -31,7 +31,9 @@ return [
     |
     */
 
-    'lifetime' => env('SESSION_LIFETIME', 120),
+    // Stay logged in until explicit logout (default 1 year of idle).
+    // Override with SESSION_LIFETIME in .env if you need a shorter idle timeout.
+    'lifetime' => (int) env('SESSION_LIFETIME', 525600),
 
     'expire_on_close' => false,
 

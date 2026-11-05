@@ -89,7 +89,11 @@ class LoginController extends Controller
                 $request->session()->put('tenant_id', $tenancy->current()['id']);
                 $request->session()->put('tenant', $tenancy->current());
             }
-            Auth::login($user);
+            // Remember cookie + long session — stay logged in until explicit logout
+            Auth::login($user, true);
+            if ($request->hasSession()) {
+                $request->session()->put('auth_keep_alive_at', now()->toIso8601String());
+            }
             AppViewData::share();
 
             // If sub-admin (sub-branch) or staff with branch_id, initialize selectedSubAdminId
@@ -170,6 +174,11 @@ class LoginController extends Controller
             ], 401);
         }
 
+        // Touch session so idle timeout does not fire while the tab is open
+        if ($request->hasSession()) {
+            $request->session()->put('auth_keep_alive_at', now()->toIso8601String());
+        }
+
         try {
             // Keep token table tidy — revoke previous browser tokens for this user
             if (method_exists($user, 'tokens')) {
@@ -193,6 +202,46 @@ class LoginController extends Controller
                 'role' => $user->role,
                 'branch_id' => $user->branch_id ?? null,
             ],
+            'tenant_id' => $request->hasSession() ? (int) $request->session()->get('tenant_id', 0) : 0,
+            'tenant_db' => $request->hasSession()
+                ? (string) $request->session()->get('tenant_resolved_database', '')
+                : '',
+        ]);
+    }
+
+    /**
+     * Lightweight session heartbeat — extends idle lifetime while the ERP tab stays open.
+     */
+    public function keepAlive(Request $request)
+    {
+        $user = Auth::guard('web')->user();
+        if (! $user) {
+            return response()->json([
+                'status' => false,
+                'error' => 'Unauthorized',
+            ], 401);
+        }
+
+        if ($request->hasSession()) {
+            $request->session()->put('auth_keep_alive_at', now()->toIso8601String());
+            // Re-stick tenant so DB does not flip while the session is alive
+            $tenantId = (int) $request->session()->get('tenant_id', 0);
+            $stickyDb = (string) $request->session()->get('tenant_resolved_database', '');
+            if ($tenantId > 0 && $stickyDb !== '') {
+                $request->session()->put('tenant_resolved_for', $tenantId);
+                $request->session()->put('tenant_resolved_database', $stickyDb);
+            }
+        }
+
+        return response()->json([
+            'status' => true,
+            'ok' => true,
+            'user_id' => $user->id,
+            'tenant_id' => $request->hasSession() ? (int) $request->session()->get('tenant_id', 0) : 0,
+            'tenant_db' => $request->hasSession()
+                ? (string) $request->session()->get('tenant_resolved_database', '')
+                : '',
+            'server_time' => now()->toIso8601String(),
         ]);
     }
 

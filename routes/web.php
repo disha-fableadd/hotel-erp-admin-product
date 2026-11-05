@@ -136,6 +136,9 @@ Route::middleware(['auth:web'])->group(function () {
     // Re-issue Passport token while web session is still valid (stops repeated 401 / re-login)
     Route::match(['get', 'post'], '/auth/refresh-api-token', [LoginController::class, 'refreshApiToken'])
         ->name('auth.refresh-api-token');
+    // Touch session periodically so idle timeout does not log users out while the tab is open
+    Route::match(['get', 'post'], '/auth/keep-alive', [LoginController::class, 'keepAlive'])
+        ->name('auth.keep-alive');
 });
 
 // Serve face photos directly from storage — bypasses storage:link symlink issues on shared hosting.
