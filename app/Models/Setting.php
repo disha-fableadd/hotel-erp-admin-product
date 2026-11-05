@@ -26,6 +26,8 @@ class Setting extends Model
         'service_tax_enabled',
         'service_tax_rate',
         'service_tax_name',
+        'menu_public_enabled',
+        'menu_public_token',
         'default_payment_method',
         'default_paid_type',
         'address',

@@ -18,7 +18,9 @@ use App\Http\Controllers\admin\SalesController;
 use App\Http\Controllers\admin\ProductsDeliveryController;
 use App\Http\Controllers\admin\VendorController;
 use App\Http\Controllers\admin\SettingController;
+use App\Http\Controllers\admin\DigitalMenuController;
 use App\Http\Controllers\admin\InvoiceCustomizeController;
+use App\Http\Controllers\PublicMenuController;
 use App\Http\Controllers\admin\SalesReturnController;
 use App\Http\Controllers\admin\PurchaseReturnController;
 use App\Http\Controllers\admin\AuthController;
@@ -114,6 +116,11 @@ Route::post('/', [LoginController::class, 'login'])->name('login');
 Route::post('/face-login', [FaceLoginController::class, 'login'])->name('face-login');
 Route::get('/api/face-login-data', [FaceLoginController::class, 'getFaceData']);
 Route::post('/auth/face-login', [LoginController::class, 'faceLogin'])->name('auth.face-login');
+
+// Public digital menu (QR / share link — no login)
+Route::get('/m/{token}', [PublicMenuController::class, 'show'])
+    ->where('token', '[A-Za-z0-9_-]+')
+    ->name('public.menu');
 
 // QZ Tray print signing + trust install (Bluetooth / thermal printers)
 Route::get('/qz/override.crt', [\App\Http\Controllers\QzTrayController::class, 'overrideCrt'])->name('qz.override');
@@ -266,6 +273,8 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::get('/setting/facebook-app-configuration', [SettingController::class, 'facebookappconfiguration'])->name('setting.facebookappconfiguration');
     Route::get('/setting/customize-invoice', [InvoiceCustomizeController::class, 'index'])->name('setting.customize-invoice');
     Route::post('/setting/customize-invoice', [InvoiceCustomizeController::class, 'save'])->name('setting.customize-invoice.save');
+    Route::get('/setting/digital-menu', [DigitalMenuController::class, 'index'])->name('setting.digital-menu');
+    Route::post('/setting/digital-menu', [DigitalMenuController::class, 'save'])->name('setting.digital-menu.save');
 
     // GST Export
     //Route::get('/gst/gstr1/export-excel', [Gstr1ExportController::class, 'export'])->name('exports.gstr1.excel');

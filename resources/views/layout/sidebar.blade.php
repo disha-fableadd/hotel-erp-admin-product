@@ -952,6 +952,9 @@
                             @if($canCustomizeInvoice && Route::has('setting.customize-invoice'))
                                 <li><a href="{{ route('setting.customize-invoice') }}" class="{{ request()->routeIs('setting.customize-invoice') ? 'active' : '' }}">Customize Invoice</a></li>
                             @endif
+                            @if($canShopSettings && Route::has('setting.digital-menu'))
+                                <li><a href="{{ route('setting.digital-menu') }}" class="{{ request()->routeIs('setting.digital-menu') ? 'active' : '' }}">Digital Menu + QR</a></li>
+                            @endif
                             @if($canTaxRates)
                                 <li><a href="{{ route('auth.taxrates') }}" class="{{ request()->routeIs('auth.taxrates') ? 'active' : '' }}">Tax Rates</a></li>
                             @endif
