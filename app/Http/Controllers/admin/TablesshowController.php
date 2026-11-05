@@ -5,16 +5,138 @@ namespace App\Http\Controllers\admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Setting;
 use App\Models\Table_no;
 use App\Models\TaxRate;
+use App\Services\PosPricingService;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\AdvancePayment;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 
 class TablesshowController extends Controller
 {
+    /**
+     * Today's sales summary for tables floor.
+     * Categories with Apply GST OFF are treated as Liquor; GST ON = Food.
+     *
+     * @return array{total_sales: float, food_sales: float, liquor_sales: float, currency_symbol: string, currency_position: string}
+     */
+    protected function todaySalesSummary($branchIdToUse, ?Setting $setting = null): array
+    {
+        $setting = $setting ?: Setting::where('branch_id', $branchIdToUse)->first();
+        $currencySymbol = $setting->currency_symbol ?? '₹';
+        $currencyPosition = $setting->currency_position ?? 'left';
+
+        $start = Carbon::now('Asia/Kolkata')->startOfDay();
+        $end = Carbon::now('Asia/Kolkata')->endOfDay();
+
+        $ordersQuery = Order::query()
+            ->where('isDeleted', 0)
+            ->whereBetween('created_at', [$start, $end]);
+
+        if (! empty($branchIdToUse)) {
+            $ordersQuery->where('branch_id', $branchIdToUse);
+        }
+
+        $totalSales = round((float) (clone $ordersQuery)->sum('total_amount'), 2);
+
+        $foodSales = 0.0;
+        $liquorSales = 0.0;
+
+        $orderIds = (clone $ordersQuery)->pluck('id');
+        if ($orderIds->isNotEmpty()) {
+            $itemsQuery = OrderItem::query()
+                ->whereIn('order_id', $orderIds)
+                ->where(function ($q) {
+                    $q->where('isDeleted', 0)->orWhereNull('isDeleted');
+                })
+                ->select([
+                    'id',
+                    'order_id',
+                    'category_id',
+                    'product_id',
+                    'price',
+                    'quantity',
+                    'total_amount',
+                    'item_discount_amount',
+                ]);
+
+            $items = $itemsQuery->get();
+
+            // Resolve category GST flags in one pass
+            $categoryIds = $items->pluck('category_id')->filter()->unique()->values();
+            $gstByCategory = [];
+            if ($categoryIds->isNotEmpty() && Schema::hasColumn('categories', 'gst_applicable')) {
+                $gstByCategory = Category::whereIn('id', $categoryIds)
+                    ->pluck('gst_applicable', 'id')
+                    ->map(fn ($v) => $v === null ? true : (bool) $v)
+                    ->all();
+            }
+
+            // Fallback: products → category when order_item.category_id missing
+            $missingCatProductIds = $items
+                ->filter(fn ($i) => empty($i->category_id))
+                ->pluck('product_id')
+                ->filter()
+                ->unique()
+                ->values();
+            $productCategoryMap = [];
+            if ($missingCatProductIds->isNotEmpty()) {
+                $productCategoryMap = DB::table('products')
+                    ->whereIn('id', $missingCatProductIds)
+                    ->pluck('category_id', 'id')
+                    ->all();
+                $extraCatIds = collect($productCategoryMap)->filter()->unique()->diff(array_keys($gstByCategory));
+                if ($extraCatIds->isNotEmpty() && Schema::hasColumn('categories', 'gst_applicable')) {
+                    $extra = Category::whereIn('id', $extraCatIds)
+                        ->pluck('gst_applicable', 'id')
+                        ->map(fn ($v) => $v === null ? true : (bool) $v)
+                        ->all();
+                    $gstByCategory += $extra;
+                }
+            }
+
+            foreach ($items as $item) {
+                $line = (float) ($item->total_amount ?? 0);
+                if ($line <= 0) {
+                    $unit = (float) ($item->price ?? 0);
+                    $qty = (float) ($item->quantity ?? 0);
+                    $line = max(0, ($unit * $qty) - (float) ($item->item_discount_amount ?? 0));
+                }
+
+                $catId = $item->category_id ?: ($productCategoryMap[$item->product_id] ?? null);
+                $isFood = true;
+                if ($catId !== null && $catId !== '') {
+                    if (array_key_exists((int) $catId, $gstByCategory)) {
+                        $isFood = (bool) $gstByCategory[(int) $catId];
+                    } else {
+                        $isFood = PosPricingService::categoryGstApplicable($catId);
+                    }
+                }
+
+                // GST OFF on category => Liquor; GST ON => Food
+                if ($isFood) {
+                    $foodSales += $line;
+                } else {
+                    $liquorSales += $line;
+                }
+            }
+        }
+
+        return [
+            'total_sales' => $totalSales,
+            'food_sales' => round($foodSales, 2),
+            'liquor_sales' => round($liquorSales, 2),
+            'currency_symbol' => $currencySymbol,
+            'currency_position' => $currencyPosition,
+        ];
+    }
+
     public function index()
     {
         return view('advance_pay.index');
@@ -172,6 +294,8 @@ class TablesshowController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'phone']);
 
+        $todaySales = $this->todaySalesSummary($branchIdToUse, $setting);
+
         return view('tables.tables_view', compact(
             'staff',
             'tables',
@@ -181,8 +305,35 @@ class TablesshowController extends Controller
             'categories',
             'can_item_discount',
             'setting',
-            'customers'
+            'customers',
+            'todaySales'
         ));
+    }
+
+    /**
+     * JSON refresh for today's food / liquor / total sales on tables floor.
+     */
+    public function todaySales(Request $request)
+    {
+        $user = auth()->user();
+        $userRole = $user->role ?? '';
+        $userId = $user->id ?? null;
+        $subAdminId = session('selectedSubAdminId') ?: $request->input('selectedSubAdminId');
+
+        if ($userRole === 'staff' && $user->branch_id) {
+            $branchIdToUse = $user->branch_id;
+        } elseif ($userRole === 'admin' && ! empty($subAdminId)) {
+            $branchIdToUse = $subAdminId;
+        } elseif ($userRole === 'sub-admin') {
+            $branchIdToUse = $userId;
+        } else {
+            $branchIdToUse = $userId;
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $this->todaySalesSummary($branchIdToUse),
+        ]);
     }
     public function show($id)
     {

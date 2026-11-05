@@ -2302,6 +2302,85 @@
             padding-top: 24px;
         }
 
+        .tables-floor .page-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .tables-today-sales {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+            gap: 10px;
+            flex: 1 1 420px;
+            justify-content: flex-end;
+            min-width: 0;
+        }
+
+        .tables-today-sales .tts-card {
+            background: #fff;
+            border: 1px solid #e8edf3;
+            border-radius: 12px;
+            padding: 10px 14px;
+            min-width: 132px;
+            flex: 1 1 132px;
+            max-width: 200px;
+            box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.35);
+        }
+
+        .tables-today-sales .tts-card .tts-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+
+        .tables-today-sales .tts-card .tts-value {
+            display: block;
+            font-size: 16px;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        .tables-today-sales .tts-card.is-total {
+            border-color: #fdba74;
+            background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+        }
+
+        .tables-today-sales .tts-card.is-total .tts-value {
+            color: #c2410c;
+        }
+
+        .tables-today-sales .tts-card.is-food .tts-value {
+            color: #15803d;
+        }
+
+        .tables-today-sales .tts-card.is-liquor .tts-value {
+            color: #1d4ed8;
+        }
+
+        @media (max-width: 991px) {
+            .tables-today-sales {
+                order: 3;
+                width: 100%;
+                flex: 1 1 100%;
+                justify-content: stretch;
+            }
+
+            .tables-today-sales .tts-card {
+                max-width: none;
+            }
+        }
+
         @media (max-width: 767px) {
         .tables-floor .page-header {
             flex-wrap: nowrap;          /* heading ane button ek j row ma */
@@ -2400,6 +2479,37 @@
                 <div class="page-title">
                     <h4>Table Seating Arrangement</h4>
                     <p>Select a table to start dine-in, continue a running bill, or reserve a seat.</p>
+                </div>
+                @php
+                    $tts = $todaySales ?? [
+                        'total_sales' => 0,
+                        'food_sales' => 0,
+                        'liquor_sales' => 0,
+                        'currency_symbol' => $currency_symbol ?? '₹',
+                        'currency_position' => $currency_position ?? 'left',
+                    ];
+                    $ttsFmt = function ($amount) use ($tts) {
+                        $n = number_format((float) $amount, 2);
+                        return (($tts['currency_position'] ?? 'left') === 'right')
+                            ? ($n . ($tts['currency_symbol'] ?? '₹'))
+                            : (($tts['currency_symbol'] ?? '₹') . $n);
+                    };
+                @endphp
+                <div class="tables-today-sales" id="tablesTodaySales"
+                    data-refresh-url="{{ route('tables.todaySales') }}"
+                    title="Liquor = categories with Apply GST off">
+                    <div class="tts-card is-total">
+                        <span class="tts-label">Today Total Sales</span>
+                        <span class="tts-value" data-tts="total_sales">{{ $ttsFmt($tts['total_sales'] ?? 0) }}</span>
+                    </div>
+                    <div class="tts-card is-food">
+                        <span class="tts-label">Today Food Sales</span>
+                        <span class="tts-value" data-tts="food_sales">{{ $ttsFmt($tts['food_sales'] ?? 0) }}</span>
+                    </div>
+                    <div class="tts-card is-liquor">
+                        <span class="tts-label">Today Liquor Share</span>
+                        <span class="tts-value" data-tts="liquor_sales">{{ $ttsFmt($tts['liquor_sales'] ?? 0) }}</span>
+                    </div>
                 </div>
                 <div class="page-btn">
                     @if (app('hasPermission')(2, 'add'))
@@ -3025,6 +3135,40 @@
         var authToken = localStorage.getItem("authToken");
         const pageTenantId = ($('meta[name="tenant-id"]').attr('content') || '').trim();
         const pageTenantDb = ($('meta[name="tenant-db"]').attr('content') || '').trim();
+
+        function formatTablesTodayMoney(amount, symbol, position) {
+            var n = (parseFloat(amount) || 0).toFixed(2);
+            var sym = symbol || '{{ $currency_symbol ?? '₹' }}';
+            var pos = position || '{{ $currency_position ?? 'left' }}';
+            return pos === 'right' ? (n + sym) : (sym + n);
+        }
+
+        function refreshTablesTodaySales() {
+            var $wrap = $('#tablesTodaySales');
+            if (!$wrap.length) return;
+            var url = $wrap.data('refresh-url');
+            if (!url) return;
+            $.ajax({
+                url: url,
+                type: 'GET',
+                dataType: 'json',
+                data: { selectedSubAdminId: localStorage.getItem('selectedSubAdminId') || '' },
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                    'Accept': 'application/json'
+                },
+                success: function (res) {
+                    if (!res || !res.status || !res.data) return;
+                    var d = res.data;
+                    var sym = d.currency_symbol || '{{ $currency_symbol ?? '₹' }}';
+                    var pos = d.currency_position || '{{ $currency_position ?? 'left' }}';
+                    $wrap.find('[data-tts="total_sales"]').text(formatTablesTodayMoney(d.total_sales, sym, pos));
+                    $wrap.find('[data-tts="food_sales"]').text(formatTablesTodayMoney(d.food_sales, sym, pos));
+                    $wrap.find('[data-tts="liquor_sales"]').text(formatTablesTodayMoney(d.liquor_sales, sym, pos));
+                }
+            });
+        }
+        window.refreshTablesTodaySales = refreshTablesTodaySales;
 
         function posApiHeaders(extra) {
             var headers = Object.assign({
@@ -5395,6 +5539,9 @@
                                 window.applyDefaultPosPayment();
                             }
                             updateTotalItems();
+                            if (typeof window.refreshTablesTodaySales === 'function') {
+                                window.refreshTablesTodaySales();
+                            }
                             // Dine-in: open KOT print modal on Place (kitchen)
                             if (tableOrderModal) tableOrderModal.hide();
                             var placeOrderId = response.order_id || orderId;
@@ -5593,6 +5740,9 @@
                                 window.applyDefaultPosPayment();
                             }
                             updateTotalItems();
+                            if (typeof window.refreshTablesTodaySales === 'function') {
+                                window.refreshTablesTodaySales();
+                            }
                             // Dine-in: open KOT print modal on Update (from this screen)
                             if (tableOrderModal) tableOrderModal.hide();
                             var updateOrderId = response.order_id || orderId;
@@ -5796,6 +5946,9 @@
                                 window.applyDefaultPosPayment();
                             }
                             updateTotalItems();
+                            if (typeof window.refreshTablesTodaySales === 'function') {
+                                window.refreshTablesTodaySales();
+                            }
                             // Checkout = customer bill; fully paid → free table (do not re-occupy via markBillPrinted)
                             if (tableOrderModal) tableOrderModal.hide();
                             var billOrderId = response.order_id || orderId;

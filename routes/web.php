@@ -234,6 +234,7 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
 
     // Sales
     Route::get('/tables-view', [TablesshowController::class, 'create'])->name('tables.create');
+    Route::get('/tables-view/today-sales', [TablesshowController::class, 'todaySales'])->name('tables.todaySales');
     Route::get('/kitchen/kot', [KotController::class, 'index'])->name('kot.board');
     Route::get('/kitchen/kot/{orderId}/print', [KotController::class, 'print'])->name('kot.print');
     Route::get('/kitchen/kot/{orderId}/pdf', [KotController::class, 'printPdf'])->name('kot.pdf');
