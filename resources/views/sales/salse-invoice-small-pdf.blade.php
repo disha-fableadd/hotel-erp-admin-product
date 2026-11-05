@@ -418,7 +418,7 @@
     $logoBase64 = null; // hard-disable image header on this template
     $showShopGst = $invOn('show_shop_gst', true);
     $showShopAddr = $invOn('show_shop_address', false);
-    $showShopPhone = $invOn('show_shop_phone', true);
+    $showShopPhone = $invOn('show_shop_phone', false);
     $showFssai = $invOn('show_fssai', false);
     $showCustName = $invOn('show_customer_name', true);
     $showCustPhone = $invOn('show_customer_phone', true);

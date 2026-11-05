@@ -273,7 +273,12 @@
                             </tr>
                         @endif
 
-                        @if (!empty($setting?->phone))
+                        @php
+                            $showShopPhoneA4 = function_exists('invoice_custom')
+                                ? !empty(invoice_custom($setting)['show_shop_phone'])
+                                : false;
+                        @endphp
+                        @if ($showShopPhoneA4 && !empty($setting?->phone))
                             <tr>
                                 <td style="padding: 0 0 8px 0;">Phone :</td>
                                 <td style="text-align: right; padding: 0 0 8px 0;">{{ $setting->phone }}</td>

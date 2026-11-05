@@ -682,7 +682,9 @@ if (! function_exists('default_invoice_customization')) {
             'show_customer_outstanding' => false,
 
             'show_company_name' => true,
-            'show_shop_phone' => true,
+            'show_shop_phone' => false,
+            // Set true only after user toggles Shop Phone in Customize Invoice (legacy saves had default true with no UI).
+            'shop_phone_user_set' => false,
             'show_shop_address' => true,
             'show_shop_email' => false,
             'bill_of_supply' => false,
@@ -753,7 +755,15 @@ if (! function_exists('invoice_custom')) {
             $saved = $setting;
         }
 
-        return array_replace($defaults, array_intersect_key($saved, $defaults));
+        $merged = array_replace($defaults, array_intersect_key($saved, $defaults));
+
+        // Older invoice_customization JSON forced show_shop_phone=true from defaults even though
+        // there was no Customize Invoice toggle. Hide shop phone until the user opts in.
+        if (empty($merged['shop_phone_user_set'])) {
+            $merged['show_shop_phone'] = false;
+        }
+
+        return $merged;
     }
 }
 

@@ -69,6 +69,10 @@ class InvoiceCustomizeController extends Controller
             $cleaned['language'] = 'english';
         }
 
+        // Mark that shop phone was set from the Customize Invoice UI (not legacy default).
+        $cleaned['shop_phone_user_set'] = true;
+        $cleaned['show_shop_phone'] = ! empty($cleaned['show_shop_phone']);
+
         $thanksMsg = trim((string) ($cleaned['thanks_message'] ?? ''));
         if ($thanksMsg === '') {
             $thanksMsg = 'Thanks! Visit again';

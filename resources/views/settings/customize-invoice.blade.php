@@ -277,6 +277,7 @@
                         <div class="ci-section-title">Header Settings</div>
                         <div class="ci-row"><div><div class="lbl">Shop Logo</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="show_logo"></div></div>
                         <div class="ci-field"><label>Logo Size</label><input type="range" class="form-range inv-num" name="logo_size" min="0.5" max="2" step="0.1"><div class="hint"><span id="logoSizeVal">1.00</span>x</div></div>
+                        <div class="ci-row"><div><div class="lbl">Shop Phone Number</div><div class="hint">Header line like Ph: / Mob No:</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="show_shop_phone"></div></div>
                         <div class="ci-row"><div><div class="lbl">Shop GST Number</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="show_shop_gst"></div></div>
                         <div class="ci-row"><div><div class="lbl">FSSAI Number</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="show_fssai"></div></div>
                         <div class="ci-row"><div><div class="lbl">Customer GST</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="show_customer_gst"></div></div>
@@ -531,7 +532,7 @@
                 }
                 html += '<div class="shop">' + esc(shopName) + '</div><div class="meta">';
                 if (opts.showAddr) html += esc(shopAddr) + '<br>';
-                if (opts.showPhone) html += 'Ph: ' + esc(shopPhone) + '<br>';
+                if (state.show_shop_phone && shopPhone) html += 'Ph: ' + esc(shopPhone) + '<br>';
                 if (state.show_shop_gst && shopGst) html += 'GST: ' + esc(shopGst) + '<br>';
                 if (state.show_fssai && shopFssai) html += 'FSSAI: ' + esc(shopFssai) + '<br>';
                 html += '</div>';
@@ -784,7 +785,8 @@
                 var title = (state.enable_custom_heading && state.custom_heading_text) ? state.custom_heading_text : 'Invoice';
                 var html = '<div class="text-center">';
                 if (state.show_logo) html += '<div class="text-center mb-1">🏪</div>';
-                html += '<strong>' + esc(shopName) + '</strong><div>Ph.No.: ' + esc(shopPhone) + '</div>';
+                html += '<strong>' + esc(shopName) + '</strong>';
+                if (state.show_shop_phone && shopPhone) html += '<div>Ph.No.: ' + esc(shopPhone) + '</div>';
                 if (state.show_shop_gst && shopGst) html += '<div>GST: ' + esc(shopGst) + '</div>';
                 if (state.show_fssai && shopFssai) html += '<div>FSSAI: ' + esc(shopFssai) + '</div>';
                 html += '<div class="title">' + esc(title) + '</div></div>';
