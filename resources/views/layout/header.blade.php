@@ -921,14 +921,16 @@ $user = auth()->user();
 
     <script>
         // ==================== SIDEBAR TOGGLE FUNCTIONALITY ====================
+        // Hover-expand only when cursor is over the sidebar itself — NOT header-left/toggle.
+        // Including .header-left made collapse look broken: click collapses, then hover
+        // on the hamburger immediately adds expand-menu and the sidebar stays wide.
         $(document).on('mouseover', function(e) {
-            e.stopPropagation();
             const $toggleBtn = $('#toggle_btn1');
             const isTabletSize = $(window).width() >= 768 && $(window).width() <= 1024;
             const isButtonAvailable = $toggleBtn.length > 0 && (isTabletSize || $toggleBtn.is(':visible'));
 
             if ($('body').hasClass('mini-sidebar') && isButtonAvailable) {
-                const isInsideSidebar = $(e.target).closest('.sidebar, .header-left').length;
+                const isInsideSidebar = $(e.target).closest('.sidebar').length;
                 if (isInsideSidebar) {
                     $('body').addClass('expand-menu');
                     $('.subdrop + ul').slideDown();
@@ -936,7 +938,6 @@ $user = auth()->user();
                     $('body').removeClass('expand-menu');
                     $('.subdrop + ul').slideUp();
                 }
-                return false;
             }
         });
 
@@ -949,19 +950,27 @@ $user = auth()->user();
             const body = $('body');
             const $btn = $(this);
             if (body.hasClass('mini-sidebar')) {
-                body.removeClass('mini-sidebar');
+                body.removeClass('mini-sidebar expand-menu');
                 $btn.addClass('active');
                 $('.subdrop + ul').slideDown();
                 localStorage.setItem('screenModeNightTokenState', 'night');
-                setTimeout(function() { body.removeClass('mini-sidebar'); $('.header-left').addClass('active'); }, 100);
+                setTimeout(function() {
+                    body.removeClass('mini-sidebar expand-menu');
+                    $('.header-left').addClass('active');
+                }, 100);
             } else {
                 body.addClass('mini-sidebar');
+                body.removeClass('expand-menu');
                 $btn.removeClass('active');
                 $('.subdrop + ul').slideUp();
                 localStorage.removeItem('screenModeNightTokenState');
-                setTimeout(function() { body.addClass('mini-sidebar'); $('.header-left').removeClass('active'); }, 100);
+                setTimeout(function() {
+                    body.addClass('mini-sidebar');
+                    body.removeClass('expand-menu');
+                    $('.header-left').removeClass('active');
+                }, 100);
             }
-            setTimeout(() => { $btn.data('processing', false); }, 300);
+            setTimeout(function() { $btn.data('processing', false); }, 300);
             return false;
         });
 
@@ -1782,7 +1791,30 @@ $user = auth()->user();
    }
    .search-view { width: 285px !important; }
    .logo-view { float: none; }
-   .mini-sidebar .header-left .logo-small { display: none !important; }
+   /* Keep hamburger clickable and visible when sidebar is collapsed */
+   #toggle_btn1.web_button {
+       position: relative !important;
+       z-index: 1100 !important;
+       pointer-events: auto !important;
+       cursor: pointer !important;
+       flex-shrink: 0;
+   }
+   @media (min-width: 992px) {
+       body.mini-sidebar:not(.expand-menu) .header-left .logo {
+           display: none !important;
+       }
+       body.mini-sidebar:not(.expand-menu) .header-left .logo-small {
+           display: block !important;
+       }
+       body.mini-sidebar:not(.expand-menu) .sidebar .slimScrollDiv,
+       body.mini-sidebar:not(.expand-menu) .sidebar .sidebar-inner {
+           width: 80px !important;
+       }
+       body.mini-sidebar.expand-menu .sidebar .slimScrollDiv,
+       body.mini-sidebar.expand-menu .sidebar .sidebar-inner {
+           width: 260px !important;
+       }
+   }
    div#toggle_btn1 { position: relative !important; }
 </style>
 

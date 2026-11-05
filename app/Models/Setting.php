@@ -16,6 +16,7 @@ class Setting extends Model
         'phone',
         'gst_num',
         'cin_no',
+        'footer_text',
         'low_stock',
         'allow_item_level_discount',
         'default_gst_option',

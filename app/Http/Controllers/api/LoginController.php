@@ -157,6 +157,46 @@ class LoginController extends Controller
     }
 
     /**
+     * Issue a fresh Passport token for the currently logged-in web user.
+     * Used when localStorage authToken is missing/expired but the session cookie is still valid.
+     */
+    public function refreshApiToken(Request $request)
+    {
+        $user = Auth::guard('web')->user();
+        if (! $user) {
+            return response()->json([
+                'status' => false,
+                'error' => 'Unauthorized',
+            ], 401);
+        }
+
+        try {
+            // Keep token table tidy — revoke previous browser tokens for this user
+            if (method_exists($user, 'tokens')) {
+                $user->tokens()
+                    ->where('name', 'LaravelPassportToken')
+                    ->where('revoked', false)
+                    ->update(['revoked' => true]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('refreshApiToken revoke failed: '.$e->getMessage());
+        }
+
+        $token = $user->createToken('LaravelPassportToken')->accessToken;
+
+        return response()->json([
+            'status' => true,
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'role' => $user->role,
+                'branch_id' => $user->branch_id ?? null,
+            ],
+        ]);
+    }
+
+    /**
      * Authenticate by username/email/password.
      */
     protected function authenticateByEmailPassword(string $login, string $password): array

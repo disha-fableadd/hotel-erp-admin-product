@@ -319,9 +319,14 @@
         }
     }
 
-    $thanks = trim((string) ($setting->footer_text ?? ''));
+    $invForThanks = (isset($inv) && is_array($inv)) ? $inv : (function_exists('invoice_custom') ? invoice_custom($setting) : []);
+    $showThanks = array_key_exists('show_thanks', $invForThanks) ? !empty($invForThanks['show_thanks']) : true;
+    $thanks = trim((string) ($invForThanks['thanks_message'] ?? ''));
     if ($thanks === '') {
-        $thanks = 'Thanks for business with us!';
+        $thanks = trim((string) ($setting->footer_text ?? ''));
+    }
+    if ($thanks === '') {
+        $thanks = 'Thanks! Visit again';
     }
 
     $custName = !empty($customer['name']) ? $customer['name'] : '';
@@ -642,8 +647,10 @@
         </div>
     @endif
 
+    @if ($showThanks && $thanks !== '')
     <div class="footer-thanks">
         {{ $thanks }}
     </div>
+    @endif
 </body>
 </html>

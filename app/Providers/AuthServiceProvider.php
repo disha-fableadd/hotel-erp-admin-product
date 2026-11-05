@@ -24,5 +24,12 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
+        // Keep API tokens valid for long admin/POS sessions (localStorage Bearer).
+        // Web session fallback in AuthApiMiddleware still covers expired tokens.
+        if (class_exists(Passport::class)) {
+            Passport::tokensExpireIn(now()->addYear());
+            Passport::refreshTokensExpireIn(now()->addYear());
+            Passport::personalAccessTokensExpireIn(now()->addYear());
+        }
     }
 }

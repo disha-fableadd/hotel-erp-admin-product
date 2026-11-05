@@ -665,6 +665,8 @@ if (! function_exists('default_invoice_customization')) {
             'show_savings' => false,
             'savings_label' => 'You Saved',
             'enable_terms' => false,
+            'show_thanks' => true,
+            'thanks_message' => 'Thanks! Visit again',
 
             'product_name_wrap' => true,
             'product_second_line' => false,
@@ -764,6 +766,14 @@ if (! function_exists('invoice_print_js_prefs')) {
             $setting = invoice_settings_row();
             $inv = invoice_custom($setting);
 
+            $thanks = trim((string) ($inv['thanks_message'] ?? ''));
+            if ($thanks === '') {
+                $thanks = trim((string) ($setting->footer_text ?? ''));
+            }
+            if ($thanks === '') {
+                $thanks = 'Thanks! Visit again';
+            }
+
             return [
                 'thermal' => (($setting->invoice_size ?? 'small') === 'small'),
                 'copies' => max(1, min(5, (int) ($inv['print_copies'] ?? 1))),
@@ -776,6 +786,8 @@ if (! function_exists('invoice_print_js_prefs')) {
                 'hindi' => ($inv['language'] ?? 'english') === 'hindi',
                 'template' => max(1, min(5, (int) ($inv['thermal_theme'] ?? 0) ?: 1)),
                 'paperSize' => ($inv['paper_size'] ?? '3inch') === '2inch' ? '2inch' : '3inch',
+                'showThanks' => array_key_exists('show_thanks', $inv) ? ! empty($inv['show_thanks']) : true,
+                'thanksMessage' => $thanks,
             ];
         } catch (\Throwable $e) {
             return [
@@ -790,6 +802,8 @@ if (! function_exists('invoice_print_js_prefs')) {
                 'hindi' => false,
                 'template' => 1,
                 'paperSize' => '3inch',
+                'showThanks' => true,
+                'thanksMessage' => 'Thanks! Visit again',
             ];
         }
     }

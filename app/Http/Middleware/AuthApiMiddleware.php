@@ -10,11 +10,32 @@ class AuthApiMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        
-        if (!Auth::guard('api')->check()) {
+        $apiUser = null;
+
+        try {
+            if (Auth::guard('api')->check()) {
+                $apiUser = Auth::guard('api')->user();
+            }
+        } catch (\Throwable $e) {
+            $apiUser = null;
+        }
+
+        // Browser admin UI often keeps a valid web session after the Passport
+        // token in localStorage expires or is cleared — accept that session so
+        // users are not forced to logout/login for every AJAX call.
+        if (! $apiUser && Auth::guard('web')->check()) {
+            $apiUser = Auth::guard('web')->user();
+            if ($apiUser) {
+                Auth::guard('api')->setUser($apiUser);
+                Auth::setUser($apiUser);
+            }
+        }
+
+        if (! $apiUser) {
             return response()->json(['status' => false, 'error' => 'Unauthorized'], 401);
         }
-        $user = Auth::guard('api')->user();
+
+        $user = $apiUser;
 
         // ✅ Safe defensive branch check for sub-admins
         $targetSubAdminIds = [];
@@ -22,14 +43,14 @@ class AuthApiMiddleware
             $targetSubAdminIds[] = $user->id;
         }
         if ($request->has('sub_admin_id')) {
-            $targetSubAdminIds[] = (int)$request->input('sub_admin_id');
+            $targetSubAdminIds[] = (int) $request->input('sub_admin_id');
         }
         if ($request->has('selectedSubAdminId')) {
-            $targetSubAdminIds[] = (int)$request->input('selectedSubAdminId');
+            $targetSubAdminIds[] = (int) $request->input('selectedSubAdminId');
         }
 
         $targetSubAdminIds = array_unique(array_filter($targetSubAdminIds));
-        if (!empty($targetSubAdminIds)) {
+        if (! empty($targetSubAdminIds)) {
             foreach ($targetSubAdminIds as $subAdminId) {
                 $subadmin = \App\Models\User::find($subAdminId);
                 if ($subadmin && $subadmin->role === 'sub-admin') {

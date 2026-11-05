@@ -75,6 +75,135 @@
 </script>
 
 <script>
+    (function () {
+        // Keep API Bearer token alive while the web session is still logged in.
+        // Fixes frequent 401 Unauthorized that forced logout/login.
+        var csrf = $('meta[name="csrf-token"]').attr('content') || '';
+        var refreshUrl = @json(auth()->check() ? route('auth.refresh-api-token') : '');
+        var refreshPromise = null;
+        var webLoggedIn = @json(auth()->check());
+
+        function currentToken() {
+            var t = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+            t = String(t).trim();
+            if (!t || t === 'null' || t === 'undefined') return '';
+            return t;
+        }
+
+        function storeToken(token) {
+            if (!token) return;
+            localStorage.setItem('authToken', token);
+            localStorage.setItem('token', token);
+        }
+
+        window.refreshAuthToken = function () {
+            if (!webLoggedIn || !refreshUrl) {
+                return Promise.reject(new Error('Not logged in'));
+            }
+            if (refreshPromise) return refreshPromise;
+            refreshPromise = fetch(refreshUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf,
+                    'Content-Type': 'application/json'
+                },
+                body: '{}'
+            }).then(function (res) {
+                return res.json().then(function (data) {
+                    if (!res.ok || !data || !data.status || !data.token) {
+                        throw new Error((data && (data.error || data.message)) || 'Token refresh failed');
+                    }
+                    storeToken(data.token);
+                    return data.token;
+                });
+            }).finally(function () {
+                refreshPromise = null;
+            });
+            return refreshPromise;
+        };
+
+        window.ensureAuthToken = function () {
+            var t = currentToken();
+            if (t) return Promise.resolve(t);
+            if (!webLoggedIn) return Promise.resolve('');
+            return window.refreshAuthToken().catch(function () { return ''; });
+        };
+
+        if (window.$ && $.ajaxSetup) {
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': csrf
+                },
+                beforeSend: function (xhr) {
+                    var t = currentToken();
+                    if (t) {
+                        xhr.setRequestHeader('Authorization', 'Bearer ' + t);
+                    }
+                }
+            });
+
+            // On 401: silently refresh Bearer for next calls (web session fallback also accepts the request)
+            $(document).ajaxError(function (event, jqXHR, settings) {
+                if (!jqXHR || jqXHR.status !== 401 || !webLoggedIn) return;
+                if (settings && settings.url && String(settings.url).indexOf('refresh-api-token') !== -1) return;
+                window.refreshAuthToken().catch(function () {});
+            });
+        }
+
+        // Patch fetch used by header / POS helpers
+        if (typeof window.fetch === 'function') {
+            var rawFetch = window.fetch.bind(window);
+            window.fetch = function (input, init) {
+                init = init || {};
+                var headers = new Headers(init.headers || (input && input.headers) || {});
+                var t = currentToken();
+                if (t && !headers.has('Authorization')) {
+                    headers.set('Authorization', 'Bearer ' + t);
+                }
+                if (csrf && !headers.has('X-CSRF-TOKEN')) {
+                    headers.set('X-CSRF-TOKEN', csrf);
+                }
+                init.headers = headers;
+                init.credentials = init.credentials || 'same-origin';
+
+                return rawFetch(input, init).then(function (res) {
+                    var url = typeof input === 'string' ? input : (input && input.url) || '';
+                    if (res.status !== 401 || !webLoggedIn || String(url).indexOf('refresh-api-token') !== -1) {
+                        return res;
+                    }
+                    if (init.__authRetried) return res;
+                    return window.refreshAuthToken().then(function (token) {
+                        var retryInit = Object.assign({}, init, { __authRetried: true });
+                        var retryHeaders = new Headers(retryInit.headers || {});
+                        retryHeaders.set('Authorization', 'Bearer ' + token);
+                        retryInit.headers = retryHeaders;
+                        return rawFetch(input, retryInit);
+                    }).catch(function () {
+                        return res;
+                    });
+                });
+            };
+        }
+
+        // Warm token as soon as the layout loads
+        if (webLoggedIn) {
+            window.ensureAuthToken();
+        }
+
+        // Clear API token on logout so the next login starts clean
+        $(document).on('click', 'a[href*="logout"], a.logout', function () {
+            try {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('token');
+            } catch (e) {}
+        });
+    })();
+</script>
+
+<script>
     $(document).ready(function () {
         // Hide global loader immediately (no artificial delay)
         if (typeof window.hideGlobalLoader === 'function') {

@@ -383,6 +383,21 @@
                         <div class="ci-field"><label>Savings Label</label><input type="text" class="form-control form-control-sm inv-text" name="savings_label"></div>
                     </div>
                     <div class="ci-card">
+                        <div class="ci-section-title">Thank You Message</div>
+                        <div class="ci-row"><div><div class="lbl">Show Thank You Line</div><div class="hint">Footer message at bottom of bill</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="show_thanks"></div></div>
+                        <div class="ci-field">
+                            <label>Custom Message</label>
+                            <input type="text" class="form-control form-control-sm inv-text" name="thanks_message" maxlength="120" placeholder="Thanks! Visit again">
+                            <div class="hint mt-1">Quick pick:</div>
+                            <div class="d-flex flex-wrap gap-1 mt-1" id="thanksPresets">
+                                <button type="button" class="btn btn-sm btn-outline-secondary thanks-preset" data-msg="Thanks! Visit again">Thanks! Visit again</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary thanks-preset" data-msg="Thanks for business with us!">Thanks for business</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary thanks-preset" data-msg="Thank you! Please visit again">Please visit again</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary thanks-preset" data-msg="Visit again soon!">Visit again soon</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ci-card">
                         <div class="ci-section-title">Terms &amp; Conditions</div>
                         <div class="ci-row"><div><div class="lbl">Enable Terms</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="enable_terms"></div></div>
                     </div>
@@ -541,6 +556,11 @@
                 }
                 return html;
             }
+            function thanksLine() {
+                if (state.show_thanks === false) return '';
+                var msg = String(state.thanks_message || '').trim() || 'Thanks! Visit again';
+                return '<div class="muted" style="text-align:center;margin-top:6px;">' + esc(msg) + '</div>';
+            }
             function footerExtras() {
                 var html = '';
                 if (state.show_savings) {
@@ -551,6 +571,7 @@
                 if (state.show_upi_qr) html += '<div class="text-center mt-2">Scan QR to Pay Bill:</div><div class="qr"></div>';
                 if (state.show_invoice_barcode) html += '<div class="text-center mt-2" style="letter-spacing:2px;">||||| |||| |||||</div>';
                 if (state.enable_terms) html += '<div class="dash"></div><div class="muted">Terms &amp; Conditions apply.</div>';
+                html += thanksLine();
                 return html;
             }
             function itemExtras(p, i) {
@@ -679,6 +700,7 @@
                 if (state.show_upi_qr) html += '<div class="text-center mt-2">Scan QR to Pay Bill:</div><div class="qr"></div>';
                 if (state.show_invoice_barcode) html += '<div class="text-center mt-2" style="letter-spacing:2px;">||||| |||| |||||</div>';
                 if (state.enable_terms) html += '<div class="dash"></div><div class="muted">Terms &amp; Conditions apply.</div>';
+                html += thanksLine();
                 return html;
             }
 
@@ -714,6 +736,7 @@
                 html += '<div class="net-box">Net Total: Rs ' + money(billTot - 30) + '</div>';
                 if (state.show_customer_outstanding) html += '<div class="text-center">Outstanding amount of Rs 90</div>';
                 if (state.show_upi_qr) html += '<div class="text-center mt-2">Scan QR to Pay Bill:</div><div class="qr"></div>';
+                html += thanksLine();
                 return html;
             }
 
@@ -783,7 +806,6 @@
                 html += '<div class="row-flex"><span>Total</span><span>: 2,465.00</span></div>';
                 html += '<div class="row-flex"><span>Received</span><span>: 2,465.00</span></div>';
                 html += footerExtras();
-                html += '<div class="muted">Thanks for business with us!</div>';
                 return html;
             }
 
@@ -827,6 +849,13 @@
                 if ($(this).attr('name') === 'logo_size') {
                     $('#logoSizeVal').text(Number($(this).val()).toFixed(2));
                 }
+                renderPreview();
+            });
+
+            $(document).on('click', '.thanks-preset', function() {
+                var msg = $(this).data('msg') || '';
+                $('input[name="thanks_message"]').val(msg);
+                $('input[name="show_thanks"]').prop('checked', true);
                 renderPreview();
             });
 

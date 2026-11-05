@@ -1341,7 +1341,9 @@
             text('Received' + new Array(32 - 8 - moneyText(receipt.paid).length + 1).join(' ') + moneyText(receipt.paid));
             if (receipt.payment) text('Payment: ' + receipt.payment);
             text('');
-            text('Thanks for business with us!');
+            if (printPrefs().showThanks !== false) {
+                text(String(printPrefs().thanksMessage || 'Thanks! Visit again').trim() || 'Thanks! Visit again');
+            }
             appendAutoCut(bytes, autoCut);
             return new Uint8Array(bytes);
         }
@@ -2084,7 +2086,13 @@
                     para(fast.terms);
                 }
                 gap(16);
-                para(fast.thanks);
+                var thanksText = clean(fast.thanks);
+                if (!thanksText && printPrefs().showThanks !== false) {
+                    thanksText = String(printPrefs().thanksMessage || 'Thanks! Visit again').trim();
+                }
+                if (thanksText && printPrefs().showThanks !== false) {
+                    para(thanksText);
+                }
                 var extraLines = Math.max(0, Math.min(10, parseInt(fast.extraLines, 10) || 0));
                 for (var el = 0; el < extraLines; el++) println('');
                 font('A');

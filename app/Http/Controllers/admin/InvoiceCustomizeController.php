@@ -69,6 +69,16 @@ class InvoiceCustomizeController extends Controller
             $cleaned['language'] = 'english';
         }
 
+        $thanksMsg = trim((string) ($cleaned['thanks_message'] ?? ''));
+        if ($thanksMsg === '') {
+            $thanksMsg = 'Thanks! Visit again';
+            $cleaned['thanks_message'] = $thanksMsg;
+        }
+        // Keep legacy footer_text in sync for older invoice views
+        if (\Illuminate\Support\Facades\Schema::hasColumn($setting->getTable(), 'footer_text')) {
+            $setting->footer_text = $thanksMsg;
+        }
+
         $setting->invoice_customization = $cleaned;
         $setting->save();
 

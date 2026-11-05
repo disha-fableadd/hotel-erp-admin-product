@@ -122,6 +122,9 @@ Route::middleware(['auth:web'])->group(function () {
     Route::get('/qz/certificate', [\App\Http\Controllers\QzTrayController::class, 'certificate'])->name('qz.certificate');
     Route::post('/qz/sign', [\App\Http\Controllers\QzTrayController::class, 'sign'])->name('qz.sign');
     Route::get('/qz/sign', [\App\Http\Controllers\QzTrayController::class, 'sign']);
+    // Re-issue Passport token while web session is still valid (stops repeated 401 / re-login)
+    Route::match(['get', 'post'], '/auth/refresh-api-token', [LoginController::class, 'refreshApiToken'])
+        ->name('auth.refresh-api-token');
 });
 
 // Serve face photos directly from storage — bypasses storage:link symlink issues on shared hosting.
