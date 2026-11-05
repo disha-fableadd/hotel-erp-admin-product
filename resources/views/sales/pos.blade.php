@@ -2497,6 +2497,39 @@
                     .replace(/'/g, '&#39;');
             }
 
+            // Global POS stock helpers (used by grid + search add handlers)
+            function posIsPreparedFood(product) {
+                return String(product && product.product_kind ? product.product_kind : '') === 'prepared_food';
+            }
+            function posAllowsOversell(product) {
+                if (!product) return true;
+                if (product.allow_oversell === false || product.allow_oversell === 0) return false;
+                return true;
+            }
+            function posShowOutOfStock(product) {
+                if (!product) return false;
+                if (typeof product.show_out_of_stock !== 'undefined') {
+                    return !!product.show_out_of_stock;
+                }
+                if (posIsPreparedFood(product) || product.track_inventory === false || product.track_inventory === 0) {
+                    return false;
+                }
+                return Number(product.quantity) <= 0;
+            }
+            function posEffectiveStock(productOrStock, productMeta) {
+                if (productMeta) {
+                    if (posIsPreparedFood(productMeta) || posAllowsOversell(productMeta) || productMeta.track_inventory === false || productMeta.track_inventory === 0) {
+                        return 999999;
+                    }
+                }
+                var n = parseInt(productOrStock, 10);
+                return isNaN(n) ? 999999 : (Math.max(n, 0) || 999999);
+            }
+            window.posIsPreparedFood = posIsPreparedFood;
+            window.posAllowsOversell = posAllowsOversell;
+            window.posShowOutOfStock = posShowOutOfStock;
+            window.posEffectiveStock = posEffectiveStock;
+
             function resolveProductImage(imageValue) {
                 var fallback = POS_NO_IMAGE;
                 var imageBasePath = POS_IMAGE_BASE || '';
@@ -2924,36 +2957,6 @@
                         return fixed;
                     }
                     return parseFloat(num.toFixed(4)).toString();
-                }
-
-                // Prepared food never OOS; negative selling never blocks add/qty
-                function posIsPreparedFood(product) {
-                    return String(product && product.product_kind ? product.product_kind : '') === 'prepared_food';
-                }
-                function posAllowsOversell(product) {
-                    if (!product) return true;
-                    if (product.allow_oversell === false || product.allow_oversell === 0) return false;
-                    return true;
-                }
-                function posShowOutOfStock(product) {
-                    if (!product) return false;
-                    if (typeof product.show_out_of_stock !== 'undefined') {
-                        return !!product.show_out_of_stock;
-                    }
-                    if (posIsPreparedFood(product) || product.track_inventory === false || product.track_inventory === 0) {
-                        return false;
-                    }
-                    return Number(product.quantity) <= 0;
-                }
-                function posEffectiveStock(productOrStock, productMeta) {
-                    // Negative selling / prepared food → no hard cart cap
-                    if (productMeta) {
-                        if (posIsPreparedFood(productMeta) || posAllowsOversell(productMeta) || productMeta.track_inventory === false || productMeta.track_inventory === 0) {
-                            return 999999;
-                        }
-                    }
-                    var n = parseInt(productOrStock, 10);
-                    return isNaN(n) ? 999999 : Math.max(n, 0) || 999999;
                 }
 
                 // function calculateTotals() {
@@ -4415,10 +4418,13 @@
                     const productName = $btn.data("name");
                     const productPrice = $btn.data("price");
                     const productImage = resolveProductImage($btn.attr("data-image") || $btn.data("image"));
-                    const productStock = posEffectiveStock($btn.data("stock"), {
-                        product_kind: $btn.data("product-kind"),
-                        allow_oversell: true
-                    });
+                    const stockFn = window.posEffectiveStock || posEffectiveStock;
+                    const productStock = (typeof stockFn === 'function')
+                        ? stockFn($btn.data("stock"), {
+                            product_kind: $btn.data("product-kind"),
+                            allow_oversell: true
+                        })
+                        : (parseInt($btn.data("stock"), 10) || 999999);
                     const categoryId = $btn.data("category");
                     const basePrice = parseFloat($btn.attr('data-raw-price')) || parseFloat(String(productPrice).replace(/[^0-9.-]+/g, '')) || 0;
 
