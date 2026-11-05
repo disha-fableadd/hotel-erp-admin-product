@@ -2459,9 +2459,9 @@
                                                 <input type="hidden" name="price_after_discount" value="0.00" class="tax-hidden">
                                             </li>
                                             @foreach ($taxRates as $tax)
-                                                <li class="taxList">
+                                                <li class="taxList" data-tax-id="{{ $tax->id }}" style="display:none;">
                                                     <h5>{{ $tax->tax_name }} ({{ $tax->tax_rate }}%) Tax</h5>
-                                                    <h6 class="tax-value" data-rate="{{ $tax->tax_rate }}"
+                                                    <h6 class="tax-value" data-tax-id="{{ $tax->id }}" data-rate="{{ $tax->tax_rate }}"
                                                         data-symbol="{{ $currency_symbol }}"
                                                         data-position="{{ $currency_position }}">
                                                         @if ($currency_position === 'right')
@@ -3365,6 +3365,7 @@
                             return n;
                         })();
 
+                    var taxObj = product.tax || null;
                     selectedItems.set(uniqueId, {
                         id: uniqueId,
                         uniqueId: uniqueId,
@@ -3381,7 +3382,10 @@
                         quantity_type123: qtyTypeId,
                         quantity: parseInt(item.quantity, 10) || 1,
                         stock: availableStock > 0 ? availableStock : 9999,
-                        item_discount_percent: parseFloat(item.item_discount_percent || 0) || 0
+                        item_discount_percent: parseFloat(item.item_discount_percent || 0) || 0,
+                        tax_id: product.tax_id || (taxObj && taxObj.id) || null,
+                        tax_rate: taxObj ? parseFloat(taxObj.tax_rate) : (product.tax_rate != null ? parseFloat(product.tax_rate) : null),
+                        tax_inclusive: !!(product.tax_inclusive)
                     });
 
                     $('.productset[data-id="' + productId + '"] .check-product i').addClass('selected');
@@ -3569,7 +3573,7 @@
 
                         productsHtml += `
                                                     <div class="col-lg-4 col-md-6 col-sm-6 d-flex position-relative product-card-col">
-                                                        <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
+                                                        <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-tax-id="${product.tax_id || ''}" data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}" data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                             ${outOfStockBadge}
                                                             <div class="productsetimg">
                                                                 <img src="${safeImage}" alt="${safeName}" class="productsetimgin">
@@ -3763,28 +3767,47 @@
                     let totalTax = 0;
                     const gstOption = $("input[name='gst_option']:checked").val();
 
-                    if (gstOption === "with") {
-                        $(".taxList").each(function () {
-                            const taxRate = parseFloat($(this).find(".tax-value").data("rate")) / 100;
+                    $(".taxList").hide().each(function () {
+                        const taxEl = $(this).find(".tax-value");
+                        taxEl.html(formatCurrency("0.00", taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
+                    });
 
-                            // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ Tax on price after discount
-                            const taxAmount = priceAfterDiscount * taxRate;
-
-                            const taxEl = $(this).find(".tax-value");
-                            const symbol = taxEl.data("symbol") || currencySymbol;
-                            const position = taxEl.data("position") || currencyPosition;
-
-                            taxEl.html(formatCurrency(taxAmount.toFixed(2), symbol, position));
-                            $(this).show();
-
-                            totalTax += taxAmount;
+                    if (gstOption === "with" && subtotal > 0) {
+                        const taxAgg = {};
+                        selectedItems.forEach(function (item) {
+                            const taxId = item.tax_id || null;
+                            const taxRatePct = parseFloat(item.tax_rate);
+                            if (!taxId || isNaN(taxRatePct)) {
+                                return;
+                            }
+                            const price = parseFloat(String(item.price).replace(/[^0-9.-]+/g, "")) || 0;
+                            const gross = price * item.quantity;
+                            const discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
+                            const lineNet = gross - (gross * discPct / 100);
+                            const lineShare = lineNet * (1 - (discountPercentage / 100));
+                            let lineTax = 0;
+                            if (item.tax_inclusive) {
+                                const base = lineShare / (1 + (taxRatePct / 100));
+                                lineTax = lineShare - base;
+                            } else {
+                                lineTax = lineShare * (taxRatePct / 100);
+                            }
+                            if (!taxAgg[taxId]) {
+                                taxAgg[taxId] = { amount: 0 };
+                            }
+                            taxAgg[taxId].amount += lineTax;
+                        });
+                        Object.keys(taxAgg).forEach(function (taxId) {
+                            const amount = taxAgg[taxId].amount;
+                            totalTax += amount;
+                            const $row = $('.taxList[data-tax-id="' + taxId + '"]');
+                            if ($row.length) {
+                                const taxEl = $row.find(".tax-value");
+                                taxEl.html(formatCurrency(amount.toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
+                                $row.show();
+                            }
                         });
                     } else {
-                        // Hide and reset tax values if GST = without
-                        $(".taxList")
-                            .hide()
-                            .find(".tax-value")
-                            .html(formatCurrency("0.00", currencySymbol, currencyPosition));
                         totalTax = 0;
                     }
 
@@ -4079,6 +4102,9 @@
                     quantity: 1,
                     stock: pendingPosProduct.stock,
                     item_discount_percent: 0,
+                    tax_id: pendingPosProduct.tax_id || null,
+                    tax_rate: pendingPosProduct.tax_rate != null ? pendingPosProduct.tax_rate : null,
+                    tax_inclusive: !!pendingPosProduct.tax_inclusive,
                     uniqueId: uniqueId
                 });
 
@@ -4103,6 +4129,10 @@
                 var basePrice = parseFloat($product.attr('data-base-price')) || parseFloat(String(productPrice).replace(/[^0-9.-]+/g, '')) || 0;
                 var variants = parseProductOptionsAttr($product, 'data-variants');
                 var addons = parseProductOptionsAttr($product, 'data-addons');
+                var productTaxId = $product.data("tax-id") || null;
+                var productTaxRate = $product.attr("data-tax-rate");
+                productTaxRate = (productTaxRate === '' || productTaxRate == null) ? null : parseFloat(productTaxRate);
+                var productTaxInclusive = $product.data("tax-inclusive") === 1 || $product.data("tax-inclusive") === '1';
 
                 var apiQtyAttr = $product.attr("data-selected-qty");
                 var apiQty = apiQtyAttr !== undefined && apiQtyAttr !== null && apiQtyAttr !== ''
@@ -4122,7 +4152,10 @@
                         quantity_type_id: quantity_type_id,
                         quantity_type123: quantity_type123,
                         quantity: apiQty,
-                        stock: productStock
+                        stock: productStock,
+                        tax_id: productTaxId,
+                        tax_rate: productTaxRate,
+                        tax_inclusive: productTaxInclusive
                     });
                     $product.removeAttr("data-selected-qty");
                     $checkIcon.addClass("selected");
@@ -4140,7 +4173,10 @@
                     quantity_type_id: quantity_type_id,
                     quantity_type123: quantity_type123,
                     stock: productStock,
-                    basePrice: basePrice
+                    basePrice: basePrice,
+                    tax_id: productTaxId,
+                    tax_rate: productTaxRate,
+                    tax_inclusive: productTaxInclusive
                 };
 
                 if ((variants && variants.length) || (addons && addons.length)) {
@@ -4162,6 +4198,9 @@
                     quantity_type123: quantity_type123,
                     quantity: 1,
                     stock: productStock,
+                    tax_id: productTaxId,
+                    tax_rate: productTaxRate,
+                    tax_inclusive: productTaxInclusive,
                     uniqueId: productId
                 });
                 $checkIcon.addClass("selected");
@@ -4244,15 +4283,7 @@
                 }
             });
             $(document).on("change", "input[name='gst_option']", function () {
-                let gstOption = $("input[name='gst_option']:checked").val();
-
-                if (gstOption === "with") {
-                    $(".taxList").show();
-                } else {
-                    $(".taxList").hide();
-                }
-
-                calculateTotals(); // recalc totals with/without tax
+                calculateTotals();
             });
 
             $(".btn-totallabel").click(function (event) {

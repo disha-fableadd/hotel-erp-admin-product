@@ -20,7 +20,7 @@ class PosPricingService
         $productId = (int) ($item['product_id'] ?? 0);
         $qty = max(1, (int) ($item['quantity'] ?? 1));
 
-        $product = Product::with(['variants', 'addons'])->findOrFail($productId);
+        $product = Product::with(['variants', 'addons', 'tax'])->findOrFail($productId);
 
         $unitPrice = (float) $product->price;
         $variantId = !empty($item['variant_id']) ? (int) $item['variant_id'] : null;
@@ -127,13 +127,53 @@ class PosPricingService
 
         $taxTotal = 0.0;
         $taxIds = [];
-        if ($withGst) {
-            $taxes = TaxRate::where('isDeleted', 0)
-                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-                ->get();
-            foreach ($taxes as $tax) {
-                $taxTotal += round($afterDiscount * ((float) $tax->tax_rate / 100), 2);
-                $taxIds[] = $tax->id;
+        $taxBreakdown = [];
+
+        // With GST: only product.tax_id rates. No product tax → 0% (do not apply all tax master rows).
+        if ($withGst && $subtotal > 0) {
+            foreach ($resolvedLines as $line) {
+                $product = $line['product'] ?? null;
+                if (! $product) {
+                    continue;
+                }
+                $taxId = $product->tax_id ?? null;
+                if (empty($taxId)) {
+                    continue;
+                }
+
+                $tax = $product->relationLoaded('tax') ? $product->tax : TaxRate::find($taxId);
+                if (! $tax || (int) ($tax->isDeleted ?? 0) === 1) {
+                    continue;
+                }
+
+                $lineTotal = (float) ($line['line_total'] ?? 0);
+                $lineShare = round($lineTotal * (1 - ($discountPercent / 100)), 2);
+                $rate = (float) $tax->tax_rate;
+                $inclusive = (bool) ($product->tax_inclusive ?? false);
+
+                if ($inclusive && $rate > 0) {
+                    $base = round($lineShare / (1 + ($rate / 100)), 2);
+                    $lineTax = round($lineShare - $base, 2);
+                } else {
+                    $lineTax = round($lineShare * ($rate / 100), 2);
+                }
+
+                if ($lineTax <= 0 && $rate <= 0) {
+                    continue;
+                }
+
+                $tid = (int) $tax->id;
+                if (! isset($taxBreakdown[$tid])) {
+                    $taxBreakdown[$tid] = [
+                        'id' => $tid,
+                        'name' => (string) ($tax->tax_name ?? 'Tax'),
+                        'rate' => $rate,
+                        'amount' => 0.0,
+                    ];
+                    $taxIds[] = $tid;
+                }
+                $taxBreakdown[$tid]['amount'] = round($taxBreakdown[$tid]['amount'] + $lineTax, 2);
+                $taxTotal += $lineTax;
             }
         }
 
@@ -144,7 +184,8 @@ class PosPricingService
             'discount' => $discountPercent,
             'discount_amount' => $discountAmount,
             'tax_total' => round($taxTotal, 2),
-            'tax_ids' => $taxIds,
+            'tax_ids' => array_values(array_unique($taxIds)),
+            'tax_breakdown' => array_values($taxBreakdown),
             'total' => $grand,
         ];
     }

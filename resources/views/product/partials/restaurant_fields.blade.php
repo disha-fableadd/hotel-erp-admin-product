@@ -196,7 +196,7 @@
                     <div class="form-group">
                         <label>Tax (optional)</label>
                         <select class="select" name="tax_id" id="tax_id">
-                            <option value="">Use order-level GST</option>
+                            <option value="">No tax (0% — set a tax to charge GST)</option>
                         </select>
                     </div>
                 </div>

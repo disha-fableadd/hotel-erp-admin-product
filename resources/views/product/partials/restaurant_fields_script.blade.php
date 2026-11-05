@@ -168,7 +168,9 @@
         $('#display_order').val(product.display_order != null ? product.display_order : 0);
         $('#is_pos_available').val(product.is_pos_available == 0 || product.is_pos_available === false ? '0' : '1').trigger('change');
         $('#cost_price').val(product.cost_price != null ? product.cost_price : '');
-        $('#tax_id').val(product.tax_id || '').trigger('change');
+        var taxVal = product.tax_id || '';
+        $('#tax_id').data('pending-tax-id', taxVal);
+        $('#tax_id').val(taxVal).trigger('change');
         $('#tax_inclusive').val(product.tax_inclusive == 1 || product.tax_inclusive === true ? '1' : '0').trigger('change');
         $('#track_inventory').val(product.track_inventory == 0 || product.track_inventory === false ? '0' : '1').trigger('change');
         $('#min_stock').val(product.min_stock != null ? product.min_stock : '');
@@ -213,13 +215,23 @@
                 var list = res.taxRates || res.data || res.taxes || [];
                 if (!Array.isArray(list)) return;
                 var $tax = $('#tax_id');
-                var current = $tax.val();
+                var current = $tax.val() || $tax.data('pending-tax-id') || '';
                 $tax.find('option:not(:first)').remove();
                 list.forEach(function (t) {
                     if (t.isDeleted) return;
+                    if ((t.status || 'active') !== 'active') return;
                     $tax.append('<option value="' + t.id + '">' + (t.tax_name || t.name) + ' (' + t.tax_rate + '%)</option>');
                 });
-                if (current) $tax.val(current).trigger('change');
+                if (current) {
+                    $tax.val(String(current)).trigger('change');
+                    $tax.removeData('pending-tax-id');
+                }
+                if ($tax.hasClass('select2-hidden-accessible')) {
+                    $tax.trigger('change.select2');
+                }
+            },
+            error: function () {
+                console.warn('Could not load tax rates for product form');
             }
         });
     }

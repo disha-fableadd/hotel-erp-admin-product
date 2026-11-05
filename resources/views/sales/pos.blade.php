@@ -31,6 +31,9 @@
             margin-bottom: 8px;
             min-height: 46px;
             gap: 10px;
+            overflow: visible !important;
+            position: relative;
+            z-index: 30;
         }
         .page-header .pos-header-left {
             display: flex;
@@ -544,6 +547,24 @@
             max-width: 480px;
             min-width: 160px;
             margin: 0;
+            position: relative;
+            z-index: 40;
+            overflow: visible !important;
+        }
+        .top-pos-search-wrapper .search_custom_product {
+            position: relative;
+            overflow: visible !important;
+        }
+        .top-pos-search-wrapper .pos-search-results-box {
+            display: none;
+            position: absolute !important;
+            top: calc(100% + 4px) !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 2000 !important;
+            background: #fff;
+            max-height: 360px;
+            overflow-y: auto;
         }
         .btn-close-search {
             transition: all 0.2s ease;
@@ -1908,9 +1929,9 @@
                                     </li>
 
                                     @foreach ($taxRates as $tax)
-                                    <li class="taxList">
+                                    <li class="taxList" data-tax-id="{{ $tax->id }}" style="display:none;">
                                         <h5>{{ $tax->tax_name }} ({{ $tax->tax_rate }}%) Tax</h5>
-                                        <h6 class="tax-value" data-rate="{{ $tax->tax_rate }}"
+                                        <h6 class="tax-value" data-tax-id="{{ $tax->id }}" data-rate="{{ $tax->tax_rate }}"
                                             data-symbol="{{ $currency_symbol }}"
                                             data-position="{{ $currency_position }}">
                                             @if ($currency_position === 'right')
@@ -3077,28 +3098,49 @@
                         let totalTax = 0;
                         const gstOption = $("input[name='gst_option']:checked").val();
 
-                        if (gstOption === "with") {
-                            $(".taxList").each(function() {
-                                const taxRate = parseFloat($(this).find(".tax-value").data("rate")) / 100;
+                        // Reset all tax rows first — only show rates used by cart products
+                        $(".taxList").hide().each(function() {
+                            const taxEl = $(this).find(".tax-value");
+                            taxEl.html(formatCurrency("0.00", taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
+                        });
 
-                                // ✅ Tax on price after discount
-                                const taxAmount = priceAfterDiscount * taxRate;
+                        if (gstOption === "with" && subtotal > 0) {
+                            const taxAgg = {};
+                            selectedItems.forEach(function(item) {
+                                const taxId = item.tax_id || null;
+                                const taxRatePct = parseFloat(item.tax_rate);
+                                if (!taxId || isNaN(taxRatePct)) {
+                                    return; // no product tax → 0%
+                                }
+                                const price = parseFloat(String(item.price).replace(/[^0-9.-]+/g, "")) || 0;
+                                const gross = price * item.quantity;
+                                const discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
+                                const lineNet = gross - (gross * discPct / 100);
+                                const lineShare = lineNet * (1 - (discountPercentage / 100));
+                                let lineTax = 0;
+                                if (item.tax_inclusive) {
+                                    const base = lineShare / (1 + (taxRatePct / 100));
+                                    lineTax = lineShare - base;
+                                } else {
+                                    lineTax = lineShare * (taxRatePct / 100);
+                                }
+                                if (!taxAgg[taxId]) {
+                                    taxAgg[taxId] = { rate: taxRatePct, amount: 0 };
+                                }
+                                taxAgg[taxId].amount += lineTax;
+                            });
 
-                                const taxEl = $(this).find(".tax-value");
-                                const symbol = taxEl.data("symbol") || currencySymbol;
-                                const position = taxEl.data("position") || currencyPosition;
-
-                                taxEl.html(formatCurrency(taxAmount.toFixed(2), symbol, position));
-                                $(this).show();
-
-                                totalTax += taxAmount;
+                            Object.keys(taxAgg).forEach(function(taxId) {
+                                const amount = taxAgg[taxId].amount;
+                                totalTax += amount;
+                                const $row = $('.taxList[data-tax-id="' + taxId + '"]');
+                                if ($row.length) {
+                                    const taxEl = $row.find(".tax-value");
+                                    taxEl.html(formatCurrency(amount.toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
+                                    $row.show();
+                                }
                             });
                         } else {
-                            // Hide and reset tax values if GST = without
-                            $(".taxList")
-                                .hide()
-                                .find(".tax-value")
-                                .html(formatCurrency("0.00", currencySymbol, currencyPosition));
                             totalTax = 0;
                         }
 
@@ -3286,6 +3328,9 @@
                         quantity: 1,
                         stock: pendingPosProduct.stock,
                         item_discount_percent: 0,
+                        tax_id: pendingPosProduct.tax_id || null,
+                        tax_rate: pendingPosProduct.tax_rate != null ? pendingPosProduct.tax_rate : null,
+                        tax_inclusive: !!pendingPosProduct.tax_inclusive,
                         uniqueId: uniqueId
                     });
 
@@ -3386,6 +3431,10 @@
                         track_inventory: $product.data("track-inventory") !== 0 && $product.data("track-inventory") !== '0',
                         allow_oversell: $product.data("allow-oversell") !== 0 && $product.data("allow-oversell") !== '0'
                     });
+                    var productTaxId = $product.data("tax-id") || null;
+                    var productTaxRate = $product.attr("data-tax-rate");
+                    productTaxRate = (productTaxRate === '' || productTaxRate == null) ? null : parseFloat(productTaxRate);
+                    var productTaxInclusive = $product.data("tax-inclusive") === 1 || $product.data("tax-inclusive") === '1';
                     var quantity_type_id = $product.data("quantity_type_id") || quantity_type123 || quantity_type;
                     if (quantity_type_id && ['undefined', 'null'].includes(quantity_type_id.toString().toLowerCase())) {
                         quantity_type_id = "";
@@ -3405,7 +3454,10 @@
                         quantity_type_id: quantity_type_id,
                         quantity_type123: quantity_type123,
                         stock: productStock,
-                        basePrice: basePrice
+                        basePrice: basePrice,
+                        tax_id: productTaxId,
+                        tax_rate: productTaxRate,
+                        tax_inclusive: productTaxInclusive
                     };
 
                     function addPlainOrIncrease() {
@@ -3430,7 +3482,10 @@
                                 quantity_type123: quantity_type123,
                                 quantity: 1,
                                 stock: productStock,
-                                item_discount_percent: 0
+                                item_discount_percent: 0,
+                                tax_id: productTaxId,
+                                tax_rate: productTaxRate,
+                                tax_inclusive: productTaxInclusive
                             });
                             $checkIcon.addClass("selected");
                             updateTotalItems();
@@ -3573,15 +3628,8 @@
                     }
                 });
                 $(document).on("change", "input[name='gst_option']", function() {
-                    let gstOption = $("input[name='gst_option']:checked").val();
-
-                    if (gstOption === "with") {
-                        $(".taxList").show();
-                    } else {
-                        $(".taxList").hide();
-                    }
-
-                    calculateTotals(); // recalc totals with/without tax
+                    // calculateTotals shows only product-applied tax rows
+                    calculateTotals();
                 });
 
                 $(".btn-totallabel").click(function(event) {
@@ -4099,7 +4147,7 @@
                             var safeNoImage = escapeHtmlAttr(POS_NO_IMAGE);
                             productsHtml += `
                                         <div class="col-lg-3 col-sm-6 d-flex position-relative">
-                                            <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
+                                            <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-tax-id="${product.tax_id || ''}" data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}" data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                 ${outOfStockBadge}
                                                 ${hasOptionsBadge}
                                                 <div class="productsetimg">
@@ -4205,84 +4253,139 @@
                 }
             }, 100);
             $(document).ready(function() {
+                var posSearchTimer = null;
+                var posSearchReqId = 0;
+
+                function renderPosSearchResults($resultBox, products) {
+                    $resultBox.empty();
+                    if (!products || !products.length) {
+                        $resultBox.html(`
+                            <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3">
+                                <span style="font-size: 13px; color: #64748b;">No results found</span>
+                                <button type="button" class="btn-close-search" style="background: none; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; cursor: pointer;" title="Close">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        `).show();
+                        return;
+                    }
+
+                    $resultBox.append(`
+                        <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 bg-white" style="border-bottom: 2px solid #f1f5f9; position: sticky; top: 0; z-index: 10;">
+                            <span class="fw-bold" style="font-size: 13.5px; color: #1e293b;">Products (${products.length})</span>
+                            <button type="button" class="btn-close-search" style="background: none; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; cursor: pointer;" title="Close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `);
+
+                    products.forEach(function(product) {
+                        storePosProductOptions(product.id, product.variants || [], product.addons || []);
+                        var rawPrice = product.raw_price != null ? product.raw_price : (parseFloat(String(product.price).replace(/[^0-9.-]+/g, '')) || 0);
+                        var displayPrice = product.price;
+                        if (typeof displayPrice === 'number') {
+                            displayPrice = (posCurrencyPosition === 'right')
+                                ? (Number(displayPrice).toFixed(2) + posCurrencySymbol)
+                                : (posCurrencySymbol + Number(displayPrice).toFixed(2));
+                        }
+                        var optHint = (product.variants && product.variants.length)
+                            ? (' · ' + product.variants.length + ' sizes')
+                            : '';
+                        var searchImg = escapeHtmlAttr(resolveProductImage(product.image || product.image_url || product.images));
+                        var searchNoImg = escapeHtmlAttr(POS_NO_IMAGE);
+                        var stockVal = (typeof posEffectiveStock === 'function')
+                            ? posEffectiveStock(product.stock != null ? product.stock : product.quantity, product)
+                            : 999999;
+                        $resultBox.append(`
+                            <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3" style="border-bottom: 1px solid #f1f5f9;">
+                                <div class="d-flex align-items-center gap-2" style="flex: 1; min-width: 0;">
+                                    <img src="${searchImg}" alt="" class="rounded" style="width: 34px; height: 34px; object-fit: cover; flex-shrink: 0; border: 1px solid #f1f5f9;" data-fallback="${searchNoImg}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')||window.POS_NO_IMAGE;">
+                                    <div style="min-width: 0;">
+                                        <strong style="font-size: 13px; color: #1e293b; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtmlText(product.name ?? 'N/A')}</strong>
+                                        <small style="font-size: 11.5px; color: #64748b; font-weight: 600;">Price: ${escapeHtmlText(displayPrice ?? 'N/A')}${optHint}</small>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-primary add-product ms-2"
+                                    style="border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 12px; flex-shrink: 0;"
+                                    data-id="${product.id}"
+                                    data-name="${escapeHtmlAttr(product.name)}"
+                                    data-price="${escapeHtmlAttr(displayPrice)}"
+                                    data-raw-price="${rawPrice}"
+                                    data-quantity_type="${product.quantity_type || ''}"
+                                    data-quantity_type_id="${product.quantity_type_id || ''}"
+                                    data-quantity_type123="${product.quantity_type_id || ''}"
+                                    data-image="${searchImg}"
+                                    data-stock="${stockVal}"
+                                    data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}"
+                                    data-allow-oversell="1"
+                                    data-tax-id="${product.tax_id || ''}"
+                                    data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}"
+                                    data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}"
+                                    data-category="${product.category_id || product.categoryId || 0}">+ Add</button>
+                            </div>
+                        `);
+                    });
+                    $resultBox.show();
+                }
+
                 function executeProductSearch($input, $resultBox) {
                     const query = $input.val().trim();
-
                     if (query.length < 1) {
                         $resultBox.hide().empty();
                         return;
                     }
 
+                    var reqId = ++posSearchReqId;
+                    $resultBox.html('<div class="list-group-item py-2 px-3" style="font-size:13px;color:#64748b;">Searching…</div>').show();
+
                     $.ajax({
-                        url: `/search-users`,
+                        url: @json(route('users.ajaxSearch')),
                         method: 'GET',
-                        data: {
-                            query: query
-                        },
+                        data: { query: query },
                         dataType: 'json',
                         success: function(data) {
-                            $resultBox.empty();
-
-                            if (data.products && data.products.length > 0) {
-                                // Header with "Products" on left and "✕" cross button on right (Like Image 3)
-                                $resultBox.append(`
-                                    <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 bg-white" style="border-bottom: 2px solid #f1f5f9; position: sticky; top: 0; z-index: 10;">
-                                        <span class="fw-bold" style="font-size: 13.5px; color: #1e293b;">Products</span>
-                                        <button type="button" class="btn-close-search" style="background: none; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; cursor: pointer;" title="Close">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                `);
-
-                                data.products.forEach(product => {
-                                    storePosProductOptions(product.id, product.variants || [], product.addons || []);
-                                    var rawPrice = product.raw_price != null ? product.raw_price : (parseFloat(String(product.price).replace(/[^0-9.-]+/g, '')) || 0);
-                                    var optHint = (product.variants && product.variants.length)
-                                        ? ` · ${product.variants.length} sizes`
-                                        : '';
-                                    var searchImg = escapeHtmlAttr(resolveProductImage(product.image));
-                                    var searchNoImg = escapeHtmlAttr(POS_NO_IMAGE);
-                                    $resultBox.append(`
-                                        <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3" style="border-bottom: 1px solid #f1f5f9;">
-                                            <div class="d-flex align-items-center gap-2" style="flex: 1; min-width: 0;">
-                                                <img src="${searchImg}" alt="" class="rounded" style="width: 34px; height: 34px; object-fit: cover; flex-shrink: 0; border: 1px solid #f1f5f9;" data-fallback="${searchNoImg}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')||window.POS_NO_IMAGE;">
-                                                <div style="min-width: 0;">
-                                                    <strong style="font-size: 13px; color: #1e293b; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtmlText(product.name ?? 'N/A')}</strong>
-                                                    <small style="font-size: 11.5px; color: #64748b; font-weight: 600;">Price: ${escapeHtmlText(product.price ?? 'N/A')}${optHint}</small>
-                                                </div>
-                                            </div>
-                                            <button class="btn btn-sm btn-primary add-product ms-2"
-                                                style="border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 12px; flex-shrink: 0;"
-                                                data-id="${product.id}"
-                                                data-name="${escapeHtmlAttr(product.name)}"
-                                                data-price="${escapeHtmlAttr(product.price)}"
-                                                data-raw-price="${rawPrice}"
-                                                data-quantity_type="${product.quantity_type || ''}"
-                                                data-quantity_type_id="${product.quantity_type_id || ''}"
-                                                data-quantity_type123="${product.quantity_type_id || ''}"
-                                                data-image="${searchImg}"
-                                                data-stock="${posEffectiveStock(product.stock, product)}"
-                                                data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}"
-                                                data-allow-oversell="1"
-                                                data-category="${product.category_id ?? 0}">+ Add</button>
-                                        </div>
-                                    `);
-                                });
-
-                                $resultBox.show();
-                            } else {
-                                $resultBox.html(`
-                                    <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3">
-                                        <span style="font-size: 13px; color: #64748b;">No results found</span>
-                                        <button type="button" class="btn-close-search" style="background: none; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; cursor: pointer;" title="Close">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                `).show();
+                            if (reqId !== posSearchReqId) return;
+                            var products = (data && data.products) ? data.products : [];
+                            if (products.length) {
+                                renderPosSearchResults($resultBox, products);
+                                return;
                             }
+                            // Fallback: filter currently loaded POS catalog
+                            searchLoadedPosCatalog(query, $resultBox, reqId);
                         },
-                        error: function(xhr, status, error) {
-                            $resultBox.hide();
+                        error: function() {
+                            if (reqId !== posSearchReqId) return;
+                            searchLoadedPosCatalog(query, $resultBox, reqId);
+                        }
+                    });
+                }
+
+                function searchLoadedPosCatalog(query, $resultBox, reqId) {
+                    var authToken = localStorage.getItem('authToken');
+                    $.ajax({
+                        url: '/api/getProductsByCategory/all',
+                        type: 'GET',
+                        dataType: 'json',
+                        headers: authToken ? { Authorization: 'Bearer ' + authToken } : {},
+                        success: function(response) {
+                            if (reqId !== posSearchReqId) return;
+                            var q = String(query).toLowerCase();
+                            var list = (response && response.status && Array.isArray(response.data)) ? response.data : [];
+                            var matched = list.filter(function(p) {
+                                return String(p.name || '').toLowerCase().indexOf(q) !== -1;
+                            }).slice(0, 20);
+                            renderPosSearchResults($resultBox, matched);
+                        },
+                        error: function() {
+                            if (reqId !== posSearchReqId) return;
+                            $resultBox.html(`
+                                <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3">
+                                    <span style="font-size: 13px; color: #ef4444;">Search failed. Please try again.</span>
+                                    <button type="button" class="btn-close-search" style="background: none; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; cursor: pointer;" title="Close">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            `).show();
                         }
                     });
                 }
@@ -4291,7 +4394,11 @@
                 $(document).on('input', '.pos-product-search-input', function() {
                     const $input = $(this);
                     const $resultBox = $input.siblings('.pos-search-results-box');
-                    executeProductSearch($input, $resultBox);
+                    if (!$resultBox.length) return;
+                    clearTimeout(posSearchTimer);
+                    posSearchTimer = setTimeout(function() {
+                        executeProductSearch($input, $resultBox);
+                    }, 250);
                 });
 
                 // Close cross button click (Like Image 3)
@@ -4326,6 +4433,11 @@
                     $('.pos-search-results-box').hide().empty();
                     $('.pos-product-search-input').val('');
 
+                    var searchTaxId = $btn.data("tax-id") || null;
+                    var searchTaxRate = $btn.attr("data-tax-rate");
+                    searchTaxRate = (searchTaxRate === '' || searchTaxRate == null) ? null : parseFloat(searchTaxRate);
+                    var searchTaxInclusive = $btn.data("tax-inclusive") === 1 || $btn.data("tax-inclusive") === '1';
+
                     const meta = {
                         productId: productId,
                         categoryId: categoryId,
@@ -4336,7 +4448,10 @@
                         quantity_type_id: (quantity_type1 && !['undefined', 'null'].includes(quantity_type1.toLowerCase())) ? quantity_type1 : '',
                         quantity_type123: (quantity_type123 && !['undefined', 'null'].includes(quantity_type123.toLowerCase())) ? quantity_type123 : '',
                         stock: productStock,
-                        basePrice: basePrice
+                        basePrice: basePrice,
+                        tax_id: searchTaxId,
+                        tax_rate: searchTaxRate,
+                        tax_inclusive: searchTaxInclusive
                     };
 
                     if ((variants.length || addons.length) && typeof window.openPosOptionModal === 'function') {
@@ -4363,7 +4478,10 @@
                             code: "PT001",
                             quantity: 1,
                             stock: productStock,
-                            item_discount_percent: 0
+                            item_discount_percent: 0,
+                            tax_id: searchTaxId,
+                            tax_rate: searchTaxRate,
+                            tax_inclusive: searchTaxInclusive
                         });
                         updateTotalItems();
                     }

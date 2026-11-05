@@ -395,9 +395,9 @@
                                 </li>
 
                                 @foreach ($taxRates as $tax)
-                                <li class="taxList">
+                                <li class="taxList" data-tax-id="{{ $tax->id }}" style="display:none;">
                                     <h5>{{ $tax->tax_name }} ({{ $tax->tax_rate }}%) Tax</h5>
-                                    <h6 class="tax-value" data-rate="{{ $tax->tax_rate }}"
+                                    <h6 class="tax-value" data-tax-id="{{ $tax->id }}" data-rate="{{ $tax->tax_rate }}"
                                         data-symbol="{{ $currency_symbol }}"
                                         data-position="{{ $currency_position }}">
                                         @if ($currency_position === 'right')
@@ -747,28 +747,35 @@
                     let totalTax = 0;
                     const gstOption = $("input[name='gst_option']:checked").val();
 
-                    if (gstOption === "with") {
-                        $(".taxList").each(function() {
-                            const taxRate = parseFloat($(this).find(".tax-value").data("rate")) / 100;
+                    $(".taxList").hide().each(function() {
+                        const taxEl = $(this).find(".tax-value");
+                        taxEl.html(formatCurrency("0.00", taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
+                    });
 
-                            // ✅ Tax on price after discount
-                            const taxAmount = priceAfterDiscount * taxRate;
-
-                            const taxEl = $(this).find(".tax-value");
-                            const symbol = taxEl.data("symbol") || currencySymbol;
-                            const position = taxEl.data("position") || currencyPosition;
-
-                            taxEl.html(formatCurrency(taxAmount.toFixed(2), symbol, position));
-                            $(this).show();
-
-                            totalTax += taxAmount;
+                    if (gstOption === "with" && subtotal > 0) {
+                        const taxAgg = {};
+                        selectedItems.forEach(function(item) {
+                            const taxId = item.tax_id || null;
+                            const taxRatePct = parseFloat(item.tax_rate);
+                            if (!taxId || isNaN(taxRatePct)) return;
+                            const price = parseFloat(String(item.price).replace(/[^0-9.-]+/g, "")) || 0;
+                            const lineShare = (price * item.quantity) * (1 - (discountPercentage / 100));
+                            const lineTax = item.tax_inclusive
+                                ? (lineShare - (lineShare / (1 + taxRatePct / 100)))
+                                : (lineShare * (taxRatePct / 100));
+                            if (!taxAgg[taxId]) taxAgg[taxId] = 0;
+                            taxAgg[taxId] += lineTax;
+                        });
+                        Object.keys(taxAgg).forEach(function(taxId) {
+                            totalTax += taxAgg[taxId];
+                            const $row = $('.taxList[data-tax-id="' + taxId + '"]');
+                            if ($row.length) {
+                                const taxEl = $row.find(".tax-value");
+                                taxEl.html(formatCurrency(taxAgg[taxId].toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
+                                $row.show();
+                            }
                         });
                     } else {
-                        // Hide and reset tax values if GST = without
-                        $(".taxList")
-                            .hide()
-                            .find(".tax-value")
-                            .html(formatCurrency("0.00", currencySymbol, currencyPosition));
                         totalTax = 0;
                     }
 

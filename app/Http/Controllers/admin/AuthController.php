@@ -736,17 +736,46 @@ class AuthController extends Controller
             ->get(['id', 'name', 'email', 'profile_image', 'role']);
 
         // Search products by name, include category_id + variants/add-ons for POS
-        $products = Product::with(['quantityType', 'variants', 'addons'])
-            ->where('name', 'LIKE', "%{$query}%")
+        $productsQuery = Product::with(['quantityType', 'variants' => function ($q) {
+                $q->where('isDeleted', 0);
+            }, 'addons', 'tax'])
             ->where('isDeleted', 0)
-            ->take(10)
-            ->get(['id', 'name', 'price', 'images', 'category_id', 'quantity_type_id', 'quantity']);
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'LIKE', "%{$query}%");
+                if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'SKU')) {
+                    $q->orWhere('SKU', 'LIKE', "%{$query}%");
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'barcode')) {
+                    $q->orWhere('barcode', 'LIKE', "%{$query}%");
+                }
+            });
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'status')) {
+            $productsQuery->where('status', 'active');
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'is_pos_available')) {
+            $productsQuery->where(function ($q) {
+                $q->where('is_pos_available', 1)->orWhereNull('is_pos_available');
+            });
+        }
+
+        try {
+            $products = $productsQuery->orderBy('name')->take(20)->get();
+        } catch (\Throwable $e) {
+            $products = Product::where('isDeleted', 0)
+                ->where('name', 'LIKE', "%{$query}%")
+                ->orderBy('name')
+                ->take(20)
+                ->get();
+        }
 
         // Search orders by order number or customer name
         $orders = Order::with('user:id,name')
-            ->where('order_number', 'LIKE', "%{$query}%")
-            ->orWhereHas('user', function ($q) use ($query) {
-                $q->where('name', 'LIKE', "%{$query}%");
+            ->where(function ($q) use ($query) {
+                $q->where('order_number', 'LIKE', "%{$query}%")
+                    ->orWhereHas('user', function ($uq) use ($query) {
+                        $uq->where('name', 'LIKE', "%{$query}%");
+                    });
             })
             ->take(10)
             ->get(['id', 'order_number', 'user_id', 'total_amount', 'payment_status']);
@@ -776,44 +805,64 @@ class AuthController extends Controller
                 ];
             }),
             'products' => $products->map(function ($product) use ($formatCurrency) {
-                $imageFileName = null;
-                if (!empty($product->images)) {
-                    $imagesArray = json_decode($product->images, true);
-                    if (is_array($imagesArray) && count($imagesArray) > 0) {
-                        $imageFileName = $imagesArray[0];
+                try {
+                    $imageFileName = null;
+                    if (!empty($product->images)) {
+                        $imagesArray = json_decode($product->images, true);
+                        if (is_array($imagesArray) && count($imagesArray) > 0) {
+                            $imageFileName = $imagesArray[0];
+                        }
                     }
+                    $tax = $product->relationLoaded('tax') ? $product->tax : null;
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'price' => $formatCurrency($product->price),
+                        'raw_price' => (float) $product->price,
+                        'category_id' => $product->category_id,
+                        'stock' => $product->quantity,
+                        'product_kind' => $product->product_kind ?? 'general',
+                        'track_inventory' => method_exists($product, 'tracksInventory') ? $product->tracksInventory() : (bool) ($product->track_inventory ?? true),
+                        'allow_oversell' => method_exists($product, 'allowsOversell') ? $product->allowsOversell() : true,
+                        'show_out_of_stock' => method_exists($product, 'showOutOfStockBadge') ? $product->showOutOfStockBadge() : false,
+                        'tax_id' => !empty($product->tax_id) ? (int) $product->tax_id : null,
+                        'tax_inclusive' => (bool) ($product->tax_inclusive ?? false),
+                        'tax_rate' => $tax ? (float) $tax->tax_rate : null,
+                        'tax_name' => $tax ? (string) $tax->tax_name : null,
+                        'quantity_type_id' => $product->quantity_type_id,
+                        'quantity_type' => ($product->quantityType && $product->quantityType->quantity_type) ? $product->quantityType->quantity_type : '',
+                        'image' => $imageFileName
+                            ? asset(rtrim((string) env('ImagePath'), '/') . '/storage/' . ltrim($imageFileName, '/'))
+                            : asset(rtrim((string) env('ImagePath'), '/') . '/admin/assets/img/product/noimage.png'),
+                        'variants' => ($product->variants ?? collect())->map(function ($v) {
+                            return [
+                                'id' => $v->id,
+                                'name' => $v->name,
+                                'sku' => $v->sku,
+                                'price' => (float) $v->price,
+                            ];
+                        })->values(),
+                        'addons' => ($product->addons ?? collect())->map(function ($a) {
+                            return [
+                                'id' => $a->id,
+                                'name' => $a->name,
+                                'price' => (float) $a->price,
+                            ];
+                        })->values(),
+                    ];
+                } catch (\Throwable $e) {
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'price' => $formatCurrency($product->price ?? 0),
+                        'raw_price' => (float) ($product->price ?? 0),
+                        'category_id' => $product->category_id,
+                        'stock' => $product->quantity ?? 0,
+                        'variants' => [],
+                        'addons' => [],
+                    ];
                 }
-                return [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'price' => $formatCurrency($product->price), // formatted price
-                    'raw_price' => (float) $product->price,
-                    'category_id' => $product->category_id,
-                    'stock' => $product->quantity,
-                    'product_kind' => $product->product_kind ?? 'general',
-                    'track_inventory' => method_exists($product, 'tracksInventory') ? $product->tracksInventory() : (bool) ($product->track_inventory ?? true),
-                    'allow_oversell' => method_exists($product, 'allowsOversell') ? $product->allowsOversell() : true,
-                    'show_out_of_stock' => method_exists($product, 'showOutOfStockBadge') ? $product->showOutOfStockBadge() : false,
-                    'quantity_type_id' => $product->quantity_type_id,
-                    'quantity_type' => ($product->quantityType && $product->quantityType->quantity_type) ? $product->quantityType->quantity_type : '',
-                    'image' => $imageFileName ? asset(env('ImagePath') . 'storage/' . $imageFileName) : asset(env('ImagePath') . 'admin/assets/img/product/noimage.png'),
-                    'variants' => ($product->variants ?? collect())->map(function ($v) {
-                        return [
-                            'id' => $v->id,
-                            'name' => $v->name,
-                            'sku' => $v->sku,
-                            'price' => (float) $v->price,
-                        ];
-                    })->values(),
-                    'addons' => ($product->addons ?? collect())->map(function ($a) {
-                        return [
-                            'id' => $a->id,
-                            'name' => $a->name,
-                            'price' => (float) $a->price,
-                        ];
-                    })->values(),
-                ];
-            }),
+            })->values(),
             'orders' => $orders->map(function ($order) use ($formatCurrency) {
                 return [
                     'id' => $order->id,

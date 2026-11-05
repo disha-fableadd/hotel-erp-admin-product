@@ -366,7 +366,7 @@ class SalesController extends Controller
 
         $user = Auth::guard('api')->user();
 
-        $query = Product::with(['category', 'quantityType', 'variants', 'addons'])
+        $query = Product::with(['category', 'quantityType', 'variants', 'addons', 'tax'])
             ->where('isDeleted', 0)
             ->where('status', 'active')
             ->where(function ($q) {
@@ -405,6 +405,10 @@ class SalesController extends Controller
                     'track_inventory' => $product->tracksInventory(),
                     'allow_oversell' => $product->allowsOversell(),
                     'show_out_of_stock' => $product->showOutOfStockBadge(),
+                    'tax_id' => $product->tax_id ? (int) $product->tax_id : null,
+                    'tax_inclusive' => (bool) ($product->tax_inclusive ?? false),
+                    'tax_rate' => $product->tax ? (float) $product->tax->tax_rate : null,
+                    'tax_name' => $product->tax ? (string) $product->tax->tax_name : null,
                     'kitchen_station' => $product->kitchen_station,
                     'variants' => ($product->variants ?? collect())->map(function ($v) {
                         return [
@@ -589,13 +593,8 @@ class SalesController extends Controller
             // Generate unique order number
             $orderNumber = now()->format('Ymd') . str_pad((Order::max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
 
-            $taxJson = json_encode([]); // default blank array
-
-            if ($request->has('tax') && !empty($request->tax)) {
-                // Just get active tax IDs
-                $TaxRateIds = TaxRate::where('status', 'active')->where('isDeleted', 0)->where('branch_id', $branchIdToUse)->pluck('id')->toArray();
-                $taxJson = json_encode($TaxRateIds);
-            }
+            // tax_id on order is set from PosPricingService (product taxes only)
+            $taxJson = json_encode([]);
 
             // Resolve customer ID
             $customer_id = null;
@@ -703,9 +702,7 @@ class SalesController extends Controller
                 $withGst,
                 $branchIdToUse
             );
-            if (!empty($money['tax_ids'])) {
-                $taxJson = json_encode($money['tax_ids']);
-            }
+            $taxJson = json_encode($money['tax_ids'] ?? []);
             $trustedTotal = $money['total'];
             if ($request->payment_method != 'pending') {
                 if ($request->paid_type === 'partially' && isset($request->pending_amount) && $request->pending_amount > 0) {
@@ -1749,7 +1746,7 @@ class SalesController extends Controller
 
         // $setting    = Setting::where('branch_id', $subAdminId)->first();
 
-        $sales = Order::with(['order_items.product.quantityType', 'user.userDetail'])->find($id);
+        $sales = Order::with(['order_items.product.quantityType', 'order_items.product.tax', 'user.userDetail'])->find($id);
 
         if (!$sales) {
             return response()->json(['status' => false, 'error' => 'Sale not found'], 404);
@@ -1775,7 +1772,7 @@ class SalesController extends Controller
             : null;
         // Fetch order items with product & include date
             $orderItems = OrderItem::where('order_id', $id)
-            ->with(['product', 'quantityType', 'variant'])
+            ->with(['product.tax', 'quantityType', 'variant'])
             ->get()
             ->map(function ($item) {
                 $addonRows = is_array($item->addons) ? $item->addons : [];
@@ -1963,20 +1960,28 @@ class SalesController extends Controller
             $totalTax = 0;
             $taxJson = null;
 
-            // ✅ Only calculate taxes if GST is enabled
-            if ($request->gst_option === 'with_gst') {
-                $taxRates = TaxRate::where('status', 'active')
-                    ->where('isDeleted', 0)
-                    ->where('branch_id', $branchIdToUse)
-                    ->get();
-
-                $taxIds = $taxRates->pluck('id')->toArray();
-                $taxJson = json_encode($taxIds);
-
-                $totalTax = 0;
-                foreach ($taxRates as $tax) {
-                    $totalTax += $taxableAmount * ($tax->tax_rate / 100);
+            // Product-level taxes only (same rules as PosPricingService)
+            if ($request->gst_option === 'with_gst' || $request->gst_option === 'with') {
+                $resolvedForTax = [];
+                foreach ($request->product_ids ?? [] as $productId) {
+                    $product = $products->firstWhere('id', $productId);
+                    if (! $product) {
+                        continue;
+                    }
+                    $qty = (float) ($request->quantities[$productId] ?? 0);
+                    $resolvedForTax[] = [
+                        'product' => $product,
+                        'line_total' => round(((float) $product->price) * $qty, 2),
+                    ];
                 }
+                $moneyTax = $this->posPricing()->calculateOrderTotals(
+                    $resolvedForTax,
+                    (float) ($request->discount ?? 0),
+                    true,
+                    $branchIdToUse
+                );
+                $taxJson = json_encode($moneyTax['tax_ids'] ?? []);
+                $totalTax = (float) ($moneyTax['tax_total'] ?? 0);
             } else {
                 $taxJson = json_encode([]);
             }
