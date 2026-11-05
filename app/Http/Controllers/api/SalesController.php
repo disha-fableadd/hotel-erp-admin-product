@@ -3222,32 +3222,28 @@ class SalesController extends Controller
 
         $role = $user->role;
         $userId = $user->id;
+        // Same branch resolution as get_orders() so filter totals never exceed load totals
+        $selectedSubAdminID = $request->input('selectedSubAdminId');
 
-        // Decide branch / owner filter
-        if ($role === 'staff') {
-            // Staff: only orders they created
-            $query = Order::with('user')
-                ->withCount([
-                    'payments as has_payment' => function ($q) {
-                        $q->where('isDeleted', 0);
-                    },
-                ])
-                ->where('isDeleted', 0)
-                ->where('created_by', $userId); // ✅ staff-created orders only
+        $query = Order::with([
+            'user:id,name,phone',
+            'creator:id,name',
+        ])
+            ->withCount([
+                'payments as has_payment' => function ($q) {
+                    $q->where('isDeleted', 0);
+                },
+            ])
+            ->where('isDeleted', 0);
+
+        if ($role === 'sub-admin') {
+            $query->where('branch_id', $userId);
+        } elseif ($role === 'admin' && $selectedSubAdminID) {
+            $query->where('branch_id', $selectedSubAdminID);
+        } elseif ($role === 'staff') {
+            $query->where('created_by', $userId);
         } else {
-            // Admin / sub-admin: filter by branch
-            $branchId = ($role === 'admin' && $request->filled('selectedSubAdminId'))
-                ? $request->query('selectedSubAdminId')
-                : $userId;
-
-            $query = Order::with('user')
-                ->withCount([
-                    'payments as has_payment' => function ($q) {
-                        $q->where('isDeleted', 0);
-                    },
-                ])
-                ->where('isDeleted', 0)
-                ->where('branch_id', $branchId);
+            $query->where('branch_id', $userId);
         }
 
         // Filter by selected date if provided

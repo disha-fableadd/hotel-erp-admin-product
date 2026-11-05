@@ -1926,25 +1926,52 @@
         return y + '-' + m + '-' + d;
     }
     // ===== HELPER FUNCTION TO CALCULATE TOTALS =====
+    function parseOrderAmountCell(amountCell) {
+        if (amountCell == null) return 0;
+        var html = String(amountCell);
+        var dataAmt = html.match(/data-amount=["']([^"']+)["']/i);
+        if (dataAmt && dataAmt[1] !== '') {
+            var fromAttr = parseFloat(dataAmt[1]);
+            if (isFinite(fromAttr)) return fromAttr;
+        }
+        var fromText = parseFloat(html.replace(/<[^>]*>/g, '').replace(/[^0-9.-]+/g, ''));
+        return isFinite(fromText) ? fromText : 0;
+    }
+
+    function formatOrderAmountCell(totalAmount, currencySymbol, currencyPosition) {
+        var amountNum = parseFloat(totalAmount);
+        if (!isFinite(amountNum)) amountNum = 0;
+        var amount = amountNum.toFixed(2);
+        var sym = currencySymbol || window._ordersCurrencySymbol || '₹';
+        var pos = currencyPosition || window._ordersCurrencyPosition || 'left';
+        var display = pos === 'right' ? (amount + sym) : (sym + amount);
+        return '<span class="order-total-amt" data-amount="' + amount + '">' + display + '</span>';
+    }
+
     function calculateTotals() {
         let totalPending = 0;
         let totalPaid = 0;
         let totalAmount = 0;
         let totalOrders = 0;
 
+        if (!$.fn.DataTable.isDataTable('#order-table')) {
+            $('#total-pending, #total-paid, #total-amount').text('0.00');
+            $('#total-orders').text('0');
+            return;
+        }
+
         const table = $('#order-table').DataTable();
-        table.rows({filter: 'applied'}).every(function() {
+        table.rows({ search: 'applied' }).every(function() {
             const row = this.data();
             totalOrders++;
-            
+
             // Total is in column 6
-            const amountText = row[6] || '0';
-            const rawAmount = parseFloat(amountText.replace(/[^0-9.-]+/g, '')) || 0;
+            const rawAmount = parseOrderAmountCell(row[6]);
             totalAmount += rawAmount;
 
             // Get payment status from column 4 (Payment Status pill)
             const statusHtml = row[4] || '';
-            const statusMatch = statusHtml.match(/>(.*?)<\/span>/);
+            const statusMatch = String(statusHtml).match(/>([^<]*)<\/span>/);
             const status = statusMatch ? statusMatch[1].toLowerCase().trim() : '';
 
             // Calculate pending vs paid
@@ -1952,10 +1979,13 @@
                 totalPending += rawAmount;
             } else if (status === 'completed' || status === 'partial' || status === 'extra paid' || status === 'extra_paid') {
                 totalPaid += rawAmount;
+            } else {
+                // Unknown status — still count in Total, treat non-pending as paid side
+                totalPaid += rawAmount;
             }
         });
 
-        // Update totals display
+        // Update totals display (all matching summary badge IDs)
         $('#total-pending').text(totalPending.toFixed(2));
         $('#total-paid').text(totalPaid.toFixed(2));
         $('#total-amount').text(totalAmount.toFixed(2));
@@ -2873,257 +2903,20 @@
                 "Authorization": "Bearer " + authToken,
             },
             success: function(response) {
-
-
                 if (response.status) {
-                    let tableBody = [];
-                    const currencySymbol = response.currency_symbol || '₹';
-                    const currencyPosition = response.currency_position || 'left';
-
-
-                    // Helper to get static dummy source for Zomato/Swiggy orders
-                    let zomatoCounter = 0;
-                    let swiggyCounter = 0;
-                    const zomatoIds = ['ZOM-1001', 'ZOM-1002', 'ZOM-1003', 'ZOM-1004', 'ZOM-1005', 'ZOM-1006'];
-                    const swiggyIds = ['SWG-2001', 'SWG-2002', 'SWG-2003', 'SWG-2004', 'SWG-2005', 'SWG-2006'];
-
-                    function getStaticOrderSource(order, index) {
-                        let source = null;
-                        let overrideId = null;
-                        let pos = index + 1;
-                        if (pos % 4 === 0) {
-                            source = 'Swiggy';
-                            overrideId = swiggyIds[swiggyCounter % swiggyIds.length];
-                            swiggyCounter++;
-                        } else if (pos % 3 === 0) {
-                            source = 'Zomato';
-                            overrideId = zomatoIds[zomatoCounter % zomatoIds.length];
-                            zomatoCounter++;
-                        }
-                        return { source, orderId: overrideId };
-                    }
-
-                    response.data.forEach((order, index) => {
-                        let staticSource = getStaticOrderSource(order, index);
-                        if (staticSource.source && staticSource.orderId) {
-                            order.order_number = staticSource.orderId;
-                        }
-
-                        // Check POS Integration setting
-                        if (staticSource.source === 'Zomato' && typeof posIntegration !== 'undefined' && !posIntegration.isPlatformEnabled('zomato')) {
-                            return; // Skip rendering this order
-                        }
-                        if (staticSource.source === 'Swiggy' && typeof posIntegration !== 'undefined' && !posIntegration.isPlatformEnabled('swiggy')) {
-                            return; // Skip rendering this order
-                        }
-
-                        let customerNameHtml = order.user?.name || '-';
-                        if (staticSource.source === 'Zomato') {
-                            customerNameHtml += `<br><span class="badge" style="background-color: #E23744; color: white; padding: 2px 6px; font-size: 11px; border-radius: 12px; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; font-weight: normal; line-height: 1;"><img src="{{ env('ImagePath').'/admin/assets/img/product/zomato.png' }}" alt="Zomato" style="width: 12px; height: 12px; border-radius: 2px; object-fit: cover;"> Zomato</span>`;
-                        } else if (staticSource.source === 'Swiggy') {
-                            customerNameHtml += `<br><span class="badge" style="background-color: #FC8019; color: white; padding: 2px 6px; font-size: 11px; border-radius: 12px; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; font-weight: normal; line-height: 1;"><img src="{{ env('ImagePath').'/admin/assets/img/product/swiggy.jpg' }}" alt="Swiggy" style="width: 12px; height: 12px; border-radius: 2px; object-fit: cover;"> Swiggy</span>`;
-                        }
-
-
-                        // let createdAt = "N/A";
-                        // if (order.order_items && order.order_items.length > 0) {
-                        //     // Use created_at of the first order item
-                        //     let date = new Date(order.created_date);
-
-                        //     let day = String(date.getDate()).padStart(2, '0');
-                        //     let monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                        //         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-                        //     ];
-                        //     let month = monthNames[date.getMonth()];
-                        //     let year = date.getFullYear();
-
-                        //     let hours = date.getHours();
-                        //     let minutes = String(date.getMinutes()).padStart(2, '0');
-                        //     let ampm = hours >= 12 ? 'PM' : 'AM';
-                        //     hours = hours % 12 || 12;
-
-                        //     createdAt =
-                        //         `${day}-${month}-${year} ${hours}:${minutes} ${ampm}`;
-                        // }
-
-                        let amount = parseFloat(order.total_amount).toFixed(2);
-                        let displayAmount = currencyPosition === 'right' ?
-                            amount + currencySymbol // No space before/after
-                            :
-                            currencySymbol + amount;
-
-                        // ---- Build ellipsis dropdown action button ----
-                        let payBtnHtml = '';
-                        if (parseFloat(order.remaining_amount) > 0) {
-                            payBtnHtml = `<a href="javascript:void(0);" class="dd-item make-payment-btn"
-                                data-bs-toggle="modal" data-bs-target="#makePaymentModal"
-                                data-id="${order.id}" data-amount="${order.remaining_amount}" data-method="${order.payment_method || ''}"
-                                data-emi-months="${order.remaining_emi_months}" data-emi-duration="${order.emi_duration || 0}"
-                                data-total-amount="${order.total_amount || 0}" data-remaining-amount="${order.remaining_amount}"
-                                data-remaining-emi-months="${order.remaining_emi_months}">
-                                <span class="dd-icon"><i class="fas fa-credit-card" style="color:#007bff"></i></span> Pay
-                            </a>`;
-                        }
-
-                        let historyBtnHtml = `<button class="dd-item open-history" data-id="${order.id}">
-                            <span class="dd-icon"><i class="fas fa-history" style="color:#6c757d"></i></span> History
-                        </button>`;
-
-                        let viewBtnHtml = '';
-                        @if(app('hasPermission')(2, 'view'))
-                        viewBtnHtml = `<a class="dd-item" href="/sales-details/${order.id}">
-                            <span class="dd-icon"><i class="fas fa-eye" style="color:#20c997"></i></span> View
-                        </a>`;
-                        @endif
-
-                        let editBtnHtml = '';
-                        @if(app('hasPermission')(2, 'edit'))
-                        editBtnHtml = `<a class="dd-item" href="/edit-sales/${order.id}">
-                            <span class="dd-icon"><i class="fas fa-edit" style="color:#fd7e14"></i></span> Update Bill
-                        </a>`;
-                        @endif
-
-                        let invoiceBtnHtml = '';
-                        @if(app('hasPermission')(2, 'view'))
-                        invoiceBtnHtml = `<a class="dd-item" href="/sales-invoice/${order.id}">
-                            <span class="dd-icon"><i class="fas fa-file-download" style="color:#6f42c1"></i></span> Invoice
-                        </a>
-                        <a class="dd-item js-print-invoice" href="javascript:void(0);" data-order-id="${order.id}">
-                            <span class="dd-icon"><i class="fas fa-print" style="color:#495057"></i></span> Print Invoice
-                        </a>`;
-                        @endif
-
-                        let deleteBtnHtml = '';
-                        if (
-                            userRole !== 'sales-manager' &&
-                            userRole !== 'purchase-manager' &&
-                            userRole !== 'inventory-manager'
-                        ) {
-                            @if(app('hasPermission')(2, 'delete'))
-                            deleteBtnHtml = `<button class="dd-item dd-item-delete delete-order" data-id="${order.id}">
-                                <span class="dd-icon"><i class="fas fa-trash"></i></span> Delete
-                            </button>`;
-                            @endif
-                        }
-
-                        let deliveryBtnHtml = '';
-                        if ((order.order_type === 'Delivery' || order.order_type === 'delivery') && order.delivery_status !== 'delivered') {
-                            deliveryBtnHtml = `<a class="dd-item" href="/sales/delivery/${order.id}">
-                                <span class="dd-icon"><i class="fas fa-truck" style="color:#17a2b8"></i></span> Delivery
-                            </a>`;
-                        }
-
-                        let quickBtns = `
-                            
-                            
-                            <a class="sl-m-only sl-m-pdf" href="/sales/invoice/pdf/${order.id}" target="_blank" rel="noopener" title="PDF">
-                                <span>Pdf</span>
-                            </a>
-                        `;
-
-                        let actionBtns = `
-                            <a class="order-print-btn" href="javascript:void(0);" data-order-id="${order.id}" title="Print invoice">
-                                <i class="fas fa-print"></i>
-                            </a>
-                            ${quickBtns}
-                            <div class="action-dropdown-wrap">
-                                <button class="ellipsis-btn action-ellipsis-btn" type="button" title="Actions"><i class="fa-solid fa-ellipsis"></i></button>
-                                <div class="action-dropdown-menu-src" style="display:none">
-                                    ${payBtnHtml}
-                                    ${historyBtnHtml}
-                                    ${viewBtnHtml}
-                                    ${deliveryBtnHtml}
-                                    ${editBtnHtml}
-                                    ${invoiceBtnHtml}
-                                    ${deleteBtnHtml}
-                                </div>
-                            </div>`;
-
-                        // Pill helpers
-                        function getStatusPill(status) {
-                            const s = (status || '').toLowerCase().trim();
-                            let cls = 'pill-default-status';
-                            if (s === 'pending')       cls = 'pill-pending';
-                            else if (s === 'partial')  cls = 'pill-partial';
-                            else if (s === 'completed') cls = 'pill-completed';
-                            else if (s === 'extra paid' || s === 'extra_paid') cls = 'pill-extra-paid';
-                            return `<span class="status-pill ${cls}">${status || ''}</span>`;
-                        }
-                        function getMethodPill(method) {
-                            const m = (method || '').toLowerCase().trim();
-                            let cls = 'pill-method-default';
-                            if (m === 'scan')                          cls = 'pill-scan';
-                            else if (m === 'cash')                     cls = 'pill-cash';
-                            else if (m === 'online')                   cls = 'pill-online';
-                            else if (m === 'cash+online' || m === 'cash_online' || m === 'cash + online') cls = 'pill-cash-online';
-                            else if (m === 'pending')                  cls = 'pill-method-pending';
-                            return `<span class="status-pill ${cls}">${method || ''}</span>`;
-                        }
-                        function getBillerPill(biller) {
-                            return `<span>${biller || 'Admin'}</span>`;
-                        }
-
-                        // Generate assigned staff dropdown
-                        let staffOptions = '<option value="">- Unassigned -</option>';
-                        let assignedStaffName = '- Unassigned -';
-                        
-                        staffList.forEach(staff => {
-                            // Filter by order's branch_id if order has one
-                            if (!order.branch_id || staff.branch_id == order.branch_id) {
-                                let selected = (order.assigned_staff_id == staff.id) ? 'selected' : '';
-                                if(order.assigned_staff_id == staff.id) {
-                                    assignedStaffName = staff.name;
-                                }
-                                staffOptions += `<option value="${staff.id}" ${selected}>${staff.name}</option>`;
-                            }
-                        });
-
-                        let assignedStaffDropdown = `<select class="form-select form-select-sm assign-staff-select" data-id="${order.id}">
-                            ${staffOptions}
-                        </select>`;
-
-                        tableBody.push([
-                            /* Order column: desktop header + mobile/tablet Pooja ERP card */
-                            `
-                            <div class="sl-desktop-head">
-                                <strong>${order.order_number}</strong><br>
-                                ${getOrderTypeBadge(order)}
-                            </div>
-                            ${buildCard(order, customerNameHtml)}
-                            `,
-
-                            /* Details column (hidden) */
-                            "",
-
-                            /* Desktop-only columns - Date is sortable */
-                            `<span data-sort="${new Date(order.created_date).getTime()}">${order.created_date}</span>`,
-                            customerNameHtml,
-                            getStatusPill(order.payment_status),
-                            getMethodPill(order.payment_method),
-                            displayAmount,
-                            assignedStaffDropdown,
-                            buildOrderTypeCell(order),
-                            getBillerPill(order.biller),
-                            actionBtns
-                        ]);
-                    });
-
-
-                    clearOrdersTableFilters(table);
-                    table.clear().rows.add(tableBody).draw();
+                    // Same renderer as date filter — do NOT skip/rename rows (old Zomato/Swiggy demo skip undercounted load totals)
+                    window._ordersCurrencySymbol = response.currency_symbol || '₹';
+                    window._ordersCurrencyPosition = response.currency_position || 'left';
+                    renderOrders(response.data || [], null);
                     calculateTotals();
-                    setTimeout(() => {
+                    setTimeout(function() {
                         const topScroll = document.querySelector('.table-scroll-top');
                         const tableResponsive = document.querySelector('.table-responsive');
                         const orderTable = document.getElementById('order-table');
-
                         if (topScroll && tableResponsive && orderTable) {
                             const topInnerDiv = topScroll.querySelector('div');
-
                             if (topInnerDiv) {
                                 topInnerDiv.style.width = orderTable.scrollWidth + 'px';
-
-                                // Avoid duplicate listeners
                                 topScroll.onscroll = () => {
                                     tableResponsive.scrollLeft = topScroll.scrollLeft;
                                 };
@@ -3134,9 +2927,9 @@
                         }
                     }, 100);
                 } else {
-                    table.clear().draw();
-                    $(".datanew tbody").html('<tr><td colspan="9">No order found</td></tr>');
-                    $('#filtered-total').text('₹0.00');
+                    if ($.fn.DataTable.isDataTable('#order-table')) {
+                        $('#order-table').DataTable().clear().draw();
+                    }
                     $('#total-pending, #total-paid, #total-amount').text('0.00');
                     $('#total-orders').text('0');
                 }
@@ -3145,6 +2938,8 @@
                 alert("Failed to load orders.");
             }
         });
+
+        // (initial load uses renderOrders above)
 
         // Handle Order Type change
         $(document).on('change', '.order-type-update', function() {
@@ -3421,8 +3216,10 @@
                 },
                 success: function(response) {
                     if (response.status) {
+                        if (response.currency_symbol) window._ordersCurrencySymbol = response.currency_symbol;
+                        if (response.currency_position) window._ordersCurrencyPosition = response.currency_position;
                         // API already filtered by date — do not re-filter client-side
-                        renderOrders(response.data, null);
+                        renderOrders(response.data || [], null);
                         calculateTotals();
                     }
                 },
@@ -3438,19 +3235,21 @@
 
         function fetchAllOrders() {
             clearOrdersTableFilters(table);
+            // Use same endpoint as page load so totals stay consistent
             $.ajax({
-                url: '/api/orders/filter',
+                url: '/api/get_orders',
                 method: 'GET',
                 dataType: 'json',
-                data: {
-                    selectedSubAdminId: selectedSubAdminId
-                },
+                data: selectedSubAdminId ? { selectedSubAdminId: selectedSubAdminId } : {},
                 headers: {
                     "Authorization": "Bearer " + authToken,
+                    'X-CSRF-TOKEN': "{{ csrf_token() }}",
                 },
                 success: function(response) {
                     if (response.status) {
-                        renderOrders(response.data, null);
+                        if (response.currency_symbol) window._ordersCurrencySymbol = response.currency_symbol;
+                        if (response.currency_position) window._ordersCurrencyPosition = response.currency_position;
+                        renderOrders(response.data || [], null);
                         calculateTotals();
                     }
                 }
@@ -3563,9 +3362,7 @@
             const ampm = date.getHours() >= 12 ? 'PM' : 'AM';
 
             const formattedDate = `${day}-${monthText}-${year} ${hours}:${minutes} ${ampm}`;
-            const amount = parseFloat(order.total_amount).toFixed(2);
-            const displayAmount = currencyPosition === 'right' ? amount + currencySymbol : currencySymbol +
-                amount;
+            const displayAmount = formatOrderAmountCell(order.total_amount, currencySymbol, currencyPosition);
 
             // ---- Build ellipsis dropdown (renderOrdersByMonthAndYear) ----
             let payBtnHtml2 = '';
@@ -3688,8 +3485,8 @@
 
     function renderOrders(data, selectedDate) {
         let tableBody = [];
-        const currencySymbol = '₹';
-        const currencyPosition = 'left';
+        const currencySymbol = window._ordersCurrencySymbol || '₹';
+        const currencyPosition = window._ordersCurrencyPosition || 'left';
 
         data.forEach(order => {
             if (!order.created_date && !order.created_at) return;
@@ -3700,9 +3497,7 @@
                 if (toLocalYmd(date) !== selectedDate) return;
             }
 
-            let amount = parseFloat(order.total_amount).toFixed(2);
-            let displayAmount = currencyPosition === 'right' ?
-                amount + currencySymbol : currencySymbol + amount;
+            let displayAmount = formatOrderAmountCell(order.total_amount, currencySymbol, currencyPosition);
 
             const formattedDate = order.created_date || (date ? date.toLocaleString() : 'N/A');
 
@@ -3782,15 +3577,27 @@
 
             // ---- Generate Assigned Staff Dropdown ----
             let assignedStaffOptions = `<option value="">— Unassigned —</option>`;
-            for (const [staffId, staffName] of Object.entries(staffList)) {
-                let selected = (order.assigned_staff_id == staffId) ? 'selected' : '';
-                assignedStaffOptions += `<option value="${staffId}" ${selected}>${staffName}</option>`;
-            }
+            const staffArr = Array.isArray(staffList) ? staffList : Object.entries(staffList || {}).map(function (e) {
+                return { id: e[0], name: e[1], branch_id: null };
+            });
+            staffArr.forEach(function (staff) {
+                var sid = staff.id != null ? staff.id : staff;
+                var sname = staff.name != null ? staff.name : String(staff);
+                if (order.branch_id && staff.branch_id != null && staff.branch_id != order.branch_id) {
+                    return;
+                }
+                var selected = (order.assigned_staff_id == sid) ? 'selected' : '';
+                assignedStaffOptions += `<option value="${sid}" ${selected}>${sname}</option>`;
+            });
             let assignedStaffHtml = `
-                <select class="form-select assign-staff-select" data-id="${order.id}">
+                <select class="form-select form-select-sm assign-staff-select" data-id="${order.id}">
                     ${assignedStaffOptions}
                 </select>
             `;
+
+            var statusPill = (function(s){ const sl=(s||'').toLowerCase().trim(); let c='pill-default-status'; if(sl==='pending')c='pill-pending'; else if(sl==='partial')c='pill-partial'; else if(sl==='completed')c='pill-completed'; else if(sl==='extra paid'||sl==='extra_paid')c='pill-extra-paid'; return `<span class="status-pill ${c}">${s||''}</span>`; })(order.payment_status);
+            var methodPill = (function(m){ const ml=(m||'').toLowerCase().trim(); let c='pill-method-default'; if(ml==='scan')c='pill-scan'; else if(ml==='cash')c='pill-cash'; else if(ml==='online')c='pill-online'; else if(ml==='cash+online'||ml==='cash_online'||ml==='cash + online')c='pill-cash-online'; else if(ml==='pending')c='pill-method-pending'; return `<span class="status-pill ${c}">${m||''}</span>`; })(order.payment_method);
+            var customerNameHtml = order.user?.name || order.customer_name || 'N/A';
 
             tableBody.push([
                 /* Order column: desktop header + mobile/tablet Pooja ERP card */
@@ -3799,19 +3606,19 @@
                     <strong>${order.order_number || ''}</strong><br>
                     ${getOrderTypeBadge(order)}
                 </div>
-                ${buildCard(order, order.user?.name || order.customer_name || 'N/A')}
+                ${buildCard(order, customerNameHtml)}
                 `,
                 /* Details column (hidden) */
                 "",
                 /* Desktop-only columns */
                 `<span data-sort="${date ? date.getTime() : 0}">${formattedDate}</span>`,
-                order.user?.name || order.customer_name || 'N/A',
-                (function(s){ const sl=(s||'').toLowerCase().trim(); let c='pill-default-status'; if(sl==='pending')c='pill-pending'; else if(sl==='partial')c='pill-partial'; else if(sl==='completed')c='pill-completed'; else if(sl==='extra paid'||sl==='extra_paid')c='pill-extra-paid'; return `<span class="status-pill ${c}">${s||''}</span>`; })(order.payment_status),
-                (function(m){ const ml=(m||'').toLowerCase().trim(); let c='pill-method-default'; if(ml==='scan')c='pill-scan'; else if(ml==='cash')c='pill-cash'; else if(ml==='online')c='pill-online'; else if(ml==='cash+online'||ml==='cash_online'||ml==='cash + online')c='pill-cash-online'; else if(ml==='pending')c='pill-method-pending'; return `<span class="status-pill ${c}">${m||''}</span>`; })(order.payment_method),
-                displayAmount || '0.00',
+                customerNameHtml,
+                statusPill,
+                methodPill,
+                displayAmount,
                 assignedStaffHtml,
                 buildOrderTypeCell(order),
-                `<span class="status-pill pill-biller">${order.biller || 'Admin'}</span>`,
+                `<span class="status-pill pill-biller">${order.creator?.name || order.biller || 'Admin'}</span>`,
                 actionBtns
             ]);
         });
