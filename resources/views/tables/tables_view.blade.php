@@ -109,20 +109,38 @@
 
         #tableOrderModal .tabs_wrapper ul.tabs {
             display: flex !important;
-            flex-wrap: wrap !important;
+            flex-wrap: nowrap !important;
             gap: 8px;
-            padding: 0 !important;
+            padding: 0 0 6px !important;
             margin: 0 !important;
             border-bottom: none !important;
             flex: 0 0 auto;
             width: 100%;
             min-width: 0;
-            overflow-x: visible !important;
-            overflow-y: visible !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #ff9f43 #f1f5f9;
+        }
+
+        #tableOrderModal .tabs_wrapper ul.tabs::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        #tableOrderModal .tabs_wrapper ul.tabs::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 999px;
+        }
+
+        #tableOrderModal .tabs_wrapper ul.tabs::-webkit-scrollbar-thumb {
+            background: #ff9f43;
+            border-radius: 999px;
         }
 
         #tableOrderModal .tabs_wrapper ul.tabs li {
             flex: 0 0 auto;
+            white-space: nowrap;
         }
 
         #tableOrderModal .table-order-product-search {
@@ -746,7 +764,8 @@
             }
 
             #tableOrderModal .tabs_wrapper ul.tabs {
-                flex-wrap: wrap !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto !important;
             }
 
             #tableOrderModal .table-order-product-search {
