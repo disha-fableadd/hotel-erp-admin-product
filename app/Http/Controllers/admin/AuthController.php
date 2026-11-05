@@ -736,7 +736,7 @@ class AuthController extends Controller
             ->get(['id', 'name', 'email', 'profile_image', 'role']);
 
         // Search products by name, include category_id + variants/add-ons for POS
-        $productsQuery = Product::with(['quantityType', 'variants' => function ($q) {
+        $productsQuery = Product::with(['quantityType', 'category', 'variants' => function ($q) {
                 $q->where('isDeleted', 0);
             }, 'addons', 'tax'])
             ->where('isDeleted', 0)
@@ -814,12 +814,17 @@ class AuthController extends Controller
                         }
                     }
                     $tax = $product->relationLoaded('tax') ? $product->tax : null;
+                    $gstApplicable = true;
+                    if ($product->relationLoaded('category') && $product->category && method_exists($product->category, 'appliesGst')) {
+                        $gstApplicable = $product->category->appliesGst();
+                    }
                     return [
                         'id' => $product->id,
                         'name' => $product->name,
                         'price' => $formatCurrency($product->price),
                         'raw_price' => (float) $product->price,
                         'category_id' => $product->category_id,
+                        'gst_applicable' => $gstApplicable,
                         'stock' => $product->quantity,
                         'product_kind' => $product->product_kind ?? 'general',
                         'track_inventory' => method_exists($product, 'tracksInventory') ? $product->tracksInventory() : (bool) ($product->track_inventory ?? true),

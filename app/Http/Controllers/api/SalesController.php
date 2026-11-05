@@ -2393,13 +2393,17 @@ class SalesController extends Controller
             $oldItems = OrderItem::where('order_id', $order->id)->get();
             $oldQuantities = $oldItems->pluck('quantity', 'product_id')->toArray();
             // dd($oldQuantities);
-            // Calculate subtotal & adjust stock
+            // Calculate subtotal & adjust stock (prefer edited unit_prices like POS)
+            $unitPrices = $request->input('unit_prices', []);
             $subtotal = 0;
             foreach ($request->product_ids as $productId) {
                 $product = $products->firstWhere('id', $productId);
                 if ($product) {
                     $quantity = $request->quantities[$productId] ?? 0;
                     $oldQty = $oldQuantities[$productId] ?? 0;
+                    $unitPrice = isset($unitPrices[$productId]) && is_numeric($unitPrices[$productId])
+                        ? (float) $unitPrices[$productId]
+                        : (float) $product->price;
 
                     $difference = $quantity - $oldQty;
 
@@ -2419,7 +2423,7 @@ class SalesController extends Controller
                         $product->increment('quantity', abs($difference));
                     }
 
-                    $subtotal += $product->price * $quantity;
+                    $subtotal += $unitPrice * $quantity;
                 }
             }
 
@@ -2443,6 +2447,7 @@ class SalesController extends Controller
             // Product-level / overall-bill taxes (same rules as PosPricingService)
             $gstOptsLegacy = $this->gstOptionsForBranch($branchIdToUse);
             if ($request->gst_option === 'with_gst' || $request->gst_option === 'with') {
+                $products->loadMissing(['tax', 'category']);
                 $resolvedForTax = [];
                 foreach ($request->product_ids ?? [] as $productId) {
                     $product = $products->firstWhere('id', $productId);
@@ -2450,9 +2455,28 @@ class SalesController extends Controller
                         continue;
                     }
                     $qty = (float) ($request->quantities[$productId] ?? 0);
+                    $unitPrice = isset($unitPrices[$productId]) && is_numeric($unitPrices[$productId])
+                        ? (float) $unitPrices[$productId]
+                        : (float) $product->price;
+                    $catId = PosPricingService::safeCategoryId($product->category_id ?? null);
+                    $gstApplicable = PosPricingService::categoryGstApplicable($catId);
+                    $snap = $gstApplicable
+                        ? PosPricingService::taxSnapshotFromProduct($product)
+                        : [
+                            'tax_id' => null,
+                            'tax_name' => null,
+                            'tax_rate' => null,
+                            'tax_inclusive' => false,
+                        ];
                     $resolvedForTax[] = [
                         'product' => $product,
-                        'line_total' => round(((float) $product->price) * $qty, 2),
+                        'line_total' => round($unitPrice * $qty, 2),
+                        'category_id' => $catId,
+                        'gst_applicable' => $gstApplicable,
+                        'tax_id' => $snap['tax_id'],
+                        'tax_name' => $snap['tax_name'],
+                        'tax_rate' => $snap['tax_rate'],
+                        'tax_inclusive' => $snap['tax_inclusive'],
                     ];
                 }
                 $moneyTax = $this->posPricing()->calculateOrderTotals(
@@ -2520,18 +2544,32 @@ class SalesController extends Controller
                 if ($product) {
                     $quantity = $request->quantities[$productId] ?? 0;
                     $quantity_type_id = $request->quantity_type_id[$productId] ?? null;
-                    $price = $product->price;
+                    $price = isset($unitPrices[$productId]) && is_numeric($unitPrices[$productId])
+                        ? (float) $unitPrices[$productId]
+                        : (float) $product->price;
                     $total = $price * $quantity;
+                    $catId = PosPricingService::safeCategoryId($product->category_id ?? null);
+                    $gstApplicable = PosPricingService::categoryGstApplicable($catId);
+                    $taxSnap = $gstApplicable
+                        ? PosPricingService::taxSnapshotFromProduct($product)
+                        : [
+                            'tax_id' => null,
+                            'tax_name' => null,
+                            'tax_rate' => null,
+                            'tax_inclusive' => false,
+                        ];
 
                     try {
                         $snapLine = [
                             'product' => $product,
                             'product_name' => (string) ($product->name ?? 'Item'),
-                        ] + PosPricingService::taxSnapshotFromProduct($product);
-                        OrderItem::create(array_merge([
+                            'unit_price' => $price,
+                            'gst_applicable' => $gstApplicable,
+                        ] + $taxSnap;
+                        $itemPayload = [
                             'order_id' => $order->id,
                             'user_id' => $order->user_id ?? null,
-                            'category_id' => PosPricingService::safeCategoryId($product->category_id ?? null),
+                            'category_id' => $catId,
                             'product_id' => $product->id, // use $product->id to ensure valid integer
                             'quantity' => $quantity,
                             'quantity_type_id' => $quantity_type_id,
@@ -2539,10 +2577,17 @@ class SalesController extends Controller
                             'total_amount' => $total,
                             'branch_id' => $branchIdToUse,
                             'created_by' => $userData->id,
-                        ], PosPricingService::applyOverallSnapshotToLineFields(
-                            PosPricingService::orderItemSnapshotFields($snapLine),
-                            $gstOptsLegacy
-                        )));
+                        ];
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('order_items', 'unit_price')) {
+                            $itemPayload['unit_price'] = $price;
+                        }
+                        OrderItem::create(array_merge(
+                            $itemPayload,
+                            PosPricingService::applyOverallSnapshotToLineFields(
+                                PosPricingService::orderItemSnapshotFields($snapLine),
+                                $gstOptsLegacy
+                            )
+                        ));
                     } catch (\Exception $e) {
                         \Log::error("Failed to insert OrderItem for product ID: " . $productId . " error: " . $e->getMessage());
                         throw $e;

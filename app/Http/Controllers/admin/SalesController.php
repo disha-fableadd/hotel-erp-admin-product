@@ -196,17 +196,19 @@ class SalesController extends Controller
             $branchIdToUse = $user->id;
         }
 
-        // ðŸ”¹ Load sales record
-        $sales = Order::with(['order_items.product', 'order_items.product.quantityType' => function ($q) {
-            $q->select('*'); // ensures all fields
-        }])->find($id);
+        // Load sales record with tax + category for GST rules
+        $sales = Order::with([
+            'order_items.product.quantityType',
+            'order_items.product.tax',
+            'order_items.product.category',
+        ])->find($id);
         if (!$sales) {
             return redirect()->route('sales.list')->with('error', 'Sales record not found.');
         }
 
         $update_id = $id;
 
-        // ðŸ”¹ Load related data
+        // Load related data
         $usernames = User::where('role', 'customer')
             ->where('branch_id', $branchIdToUse)
             ->where('isDeleted', 0)
@@ -222,23 +224,39 @@ class SalesController extends Controller
             ->where('branch_id', $branchIdToUse)
             ->get();
 
-        $products = Product::where('status', 'active')
-            ->where('availablility', 'in_stock')
+        // Same catalog rules as POS / dine-in (active + not deleted; allow oversell / out-of-stock add)
+        $products = Product::with(['tax', 'category', 'quantityType'])
+            ->where('isDeleted', 0)
+            ->where('status', 'active')
             ->where('branch_id', $branchIdToUse)
+            ->where(function ($q) {
+                $q->where('is_pos_available', 1)->orWhereNull('is_pos_available');
+            })
+            ->orderBy('display_order')
+            ->orderBy('name')
             ->get();
 
-        // ðŸ”¹ Create products array with quantity type information
+        // Create products array with tax + category GST flags for the edit UI
         $productsArray = $products->map(function ($product) {
+            $gstApplicable = true;
+            if ($product->category && method_exists($product->category, 'appliesGst')) {
+                $gstApplicable = $product->category->appliesGst();
+            }
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'category_id' => $product->category_id,
                 'price' => $product->price,
-                'quantity_type_id' => $product->quantity_type_id, // Add this
+                'quantity_type_id' => $product->quantity_type_id,
+                'tax_id' => $product->tax_id ? (int) $product->tax_id : null,
+                'tax_rate' => $product->tax ? (float) $product->tax->tax_rate : null,
+                'tax_name' => $product->tax ? (string) $product->tax->tax_name : null,
+                'tax_inclusive' => (bool) ($product->tax_inclusive ?? false),
+                'gst_applicable' => $gstApplicable,
             ];
         });
-        // dd($sales);
-        // ðŸ”¹ Get staff for assigned staff dropdown based on branch
+        // Get staff for assigned staff dropdown based on branch
         $staffList = User::where('role', 'staff')
             ->where('branch_id', $branchIdToUse)
             ->where('isDeleted', 0)

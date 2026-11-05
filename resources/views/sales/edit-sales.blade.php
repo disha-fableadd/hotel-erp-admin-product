@@ -46,6 +46,38 @@
     background: #ff8f1f;
     color: #fff;
 }
+
+.edit-pos-search {
+    position: relative;
+}
+.edit-pos-search .pos-search-input {
+    height: 42px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    padding-left: 14px;
+    font-weight: 500;
+}
+.edit-pos-search .pos-search-results-box {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 1050;
+    max-height: 320px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+}
+.edit-order-table .quantity-input {
+    min-width: 72px;
+}
+.edit-order-table .price-input {
+    width: 100px;
+    min-width: 90px;
+}
     </style>
     <div class="content">
         <div class="page-header">
@@ -54,15 +86,18 @@
     </div>
     <div class="gst-header mb-2 ms-auto" style="display: flex; align-items: center; gap: 25px;">
         <div class="d-flex">
+            @php
+                $editGstOn = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
+            @endphp
             <label class="custom-radio-label" style="margin-right: 1rem;">
                 <input type="radio" name="gst_option" id="without_gst" value="without_gst"
-                    {{ $sales->gst_option === 'without_gst' ? 'checked' : '' }} />
+                    {{ !$editGstOn ? 'checked' : '' }} />
                 Without GST
             </label>
 
             <label class="custom-radio-label">
                 <input type="radio" name="gst_option" id="with_gst" value="with_gst"
-                    {{ $sales->gst_option === 'with_gst' ? 'checked' : '' }} />
+                    {{ $editGstOn ? 'checked' : '' }} />
                 With GST
             </label>
         </div>
@@ -126,63 +161,24 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-lg-12 col-sm-6 col-12">
+                    <div class="col-lg-12 col-sm-12 col-12">
                         <div class="form-group">
-                            <label>Item Name</label>
-                            <div class="input-groupicon">
-                                <!-- Item Select Dropdown -->
-
-                                <select name="product_id[]" class="form-control product-select" multiple="multiple">
-                                    @php
-                                        $user = auth()->user();
-                                        $branchIdToUse = $user->role === 'staff' ? $user->branch_id : $user->id;
-                                        $settings = \DB::table('settings')->where('branch_id', $branchIdToUse)->first();
-                                        $currencySymbol = $settings->currency_symbol ?? '?';
-                                        $currencyPosition = $settings->currency_position ?? 'left';
-                                        // Collect selected product IDs from sales items or old input
-                                        $selectedProductIds = old(
-                                            'product_id',
-                                            $sales->order_items->pluck('product_id')->toArray(),
-                                        );
-                                        $selectedProductIds = array_map('strval', $selectedProductIds); // Ensure all are strings
-                                    @endphp
-
-                                    @foreach ($products as $product)
-                                        @php
-                                            $images = json_decode($product->images ?? '', true);
-                                            $imageUrl =
-                                                !empty($images) && isset($images[0])
-                                                    ? env('ImagePath') . 'storage/' . $images[0]
-                                                    : env('ImagePath') . '/admin/assets/img/product/noimage.png';
-                                            $priceFormatted = number_format($product->price, 2);
-                                            $displayPrice =
-                                                $currencyPosition === 'right'
-                                                    ? $priceFormatted . ' ' . $currencySymbol
-                                                    : $currencySymbol . $priceFormatted;
-                                        @endphp
-
-                                        <option value="{{ $product->id }}" data-image="{{ $imageUrl }}"
-                                            data-price="{{ $product->price }}" data-name="{{ $product->name }}"
-                                              data-qtytype="{{ $product->quantityType->quantity_type ?? 'N/A' }}"
-                                              data-qtytype-id="{{ $product->quantity_type_id ?? '' }}"
-                                            {{ in_array((string) $product->id, $selectedProductIds) ? 'selected' : '' }}>
-                                            {{ $product->name }} - {{ $displayPrice }}
-                                        </option>
-                                    @endforeach
-                                </select>
-
-                                <div class="addonset">
-                                    <img src="{{ env('ImagePath') . 'admin/assets/img/icons/scanner.svg' }}"
-                                        alt="img">
-                                </div>
+                            <label>Search &amp; Add Items</label>
+                            <div class="edit-pos-search search_custom_product">
+                                <input type="text"
+                                    class="form-control pos-search-input pos-product-search-input"
+                                    placeholder="Search dishes, drinks, items… (same as Order / Dine-in)"
+                                    autocomplete="off">
+                                <div class="pos-search-results-box list-group"></div>
                             </div>
+                            <small class="text-muted">Type to search the POS catalog, then click <strong>+ Add</strong>. GST follows each category’s Apply GST setting.</small>
                         </div>
                     </div>
                 </div>
                 
                 <div class="row">
                     <div class="table-responsive mb-3">
-                        <table class="table">
+                        <table class="table edit-order-table">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -197,7 +193,32 @@
                             <tbody id="product-table-body">
                                 <!-- Existing items (if any) -->
                                 @forelse ($sales->order_items as $index => $item)
-                                    <tr data-product-id="{{ $item->product_id }}">
+                                    @php
+                                        $rowProduct = $item->product;
+                                        $rowGstApplicable = true;
+                                        if ($rowProduct && $rowProduct->category && method_exists($rowProduct->category, 'appliesGst')) {
+                                            $rowGstApplicable = $rowProduct->category->appliesGst();
+                                        } elseif ($rowProduct && $rowProduct->category && isset($rowProduct->category->gst_applicable)) {
+                                            $rowGstApplicable = (bool) $rowProduct->category->gst_applicable;
+                                        }
+                                        $rowTaxId = $item->tax_id ?? ($rowProduct->tax_id ?? null);
+                                        $rowTaxRate = $item->tax_rate ?? optional(optional($rowProduct)->tax)->tax_rate;
+                                        $rowTaxName = $item->tax_name ?? optional(optional($rowProduct)->tax)->tax_name;
+                                        $rowTaxInclusive = $item->tax_inclusive ?? ($rowProduct->tax_inclusive ?? false);
+                                        if (!$rowGstApplicable) {
+                                            $rowTaxId = null;
+                                            $rowTaxRate = null;
+                                            $rowTaxName = null;
+                                            $rowTaxInclusive = false;
+                                        }
+                                    @endphp
+                                    <tr data-product-id="{{ $item->product_id }}"
+                                        data-category-id="{{ $item->category_id ?? ($rowProduct->category_id ?? '') }}"
+                                        data-tax-id="{{ $rowTaxId ?? '' }}"
+                                        data-tax-rate="{{ $rowTaxRate !== null ? $rowTaxRate : '' }}"
+                                        data-tax-name="{{ $rowTaxName ?? '' }}"
+                                        data-tax-inclusive="{{ !empty($rowTaxInclusive) ? '1' : '0' }}"
+                                        data-gst-applicable="{{ $rowGstApplicable ? '1' : '0' }}">
                                         <td>{{ $index + 1 }}</td>
                                         <td class="">
                                             @php
@@ -212,21 +233,23 @@
                                                         alt="No image" width="40">
                                                 @endif
                                             </a>
-                                            <a href="javascript:void(0);">{{ $item->product->name ?? 'N/A' }}</a>
+                                            <a href="javascript:void(0);">{{ $item->product_name ?: ($item->product->name ?? 'N/A') }}</a>
                                         </td>
                                         <td>
+                                            @php $rowUnitPrice = (float) ($item->unit_price ?? $item->price ?? 0); @endphp
                                             <input type="number" name="quantities[{{ $item->product_id }}]"
                                                 class="form-control quantity-input"
                                                 value="{{ number_format($item->quantity, 2, '.', '') }}" step="1"
-                                                min="0" data-price="{{ $item->price }}" style="width: 80px;">
+                                                min="0" data-price="{{ $rowUnitPrice }}" style="width: 80px;">
                                         </td>
                                          <td class="text-uppercase">
                                             {{ $item->product->quantityType->quantity_type ?? 'N/A' }}
-                                            <!-- ADD THIS HIDDEN INPUT -->
-                                            <input type="hidden" name="quantity_type_id[{{ $item->product_id }}]" value="{{ $item->product->quantity_type_id ?? '' }}">
+                                            <input type="hidden" name="quantity_type_id[{{ $item->product_id }}]" value="{{ $item->quantity_type_id ?? ($item->product->quantity_type_id ?? '') }}">
                                         </td>
-                                        <!-- <td class="text-uppercase" data-qtytype_id="{{ $item->product->quantity_type_id ?? 'N/A' }}">{{ $item->product->quantityType->quantity_type ?? 'N/A' }}</td> -->
-                                        <td>{{ number_format($item->price, 2) }}</td>
+                                        <td>
+                                            <input type="number" class="form-control price-input"
+                                                value="{{ number_format($rowUnitPrice, 2, '.', '') }}" min="0" step="0.01">
+                                        </td>
                                         <td>
                                             <span class="total-amount">{{ number_format($item->total_amount, 2) }}</span>
                                         </td>
@@ -290,45 +313,16 @@
                     </div> --}}
                     <div class="row justify-content-end">
                         <div class="col-lg-6">
-                            @php
-                                $subtotal = $sales->order_items->sum('total_amount');
-                                $discountPercent = $sales->discount ?? 0;
-                                $discountAmount = ($subtotal * $discountPercent) / 100;
-
-                                // ? Apply discount first
-                                $discountedSubtotal = $subtotal - $discountAmount;
-
-                                $taxRates = $TaxRate;
-
-                                // Calculate tax on discounted subtotal
-                                $totalTaxAmount = 0;
-                                $taxDetails = [];
-
-                                foreach ($taxRates as $tax) {
-                                    $taxAmount = ($discountedSubtotal * $tax->tax_rate) / 100;
-                                    $taxDetails[] = [
-                                        'name' => $tax->tax_name,
-                                        'rate' => $tax->tax_rate,
-                                        'amount' => $taxAmount,
-                                    ];
-                                    $totalTaxAmount += $taxAmount;
-                                }
-
-                                // ? Grand total = discounted subtotal + tax
-                                $grandTotal = $discountedSubtotal + $totalTaxAmount;
-                            @endphp
-
-
                             <div class="total-order w-100 max-widthauto m-auto mb-4">
                                 <ul>
                                     <li class="subtotal">
                                         <h4>Subtotal</h4>
                                         <h5>
-                                            @if ($setting->currency_position === 'right')
+                                            @if (($setting->currency_position ?? 'left') === 'right')
                                                 <span
-                                                    id="subtotal-display">{{ number_format($sales->order_items->sum('total_amount'), 2) }}</span>{{ $setting->currency_symbol ?? '?' }}
+                                                    id="subtotal-display">{{ number_format($sales->order_items->sum('total_amount'), 2) }}</span>{{ $setting->currency_symbol ?? '₹' }}
                                             @else
-                                                {{ $setting->currency_symbol ?? '?' }}<span
+                                                {{ $setting->currency_symbol ?? '₹' }}<span
                                                     id="subtotal-display">{{ number_format($sales->order_items->sum('total_amount'), 2) }}</span>
                                             @endif
                                         </h5>
@@ -340,11 +334,11 @@
                                             <span
                                                 id="discount-percent">{{ number_format($sales->discount ?? 0, 2) }}</span>%
                                             (
-                                            @if ($setting->currency_position === 'right')
+                                            @if (($setting->currency_position ?? 'left') === 'right')
                                                 <span
-                                                    id="discount-amount">0.00</span>{{ $setting->currency_symbol ?? '?' }}
+                                                    id="discount-amount">0.00</span>{{ $setting->currency_symbol ?? '₹' }}
                                             @else
-                                                {{ $setting->currency_symbol ?? '?' }}<span
+                                                {{ $setting->currency_symbol ?? '₹' }}<span
                                                     id="discount-amount">0.00</span>
                                             @endif
                                             )
@@ -354,42 +348,26 @@
                                     <li class="after-discount">
                                         <h4>After Discount</h4>
                                         <h5>
-                                            @if ($setting->currency_position === 'right')
+                                            @if (($setting->currency_position ?? 'left') === 'right')
                                                 <span
-                                                    id="after-discount-display">0.00</span>{{ $setting->currency_symbol ?? '?' }}
+                                                    id="after-discount-display">0.00</span>{{ $setting->currency_symbol ?? '₹' }}
                                             @else
-                                                {{ $setting->currency_symbol ?? '?' }}<span
+                                                {{ $setting->currency_symbol ?? '₹' }}<span
                                                     id="after-discount-display">0.00</span>
                                             @endif
                                         </h5>
                                     </li>
 
-                                    <div class="tax-section">
-                                        @foreach ($TaxRate as $tax)
-                                            <li>
-                                                <h4>{{ $tax->tax_name }}</h4>
-                                                <h5>{{ number_format($tax->tax_rate, 2) }}% (
-                                                    @if ($setting->currency_position === 'right')
-                                                        <span class="tax-amount"
-                                                            data-rate="{{ $tax->tax_rate }}">0.00</span>{{ $setting->currency_symbol ?? '?' }}
-                                                    @else
-                                                        {{ $setting->currency_symbol ?? '?' }}<span class="tax-amount"
-                                                            data-rate="{{ $tax->tax_rate }}">0.00</span>
-                                                    @endif
-                                                    )
-                                                </h5>
-                                            </li>
-                                        @endforeach
-                                    </div>
-
+                                    {{-- Dynamic CGST/SGST rows only for GST-applicable category lines --}}
+                                    <div class="tax-section" id="edit-sales-tax-section"></div>
 
                                     <li class="total">
                                         <h4>Grand Total</h4>
                                         <h5>
-                                            @if ($setting->currency_position === 'right')
-                                                <span id="grand-total">0.00</span>{{ $setting->currency_symbol ?? '?' }}
+                                            @if (($setting->currency_position ?? 'left') === 'right')
+                                                <span id="grand-total">0.00</span>{{ $setting->currency_symbol ?? '₹' }}
                                             @else
-                                                {{ $setting->currency_symbol ?? '?' }}<span id="grand-total">0.00</span>
+                                                {{ $setting->currency_symbol ?? '₹' }}<span id="grand-total">0.00</span>
                                             @endif
                                         </h5>
                                     </li>
@@ -477,39 +455,72 @@
             });
         });
         $(document).ready(function() {
-            // Initialize Select2 with images
-            function formatProduct(product) {
-                if (!product.id) return product.text;
-                var $product = $(
-                    '<span><img src="' + $(product.element).data('image') +
-                    '" class="img-flag" style="width: 20px; margin-right: 10px;" />' + product.text + '</span>'
-                );
-                return $product;
+            const EDIT_NO_IMAGE = @json(rtrim((string) env('ImagePath'), '/') . '/admin/assets/img/product/noimage.png');
+            const editGstApplyMode = @json(((optional($setting)->gst_apply_mode ?? 'product') === 'overall') ? 'overall' : 'product');
+            const editOverallGstRate = @json((float) (optional($setting)->overall_gst_rate ?? 0));
+            const editCurrencySymbol = @json($setting->currency_symbol ?? '₹');
+            const editCurrencyPosition = @json($setting->currency_position ?? 'left');
+            const editServiceTaxEnabled = @json((bool) (optional($setting)->service_tax_enabled ?? false));
+            const editServiceTaxRate = @json((float) (optional($setting)->service_tax_rate ?? 0));
+            const editServiceTaxName = @json((string) (optional($setting)->service_tax_name ?? 'Service Tax'));
+
+            function escapeHtmlText(str) {
+                return String(str == null ? '' : str)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+            function escapeHtmlAttr(str) {
+                return escapeHtmlText(str);
+            }
+            function renumberEditRows() {
+                $('#product-table-body tr[data-product-id]').each(function (i) {
+                    $(this).children('td').first().text(i + 1);
+                });
+            }
+            function toggleNoProductsMessage() {
+                $('#no-products-row').remove();
+                if ($('#product-table-body tr[data-product-id]').length === 0) {
+                    $('#product-table-body').append(
+                        '<tr id="no-products-row"><td colspan="7" class="text-center">No items selected</td></tr>'
+                    );
+                }
+            }
+            function syncRowPriceFromInput($row) {
+                const price = parseFloat($row.find('.price-input').val());
+                if (!isNaN(price)) {
+                    $row.find('.quantity-input').attr('data-price', price);
+                }
             }
 
-            $('.product-select').select2({
-                templateResult: formatProduct,
-                templateSelection: formatProduct,
-                closeOnSelect: false
-            });
+            // Add product to table (or bump qty if already present) — same behaviour as POS cart
+            function addProductToTable(productId, productName, productImage, productPrice, productQtyType, productQtyTypeId, taxMeta) {
+                taxMeta = taxMeta || {};
+                productId = String(productId);
+                const $existing = $('#product-table-body tr[data-product-id="' + productId + '"]');
+                if ($existing.length) {
+                    const $qty = $existing.find('.quantity-input');
+                    $qty.val((parseFloat($qty.val()) || 0) + 1);
+                    calculateAllTotals();
+                    return;
+                }
 
-            // Handle customer selection change
-            $('#customer_name').on('change', function() {
-                var phone = $(this).find(':selected').data('phone');
-                $('#customer_phone').val(phone || '');
-            });
-
-            // Add product to table
-            function addProductToTable(productId, productName, productImage, productPrice, productQtyType, productQtyTypeId) {
-                const rowCount = $('tbody tr[data-product-id]').length + 1;
+                const priceNum = parseFloat(productPrice) || 0;
+                const gstOn = !(taxMeta.gst_applicable === false || taxMeta.gst_applicable === 0 || taxMeta.gst_applicable === '0');
                 const newRow = `
-            <tr data-product-id="${productId}">
-                <td>${rowCount}</td>
+            <tr data-product-id="${productId}"
+                data-category-id="${taxMeta.category_id || ''}"
+                data-tax-id="${taxMeta.tax_id || ''}"
+                data-tax-rate="${taxMeta.tax_rate != null && taxMeta.tax_rate !== '' ? taxMeta.tax_rate : ''}"
+                data-tax-name="${escapeHtmlAttr(taxMeta.tax_name || '')}"
+                data-tax-inclusive="${taxMeta.tax_inclusive ? '1' : '0'}"
+                data-gst-applicable="${gstOn ? '1' : '0'}">
+                <td></td>
                 <td class="">
                     <a class="product-img">
-                        <img src="${productImage}" alt="product" width="40">
+                        <img src="${escapeHtmlAttr(productImage || EDIT_NO_IMAGE)}" alt="product" width="40"
+                            onerror="this.onerror=null;this.src='${escapeHtmlAttr(EDIT_NO_IMAGE)}';">
                     </a>
-                    <a href="javascript:void(0);">${productName}</a>
+                    <a href="javascript:void(0);">${escapeHtmlText(productName)}</a>
                 </td>
                 <td>
                     <input type="number"
@@ -518,168 +529,326 @@
                            value="1"
                            step="1"
                            min="0"
-                           data-price="${productPrice}"
+                           data-price="${priceNum}"
                            style="width: 80px;">
                 </td>
-
-                 <!-- QTY TYPE (display) -->
-                <td class="text-uppercase">${productQtyType}
-                  <input type="hidden" name="quantity_type_id[${productId}]" value="${productQtyTypeId}">
+                <td class="text-uppercase">${escapeHtmlText(productQtyType || 'N/A')}
+                  <input type="hidden" name="quantity_type_id[${productId}]" value="${escapeHtmlAttr(productQtyTypeId || '')}">
                 </td>
-                <td>${parseFloat(productPrice).toFixed(2)}</td>
                 <td>
-                    <span class="total-amount">${parseFloat(productPrice).toFixed(2)}</span>
+                    <input type="number" class="form-control price-input" value="${priceNum.toFixed(2)}" min="0" step="0.01">
+                </td>
+                <td>
+                    <span class="total-amount">${priceNum.toFixed(2)}</span>
                 </td>
                 <td>
                     <a href="javascript:void(0);" class="delete-set">
                         <img src="{{ env('ImagePath') . 'admin/assets/img/icons/delete.svg' }}" alt="svg">
                     </a>
                 </td>
-            </tr>
-        `;
+            </tr>`;
 
                 $('#no-products-row').remove();
-                $('tbody').append(newRow);
+                $('#product-table-body').append(newRow);
+                renumberEditRows();
+                calculateAllTotals();
+            }
 
-                // Add event listeners to the new row
-                $('tbody tr[data-product-id="' + productId + '"] .quantity-input').on('input', calculateAllTotals);
-                $('tbody tr[data-product-id="' + productId + '"] .delete-set').on('click', function() {
-                    $(this).closest('tr').remove();
-                    updateProductSelection();
-                    toggleNoProductsMessage();
-                    calculateAllTotals();
+            // ── POS-style live product search ─────────────────────────────
+            var editSearchTimer = null;
+            var editSearchReqId = 0;
+
+            function renderEditSearchResults($resultBox, products) {
+                $resultBox.empty();
+                if (!products || !products.length) {
+                    $resultBox.html(`
+                        <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3">
+                            <span style="font-size:13px;color:#64748b;">No results found</span>
+                            <button type="button" class="btn-close-search btn btn-sm btn-light" title="Close"><i class="fas fa-times"></i></button>
+                        </div>`).show();
+                    return;
+                }
+                $resultBox.append(`
+                    <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 bg-white" style="border-bottom:2px solid #f1f5f9;position:sticky;top:0;z-index:10;">
+                        <span class="fw-bold" style="font-size:13.5px;color:#1e293b;">Products (${products.length})</span>
+                        <button type="button" class="btn-close-search btn btn-sm btn-light" title="Close"><i class="fas fa-times"></i></button>
+                    </div>`);
+                products.forEach(function (product) {
+                    var rawPrice = product.raw_price != null ? product.raw_price : (parseFloat(String(product.price).replace(/[^0-9.-]+/g, '')) || 0);
+                    var displayPrice = product.price;
+                    if (typeof displayPrice === 'number') {
+                        displayPrice = editCurrencyPosition === 'right'
+                            ? (Number(displayPrice).toFixed(2) + editCurrencySymbol)
+                            : (editCurrencySymbol + Number(displayPrice).toFixed(2));
+                    }
+                    var img = product.image || product.image_url || EDIT_NO_IMAGE;
+                    $resultBox.append(`
+                        <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3" style="border-bottom:1px solid #f1f5f9;">
+                            <div class="d-flex align-items-center gap-2" style="flex:1;min-width:0;">
+                                <img src="${escapeHtmlAttr(img)}" alt="" class="rounded" style="width:34px;height:34px;object-fit:cover;flex-shrink:0;border:1px solid #f1f5f9;"
+                                    onerror="this.onerror=null;this.src='${escapeHtmlAttr(EDIT_NO_IMAGE)}';">
+                                <div style="min-width:0;">
+                                    <strong style="font-size:13px;color:#1e293b;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtmlText(product.name || 'N/A')}</strong>
+                                    <small style="font-size:11.5px;color:#64748b;font-weight:600;">Price: ${escapeHtmlText(displayPrice || 'N/A')}</small>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary js-edit-add-product ms-2"
+                                style="border-radius:6px;padding:4px 14px;font-weight:600;font-size:12px;flex-shrink:0;"
+                                data-id="${product.id}"
+                                data-name="${escapeHtmlAttr(product.name)}"
+                                data-raw-price="${rawPrice}"
+                                data-image="${escapeHtmlAttr(img)}"
+                                data-quantity_type="${escapeHtmlAttr(product.quantity_type || '')}"
+                                data-quantity_type_id="${escapeHtmlAttr(product.quantity_type_id || '')}"
+                                data-category-id="${product.category_id || product.categoryId || ''}"
+                                data-tax-id="${product.tax_id || ''}"
+                                data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}"
+                                data-tax-name="${escapeHtmlAttr(product.tax_name || '')}"
+                                data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}"
+                                data-gst-applicable="${product.gst_applicable === false || product.gst_applicable === 0 || product.gst_applicable === '0' ? '0' : '1'}">+ Add</button>
+                        </div>`);
+                });
+                $resultBox.show();
+            }
+
+            function searchEditCatalogFallback(query, $resultBox, reqId) {
+                var authToken = localStorage.getItem('authToken');
+                $.ajax({
+                    url: '/api/getProductsByCategory/all',
+                    type: 'GET',
+                    dataType: 'json',
+                    headers: authToken ? { Authorization: 'Bearer ' + authToken } : {},
+                    success: function (response) {
+                        if (reqId !== editSearchReqId) return;
+                        var q = String(query).toLowerCase();
+                        var list = (response && response.status && Array.isArray(response.data)) ? response.data : [];
+                        var matched = list.filter(function (p) {
+                            return String(p.name || '').toLowerCase().indexOf(q) !== -1;
+                        }).slice(0, 20);
+                        renderEditSearchResults($resultBox, matched);
+                    },
+                    error: function () {
+                        if (reqId !== editSearchReqId) return;
+                        $resultBox.html('<div class="list-group-item py-2 px-3" style="font-size:13px;color:#ef4444;">Search failed. Please try again.</div>').show();
+                    }
                 });
             }
 
-            // Update product selection in dropdown
-            function updateProductSelection() {
-                const selectedProducts = $('tbody tr[data-product-id]').map(function() {
-                    return $(this).data('product-id').toString();
-                }).get();
-                $('.product-select').val(selectedProducts).trigger('change');
+            function executeEditProductSearch($input, $resultBox) {
+                const query = $input.val().trim();
+                if (query.length < 1) {
+                    $resultBox.hide().empty();
+                    return;
+                }
+                var reqId = ++editSearchReqId;
+                $resultBox.html('<div class="list-group-item py-2 px-3" style="font-size:13px;color:#64748b;">Searching…</div>').show();
+                $.ajax({
+                    url: @json(route('users.ajaxSearch')),
+                    method: 'GET',
+                    data: { query: query },
+                    dataType: 'json',
+                    success: function (data) {
+                        if (reqId !== editSearchReqId) return;
+                        var products = (data && data.products) ? data.products : [];
+                        if (products.length) {
+                            renderEditSearchResults($resultBox, products);
+                            return;
+                        }
+                        searchEditCatalogFallback(query, $resultBox, reqId);
+                    },
+                    error: function () {
+                        if (reqId !== editSearchReqId) return;
+                        searchEditCatalogFallback(query, $resultBox, reqId);
+                    }
+                });
             }
 
-            // Toggle "no products" message
-            function toggleNoProductsMessage() {
-                if ($('tbody tr[data-product-id]').length === 0) {
-                    $('tbody').append(
-                        '<tr id="no-products-row"><td colspan="6" class="text-center">No items selected</td></tr>'
-                    );
+            $(document).on('input', '.pos-product-search-input', function () {
+                const $input = $(this);
+                const $resultBox = $input.siblings('.pos-search-results-box');
+                if (!$resultBox.length) return;
+                clearTimeout(editSearchTimer);
+                editSearchTimer = setTimeout(function () {
+                    executeEditProductSearch($input, $resultBox);
+                }, 250);
+            });
+
+            $(document).on('click', '.btn-close-search', function (e) {
+                e.preventDefault();
+                $(this).closest('.pos-search-results-box').hide().empty();
+                $('.pos-product-search-input').val('');
+            });
+
+            $(document).on('click', '.js-edit-add-product', function (e) {
+                e.preventDefault();
+                const $btn = $(this);
+                const taxRateAttr = $btn.attr('data-tax-rate');
+                addProductToTable(
+                    $btn.data('id'),
+                    $btn.attr('data-name') || $btn.data('name'),
+                    $btn.attr('data-image'),
+                    parseFloat($btn.attr('data-raw-price')) || 0,
+                    $btn.attr('data-quantity_type') || '',
+                    $btn.attr('data-quantity_type_id') || '',
+                    {
+                        category_id: $btn.attr('data-category-id') || '',
+                        tax_id: $btn.attr('data-tax-id') || '',
+                        tax_rate: (taxRateAttr === '' || taxRateAttr == null) ? null : parseFloat(taxRateAttr),
+                        tax_name: $btn.attr('data-tax-name') || '',
+                        tax_inclusive: $btn.attr('data-tax-inclusive') === '1',
+                        gst_applicable: $btn.attr('data-gst-applicable') !== '0'
+                    }
+                );
+                $('.pos-search-results-box').hide().empty();
+                $('.pos-product-search-input').val('').focus();
+            });
+
+            $(document).on('click', function (e) {
+                if (!$(e.target).closest('.search_custom_product').length) {
+                    $('.pos-search-results-box').hide();
                 }
-            }
+            });
 
             // Calculate all totals including discount and taxes
+            // GST: only lines whose category has Apply GST On; product tax or overall rate (same as POS)
             function calculateAllTotals() {
                 let subtotal = 0;
+                const lines = [];
 
-                // Subtotal from products
-                $('tbody tr[data-product-id]').each(function() {
+                $('#product-table-body tr[data-product-id]').each(function() {
                     const $row = $(this);
+                    syncRowPriceFromInput($row);
                     const quantity = parseFloat($row.find('.quantity-input').val()) || 0;
-                    const price = parseFloat($row.find('.quantity-input').data('price')) || 0;
+                    const price = parseFloat($row.find('.quantity-input').attr('data-price')) || 0;
                     const rowTotal = quantity * price;
 
                     $row.find('.total-amount').text(rowTotal.toFixed(2));
                     subtotal += rowTotal;
+
+                    lines.push({
+                        line_total: rowTotal,
+                        tax_id: $row.attr('data-tax-id') || null,
+                        tax_rate: $row.attr('data-tax-rate'),
+                        tax_name: $row.attr('data-tax-name') || 'GST',
+                        tax_inclusive: $row.attr('data-tax-inclusive') === '1',
+                        gst_applicable: !($row.attr('data-gst-applicable') === '0')
+                    });
                 });
 
-                // Subtotal display
                 $('#subtotal-display').text(subtotal.toFixed(2));
 
-                // Discount
                 const discountPercentage = parseFloat($('#discount-input').val()) || 0;
                 const discountAmount = subtotal * (discountPercentage / 100);
                 $('#discount-percent').text(discountPercentage.toFixed(2));
                 $('#discount-amount').text(discountAmount.toFixed(2));
 
-                // After discount
                 const afterDiscount = subtotal - discountAmount;
                 $('#after-discount-display').text(afterDiscount.toFixed(2));
 
-                // GST Option
                 const gstOption = $('input[name="gst_option"]:checked').val();
                 let totalTax = 0;
+                const $taxSection = $('#edit-sales-tax-section');
+                $taxSection.empty();
 
-                if (gstOption === 'with_gst') {
-                    // ? Show tax section
-                    $('.tax-section').show();
+                function appendTaxRow(label, amount) {
+                    const amt = Math.round((parseFloat(amount) || 0) * 100) / 100;
+                    if (amt <= 0) return;
+                    const moneyHtml = editCurrencyPosition === 'right'
+                        ? ('<span class="tax-amount">' + amt.toFixed(2) + '</span>' + editCurrencySymbol)
+                        : (editCurrencySymbol + '<span class="tax-amount">' + amt.toFixed(2) + '</span>');
+                    $taxSection.append(
+                        '<li><h4>' + label + '</h4><h5>' + moneyHtml + '</h5></li>'
+                    );
+                    totalTax += amt;
+                }
 
-                    // Calculate tax on after-discount
-                    $('.tax-amount').each(function() {
-                        const taxRate = parseFloat($(this).data('rate')) || 0;
-                        const taxAmount = afterDiscount * (taxRate / 100);
-                        $(this).text(taxAmount.toFixed(2));
-                        totalTax += taxAmount;
+                function renderCgstSgstFromAgg(rateAmountMap) {
+                    const splitAgg = {};
+                    Object.keys(rateAmountMap).forEach(function (rateKey) {
+                        const fullRate = parseFloat(rateKey) || 0;
+                        const amount = parseFloat(rateAmountMap[rateKey]) || 0;
+                        if (amount <= 0 && fullRate <= 0) return;
+                        const halfRate = Math.round((fullRate / 2) * 10000) / 10000;
+                        const cgstAmt = Math.round((amount / 2) * 100) / 100;
+                        const sgstAmt = Math.round((amount - cgstAmt) * 100) / 100;
+                        const hk = String(halfRate);
+                        if (!splitAgg[hk]) splitAgg[hk] = { rate: halfRate, cgst: 0, sgst: 0 };
+                        splitAgg[hk].cgst += cgstAmt;
+                        splitAgg[hk].sgst += sgstAmt;
                     });
+                    Object.keys(splitAgg).forEach(function (hk) {
+                        const row = splitAgg[hk];
+                        const rateLabel = String(row.rate).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+                        appendTaxRow('CGST (' + rateLabel + '%)', row.cgst);
+                        appendTaxRow('SGST (' + rateLabel + '%)', row.sgst);
+                    });
+                }
+
+                if ((gstOption === 'with_gst' || gstOption === 'with') && subtotal > 0) {
+                    $taxSection.show();
+                    if (editGstApplyMode === 'overall') {
+                        const rate = parseFloat(editOverallGstRate) || 0;
+                        let gstBase = 0;
+                        lines.forEach(function (line) {
+                            if (!line.gst_applicable) return;
+                            gstBase += line.line_total * (1 - (discountPercentage / 100));
+                        });
+                        const rateMap = {};
+                        rateMap[String(rate)] = gstBase * (rate / 100);
+                        renderCgstSgstFromAgg(rateMap);
+                    } else {
+                        const rateMap = {};
+                        lines.forEach(function (line) {
+                            if (!line.gst_applicable) return;
+                            const taxId = line.tax_id;
+                            const taxRatePct = parseFloat(line.tax_rate);
+                            if (!taxId || isNaN(taxRatePct)) return;
+                            const lineShare = line.line_total * (1 - (discountPercentage / 100));
+                            let lineTax = 0;
+                            if (line.tax_inclusive) {
+                                const base = lineShare / (1 + (taxRatePct / 100));
+                                lineTax = lineShare - base;
+                            } else {
+                                lineTax = lineShare * (taxRatePct / 100);
+                            }
+                            const rk = String(taxRatePct);
+                            rateMap[rk] = (rateMap[rk] || 0) + lineTax;
+                        });
+                        renderCgstSgstFromAgg(rateMap);
+                    }
+
+                    if (editServiceTaxEnabled && (parseFloat(editServiceTaxRate) || 0) > 0 && afterDiscount > 0) {
+                        const svcAmt = Math.round((afterDiscount * (parseFloat(editServiceTaxRate) / 100)) * 100) / 100;
+                        const svcRateLabel = String(parseFloat(editServiceTaxRate)).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+                        appendTaxRow((editServiceTaxName || 'Service Tax') + ' (' + svcRateLabel + '%)', svcAmt);
+                    }
                 } else {
-                    // ? Hide tax section & reset values
-                    $('.tax-section').hide();
+                    $taxSection.hide();
                     totalTax = 0;
                 }
 
-                // ? Grand Total
                 const grandTotal = afterDiscount + totalTax;
                 $('#grand-total').text(grandTotal.toFixed(2));
             }
 
             // Bind events for recalculation
-            $(document).on('input', '.quantity-input, #discount-input', function() {
+            $(document).on('input', '.quantity-input, .price-input, #discount-input', function() {
                 calculateAllTotals();
             });
             $(document).on('change', 'input[name="gst_option"]', function() {
                 calculateAllTotals();
             });
 
-            // Initial calculation on page load
-            calculateAllTotals();
-
-            // Handle product selection changes
-            $('.product-select').on('change', function() {
-                const selectedProducts = $(this).val() || [];
-                const existingProducts = $('tbody tr[data-product-id]').map(function() {
-                    return $(this).data('product-id').toString();
-                }).get();
-
-                // Add new products
-                selectedProducts.forEach(productId => {
-                    if (!existingProducts.includes(productId)) {
-                        const option = $(this).find('option[value="' + productId + '"]');
-                        addProductToTable(
-                            productId,
-                            option.data('name'),
-                            option.data('image'),
-                            option.data('price'),
-                            option.data('qtytype'),
-                            option.data('qtytype-id')
-                        );
-                    }
-                });
-
-                // Remove unselected products
-                $('tbody tr[data-product-id]').each(function() {
-                    const rowProductId = $(this).data('product-id').toString();
-                    if (!selectedProducts.includes(rowProductId)) {
-                        $(this).remove();
-                    }
-                });
-
-                toggleNoProductsMessage();
-                calculateAllTotals();
-            });
-
-            // Initialize existing quantity input events
-            $('.quantity-input').on('input', calculateAllTotals);
-
-            // Initialize existing delete buttons
-            $('.delete-set').on('click', function() {
+            $(document).on('click', '.delete-set', function() {
                 $(this).closest('tr').remove();
-                updateProductSelection();
+                renumberEditRows();
                 toggleNoProductsMessage();
                 calculateAllTotals();
             });
 
-            // Handle discount input change
-            $('#discount-input').on('input', calculateAllTotals);
+            // Initial calculation on page load
+            renumberEditRows();
+            calculateAllTotals();
 
             // Form submission handler
             $(document).on("click", '.btn-submit', function(e) {
@@ -688,46 +857,49 @@
                  const createdBy = "{{ auth()->id() }}";
                 e.preventDefault();
 
-                // Collect all form data
+                const productIds = [];
+                const quantities = {};
+                const quantityTypeIds = {};
+                const unitPrices = {};
+                $('#product-table-body tr[data-product-id]').each(function () {
+                    const $row = $(this);
+                    const productId = String($row.data('product-id'));
+                    if (!productId) return;
+                    productIds.push(productId);
+                    syncRowPriceFromInput($row);
+                    quantities[productId] = $row.find('.quantity-input').val();
+                    quantityTypeIds[productId] = $row.find('input[name^="quantity_type_id"]').val() || '';
+                    unitPrices[productId] = parseFloat($row.find('.quantity-input').attr('data-price')) || 0;
+                });
+
+                if (!productIds.length) {
+                    Swal.fire({
+                        title: 'No items',
+                        text: 'Add at least one product before updating the order.',
+                        icon: 'warning',
+                        confirmButtonColor: '#ff9f43'
+                    });
+                    return;
+                }
+
                 const formData = {
                     customer_id: $('#customer_name').val(),
                     update_id: $('#update_selse_id').val(),
                     customer_phone: $('#customer_phone').val(),
-                    product_ids: $('.product-select').val(),
-                    quantities: {},
-                    quantity_type_id : {},
+                    product_ids: productIds,
+                    quantities: quantities,
+                    quantity_type_id: quantityTypeIds,
+                    unit_prices: unitPrices,
                     discount: $('#discount-input').val(),
                     payment_method: $('select[name="payment_method"]').val(),
                     status: $('select[name="status"]').val(),
-                    grand_total: $('#grand-total').text().replace('$', '').trim(),
+                    order_type: $('#order_type_select').val(),
+                    assigned_staff_id: $('#assigned_staff_id').val(),
+                    grand_total: $('#grand-total').text().replace(/[^0-9.-]+/g, '').trim(),
                     gst_option: $('input[name="gst_option"]:checked').val(),
                     selectedSubAdminId: selectedSubAdminId || null,
-                     created_by: createdBy,
+                    created_by: createdBy,
                 };
-                // console.log(formData);
-
-
-                // Collect quantities
-                // $('.quantity-input').each(function() {
-                //     const productId = $(this).closest('tr').data('product-id');
-                //     formData.quantities[productId] = $(this).val();
-                //     const qtyType = $(this).closest('tr').find('td:eq(3)').data('qtytype_id'); 
-                //     console.log(qtyType);
-                    
-                //     formData.quantity_type_id[productId] = qtyType;
-                // });
-                    // Collect QTY + QTY TYPE
-                
-                $('.quantity-input').each(function() {
-                const $row = $(this).closest('tr');
-                const productId = $row.data('product-id');
-                
-                formData.quantities[productId] = $(this).val();
-                
-                // Get quantity_type_id from the hidden input
-                const qtyTypeId = $row.find('input[name^="quantity_type_id"]').val();
-                formData.quantity_type_id[productId] = qtyTypeId;
-            });
 
 
           
