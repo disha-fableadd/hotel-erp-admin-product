@@ -1,7 +1,6 @@
 # Flutter Tables Sync Guide
 
-Flutter syncs dining tables through the **same sync APIs** used for KOT/orders.  
-Optional list API is available for UI (floor map / All Tables).
+Flutter uses **only these two APIs** for dining tables.
 
 Base URL (example): `https://hotel-erp.fableadtech.com`
 
@@ -9,7 +8,6 @@ Base URL (example): `https://hotel-erp.fableadtech.com`
 |--------|------|-----|
 | `POST` | `/api/v1/sync/pull` | Download `table_no` (+ deletes) |
 | `POST` | `/api/v1/sync/push` | Upload create / update / delete / status |
-| `GET` | `/api/get-all-tables` | Full list for UI + `table_types` dropdown |
 
 ```http
 Authorization: Bearer {access_token}
@@ -222,65 +220,7 @@ Save `remote_id` ↔ `client_uuid` in Drift after every push.
 
 ---
 
-## 5. List API (UI helper)
-
-Use when you need a sorted full list + type dropdown without a delta sync.
-
-```http
-GET /api/get-all-tables?selectedSubAdminId=12
-```
-
-### Response
-
-```json
-{
-  "status": true,
-  "table_types": ["AC", "Non AC", "Premium", "Rooftop"],
-  "data": [
-    {
-      "id": 10,
-      "client_uuid": "…",
-      "table_name": "Rooftop 1",
-      "table_type": "Rooftop",
-      "table_status": 0,
-      "status": "blank",
-      "order_id": null,
-      "branch_id": 12,
-      "created_at": "…",
-      "updated_at": "…"
-    }
-  ]
-}
-```
-
-- Sorted **naturally** within type (`1, 2, 3…` not `1, 10, 11…`)
-- Bind Add Table type dropdown from `table_types`
-- Still upsert locally by `client_uuid` if you cache these rows
-
-### Optional REST CRUD (same Bearer token)
-
-| Method | Path |
-|--------|------|
-| `POST` | `/api/table/create` |
-| `GET` | `/api/table/{id}` |
-| `PUT` | `/api/table/update/{id}` |
-| `DELETE` | `/api/table/delete/{id}` |
-
-Prefer **sync push/pull** for offline Flutter. Use REST only for online-only screens if needed.
-
-Body for create/update:
-
-```json
-{
-  "table_name": "Rooftop 12",
-  "table_type": "Rooftop",
-  "selectedSubAdminId": 12
-}
-```
-
----
-
-## 6. Flow
+## 5. Flow
 
 ```text
 Local change (add / edit / occupy / print / free / delete)
@@ -296,13 +236,12 @@ Web-created tables also get `client_uuid` automatically — next pull brings the
 
 ---
 
-## 7. Checklist
+## 6. Checklist
 
-- [ ] Tables go through `/api/v1/sync/pull` + `/api/v1/sync/push` (`payload.table_no`)
+- [ ] Only `/api/v1/sync/pull` and `/api/v1/sync/push`
 - [ ] Every table has a stable `client_uuid`
 - [ ] Upsert + delete by `client_uuid` (use `deleted_ids` / `deleted_records`)
 - [ ] `table_type` supports `AC`, `Non AC`, `Premium`, `Rooftop`
 - [ ] Status supports `printed` / `3` (bill printed yellow)
 - [ ] On occupy, send `order_client_uuid` when linking an order
 - [ ] On free/checkout, clear link and set `blank` / `0`
-- [ ] Optional UI list: `GET /api/get-all-tables` → use `table_types` + `data`

@@ -63,12 +63,27 @@ Order / item fields you care about for KOT:
 
 - `orders.delivery_status` — `running` \| `ready` \| `served` \| …
 - `orders.table_status` — `1` occupied, `0` free
-- `orders.kot_pending_cancels` / fire ticket JSON (if present)
-- `order_items.quantity`, `kot_printed_qty`, `variant_id`, `addons`, `unit_price`
-- `table_no.table_type` — `AC` \| `Non AC` \| `Premium` \| `Rooftop` (same as web Add Table)
-- `table_no.status` / `table_status` — `blank`/`0`, `running`/`1`, `reserved`/`2`, `printed`/`3` (bill printed)
+- `orders.kot_pending_cancels` / `kot_fire_ticket` — fire ticket JSON for kitchen print
+- `order_items.quantity`, `kot_printed_qty`, `variant_id`, `variant_name`, `addons`, `unit_price`
 
-Also available for UI lists: `GET /api/get-all-tables` returns `table_types` + rows with `client_uuid` (same fields sync uses).
+### Fire ticket line (KOT print must include variation)
+
+Each line in `kot_fire_ticket` / `kot_pending_cancels`:
+
+```json
+{
+  "product_id": 10,
+  "variant_id": 3,
+  "variant_name": "Half",
+  "addons_text": "Extra Cheese, Spicy",
+  "name": "Pizza",
+  "station": "General",
+  "qty": 1,
+  "action": "new"
+}
+```
+
+Kitchen ticket shows: **Item name**, then **variation** (`variant_name`), then **add-ons** (`addons_text`).
 
 ---
 
@@ -104,15 +119,6 @@ One push covers: **place**, **update**, **KOT printed**, **kitchen status**, **c
         "total_amount": 700,
         "remaining_amount": 700,
         "branch_id": 12,
-        "kot_fire_ticket": [
-          {
-            "product_id": 22,
-            "name": "kadhi-khichdi",
-            "qty": 1,
-            "action": "new",
-            "station": "General"
-          }
-        ],
         "items": [
           {
             "local_id": 501,
@@ -121,6 +127,7 @@ One push covers: **place**, **update**, **KOT printed**, **kitchen status**, **c
             "product_client_uuid": "prod-uuid-here",
             "category_id": 5,
             "variant_id": 3,
+            "variant_name": "Half",
             "addons": [
               { "id": 1, "name": "Extra Cheese", "price": 30, "qty": 1 }
             ],
@@ -132,6 +139,18 @@ One push covers: **place**, **update**, **KOT printed**, **kitchen status**, **c
             "quantity_type_id": 1,
             "user_id": 1,
             "isDeleted": 0
+          }
+        ],
+        "kot_fire_ticket": [
+          {
+            "product_id": 10,
+            "variant_id": 3,
+            "variant_name": "Half",
+            "addons_text": "Extra Cheese",
+            "name": "Pizza",
+            "station": "General",
+            "qty": 1,
+            "action": "new"
           }
         ]
       }
@@ -200,7 +219,9 @@ Save `remote_id` ↔ `client_uuid` in Drift after every push.
 | `kot_fire_ticket` | order | Latest NEW/CANCEL lines for kitchen print |
 | `quantity` | item | Current qty |
 | `kot_printed_qty` | item | Already sent to kitchen |
-| `variant_id` / `addons` | item | Size + extras (price + labels) |
+| `variant_id` | item | Selected size / variation id |
+| `variant_name` | fire ticket / print | Variation label shown on KOT (e.g. Half, Full) |
+| `addons` / `addons_text` | item / fire ticket | Extras; print uses names |
 
 Local delta:
 
@@ -233,4 +254,4 @@ POST /api/v1/sync/pull   (other devices / kitchen updates)
 - [ ] Place: `kot_printed_qty = 0`; after print push with printed qty
 - [ ] Update: `kot_fire_ticket` = this save’s changes only
 - [ ] Checkout: bill only; `table_status = 0`
-- [ ] Always send `variant_id` + `addons` when used
+- [ ] Always send `variant_id` + `variant_name` + `addons` / `addons_text` when used (KOT print shows variation)

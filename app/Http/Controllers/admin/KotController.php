@@ -254,6 +254,12 @@ class KotController extends Controller
             $clone = clone $item;
             $clone->quantity = abs($diff);
             $clone->kot_action = $diff > 0 ? 'new' : 'cancel';
+            // Ensure variation / add-ons show on delta KOT when fire ticket is absent
+            $clone->variant_name = method_exists($item, 'variantLabel')
+                ? $item->variantLabel()
+                : (optional($item->variant)->name ?? null);
+            $addonLines = method_exists($item, 'addonLines') ? $item->addonLines() : [];
+            $clone->addons_text = $addonLines ? implode(', ', $addonLines) : null;
             $rows->push($clone);
         }
 

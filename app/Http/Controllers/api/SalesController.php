@@ -1355,7 +1355,7 @@ class SalesController extends Controller
             }
 
             // Restore stock first from OLD items
-            $oldItems = OrderItem::with('product')->where('order_id', $order_id)->get();
+            $oldItems = OrderItem::with(['product', 'variant'])->where('order_id', $order_id)->get();
 
             // Petpooja-style KOT: this Update ticket = only qty changes vs previous table order
             $hasKotPrintedCol = \Illuminate\Support\Facades\Schema::hasColumn('order_items', 'kot_printed_qty');
@@ -1368,10 +1368,15 @@ class SalesController extends Controller
                 $oldQty = (int) ($old->quantity ?? 0);
                 $oldKotPrinted[$kotKey] = $printedQty;
                 $oldKotQty[$kotKey] = $oldQty;
+                $oldAddonLines = method_exists($old, 'addonLines') ? $old->addonLines() : [];
                 $oldKotMeta[$kotKey] = [
                     'product_id' => (int) $old->product_id,
                     'variant_id' => $old->variant_id ? (int) $old->variant_id : null,
                     'name' => optional($old->product)->name ?? 'Item',
+                    'variant_name' => method_exists($old, 'variantLabel')
+                        ? $old->variantLabel()
+                        : (optional($old->variant)->name ?? null),
+                    'addons_text' => $oldAddonLines ? implode(', ', $oldAddonLines) : null,
                     'station' => optional($old->product)->kitchen_station ?? 'General',
                     'qty_printed' => $printedQty,
                     'qty' => $oldQty,
@@ -1548,9 +1553,17 @@ class SalesController extends Controller
 
                 $diff = $newQty - $prevQty;
                 if ($diff !== 0) {
+                    $addonNames = [];
+                    foreach (($line['addons'] ?? []) as $a) {
+                        if (is_array($a) && ! empty($a['name'])) {
+                            $addonNames[] = (string) $a['name'];
+                        }
+                    }
                     $fireTicket[] = [
                         'product_id' => (int) $product->id,
                         'variant_id' => $line['variant_id'] ? (int) $line['variant_id'] : null,
+                        'variant_name' => $line['variant_name'] ?? null,
+                        'addons_text' => $addonNames ? implode(', ', $addonNames) : null,
                         'name' => $product->name ?? 'Item',
                         'station' => $product->kitchen_station ?? 'General',
                         'qty' => abs($diff),
@@ -1571,6 +1584,8 @@ class SalesController extends Controller
                 $fireTicket[] = [
                     'product_id' => $meta['product_id'],
                     'variant_id' => $meta['variant_id'],
+                    'variant_name' => $meta['variant_name'] ?? null,
+                    'addons_text' => $meta['addons_text'] ?? null,
                     'name' => $meta['name'],
                     'station' => $meta['station'] ?? 'General',
                     'qty' => $removedQty,

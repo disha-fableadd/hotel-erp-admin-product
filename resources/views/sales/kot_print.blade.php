@@ -34,6 +34,11 @@
                     $action = $item->kot_action ?? 'new';
                     $isCancel = $action === 'cancel';
                     $name = $item->product->name ?? ($item->product_name ?? 'Item');
+                    $vName = $item->variant_name
+                        ?? (method_exists($item, 'variantLabel') ? $item->variantLabel() : (optional($item->variant ?? null)->name ?? null));
+                    $aLines = !empty($item->addons_text)
+                        ? [ $item->addons_text ]
+                        : (method_exists($item, 'addonLines') ? $item->addonLines() : []);
                 @endphp
                 <tr class="{{ $isCancel ? 'cancel' : '' }}">
                     <td>
@@ -41,6 +46,12 @@
                             <strong>{{ $isCancel ? '[CANCEL]' : '[NEW]' }}</strong>
                         @endif
                         {{ $name }}
+                        @if(!empty($vName))
+                            <br><small>{{ $vName }}</small>
+                        @endif
+                        @if(!empty($aLines))
+                            <br><small>+ {{ is_array($aLines) ? implode(', ', $aLines) : $aLines }}</small>
+                        @endif
                     </td>
                     <td class="qty">{{ $isCancel ? '-' : '' }}{{ $item->quantity }}</td>
                 </tr>
