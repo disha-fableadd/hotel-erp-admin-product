@@ -164,6 +164,14 @@
                                 </div>
                             </div>
 
+                            <div class="col-lg-3 col-sm-6 col-6">
+                                <div class="form-group">
+                                    <label>FSSAI Number</label>
+                                    <input type="text" id="cin_no" placeholder="Enter FSSAI Number" maxlength="20">
+                                    <small class="text-muted">Shown on invoice when FSSAI is enabled in Customize Invoice.</small>
+                                </div>
+                            </div>
+
                                 <div class="col-lg-3 col-sm-6 col-6">
                         <div class="form-group">
                             <label>Bank Name<span class="manitory">*</span></label>
@@ -262,6 +270,31 @@
                                         <option value="with">With GST</option>
                                     </select>
                                     <small class="text-muted">Pre-selects With/Without GST on Add Order and Tables POS.</small>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3 col-sm-6 col-6">
+                                <div class="form-group">
+                                    <label>Default Payment Method (POS)</label>
+                                    <select id="default_payment_method" class="form-select">
+                                        <option value="cash">Cash</option>
+                                        <option value="pending">Pay Later</option>
+                                        <option value="debit card">Debit</option>
+                                        <option value="cash+online">Cash + Online</option>
+                                        <option value="scan">Scan / UPI</option>
+                                    </select>
+                                    <small class="text-muted">Default on Takeaway and Dine In order screens.</small>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3 col-sm-6 col-6">
+                                <div class="form-group">
+                                    <label>Default Paid Type (POS)</label>
+                                    <select id="default_paid_type" class="form-select">
+                                        <option value="fully">Fully</option>
+                                        <option value="partially">Partially</option>
+                                    </select>
+                                    <small class="text-muted">Used when payment is Cash / Debit / Scan.</small>
                                 </div>
                             </div>
 
@@ -1335,8 +1368,15 @@
                         $("#default_gst_option").val(
                             settings.default_gst_option === 'with' ? 'with' : 'without'
                         );
+                        var payDefaults = ['pending', 'cash', 'debit card', 'cash+online', 'scan'];
+                        var payVal = settings.default_payment_method || 'cash';
+                        $("#default_payment_method").val(payDefaults.indexOf(payVal) !== -1 ? payVal : 'cash');
+                        $("#default_paid_type").val(
+                            settings.default_paid_type === 'partially' ? 'partially' : 'fully'
+                        );
                         $("#shop_name").val(settings.name);
                         $("#gst_num").val(settings.gst_num);
+                        $("#cin_no").val(settings.cin_no || '');
                         $("#email").val(settings.email);
                         $("#phone").val(settings.phone);
                         $("#address").val(settings.address);
@@ -1728,8 +1768,11 @@
                 formData.append("low_stock", $("#low_stock").val());
                 formData.append("allow_item_level_discount", $("#allow_item_level_discount").val());
                 formData.append("default_gst_option", $("#default_gst_option").val());
+                formData.append("default_payment_method", $("#default_payment_method").val() || 'cash');
+                formData.append("default_paid_type", $("#default_paid_type").val() || 'fully');
                 formData.append("shop_name", $("#shop_name").val());
                 formData.append("gst_num", $("#gst_num").val());
+                formData.append("cin_no", $("#cin_no").val() || '');
                 formData.append("email", $("#email").val());
                 formData.append("phone", $("#phone").val());
                 formData.append("address", $("#address").val());

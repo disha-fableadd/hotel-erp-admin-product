@@ -35,6 +35,8 @@ class GeneralSettingController extends Controller
             $settings->currency_position = 'left';
             $settings->low_stock         = 10;
             $settings->default_gst_option = 'without';
+            $settings->default_payment_method = 'cash';
+            $settings->default_paid_type = 'fully';
             $settings->show_hr_dashboard = 1;
             $settings->show_erp_dashboard = 1;
         }
@@ -66,6 +68,8 @@ class GeneralSettingController extends Controller
             'low_stock'         => 'nullable',
             'allow_item_level_discount' => 'nullable|boolean',
             'default_gst_option' => 'nullable|in:with,without',
+            'default_payment_method' => 'nullable|in:pending,cash,debit card,cash+online,scan',
+            'default_paid_type' => 'nullable|in:fully,partially',
             'state_code'        => 'nullable',
             'email'             => 'required|email',
             'phone'             => 'required',
@@ -133,6 +137,14 @@ class GeneralSettingController extends Controller
         }
         if ($request->has('default_gst_option')) {
             $settings->default_gst_option = $request->default_gst_option === 'with' ? 'with' : 'without';
+        }
+        if ($request->has('default_payment_method')) {
+            $allowedPay = ['pending', 'cash', 'debit card', 'cash+online', 'scan'];
+            $pay = (string) $request->default_payment_method;
+            $settings->default_payment_method = in_array($pay, $allowedPay, true) ? $pay : 'cash';
+        }
+        if ($request->has('default_paid_type')) {
+            $settings->default_paid_type = $request->default_paid_type === 'partially' ? 'partially' : 'fully';
         }
         $settings->name              = $request->shop_name;
         $settings->email             = $request->email;

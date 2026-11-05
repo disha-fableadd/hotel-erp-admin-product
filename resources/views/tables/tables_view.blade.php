@@ -2491,45 +2491,62 @@
                                 </div>
 
                                 <div class="payment_panel">
+                                    @php
+                                        $defaultPayMethod = optional($setting)->default_payment_method ?: 'cash';
+                                        $allowedPayMethods = ['pending', 'cash', 'debit card', 'cash+online', 'scan'];
+                                        if (!in_array($defaultPayMethod, $allowedPayMethods, true)) {
+                                            $defaultPayMethod = 'cash';
+                                        }
+                                        $defaultPaidType = (optional($setting)->default_paid_type === 'partially') ? 'partially' : 'fully';
+                                    @endphp
                                     <div class="setvaluecash">
                                         <ul>
                                             <li class="d-none">
-                                                <a href="javascript:void(0);" class="paymentmethod">
-                                                    <input type="radio" name="payment_method" value="pending" checked hidden>
+                                                <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'pending' ? 'active' : '' }}">
+                                                    <input type="radio" name="payment_method" value="pending" {{ $defaultPayMethod === 'pending' ? 'checked' : '' }} hidden>
                                                     <i class="fas fa-history"></i>
                                                     <span>Pay Later</span>
                                                 </a>
                                             </li>
                                             <li>
-                                                <a href="javascript:void(0);" class="paymentmethod">
-                                                    <input type="radio" name="payment_method" value="cash" hidden>
+                                                <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'cash' ? 'active' : '' }}">
+                                                    <input type="radio" name="payment_method" value="cash" {{ $defaultPayMethod === 'cash' ? 'checked' : '' }} hidden>
                                                     <i class="fas fa-money-bill-wave"></i>
                                                     <span>Cash</span>
                                                 </a>
                                             </li>
                                             <li>
-                                                <a href="javascript:void(0);" class="paymentmethod">
-                                                    <input type="radio" name="payment_method" value="debit card" hidden>
+                                                <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'debit card' ? 'active' : '' }}">
+                                                    <input type="radio" name="payment_method" value="debit card" {{ $defaultPayMethod === 'debit card' ? 'checked' : '' }} hidden>
                                                     <i class="fas fa-credit-card"></i>
                                                     <span>Debit Card</span>
                                                 </a>
                                             </li>
                                             <li>
-                                                <a href="javascript:void(0);" class="paymentmethod">
-                                                    <input type="radio" name="payment_method" value="cash+online" hidden>
+                                                <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'cash+online' ? 'active' : '' }}">
+                                                    <input type="radio" name="payment_method" value="cash+online" {{ $defaultPayMethod === 'cash+online' ? 'checked' : '' }} hidden>
                                                     <i class="fas fa-money-check-alt"></i>
                                                     <span>Cash + Online</span>
                                                 </a>
                                             </li>
                                             <li>
-                                                <a href="javascript:void(0);" class="paymentmethod">
-                                                    <input type="radio" name="payment_method" value="scan" hidden>
+                                                <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'scan' ? 'active' : '' }}">
+                                                    <input type="radio" name="payment_method" value="scan" {{ $defaultPayMethod === 'scan' ? 'checked' : '' }} hidden>
                                                     <i class="fas fa-qrcode"></i>
                                                     <span>Scan / UPI</span>
                                                 </a>
                                             </li>
                                         </ul>
-                                        <div id="cashOnlineBox" style="display:none; margin-top:8px;">
+                                        <div id="paidTypeBox" style="{{ in_array($defaultPayMethod, ['cash', 'debit card', 'scan'], true) ? '' : 'display:none;' }} margin-top:8px;">
+                                            <div class="form-group mb-2">
+                                                <label style="font-size: 12px; font-weight: 600; color: #64748b;">Paid Type</label>
+                                                <select id="paidTypeSelect" class="form-control form-control-sm" name="paid_type">
+                                                    <option value="fully" {{ $defaultPaidType === 'fully' ? 'selected' : '' }}>Fully</option>
+                                                    <option value="partially" {{ $defaultPaidType === 'partially' ? 'selected' : '' }}>Partially</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="cashOnlineBox" style="{{ $defaultPayMethod === 'cash+online' ? '' : 'display:none;' }} margin-top:8px;">
                                             <div class="form-group mb-2">
                                                 <label style="font-size: 12px; font-weight: 600; color: #64748b;">Cash Amount</label>
                                                 <input type="number" class="form-control form-control-sm" id="cashAmount" placeholder="Enter Cash Amount">
@@ -2699,6 +2716,41 @@
         var authToken = localStorage.getItem("authToken");
         const canItemDiscount = {{ !empty($can_item_discount) ? 'true' : 'false' }};
         const defaultGstOption = @json(((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without');
+        @php
+            $_dinePay = optional($setting)->default_payment_method ?: 'cash';
+            if (!in_array($_dinePay, ['pending', 'cash', 'debit card', 'cash+online', 'scan'], true)) {
+                $_dinePay = 'cash';
+            }
+            $_dinePaid = (optional($setting)->default_paid_type === 'partially') ? 'partially' : 'fully';
+        @endphp
+        const defaultPaymentMethod = @json($_dinePay);
+        const defaultPaidType = @json($_dinePaid);
+
+        function applyDefaultPosPayment() {
+            var pay = defaultPaymentMethod || 'cash';
+            var paid = defaultPaidType || 'fully';
+            $("input[name='payment_method']").prop('checked', false);
+            $(".paymentmethod").removeClass('active');
+            var $radio = $("input[name='payment_method'][value='" + pay + "']");
+            if (!$radio.length) {
+                pay = 'cash';
+                $radio = $("input[name='payment_method'][value='cash']");
+            }
+            $radio.prop('checked', true);
+            $radio.closest('.paymentmethod').addClass('active');
+            if (pay === 'cash+online') {
+                $("#paidTypeBox").hide();
+                $("#cashOnlineBox").show();
+            } else if (['cash', 'debit card', 'scan'].indexOf(pay) !== -1) {
+                $("#cashOnlineBox").hide();
+                $("#paidTypeBox").show();
+                $("#paidTypeSelect").val(paid === 'partially' ? 'partially' : 'fully');
+            } else {
+                $("#paidTypeBox").hide();
+                $("#cashOnlineBox").hide();
+            }
+        }
+        window.applyDefaultPosPayment = applyDefaultPosPayment;
 
         function getDineInCustomerPayload() {
             var $sel = $('#table_customer_name');
@@ -2777,6 +2829,8 @@
 
         // Use event delegation to handle dynamically created elements
         $(document).ready(function () {
+            applyDefaultPosPayment();
+
             $(document).on("click", ".paymentmethod", function () {
                 let value = $(this).find("input[name='payment_method']").val();
 
@@ -2792,11 +2846,17 @@
                 // Add active class to clicked element
                 $(this).addClass('active');
 
-                // Show/hide cash+online box
+                // Show/hide cash+online / paid type
                 if (value === "cash+online") {
-                    $("#cashOnlineBox").slideDown(); // show textboxes
+                    $("#paidTypeBox").slideUp();
+                    $("#cashOnlineBox").slideDown();
+                } else if (value === "cash" || value === "debit card" || value === "scan") {
+                    $("#cashOnlineBox").slideUp();
+                    $("#paidTypeBox").slideDown();
+                    $("#paidTypeSelect").val(defaultPaidType || "fully");
                 } else {
-                    $("#cashOnlineBox").slideUp(); // hide textboxes
+                    $("#paidTypeBox").slideUp();
+                    $("#cashOnlineBox").slideUp();
                 }
             });
         });
@@ -2836,6 +2896,9 @@
             $('.btn-totallabel_1').css('display', 'flex').attr('data-order_update_id', salse_id);
             $('.btn-totallabel_2').css('display', 'flex').attr('data-order_payment_update_id', salse_id);
             $('.setvaluecash').show();
+            if (typeof window.applyDefaultPosPayment === 'function') {
+                window.applyDefaultPosPayment();
+            }
             (modalInstance || tableOrderModal).show();
         }
 
@@ -4421,6 +4484,7 @@
                     customer_id: dineCustomer.customer_id,
                     customer_phone: dineCustomer.customer_phone,
                     payment_method: selectedPayment,
+                    paid_type: $("#paidTypeSelect").val() || defaultPaidType || 'fully',
                     subtotal: subtotal,
                     discount: discount,
                     discount_amount: subtotal * (discount / 100),
@@ -4462,10 +4526,10 @@
                             // Reset form
                             selectedItems.clear();
                             $(".check-product i").removeClass("selected");
-                            $("input[name='payment_method']").prop("checked", false);
-                            $(".paymentmethod").removeClass("active");
-                            $("#cashOnlineBox").hide();
                             $("#discount").val("");
+                            if (typeof window.applyDefaultPosPayment === 'function') {
+                                window.applyDefaultPosPayment();
+                            }
                             updateTotalItems();
                             // Dine-in: open KOT print modal on Place (kitchen)
                             if (tableOrderModal) tableOrderModal.hide();
@@ -4640,6 +4704,7 @@
                     customer_id: dineCustomer.customer_id,
                     customer_phone: dineCustomer.customer_phone,
                     payment_method: selectedPayment,
+                    paid_type: $("#paidTypeSelect").val() || defaultPaidType || 'fully',
                     subtotal: subtotal,
                     discount: discount,
                     discount_amount: subtotal * (discount / 100),
@@ -4681,10 +4746,10 @@
                             // Reset form
                             selectedItems.clear();
                             $(".check-product i").removeClass("selected");
-                            $("input[name='payment_method']").prop("checked", false);
-                            $(".paymentmethod").removeClass("active");
-                            $("#cashOnlineBox").hide();
                             $("#discount").val("");
+                            if (typeof window.applyDefaultPosPayment === 'function') {
+                                window.applyDefaultPosPayment();
+                            }
                             updateTotalItems();
                             // Dine-in: open KOT print modal on Update (from this screen)
                             if (tableOrderModal) tableOrderModal.hide();
@@ -4859,6 +4924,7 @@
                     customer_id: dineCustomer.customer_id,
                     customer_phone: dineCustomer.customer_phone,
                     payment_method: selectedPayment,
+                    paid_type: $("#paidTypeSelect").val() || defaultPaidType || 'fully',
                     subtotal: subtotal,
                     discount: discount,
                     discount_amount: subtotal * (discount / 100),
@@ -4901,10 +4967,10 @@
                             // Reset form
                             selectedItems.clear();
                             $(".check-product i").removeClass("selected");
-                            $("input[name='payment_method']").prop("checked", false);
-                            $(".paymentmethod").removeClass("active");
-                            $("#cashOnlineBox").hide();
                             $("#discount").val("");
+                            if (typeof window.applyDefaultPosPayment === 'function') {
+                                window.applyDefaultPosPayment();
+                            }
                             updateTotalItems();
                             // Checkout = customer bill only (KOT already printed on Place/Update)
                             if (tableOrderModal) tableOrderModal.hide();

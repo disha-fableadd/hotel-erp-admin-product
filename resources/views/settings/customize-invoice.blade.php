@@ -434,6 +434,7 @@
             var shopName = @json($setting->name ?? 'Hotel ERP');
             var shopPhone = @json($setting->phone ?? '');
             var shopGst = @json($setting->gst_num ?? '');
+            var shopFssai = @json($setting->cin_no ?? ($setting->fssai_no ?? ''));
             var shopAddr = @json($setting->address ?? '');
             var state = Object.assign({}, initial);
             var products = [
@@ -516,7 +517,7 @@
                 if (opts.showAddr) html += esc(shopAddr) + '<br>';
                 if (opts.showPhone) html += 'Ph: ' + esc(shopPhone) + '<br>';
                 if (state.show_shop_gst && shopGst) html += 'GST: ' + esc(shopGst) + '<br>';
-                if (state.show_fssai) html += 'FSSAI: 10000000000000<br>';
+                if (state.show_fssai && shopFssai) html += 'FSSAI: ' + esc(shopFssai) + '<br>';
                 html += '</div>';
                 return html;
             }
@@ -755,7 +756,7 @@
                 if (state.show_logo) html += '<div class="text-center mb-1">🏪</div>';
                 html += '<strong>' + esc(shopName) + '</strong><div>Ph.No.: ' + esc(shopPhone) + '</div>';
                 if (state.show_shop_gst && shopGst) html += '<div>GST: ' + esc(shopGst) + '</div>';
-                if (state.show_fssai) html += '<div>FSSAI: 10000000000000</div>';
+                if (state.show_fssai && shopFssai) html += '<div>FSSAI: ' + esc(shopFssai) + '</div>';
                 html += '<div class="title">' + esc(title) + '</div></div>';
                 html += '<div class="row-flex"><span>Cash Sale</span><span>Date: 02/10/2026<br>Time: 03:43 PM</span></div>';
                 html += customerBlock('left');

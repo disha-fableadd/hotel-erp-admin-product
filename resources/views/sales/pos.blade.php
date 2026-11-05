@@ -2011,52 +2011,60 @@
                                         <i class="fas fa-wallet" style="color: var(--pos-primary);"></i> Payment Method
                                     </span>
                                 </div>
+                                @php
+                                    $defaultPayMethod = optional($setting)->default_payment_method ?: 'cash';
+                                    $allowedPayMethods = ['pending', 'cash', 'debit card', 'cash+online', 'scan'];
+                                    if (!in_array($defaultPayMethod, $allowedPayMethods, true)) {
+                                        $defaultPayMethod = 'cash';
+                                    }
+                                    $defaultPaidType = (optional($setting)->default_paid_type === 'partially') ? 'partially' : 'fully';
+                                @endphp
                                 <div class="setvaluecash">
                                     <ul>
                                         <li>
-                                            <a href="javascript:void(0);" class="paymentmethod active">
-                                                <input type="radio" name="payment_method" value="pending" checked hidden>
+                                            <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'pending' ? 'active' : '' }}">
+                                                <input type="radio" name="payment_method" value="pending" {{ $defaultPayMethod === 'pending' ? 'checked' : '' }} hidden>
                                                 <i class="fas fa-history"></i>
                                                 <span>Pay Later</span>
                                             </a>
                                         </li>
                                         <li>
-                                            <a href="javascript:void(0);" class="paymentmethod">
-                                                <input type="radio" name="payment_method" value="cash" hidden>
+                                            <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'cash' ? 'active' : '' }}">
+                                                <input type="radio" name="payment_method" value="cash" {{ $defaultPayMethod === 'cash' ? 'checked' : '' }} hidden>
                                                 <i class="fas fa-money-bill-wave"></i>
                                                 <span>Cash</span>
                                             </a>
                                         </li>
                                         <li>
-                                            <a href="javascript:void(0);" class="paymentmethod">
-                                                <input type="radio" name="payment_method" value="debit card" hidden>
+                                            <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'debit card' ? 'active' : '' }}">
+                                                <input type="radio" name="payment_method" value="debit card" {{ $defaultPayMethod === 'debit card' ? 'checked' : '' }} hidden>
                                                 <i class="fas fa-credit-card"></i>
                                                 <span>Debit</span>
                                             </a>
                                         </li>
                                         <li>
-                                            <a href="javascript:void(0);" class="paymentmethod">
-                                                <input type="radio" name="payment_method" value="cash+online" hidden>
+                                            <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'cash+online' ? 'active' : '' }}">
+                                                <input type="radio" name="payment_method" value="cash+online" {{ $defaultPayMethod === 'cash+online' ? 'checked' : '' }} hidden>
                                                 <i class="fas fa-money-check-alt"></i>
                                                 <span>Cash+Online</span>
                                             </a>
                                         </li>
                                         <li>
-                                            <a href="javascript:void(0);" class="paymentmethod">
-                                                <input type="radio" name="payment_method" value="scan" hidden>
+                                            <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'scan' ? 'active' : '' }}">
+                                                <input type="radio" name="payment_method" value="scan" {{ $defaultPayMethod === 'scan' ? 'checked' : '' }} hidden>
                                                 <i class="fas fa-qrcode"></i>
                                                 <span>Scan</span>
                                             </a>
                                         </li>
                                     </ul>
                                     {{-- ── Paid Type sub-panel (Cash / Debit / Scan) ────────── --}}
-                                    <div id="paidTypeBox" style="display:none; margin-top:10px;">
+                                    <div id="paidTypeBox" style="{{ in_array($defaultPayMethod, ['cash', 'debit card', 'scan'], true) ? '' : 'display:none;' }} margin-top:10px;">
                                         <div class="form-group mb-2">
                                             <label style="font-weight:600;">Paid Type</label>
                                             <select id="paidTypeSelect" class="form-control" name="paid_type">
                                                 <option value="">Select Paid Type</option>
-                                                <option value="fully" selected>Fully</option>
-                                                <option value="partially">Partially</option>
+                                                <option value="fully" {{ $defaultPaidType === 'fully' ? 'selected' : '' }}>Fully</option>
+                                                <option value="partially" {{ $defaultPaidType === 'partially' ? 'selected' : '' }}>Partially</option>
                                             </select>
                                             <small id="paidTypeError" style="font-size:14px; color: red;"></small>
                                         </div>
@@ -2472,6 +2480,8 @@
             window.posProductOptionsById = window.posProductOptionsById || {};
             const canItemDiscount = {{ !empty($can_item_discount) ? 'true' : 'false' }};
             const defaultGstOption = @json(((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without');
+            const defaultPaymentMethod = @json($defaultPayMethod ?? 'cash');
+            const defaultPaidType = @json($defaultPaidType ?? 'fully');
             const posCurrencySymbol = @json($currency_symbol ?? '₹');
             const posCurrencyPosition = @json($currency_position ?? 'left');
             const POS_NO_IMAGE = @json(rtrim((string) env('ImagePath'), '/') . '/admin/assets/img/product/noimage.png');
@@ -2722,7 +2732,7 @@
                         // syncCashOnlineAmounts();
                         $("#cashAmount").val("");
                         try { loadBanksInto("#cashOnlineBankSelect"); } catch(e) { console.warn("loadBanksInto error:", e); }
-                        $("#cashOnlinePaidTypeSelect").val("fully").trigger("change");
+                        $("#cashOnlinePaidTypeSelect").val(defaultPaidType || "fully").trigger("change");
                         // Load banks (non-blocking)
                         try { loadBanksInto("#cashOnlineBankSelect"); } catch(e) { console.warn("loadBanksInto error:", e); }
                     } else if (paidTypeMethods.includes(value)) {
@@ -2738,7 +2748,7 @@
                         // $("#enterAmount").prop("readonly", false).val("");
                         // $("#pendingAmount").prop("readonly", true).val("");
 
-                        // Default to "Fully" — user manually switches to Partially if needed
+                        // Default paid type from Shop Settings
                         $("#debitBankSelect").val(""); $("#debitRemark").val("");
                         $("#scanBankSelect").val(""); $("#scanRemark").val("");
                         if (value === "debit card") {
@@ -2746,7 +2756,7 @@
                         } else if (value === "scan") {
                             try { loadBanksInto("#scanBankSelect"); } catch(e) {}
                         }
-                        $("#paidTypeSelect").val("fully").trigger("change");
+                        $("#paidTypeSelect").val(defaultPaidType || "fully").trigger("change");
                         // Pre-load banks silently for debit/scan
                         if (value === "debit card") {
                             try { loadBanks(); } catch(e) {}
@@ -2931,6 +2941,31 @@
             //     });
             // });
 
+            function applyDefaultPosPayment() {
+                var pay = defaultPaymentMethod || 'cash';
+                var paid = defaultPaidType || 'fully';
+                var $method = $(".paymentmethod").has("input[name='payment_method'][value='" + pay + "']").first();
+                if (!$method.length) {
+                    $method = $(".paymentmethod").has("input[name='payment_method'][value='cash']").first();
+                    pay = 'cash';
+                }
+                if ($method.length) {
+                    $method.trigger('click');
+                } else {
+                    $("input[name='payment_method']").prop('checked', false);
+                    $("input[name='payment_method'][value='" + pay + "']").prop('checked', true);
+                    $(".paymentmethod").removeClass('active');
+                    $("input[name='payment_method'][value='" + pay + "']").closest('.paymentmethod').addClass('active');
+                }
+                if ($("#paidTypeSelect").length) {
+                    $("#paidTypeSelect").val(paid === 'partially' ? 'partially' : 'fully').trigger('change');
+                }
+                if ($("#cashOnlinePaidTypeSelect").length && pay === 'cash+online') {
+                    $("#cashOnlinePaidTypeSelect").val(paid === 'partially' ? 'partially' : 'fully').trigger('change');
+                }
+            }
+            window.applyDefaultPosPayment = applyDefaultPosPayment;
+
             $(document).ready(function() {
                 selectedItems = new Map();
                 var authToken = localStorage.getItem("authToken");
@@ -2939,7 +2974,8 @@
                 $("input[name='gst_option']").prop('checked', false);
                 $("input[name='gst_option'][value='" + (defaultGstOption || 'without') + "']").prop('checked', true).trigger('change');
 
-                // No payment method selected by default
+                // Default payment + paid type from Shop Settings
+                applyDefaultPosPayment();
 
                 function formatCurrency(amount, symbol, position) {
                     return position === 'right' ? amount + symbol : symbol + amount;
@@ -3961,34 +3997,23 @@
                                     updateBillPrintUi();
                                 }
                                 // Close current bill tab (or clear cart if tabs unavailable)
-                                $("#paidTypeBox").hide();
-                                $("#cashOnlineBox").hide();
-                                $("#paidTypeSelect").val("");
-                                $("#paidAmountBox").hide();
-                                $("#enterAmount").prop("readonly", false).val("");
-                                $("#pendingAmount").prop("readonly", true).val("");
-                                $("#debitExtraFields").hide();
                                 $("#debitBankSelect").val("");
                                 $("#debitRemark").val("");
-                                $("#scanExtraFields").hide();
                                 $("#scanBankSelect").val("");
                                 $("#scanRemark").val("");
-                                $("#cashOnlinePaidTypeSelect").val("");
-                                $("#cashOnlinePaidAmountBox").hide();
-                                $("#cashOnlineEnterAmount").val("");
-                                $("#cashOnlinePendingAmount").val("");
                                 $("#cashAmount").val("");
                                 $("#onlineAmount").val("0");
                                 $("#cashOnlineBankSelect").val("");
                                 $("#cashOnlineRemark").val("");
+                                if (typeof window.applyDefaultPosPayment === 'function') {
+                                    window.applyDefaultPosPayment();
+                                }
                                 if (typeof window.posBillTabsCloseCurrentAfterSave === 'function') {
                                     window.posBillTabsCloseCurrentAfterSave();
                                 } else {
                                     selectedItems.clear();
                                     $(".check-product i").removeClass("selected");
                                     $("input[name='customer_name'], input[name='customer_phone']").val("");
-                                    $("input[name='payment_method']").prop("checked", false);
-                                    $(".paymentmethod").removeClass("active");
                                     $("#discount").val("");
                                     updateTotalItems();
                                 }
@@ -5010,7 +5035,7 @@
                         customerName: '',
                         customerPhone: '',
                         gstOption: defaultGstOption || 'without',
-                        paymentMethod: 'pending',
+                        paymentMethod: defaultPaymentMethod || 'cash',
                         discount: '',
                         orderType: 'Self Pickup',
                         staffId: ''
@@ -5063,7 +5088,7 @@
                         customerName: $('#customer_name_input').val() || '',
                         customerPhone: $('#customer_phone').val() || '',
                         gstOption: $("input[name='gst_option']:checked").val() || 'without',
-                        paymentMethod: $("input[name='payment_method']:checked").val() || 'pending',
+                        paymentMethod: $("input[name='payment_method']:checked").val() || defaultPaymentMethod || 'cash',
                         discount: $('#discount').val() || '',
                         orderType: $('#order_type_select').val() || 'Self Pickup',
                         staffId: $('#assigned_staff_id').val() || ''
@@ -5133,13 +5158,17 @@
                     $("input[name='gst_option'][value='" + gstVal + "']").prop('checked', true).trigger('change');
 
                     resetPaymentExtras();
+                    const payVal = data.paymentMethod || defaultPaymentMethod || 'cash';
                     $("input[name='payment_method']").prop('checked', false);
                     $('.paymentmethod').removeClass('active');
-                    const payVal = data.paymentMethod || 'pending';
                     const $pay = $("input[name='payment_method'][value='" + payVal + "']");
                     if ($pay.length) {
-                        $pay.prop('checked', true);
-                        $pay.closest('a.paymentmethod, .paymentmethod').addClass('active');
+                        $pay.closest('a.paymentmethod, .paymentmethod').trigger('click');
+                    } else if (typeof window.applyDefaultPosPayment === 'function') {
+                        window.applyDefaultPosPayment();
+                    }
+                    if ($("#paidTypeSelect").length && (payVal === 'cash' || payVal === 'debit card' || payVal === 'scan')) {
+                        $("#paidTypeSelect").val(defaultPaidType || 'fully').trigger('change');
                     }
 
                     $('#discount').val(data.discount || '');
