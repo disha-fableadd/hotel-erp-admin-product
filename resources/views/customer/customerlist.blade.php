@@ -250,6 +250,7 @@
                         <option value="AC">AC</option>
                         <option value="Non AC">Non AC</option>
                         <option value="Premium">Premium</option>
+                        <option value="Rooftop">Rooftop</option>
                     </select>
                     <span class="text-danger error-edit-type"></span>
                 </div>
@@ -286,6 +287,7 @@
                         <option value="AC">AC</option>
                         <option value="Non AC">Non AC</option>
                         <option value="Premium">Premium</option>
+                        <option value="Rooftop">Rooftop</option>
                     </select>
                     <span class="text-danger error-add-type"></span>
                 </div>

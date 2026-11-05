@@ -2272,6 +2272,24 @@
                     </div>
                 </section>
             @endif
+
+            {{-- ========================= Rooftop SECTION ========================= --}}
+            @if(isset($tables['Rooftop']) && $tables['Rooftop']->count())
+                <section class="tables-zone">
+                    <div class="tables-zone__head">
+                        <h5 class="section-title">Rooftop</h5>
+                        <span class="tables-zone__count">{{ $tables['Rooftop']->count() }} tables</span>
+                    </div>
+                    <div class="table-container">
+                        @foreach($tables['Rooftop'] as $table)
+                            @include('tables.partials.table_card', [
+                                'table' => $table,
+                                'statusClass' => $tableStatusClass($table),
+                            ])
+                        @endforeach
+                    </div>
+                </section>
+            @endif
         </div>
 
     <div class="modal fade" id="tableOrderModal" tabindex="-1" aria-hidden="true">
@@ -5063,13 +5081,16 @@
                         $btn.html(originalText).prop('disabled', false);
                         if (response.status) {
                             orderId = response.order_id;
+                            var checkoutStatusClass = response.table_status_class || 'blank-table';
+                            var checkoutStatus = response.table_status || 'blank';
+                            var checkoutKeepsTable = (checkoutStatusClass === 'running-table' || checkoutStatusClass === 'printed-table');
                             if (window.selectedTableId) {
                                 updateTableCardStatus(
                                     window.selectedTableId,
-                                    response.table_status_class || 'blank-table',
-                                    response.table_status || 'blank',
-                                    (response.table_status_class === 'running-table' || response.table_status_class === 'printed-table') ? response.order_id : '',
-                                    response.total_amount
+                                    checkoutStatusClass,
+                                    checkoutStatus,
+                                    checkoutKeepsTable ? response.order_id : '',
+                                    checkoutKeepsTable ? response.total_amount : ''
                                 );
                             }
                             // Reset form
@@ -5080,14 +5101,14 @@
                                 window.applyDefaultPosPayment();
                             }
                             updateTotalItems();
-                            // Checkout = customer bill only (KOT already printed on Place/Update)
+                            // Checkout = customer bill; fully paid → free table (do not re-occupy via markBillPrinted)
                             if (tableOrderModal) tableOrderModal.hide();
                             var billOrderId = response.order_id || orderId;
                             if (billOrderId && typeof window.showBillGeneratedModal === 'function') {
                                 window.showBillGeneratedModal(billOrderId, {
                                     reloadOnClose: true,
                                     printKot: false,
-                                    markBillPrinted: true,
+                                    markBillPrinted: checkoutKeepsTable,
                                     tableId: window.selectedTableId || null
                                 });
                             } else if (billOrderId) {

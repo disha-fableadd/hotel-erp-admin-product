@@ -2324,6 +2324,7 @@
                                     <option value="AC">AC</option>
                                     <option value="Non AC">Non AC</option>
                                     <option value="Premium">Premium</option>
+                                    <option value="Rooftop">Rooftop</option>
                                 </select>
                             </div>
                         </div>

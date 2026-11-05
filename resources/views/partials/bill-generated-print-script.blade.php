@@ -216,15 +216,17 @@
                     success: function(res) {
                         if (!res || !res.status) return;
                         var tid = opts.tableId || res.table_id || window.selectedTableId;
-                        if (tid && typeof window.updateTableCardStatus === 'function') {
-                            window.updateTableCardStatus(
-                                tid,
-                                res.table_status_class || 'printed-table',
-                                res.table_status || 'printed',
-                                res.order_id || orderId,
-                                res.total_amount
-                            );
-                        }
+                        if (!tid || typeof window.updateTableCardStatus !== 'function') return;
+                        var cls = res.table_status_class || 'printed-table';
+                        var st = res.table_status || 'printed';
+                        var keep = (cls === 'running-table' || cls === 'printed-table');
+                        window.updateTableCardStatus(
+                            tid,
+                            cls,
+                            st,
+                            keep ? (res.order_id || orderId) : '',
+                            keep ? res.total_amount : ''
+                        );
                     }
                 });
             } catch (e) {}

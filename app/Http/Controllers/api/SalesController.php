@@ -160,7 +160,8 @@ class SalesController extends Controller
     }
 
     /**
-     * Mark dine-in customer bill as printed → table turns yellow until settled / items change.
+     * Mark dine-in customer bill as printed → yellow while awaiting settlement.
+     * Fully paid / already closed table orders stay free (do not re-occupy).
      */
     public function markBillPrinted(Request $request, $id)
     {
@@ -169,11 +170,14 @@ class SalesController extends Controller
             return response()->json(['status' => false, 'message' => 'Order not found'], 404);
         }
 
+        $isSettled = in_array(strtolower((string) ($order->payment_status ?? '')), ['completed', 'paid'], true)
+            && (float) ($order->remaining_amount ?? 0) <= 0.00001;
+
         if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
             $order->bill_printed = 1;
-            // Keep table order active while awaiting settlement
             if (! empty($order->table_no)) {
-                $order->table_status = 1;
+                // Only keep table occupied (yellow) when bill is unpaid / partial
+                $order->table_status = $isSettled ? 0 : 1;
             }
             $order->save();
         }
@@ -187,8 +191,8 @@ class SalesController extends Controller
             'status' => true,
             'order_id' => $order->id,
             'table_id' => $order->table_no,
-            'table_status' => $tableSync['status'] ?? null,
-            'table_status_class' => $tableSync['class'] ?? null,
+            'table_status' => $tableSync['status'] ?? Table_no::STATUS_BLANK,
+            'table_status_class' => $tableSync['class'] ?? 'blank-table',
             'total_amount' => $order->total_amount,
         ]);
     }
