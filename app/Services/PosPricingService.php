@@ -9,6 +9,9 @@ use App\Models\ProductVariant;
 use App\Models\TaxRate;
 use Illuminate\Support\Facades\Schema;
 
+// Category GST cache for a single request
+// (see categoryGstApplicable)
+
 class PosPricingService
 {
     /**
@@ -31,6 +34,36 @@ class PosPricingService
         }
 
         return Category::where('id', $id)->exists() ? $id : null;
+    }
+
+    /**
+     * Whether GST should apply for products in this category.
+     * Missing column / unknown category → true (legacy behaviour).
+     */
+    public static function categoryGstApplicable($categoryId): bool
+    {
+        static $cache = [];
+
+        if ($categoryId === null || $categoryId === '' || ! is_numeric($categoryId)) {
+            return true;
+        }
+
+        $id = (int) $categoryId;
+        if (array_key_exists($id, $cache)) {
+            return $cache[$id];
+        }
+
+        if (! Schema::hasColumn('categories', 'gst_applicable')) {
+            return $cache[$id] = true;
+        }
+
+        $val = Category::where('id', $id)->value('gst_applicable');
+        if ($val === null) {
+            // Category row missing — keep GST (safer for uncategorized / deleted)
+            return $cache[$id] = true;
+        }
+
+        return $cache[$id] = (bool) $val;
     }
 
     public function resolveLine(array $item): array
@@ -114,6 +147,20 @@ class PosPricingService
         }
 
         $snap = self::taxSnapshotFromProduct($product);
+        $categoryId = self::safeCategoryId(
+            $item['categoryId'] ?? $item['category_id'] ?? $product->category_id
+        );
+        $gstApplicable = self::categoryGstApplicable($categoryId);
+
+        // Category not marked for GST → do not charge / snapshot tax on this line
+        if (! $gstApplicable) {
+            $snap = [
+                'tax_id' => null,
+                'tax_name' => null,
+                'tax_rate' => null,
+                'tax_inclusive' => false,
+            ];
+        }
 
         return [
             'product' => $product,
@@ -125,9 +172,8 @@ class PosPricingService
             'item_discount_percent' => $itemDiscPct,
             'item_discount_amount' => $itemDiscAmt,
             'line_total' => $lineTotal,
-            'category_id' => self::safeCategoryId(
-                $item['categoryId'] ?? $item['category_id'] ?? $product->category_id
-            ),
+            'category_id' => $categoryId,
+            'gst_applicable' => $gstApplicable,
             'quantity_type_id' => $qtyTypeId,
             'quantity' => $qty,
             'tax_id' => $snap['tax_id'],
@@ -260,9 +306,18 @@ class PosPricingService
         $overallName = trim((string) ($options['overall_gst_name'] ?? 'GST')) ?: 'GST';
 
         if ($withGst && $subtotal > 0 && $mode === 'overall') {
-            // One rate on the whole bill (after discount)
-            if ($overallRate > 0) {
-                $taxTotal = round($afterDiscount * ($overallRate / 100), 2);
+            // Overall rate only on lines whose category is GST-applicable
+            $gstBase = 0.0;
+            foreach ($resolvedLines as $line) {
+                if (! ($line['gst_applicable'] ?? true)) {
+                    continue;
+                }
+                $lineTotal = (float) ($line['line_total'] ?? 0);
+                $gstBase += round($lineTotal * (1 - ($discountPercent / 100)), 2);
+            }
+            $gstBase = round($gstBase, 2);
+            if ($overallRate > 0 && $gstBase > 0) {
+                $taxTotal = round($gstBase * ($overallRate / 100), 2);
                 $taxBreakdown[] = [
                     'id' => null,
                     'name' => $overallName,
@@ -273,6 +328,9 @@ class PosPricingService
         } elseif ($withGst && $subtotal > 0) {
             // Product-wise: prefer line snapshot (sale-time), else live product.tax_id.
             foreach ($resolvedLines as $line) {
+                if (! ($line['gst_applicable'] ?? true)) {
+                    continue;
+                }
                 $snap = self::resolveLineTax($line);
                 if ($snap['tax_id'] === null && $snap['tax_rate'] === null) {
                     continue;
@@ -476,8 +534,11 @@ class PosPricingService
         $resolvedLines = [];
 
         foreach ($orderItems as $item) {
+            $categoryId = $item->category_id ?? optional($item->product)->category_id ?? null;
             $line = [
                 'line_total' => (float) ($item->total_amount ?? 0),
+                'category_id' => $categoryId,
+                'gst_applicable' => self::categoryGstApplicable($categoryId),
             ];
 
             $hasItemSnap = $hasSnapCol && (
@@ -500,6 +561,13 @@ class PosPricingService
                 $line['product'] = $product;
             }
             // else: snapshot columns exist but this old row has none → do not use live product tax
+
+            if (! ($line['gst_applicable'] ?? true)) {
+                $line['tax_id'] = null;
+                $line['tax_name'] = null;
+                $line['tax_rate'] = null;
+                $line['tax_inclusive'] = false;
+            }
 
             $resolvedLines[] = $line;
         }

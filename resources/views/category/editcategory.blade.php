@@ -58,6 +58,19 @@
                     <div class="col-12">
                         <div class="col-lg-12">
                             <div class="form-group">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="gst_applicable" name="gst_applicable" value="1"
+                                        {{ (($category->gst_applicable ?? true) ? 'checked' : '') }}>
+                                    <label class="form-check-label" for="gst_applicable"><strong>Apply GST</strong> on products in this category</label>
+                                </div>
+                                <small class="text-muted">When With GST is selected on the bill, tax is charged only for categories with this enabled.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="col-lg-12">
+                            <div class="form-group">
                                 <label for="category_image">Category Image</label>
                                 <div class="image-upload">
                                     <input type="file" name="image" id="image" class="form-control">
@@ -109,6 +122,7 @@
             var authToken = localStorage.getItem("authToken");
             const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
             let formData = new FormData($('#categoryForm')[0]);
+            formData.set('gst_applicable', $('#gst_applicable').is(':checked') ? '1' : '0');
             if (selectedSubAdminId) {
                 formData.append("sub_admin_id", selectedSubAdminId);
             }

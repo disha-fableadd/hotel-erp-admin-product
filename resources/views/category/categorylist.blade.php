@@ -391,6 +391,7 @@
                                 <tr>
                                     <th>Category Name</th>
                                     <th class="details-column">Details</th>
+                                    <th>Apply GST</th>
                                     <th>Created At</th>
                                     <th>Action</th>
                                 </tr>
@@ -469,7 +470,7 @@
                                                 </div>
                                                 <div class="category-mobile-info">
                                                     <div class="category-mobile-name" title="${escapedCategoryName}">${escapedCategoryName}</div>
-                                                    <div class="category-mobile-date">Created ${createdAt}</div>
+                                                    <div class="category-mobile-date">Created ${createdAt} · GST ${category.gst_applicable === false || category.gst_applicable === 0 || category.gst_applicable === '0' ? 'Off' : 'On'}</div>
                                                 </div>
                                             </div>
                                             <div class="category-mobile-actions">
@@ -494,6 +495,7 @@
                                             <div class="collapse mt-2 d-lg-none" id="details-${category.id}">
                                                 <div class=" card-body p-2 ">
                                                     <p class="mb-1"><strong>Created At:</strong> ${createdAt}</p>
+                                                    <p class="mb-1"><strong>Apply GST:</strong> ${category.gst_applicable === false || category.gst_applicable === 0 || category.gst_applicable === '0' ? 'Off' : 'On'}</p>
                                                     <div class="mt-2">
                                                         ${getActionButtons(category.id)}
                                                     </div>
@@ -504,10 +506,13 @@
                                         // Column 2: Details Toggle (only for mobile)
                                         detailsToggle,
 
-                                        // Column 3: Created At (hidden on mobile)
+                                        // Column 3: Apply GST switch
+                                        gstToggleHtml(category),
+
+                                        // Column 4: Created At (hidden on mobile)
                                         createdAt,
 
-                                        // Column 4: Action Buttons (hidden on mobile)
+                                        // Column 5: Action Buttons (hidden on mobile)
                                         getActionButtons(category.id)
                                     ]);
                                 });
@@ -532,7 +537,7 @@
                                 }
                             } else {
                                 table.clear().draw();
-                                $(".datanew tbody").html('<tr><td colspan="4" class="dataTables_empty">No categories found</td></tr>');
+                                $(".datanew tbody").html('<tr><td colspan="5" class="dataTables_empty">No categories found</td></tr>');
                             }
                         },
                         error: function(xhr) {
@@ -540,6 +545,64 @@
                         },
                     });
                 }
+
+                function gstToggleHtml(category) {
+                    const checked = !(category.gst_applicable === false || category.gst_applicable === 0 || category.gst_applicable === '0');
+                    return `<div class="form-check form-switch m-0 d-flex align-items-center justify-content-start">
+                        <input class="form-check-input js-category-gst-toggle" type="checkbox" role="switch"
+                            data-id="${category.id}" ${checked ? 'checked' : ''}
+                            title="When enabled, GST applies to products in this category">
+                        <label class="form-check-label ms-2" style="font-size:12px;font-weight:600;color:${checked ? '#16a34a' : '#94a3b8'};">
+                            ${checked ? 'On' : 'Off'}
+                        </label>
+                    </div>`;
+                }
+
+                $(document).on('change', '.js-category-gst-toggle', function () {
+                    const $el = $(this);
+                    const id = $el.data('id');
+                    const enabled = $el.is(':checked');
+                    $el.prop('disabled', true);
+                    $.ajax({
+                        url: '/api/categories/' + id + '/gst-applicable',
+                        type: 'POST',
+                        dataType: 'json',
+                        headers: {
+                            'Authorization': 'Bearer ' + authToken,
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        },
+                        data: {
+                            gst_applicable: enabled ? 1 : 0,
+                            selectedSubAdminId: selectedSubAdminId || ''
+                        },
+                        success: function (res) {
+                            $el.prop('disabled', false);
+                            if (res && res.status) {
+                                const on = !!res.gst_applicable;
+                                $el.prop('checked', on);
+                                $el.closest('.form-check').find('.form-check-label')
+                                    .text(on ? 'On' : 'Off')
+                                    .css('color', on ? '#16a34a' : '#94a3b8');
+                            } else {
+                                $el.prop('checked', !enabled);
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: (res && res.message) ? res.message : 'Could not update GST setting.',
+                                    confirmButtonColor: '#ff9f43'
+                                });
+                            }
+                        },
+                        error: function (xhr) {
+                            $el.prop('disabled', false);
+                            $el.prop('checked', !enabled);
+                            const msg = (xhr.responseJSON && xhr.responseJSON.message)
+                                ? xhr.responseJSON.message
+                                : 'Could not update GST setting.';
+                            Swal.fire({ icon: 'error', title: 'Error', text: msg, confirmButtonColor: '#ff9f43' });
+                        }
+                    });
+                });
 
                 // Helper function to generate action buttons
                 function getActionButtons(categoryId) {

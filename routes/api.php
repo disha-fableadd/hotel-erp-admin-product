@@ -174,6 +174,7 @@ Route::middleware(['auth.api'])->group(function () {
     Route::post('addcategory', [CategoryController::class, 'addcategory'])->name('addcategory');
     Route::post('deleteCategory/{id}', [CategoryController::class, 'deleteCategory'])->name('deleteCategory');
     Route::post('updatecategory', [CategoryController::class, 'updatecategory'])->name('updatecategory');
+    Route::post('categories/{id}/gst-applicable', [CategoryController::class, 'toggleGstApplicable'])->name('categories.toggle_gst');
 
     Route::get('getAllBrand', [BrandController::class, 'getAllBrand'])->name('getAllBrand');
     Route::post('addBrand', [BrandController::class, 'addBrand'])->name('addBrand');

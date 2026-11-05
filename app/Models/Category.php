@@ -11,6 +11,7 @@ class Category extends Model
     use HasFactory;
     protected $fillable = [
         'name',
+        'gst_applicable',
         'image',
         'branch_id',
         'isDeleted',
@@ -19,7 +20,22 @@ class Category extends Model
         'updated_at',
     ];
 
+    protected $casts = [
+        'gst_applicable' => 'boolean',
+        'isDeleted' => 'integer',
+    ];
+
     protected $appends = ['image_url'];
+
+    /** Whether products in this category should receive GST when billing With GST. */
+    public function appliesGst(): bool
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasColumn($this->getTable(), 'gst_applicable')) {
+            return true;
+        }
+
+        return $this->gst_applicable !== false;
+    }
 
     public function products()
     {

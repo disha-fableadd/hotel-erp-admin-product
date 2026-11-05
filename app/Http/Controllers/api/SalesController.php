@@ -613,6 +613,9 @@ class SalesController extends Controller
                     'image_url' => $product->image_url,
                     'categoryId' => $product->category_id,
                     'category_name' => $product->category ? $product->category->name : 'Uncategorized',
+                    'gst_applicable' => $product->category
+                        ? (method_exists($product->category, 'appliesGst') ? $product->category->appliesGst() : true)
+                        : true,
                     'product_kind' => $product->product_kind ?? 'general',
                     'food_type' => $product->food_type ?? 'na',
                     'track_inventory' => $product->tracksInventory(),
@@ -2106,7 +2109,7 @@ class SalesController extends Controller
 
         $withGst = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
         $orderItemModels = OrderItem::where('order_id', $id)
-            ->with(['product.tax', 'quantityType', 'variant'])
+            ->with(['product.tax', 'product.category', 'quantityType', 'variant'])
             ->get();
         $frozenBreakdown = is_array($sales->tax_breakdown ?? null) ? $sales->tax_breakdown : [];
         if (! empty($frozenBreakdown)) {
@@ -2130,7 +2133,7 @@ class SalesController extends Controller
             ];
         })->values();
 
-        $orderItems = $orderItemModels->map(function ($item) use ($withGst) {
+        $orderItems = $orderItemModels->map(function ($item) use ($withGst, $sales) {
                 $addonRows = is_array($item->addons) ? $item->addons : [];
                 $addonIds = [];
                 $addonNames = [];
@@ -2162,6 +2165,10 @@ class SalesController extends Controller
                     ? ''
                     : PosPricingService::itemGstLabel($item, $withGst);
 
+                $catId = $item->category_id
+                    ?? optional($item->product)->category_id;
+                $gstApplicable = PosPricingService::categoryGstApplicable($catId);
+
                 return [
                     'id' => $item->id,
                     'product' => $item->product,
@@ -2173,6 +2180,7 @@ class SalesController extends Controller
                     'addon_names' => $addonNames,
                     'display_name' => $displayName,
                     'gst_label' => $gstLabel,
+                    'gst_applicable' => $gstApplicable,
                     'category_id' => $item->category_id,
                     'quantity' => $item->quantity,
                     'quantity_type' => $item->quantityType,

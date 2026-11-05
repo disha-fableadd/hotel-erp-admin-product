@@ -3201,13 +3201,27 @@
                         if (gstOption === "with" && subtotal > 0) {
                             if (gstApplyMode === 'overall') {
                                 const rate = parseFloat(overallGstRate) || 0;
-                                const amount = priceAfterDiscount * (rate / 100);
+                                let gstBase = 0;
+                                selectedItems.forEach(function(item) {
+                                    if (item.gst_applicable === false || item.gst_applicable === 0 || item.gst_applicable === '0') {
+                                        return;
+                                    }
+                                    const price = parseFloat(String(item.price).replace(/[^0-9.-]+/g, "")) || 0;
+                                    const gross = price * item.quantity;
+                                    const discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
+                                    const lineNet = gross - (gross * discPct / 100);
+                                    gstBase += lineNet * (1 - (discountPercentage / 100));
+                                });
+                                const amount = gstBase * (rate / 100);
                                 const rateMap = {};
                                 rateMap[String(rate)] = amount;
                                 renderCgstSgstFromAgg(rateMap);
                         } else {
                                 const rateMap = {};
                                 selectedItems.forEach(function(item) {
+                                    if (item.gst_applicable === false || item.gst_applicable === 0 || item.gst_applicable === '0') {
+                                        return;
+                                    }
                                     const taxId = item.tax_id || null;
                                     const taxRatePct = parseFloat(item.tax_rate);
                                     if (!taxId || isNaN(taxRatePct)) {
@@ -3431,6 +3445,7 @@
                         tax_rate: pendingPosProduct.tax_rate != null ? pendingPosProduct.tax_rate : null,
                         tax_name: pendingPosProduct.tax_name || null,
                         tax_inclusive: !!pendingPosProduct.tax_inclusive,
+                        gst_applicable: pendingPosProduct.gst_applicable !== false && pendingPosProduct.gst_applicable !== 0 && pendingPosProduct.gst_applicable !== '0',
                         uniqueId: uniqueId
                     });
 
@@ -3544,6 +3559,7 @@
                     productTaxRate = (productTaxRate === '' || productTaxRate == null) ? null : parseFloat(productTaxRate);
                     var productTaxName = ($product.attr("data-tax-name") || '').toString().trim() || null;
                     var productTaxInclusive = $product.data("tax-inclusive") === 1 || $product.data("tax-inclusive") === '1';
+                    var productGstApplicable = !($product.attr("data-gst-applicable") === '0' || $product.data("gst-applicable") === 0 || $product.data("gst-applicable") === '0');
                     var quantity_type_id = $product.data("quantity_type_id") || quantity_type123 || quantity_type;
                     if (quantity_type_id && ['undefined', 'null'].includes(quantity_type_id.toString().toLowerCase())) {
                         quantity_type_id = "";
@@ -3567,7 +3583,8 @@
                         tax_id: productTaxId,
                         tax_rate: productTaxRate,
                         tax_name: productTaxName,
-                        tax_inclusive: productTaxInclusive
+                        tax_inclusive: productTaxInclusive,
+                        gst_applicable: productGstApplicable
                     };
 
                     function addPlainOrIncrease() {
@@ -3596,7 +3613,8 @@
                                 tax_id: productTaxId,
                                 tax_rate: productTaxRate,
                                 tax_name: productTaxName,
-                                tax_inclusive: productTaxInclusive
+                                tax_inclusive: productTaxInclusive,
+                                gst_applicable: productGstApplicable
                         });
                         $checkIcon.addClass("selected");
                         updateTotalItems();
@@ -4251,7 +4269,7 @@
                             var safeNoImage = escapeHtmlAttr(POS_NO_IMAGE);
                             productsHtml += `
                                         <div class="col-lg-3 col-sm-6 d-flex position-relative">
-                                            <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-tax-id="${product.tax_id || ''}" data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}" data-tax-name="${escapeHtmlAttr(product.tax_name || '')}" data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
+                                            <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-tax-id="${product.tax_id || ''}" data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}" data-tax-name="${escapeHtmlAttr(product.tax_name || '')}" data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}" data-gst-applicable="${product.gst_applicable === false || product.gst_applicable === 0 || product.gst_applicable === '0' ? '0' : '1'}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                 ${outOfStockBadge}
                                                 ${hasOptionsBadge}
                                                 <div class="productsetimg">
@@ -4426,6 +4444,7 @@
                                     data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}"
                                     data-tax-name="${escapeHtmlAttr(product.tax_name || '')}"
                                     data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}"
+                                    data-gst-applicable="${product.gst_applicable === false || product.gst_applicable === 0 || product.gst_applicable === '0' ? '0' : '1'}"
                                     data-category="${product.category_id || product.categoryId || 0}">+ Add</button>
                                         </div>
                                     `);
@@ -4546,6 +4565,7 @@
                     searchTaxRate = (searchTaxRate === '' || searchTaxRate == null) ? null : parseFloat(searchTaxRate);
                     var searchTaxName = ($btn.attr("data-tax-name") || '').toString().trim() || null;
                     var searchTaxInclusive = $btn.data("tax-inclusive") === 1 || $btn.data("tax-inclusive") === '1';
+                    var searchGstApplicable = !($btn.attr("data-gst-applicable") === '0' || $btn.data("gst-applicable") === 0 || $btn.data("gst-applicable") === '0');
 
                     const meta = {
                         productId: productId,
@@ -4561,7 +4581,8 @@
                         tax_id: searchTaxId,
                         tax_rate: searchTaxRate,
                         tax_name: searchTaxName,
-                        tax_inclusive: searchTaxInclusive
+                        tax_inclusive: searchTaxInclusive,
+                        gst_applicable: searchGstApplicable
                     };
 
                     if ((variants.length || addons.length) && typeof window.openPosOptionModal === 'function') {
@@ -4592,7 +4613,8 @@
                             tax_id: searchTaxId,
                             tax_rate: searchTaxRate,
                             tax_name: searchTaxName,
-                            tax_inclusive: searchTaxInclusive
+                            tax_inclusive: searchTaxInclusive,
+                            gst_applicable: searchGstApplicable
                         });
                         updateTotalItems();
                     }

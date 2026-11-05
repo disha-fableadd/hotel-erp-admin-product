@@ -83,12 +83,21 @@ class CategoryController extends Controller
             $imagePath = $request->file('image')->store('img/category', 'public'); // Save in storage/app/public/img/category
         }
 
+        $gstApplicable = $request->has('gst_applicable')
+            ? filter_var($request->input('gst_applicable'), FILTER_VALIDATE_BOOLEAN)
+            : true;
+
         // Save category data
-        $category = Category::create([
+        $payload = [
             'name'  => $request->name,
             'image' => $imagePath, // Store image path in DB
             'branch_id' => $branchIdToUse, // Store branch_id
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('categories', 'gst_applicable')) {
+            $payload['gst_applicable'] = $gstApplicable;
+        }
+
+        $category = Category::create($payload);
 
         return response()->json(['status' => true, 'category' => $category], 200);
     }
@@ -167,12 +176,50 @@ class CategoryController extends Controller
         }
 
         // Update category
-        $category->update([
+        $payload = [
             'name'  => $request->name,
             'image' => $imagePath,
-            // branch_id is typically not updated here, but it could be if needed.
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('categories', 'gst_applicable') && $request->has('gst_applicable')) {
+            $payload['gst_applicable'] = filter_var($request->input('gst_applicable'), FILTER_VALIDATE_BOOLEAN);
+        }
+
+        $category->update($payload);
 
         return response()->json(['status' => true, 'category' => $category], 200);
+    }
+
+    /**
+     * Toggle GST applicable for a category (list switch).
+     */
+    public function toggleGstApplicable(Request $request, $id)
+    {
+        $category = Category::where('id', $id)->where('isDeleted', 0)->first();
+        if (! $category) {
+            return response()->json(['status' => false, 'message' => 'Category not found'], 404);
+        }
+
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('categories', 'gst_applicable')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Please run migrations to enable category GST setting.',
+            ], 422);
+        }
+
+        $value = $request->has('gst_applicable')
+            ? filter_var($request->input('gst_applicable'), FILTER_VALIDATE_BOOLEAN)
+            : ! (bool) $category->gst_applicable;
+
+        $category->gst_applicable = $value;
+        $category->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => $value
+                ? 'GST will apply to products in this category.'
+                : 'GST will not apply to products in this category.',
+            'gst_applicable' => (bool) $category->gst_applicable,
+            'category' => $category,
+        ]);
     }
 }
