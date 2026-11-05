@@ -40,20 +40,26 @@
 
         /* ===== Table Order Modal (POS) ===== */
         #tableOrderModal .modal-dialog {
-            max-width: 1200px !important;
-            margin: 1rem auto;
+            max-width: min(1680px, calc(100vw - 1.5rem)) !important;
+            width: calc(100vw - 1.5rem) !important;
+            margin: 0.55rem auto !important;
+            height: calc(100vh - 1.1rem);
+            max-height: calc(100vh - 1.1rem);
         }
 
         #tableOrderModal .modal-content {
-            border-radius: 18px !important;
+            border-radius: 14px !important;
             background: #ffffff;
-            max-height: calc(100vh - 2rem);
+            height: 100%;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         #tableOrderModal .modal-header {
             background: #ffffff;
             border-bottom: 1px solid #eef2f7;
-            padding: 0.9rem 1.15rem;
+            padding: 0.75rem 1rem;
             flex-shrink: 0;
         }
 
@@ -68,14 +74,20 @@
 
         #tableOrderModal .modal-body {
             background: #f4f6f9;
-            padding: 12px !important;
+            padding: 10px !important;
             overflow: hidden;
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
         }
 
         #tableOrderModal .table-order-layout {
             align-items: stretch;
             margin: 0 !important;
-            height: min(78vh, 720px);
+            flex: 1 1 auto;
+            min-height: 0;
+            height: 100%;
         }
 
         #tableOrderModal .table-order-layout > [class*="col-"] {
@@ -1611,6 +1623,26 @@
             padding: 10px;
         }
 
+        @media (max-width: 991.98px) {
+            #tableOrderModal .modal-dialog {
+                width: calc(100vw - 0.75rem) !important;
+                max-width: calc(100vw - 0.75rem) !important;
+                height: calc(100vh - 0.75rem);
+                max-height: calc(100vh - 0.75rem);
+                margin: 0.35rem auto !important;
+            }
+
+            #tableOrderModal .table-order-layout {
+                height: auto;
+                overflow-y: auto;
+            }
+
+            #tableOrderModal .table-order-layout > [class*="col-"] {
+                height: auto;
+                min-height: 42vh;
+            }
+        }
+
         @media (max-width: 768px) {
             .modal-lg, .modal-xl {
                 max-width: 100% !important;
@@ -1620,6 +1652,18 @@
             .modal-dialog {
                 margin: 0.5rem !important;
                 max-width: calc(100vw - 1rem) !important;
+            }
+
+            #tableOrderModal .modal-dialog {
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 100vh;
+                max-height: 100vh;
+                margin: 0 !important;
+            }
+
+            #tableOrderModal .modal-content {
+                border-radius: 0 !important;
             }
 
             .modal-body .col-lg-7,
@@ -2449,7 +2493,7 @@
         </div>
 
     <div class="modal fade" id="tableOrderModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
 
                 <div class="modal-header d-flex align-items-center justify-content-between">
@@ -2473,8 +2517,8 @@
                 </div>
 
                 <div class="modal-body">
-                    <div class="row g-3 table-order-layout">
-                    <div class="col-lg-7 col-sm-12 tabs_wrapper">
+                    <div class="row g-2 table-order-layout">
+                    <div class="col-xl-8 col-lg-7 col-sm-12 tabs_wrapper">
 
                         @php
                             $hasProducts = false;
@@ -2548,7 +2592,7 @@
                         </div>
                         <div id="tableProductSearchResults" aria-live="polite"></div>
                     </div>
-                    <div class="col-lg-5 col-sm-12 ">
+                    <div class="col-xl-4 col-lg-5 col-sm-12">
 
                         <div class="card card-order">
                             <div class="card-body body_space">
@@ -4344,7 +4388,7 @@
                         var basePriceNum = parseFloat(product.price || 0).toFixed(2);
 
                         productsHtml += `
-                                                    <div class="col-lg-4 col-md-6 col-sm-6 d-flex position-relative product-card-col">
+                                                    <div class="col-xxl-3 col-xl-3 col-lg-4 col-md-6 col-sm-6 d-flex position-relative product-card-col">
                                                         <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-tax-id="${product.tax_id || ''}" data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}" data-tax-name="${escapeHtmlAttr(product.tax_name || (product.tax && product.tax.tax_name) || '')}" data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}" data-gst-applicable="${product.gst_applicable === false || product.gst_applicable === 0 || product.gst_applicable === '0' ? '0' : '1'}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                             ${outOfStockBadge}
                                                             <div class="productsetimg">
