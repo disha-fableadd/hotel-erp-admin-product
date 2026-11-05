@@ -68,8 +68,8 @@
                 <i class="fa fa-edit me-1"></i> Edit
             </a>
             @endif
-            <!-- ✅ Print Invoice -->
-            <a href="{{ route('sales.invoice.pdf', $view_id) }}" target="_blank" class="btn btn-primary">
+            <!-- ✅ Print Invoice — same Bill Generated dialog as POS / All Orders -->
+            <a href="javascript:void(0);" class="btn btn-primary js-print-invoice" data-order-id="{{ $view_id }}">
                 <i class="fa fa-print me-1"></i> Print
             </a>
 
@@ -334,9 +334,24 @@
         </div>
     </div>
 </div>
+
+@include('partials.bill-generated-modal')
 @endsection
 @push('js')
+@include('partials.invoice-qz-print-script')
+@include('partials.bill-generated-print-script')
 <script>
+    $(document).on('click', '.js-print-invoice', function(e) {
+        e.preventDefault();
+        var orderId = parseInt($(this).data('order-id') || $('#selse_id').val(), 10);
+        if (!orderId) return;
+        if (typeof window.showBillGeneratedModal === 'function') {
+            window.showBillGeneratedModal(orderId, { printKot: false, reloadOnClose: false });
+        } else {
+            window.open('/sales/invoice/pdf/' + orderId + '?size=small', '_blank');
+        }
+    });
+
     $(document).ready(function() {
         var authToken = localStorage.getItem("authToken");
         const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");

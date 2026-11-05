@@ -1790,12 +1790,32 @@
         </div>
     </div>
 </div>
+
+@include('partials.bill-generated-modal')
 @endsection
 
 @push('js')
+@include('partials.invoice-qz-print-script')
+@include('partials.bill-generated-print-script')
 <script>
     const userRole = "{{ auth()->user()->role }}";
     const staffList = {!! json_encode($staffList ?? []) !!};
+
+    window.openOrderInvoicePrint = function(orderId) {
+        orderId = parseInt(orderId, 10);
+        if (!orderId) return;
+        if (typeof window.showBillGeneratedModal === 'function') {
+            window.showBillGeneratedModal(orderId, { printKot: false, reloadOnClose: false });
+            return;
+        }
+        window.open('/sales/invoice/pdf/' + orderId + '?size=small', '_blank');
+    };
+
+    $(document).on('click', '.order-print-btn, .js-print-invoice', function(e) {
+        e.preventDefault();
+        var id = $(this).data('order-id') || $(this).attr('data-order-id');
+        if (id) window.openOrderInvoicePrint(id);
+    });
 </script>
 
 <script>
@@ -2876,7 +2896,7 @@
                         invoiceBtnHtml = `<a class="dd-item" href="/sales-invoice/${order.id}">
                             <span class="dd-icon"><i class="fas fa-file-download" style="color:#6f42c1"></i></span> Invoice
                         </a>
-                        <a class="dd-item" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');">
+                        <a class="dd-item js-print-invoice" href="javascript:void(0);" data-order-id="${order.id}">
                             <span class="dd-icon"><i class="fas fa-print" style="color:#495057"></i></span> Print Invoice
                         </a>`;
                         @endif
@@ -2910,7 +2930,7 @@
                         `;
 
                         let actionBtns = `
-                            <a class="order-print-btn" href="/sales/invoice/pdf/${order.id}?size=small" target="_blank" rel="noopener" title="Print small receipt">
+                            <a class="order-print-btn" href="javascript:void(0);" data-order-id="${order.id}" title="Print invoice">
                                 <i class="fas fa-print"></i>
                             </a>
                             ${quickBtns}
@@ -3471,7 +3491,7 @@
             invBtnHtml2 = `<a class="dd-item" href="/sales-invoice/${order.id}">
                 <span class="dd-icon"><i class="fas fa-file-download" style="color:#6f42c1"></i></span> Invoice
             </a>
-            <a class="dd-item" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');">
+            <a class="dd-item js-print-invoice" href="javascript:void(0);" data-order-id="${order.id}">
                 <span class="dd-icon"><i class="fas fa-print" style="color:#495057"></i></span> Print Invoice
             </a>`;
             @endif
@@ -3491,7 +3511,7 @@
                 </a>
             `;
             let actionBtns = `
-                <a class="order-print-btn" href="/sales/invoice/pdf/${order.id}?size=small" target="_blank" rel="noopener" title="Print small receipt">
+                <a class="order-print-btn" href="javascript:void(0);" data-order-id="${order.id}" title="Print invoice">
                     <i class="fas fa-print"></i>
                 </a>
                 ${quickBtns2}
@@ -3630,7 +3650,7 @@
             invBtnHtml3 = `<a class="dd-item" href="/sales-invoice/${order.id}">
                 <span class="dd-icon"><i class="fas fa-file-download" style="color:#6f42c1"></i></span> Invoice
             </a>
-            <a class="dd-item" href="javascript:void(0);" onclick="window.open('/sales/invoice/pdf/' + ${order.id} + '?size=small');">
+            <a class="dd-item js-print-invoice" href="javascript:void(0);" data-order-id="${order.id}">
                 <span class="dd-icon"><i class="fas fa-print" style="color:#495057"></i></span> Print Invoice
             </a>`;
             @endif
@@ -3649,7 +3669,7 @@
                 </a>
             `;
             let actionBtns = `
-                <a class="order-print-btn" href="/sales/invoice/pdf/${order.id}?size=small" target="_blank" rel="noopener" title="Print small receipt">
+                <a class="order-print-btn" href="javascript:void(0);" data-order-id="${order.id}" title="Print invoice">
                     <i class="fas fa-print"></i>
                 </a>
                 ${quickBtns3}
