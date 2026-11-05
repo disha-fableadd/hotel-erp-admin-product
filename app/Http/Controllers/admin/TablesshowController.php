@@ -106,9 +106,17 @@ class TablesshowController extends Controller
             })
             ->where('isDeleted', 0)
             ->orderBy('table_type')
-            ->orderBy('table_name')
             ->get()
-            ->groupBy('table_type'); // Gives → ['ac'=>[], 'nonac'=>[], 'premium'=>[]]
+            // Natural numeric order: Table 1, 2, 3… (not 1, 10, 11…)
+            ->sortBy(function ($table) {
+                $name = (string) ($table->table_name ?? '');
+                preg_match('/(\d+)/', $name, $m);
+                $num = isset($m[1]) ? (int) $m[1] : PHP_INT_MAX;
+
+                return sprintf('%010d-%s', $num, mb_strtolower($name));
+            })
+            ->values()
+            ->groupBy('table_type'); // Gives → ['AC'=>[], 'Non AC'=>[], 'Premium'=>[], 'Rooftop'=>[]]
 
         $tableCollection = $tables->flatten();
         $runningOrders = Order::whereIn('table_no', $tableCollection->pluck('id'))

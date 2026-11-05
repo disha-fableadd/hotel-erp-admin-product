@@ -203,16 +203,18 @@ class CustomerController extends Controller
                         'required',
                         'string',
                         'max:255',
+                        // Same name allowed for different types (e.g. Table 1 AC + Table 1 Rooftop)
                         Rule::unique('table_no', 'table_name')
-                        ->where(function ($query) use ($branchId) {
+                        ->where(function ($query) use ($branchId, $request) {
                             return $query->where('branch_id', $branchId)
+                                ->where('table_type', $request->table_type)
                                 ->where('isDeleted', 0);
                         }),
                 ],
                 'table_type' => 'required|string|max:50',
             ],
             [
-                'table_name.unique' => 'This table name already exists in this branch.',
+                'table_name.unique' => 'This table name already exists for this type in this branch.',
             ]
         );
 
@@ -306,17 +308,19 @@ class CustomerController extends Controller
                     'required',
                     'string',
                     'max:255',
+                    // Same name allowed for different types (e.g. Table 1 AC + Table 1 Rooftop)
                     Rule::unique('table_no', 'table_name')
                         ->ignore($table->id)
-                        ->where(function ($query) use ($table) {
+                        ->where(function ($query) use ($table, $request) {
                             return $query->where('branch_id', $table->branch_id)
+                                ->where('table_type', $request->table_type)
                                 ->where('isDeleted', 0);
                         }),
                 ],
                 'table_type' => 'required|string|max:50',
             ],
             [
-                'table_name.unique' => 'This table name already exists in this branch.',
+                'table_name.unique' => 'This table name already exists for this type in this branch.',
             ]
         );
 
