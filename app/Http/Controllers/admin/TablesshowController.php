@@ -79,6 +79,15 @@ class TablesshowController extends Controller
 
         $categories = Category::where('isDeleted', 0)
             ->where('branch_id', $branchIdToUse)
+            ->with(['products' => function ($q) use ($branchIdToUse) {
+                $q->where('isDeleted', 0)
+                    ->where('status', 'active')
+                    ->where('branch_id', $branchIdToUse)
+                    ->where(function ($pos) {
+                        $pos->where('is_pos_available', 1)->orWhereNull('is_pos_available');
+                    });
+            }])
+            ->orderBy('name')
             ->get();
 
 

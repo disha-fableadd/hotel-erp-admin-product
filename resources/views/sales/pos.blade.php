@@ -1694,9 +1694,25 @@
             <div class="col-lg-7 col-sm-12 tabs_wrapper">
 
                 @php
-                $hasProducts = false; // start as false
+                // Show categories with active POS products (include qty 0 — negative selling / prepared food)
+                $posCategoryProductCount = function ($cat) {
+                    if (!$cat->products) {
+                        return 0;
+                    }
+                    return $cat->products->filter(function ($p) {
+                        if ((int) ($p->isDeleted ?? 0) !== 0) {
+                            return false;
+                        }
+                        if (($p->status ?? 'active') !== 'active') {
+                            return false;
+                        }
+                        $posOk = $p->is_pos_available ?? true;
+                        return $posOk === true || $posOk === 1 || $posOk === '1' || $posOk === null;
+                    })->count();
+                };
+                $hasProducts = false;
                 foreach ($categories as $cat) {
-                    if ($cat->products && $cat->products->where('quantity', '>', 0)->count() > 0) {
+                    if ($posCategoryProductCount($cat) > 0) {
                         $hasProducts = true;
                         break;
                     }
@@ -1711,11 +1727,7 @@
                         </div>
                     </li>
                     @foreach ($categories as $cat)
-                    @php
-                    $availableProducts = $cat->products->where('quantity', '>', 0);
-                    @endphp
-
-                    @if ($availableProducts->count() > 0)
+                    @if ($posCategoryProductCount($cat) > 0)
                     <li id="{{ $cat->id }}">
                         <div class="product-details">
                             <h6 style="text-transform: capitalize;">{{ $cat->name }}</h6>

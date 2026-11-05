@@ -890,6 +890,15 @@ class SalesController extends Controller
 
         $categories = Category::where('isDeleted', 0)
             ->where('branch_id', $branchIdToUse)
+            ->with(['products' => function ($q) use ($branchIdToUse) {
+                $q->where('isDeleted', 0)
+                    ->where('status', 'active')
+                    ->where('branch_id', $branchIdToUse)
+                    ->where(function ($pos) {
+                        $pos->where('is_pos_available', 1)->orWhereNull('is_pos_available');
+                    });
+            }])
+            ->orderBy('name')
             ->get();
 
         $quantityTypes = QuantityType::where('isDeleted', 0)
@@ -924,9 +933,13 @@ class SalesController extends Controller
         }
 
         // ðŸ”¹ Create products array with quantity type information
+        // Include qty 0 so POS can sell with negative stock / prepared food
     $products = Product::where('status', 'active')
-        ->where('availablility', 'in_stock')
         ->where('branch_id', $branchIdToUse)
+        ->where('isDeleted', 0)
+        ->where(function ($q) {
+            $q->where('is_pos_available', 1)->orWhereNull('is_pos_available');
+        })
         ->get();
     
     $productsArray = $products->map(function ($product) {

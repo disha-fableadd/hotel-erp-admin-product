@@ -205,18 +205,29 @@
         <div class="col-lg-7 col-sm-12 tabs_wrapper">
 
             @php
-            $hasProducts = false; // start as false
+            $hasProducts = false;
+            $posCategoryProductCount = function ($cat) {
+                if (!$cat->products) {
+                    return 0;
+                }
+                return $cat->products->filter(function ($p) {
+                    if ((int) ($p->isDeleted ?? 0) !== 0) {
+                        return false;
+                    }
+                    if (($p->status ?? 'active') !== 'active') {
+                        return false;
+                    }
+                    $posOk = $p->is_pos_available ?? true;
+                    return $posOk === true || $posOk === 1 || $posOk === '1' || $posOk === null;
+                })->count();
+            };
             @endphp
 
             <ul class="tabs border-0 mb-4">
                 @foreach ($categories as $cat)
+                @if ($posCategoryProductCount($cat) > 0)
                 @php
-                $availableProducts = $cat->products->where('quantity', '>', 0);
-                @endphp
-
-                @if ($availableProducts->count() > 0)
-                @php
-                $hasProducts = true; // at least one product exists
+                $hasProducts = true;
                 @endphp
                 <li id="{{ $cat->id }}">
                     <div class="product-details">
