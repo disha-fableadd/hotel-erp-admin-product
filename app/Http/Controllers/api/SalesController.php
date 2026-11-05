@@ -30,6 +30,44 @@ class SalesController extends Controller
         return app(PosPricingService::class);
     }
 
+    /**
+     * Shop GST mode for a branch (product-wise vs overall bill rate).
+     */
+    protected function gstOptionsForBranch($branchId): array
+    {
+        $setting = Setting::where('branch_id', $branchId)->first();
+
+        return PosPricingService::gstOptionsFromSetting($setting);
+    }
+
+    /**
+     * Frozen GST mode options from a saved order (falls back to product-wise).
+     */
+    protected function gstOptionsFromOrder($order): array
+    {
+        $mode = (string) ($order->gst_apply_mode ?? '');
+        if ($mode === 'overall') {
+            return [
+                'gst_apply_mode' => 'overall',
+                'overall_gst_rate' => (float) ($order->overall_gst_rate ?? 0),
+                'overall_gst_name' => 'GST',
+                ];
+        }
+        if ($mode === 'product') {
+            return [
+                'gst_apply_mode' => 'product',
+                'overall_gst_rate' => 0,
+                'overall_gst_name' => 'GST',
+            ];
+        }
+        // Legacy orders: if every line has the same snap rate and no product tax ids, treat as overall
+        return [
+            'gst_apply_mode' => 'product',
+            'overall_gst_rate' => 0,
+            'overall_gst_name' => 'GST',
+        ];
+    }
+
     protected function allowsItemLevelDiscount($branchId): bool
     {
         $setting = Setting::where('branch_id', $branchId)->first();
@@ -696,11 +734,13 @@ class SalesController extends Controller
                 );
             }
             $withGst = ($request->gst_option === 'with' || $request->gst_option === 'with_gst');
+            $gstOpts = $this->gstOptionsForBranch($branchIdToUse);
             $money = $this->posPricing()->calculateOrderTotals(
                 $resolvedLines,
                 (float) ($request->discount ?? 0),
                 $withGst,
-                $branchIdToUse
+                $branchIdToUse,
+                $gstOpts
             );
             $taxJson = json_encode($money['tax_ids'] ?? []);
             $trustedTotal = $money['total'];
@@ -738,6 +778,14 @@ class SalesController extends Controller
             ];
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'tax_breakdown')) {
                 $orderPayload['tax_breakdown'] = $money['tax_breakdown'] ?? [];
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'gst_apply_mode')) {
+                $orderPayload['gst_apply_mode'] = $gstOpts['gst_apply_mode'];
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'overall_gst_rate')) {
+                $orderPayload['overall_gst_rate'] = ($gstOpts['gst_apply_mode'] === 'overall')
+                    ? $gstOpts['overall_gst_rate']
+                    : null;
             }
             $order = Order::create($orderPayload);
 
@@ -794,7 +842,10 @@ class SalesController extends Controller
                     'total_amount' => $line['line_total'],
                     'branch_id' => $branchIdToUse,
                     'created_by' => $userData->id,
-                ], PosPricingService::orderItemSnapshotFields($line)));
+                ], PosPricingService::applyOverallSnapshotToLineFields(
+                    PosPricingService::orderItemSnapshotFields($line),
+                    $gstOpts
+                )));
             }
             if ($tableNoInt) {
                 $this->syncTableStatus($tableNoInt);
@@ -1310,11 +1361,13 @@ class SalesController extends Controller
             }
 
             $withGst = ($request->gst_option === 'with' || $request->gst_option === 'with_gst');
+            $gstOpts = $this->gstOptionsForBranch($branchIdToUse);
             $money = $this->posPricing()->calculateOrderTotals(
                 $resolvedLines,
                 (float) ($request->discount ?? 0),
                 $withGst,
-                $branchIdToUse
+                $branchIdToUse,
+                $gstOpts
             );
             $taxJson = !empty($money['tax_ids']) ? json_encode($money['tax_ids']) : json_encode([]);
             $trustedTotal = $money['total'];
@@ -1346,6 +1399,14 @@ class SalesController extends Controller
             ];
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'tax_breakdown')) {
                 $orderUpdate['tax_breakdown'] = $money['tax_breakdown'] ?? [];
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'gst_apply_mode')) {
+                $orderUpdate['gst_apply_mode'] = $gstOpts['gst_apply_mode'];
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'overall_gst_rate')) {
+                $orderUpdate['overall_gst_rate'] = ($gstOpts['gst_apply_mode'] === 'overall')
+                    ? $gstOpts['overall_gst_rate']
+                    : null;
             }
             $order->update($orderUpdate);
 
@@ -1410,7 +1471,10 @@ class SalesController extends Controller
                     'total_amount' => $line['line_total'],
                     'branch_id' => $branchIdToUse,
                     'created_by' => $userData->id,
-                ], PosPricingService::orderItemSnapshotFields($line));
+                ], PosPricingService::applyOverallSnapshotToLineFields(
+                    PosPricingService::orderItemSnapshotFields($line),
+                    $gstOpts
+                ));
                 if ($hasKotPrintedCol) {
                     $itemPayload['kot_printed_qty'] = $printedCarry;
                 }
@@ -1780,7 +1844,8 @@ class SalesController extends Controller
         $money = $this->posPricing()->calculateFromOrderItems(
             $orderItemModels,
             (float) ($sales->discount ?? 0),
-            $withGst
+            $withGst,
+            $this->gstOptionsFromOrder($sales)
         );
         $taxDetails = collect($money['tax_breakdown'] ?? [])->map(function ($row) {
             return [
@@ -1982,7 +2047,8 @@ class SalesController extends Controller
             $taxJson = null;
             $moneyTax = ['tax_ids' => [], 'tax_total' => 0, 'tax_breakdown' => []];
 
-            // Product-level taxes only (same rules as PosPricingService)
+            // Product-level / overall-bill taxes (same rules as PosPricingService)
+            $gstOptsLegacy = $this->gstOptionsForBranch($branchIdToUse);
             if ($request->gst_option === 'with_gst' || $request->gst_option === 'with') {
                 $resolvedForTax = [];
                 foreach ($request->product_ids ?? [] as $productId) {
@@ -2000,7 +2066,8 @@ class SalesController extends Controller
                     $resolvedForTax,
                     (float) ($request->discount ?? 0),
                     true,
-                    $branchIdToUse
+                    $branchIdToUse,
+                    $gstOptsLegacy
                 );
                 $taxJson = json_encode($moneyTax['tax_ids'] ?? []);
                 $totalTax = (float) ($moneyTax['tax_total'] ?? 0);
@@ -2032,6 +2099,14 @@ class SalesController extends Controller
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'tax_breakdown')) {
                 $legacyOrderUpdate['tax_breakdown'] = $moneyTax['tax_breakdown'] ?? [];
             }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'gst_apply_mode')) {
+                $legacyOrderUpdate['gst_apply_mode'] = $gstOptsLegacy['gst_apply_mode'];
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'overall_gst_rate')) {
+                $legacyOrderUpdate['overall_gst_rate'] = ($gstOptsLegacy['gst_apply_mode'] === 'overall')
+                    ? $gstOptsLegacy['overall_gst_rate']
+                    : null;
+            }
             $order->update($legacyOrderUpdate);
 
             // Remove old order items
@@ -2062,7 +2137,10 @@ class SalesController extends Controller
                             'total_amount' => $total,
                             'branch_id' => $branchIdToUse,
                             'created_by' => $userData->id,
-                        ], PosPricingService::orderItemSnapshotFields($snapLine)));
+                        ], PosPricingService::applyOverallSnapshotToLineFields(
+                            PosPricingService::orderItemSnapshotFields($snapLine),
+                            $gstOptsLegacy
+                        )));
                     } catch (\Exception $e) {
                         \Log::error("Failed to insert OrderItem for product ID: " . $productId . " error: " . $e->getMessage());
                         throw $e;

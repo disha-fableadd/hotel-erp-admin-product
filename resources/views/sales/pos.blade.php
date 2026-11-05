@@ -2480,6 +2480,9 @@
             window.posProductOptionsById = window.posProductOptionsById || {};
             const canItemDiscount = {{ !empty($can_item_discount) ? 'true' : 'false' }};
             const defaultGstOption = @json(((optional($setting)->default_gst_option ?? 'without') === 'with') ? 'with' : 'without');
+            const gstApplyMode = @json(((optional($setting)->gst_apply_mode ?? 'product') === 'overall') ? 'overall' : 'product');
+            const overallGstRate = @json((float) (optional($setting)->overall_gst_rate ?? 0));
+            const overallGstName = @json(trim((string) (optional($setting)->overall_gst_name ?? 'GST')) ?: 'GST');
             const defaultPaymentMethod = @json($defaultPayMethod ?? 'cash');
             const defaultPaidType = @json($defaultPaidType ?? 'fully');
             const posCurrencySymbol = @json($currency_symbol ?? '₹');
@@ -3144,41 +3147,61 @@
                         });
 
                         if (gstOption === "with" && subtotal > 0) {
-                            const taxAgg = {};
-                            selectedItems.forEach(function(item) {
-                                const taxId = item.tax_id || null;
-                                const taxRatePct = parseFloat(item.tax_rate);
-                                if (!taxId || isNaN(taxRatePct)) {
-                                    return; // no product tax → 0%
-                                }
-                                const price = parseFloat(String(item.price).replace(/[^0-9.-]+/g, "")) || 0;
-                                const gross = price * item.quantity;
-                                const discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
-                                const lineNet = gross - (gross * discPct / 100);
-                                const lineShare = lineNet * (1 - (discountPercentage / 100));
-                                let lineTax = 0;
-                                if (item.tax_inclusive) {
-                                    const base = lineShare / (1 + (taxRatePct / 100));
-                                    lineTax = lineShare - base;
+                            if (gstApplyMode === 'overall') {
+                                const rate = parseFloat(overallGstRate) || 0;
+                                totalTax = priceAfterDiscount * (rate / 100);
+                                let $overallRow = $('.taxList[data-tax-id="overall"]');
+                                if (!$overallRow.length) {
+                                    $(".setvalue").find(".taxList").first().before(
+                                        `<li class="taxList" data-tax-id="overall">
+                                            <h5>${overallGstName || 'GST'} (${rate}%) Tax</h5>
+                                            <h6 class="tax-value" data-symbol="${currencySymbol}" data-position="${currencyPosition}">${formatCurrency("0.00", currencySymbol, currencyPosition)}</h6>
+                                        </li>`
+                                    );
+                                    $overallRow = $('.taxList[data-tax-id="overall"]');
                                 } else {
-                                    lineTax = lineShare * (taxRatePct / 100);
+                                    $overallRow.find('h5').text((overallGstName || 'GST') + ' (' + rate + '%) Tax');
                                 }
-                                if (!taxAgg[taxId]) {
-                                    taxAgg[taxId] = { rate: taxRatePct, amount: 0 };
-                                }
-                                taxAgg[taxId].amount += lineTax;
-                            });
+                                const taxEl = $overallRow.find(".tax-value");
+                                taxEl.html(formatCurrency(totalTax.toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
+                                $overallRow.show();
+                            } else {
+                                const taxAgg = {};
+                                selectedItems.forEach(function(item) {
+                                    const taxId = item.tax_id || null;
+                                    const taxRatePct = parseFloat(item.tax_rate);
+                                    if (!taxId || isNaN(taxRatePct)) {
+                                        return; // no product tax → 0%
+                                    }
+                                    const price = parseFloat(String(item.price).replace(/[^0-9.-]+/g, "")) || 0;
+                                    const gross = price * item.quantity;
+                                    const discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
+                                    const lineNet = gross - (gross * discPct / 100);
+                                    const lineShare = lineNet * (1 - (discountPercentage / 100));
+                                    let lineTax = 0;
+                                    if (item.tax_inclusive) {
+                                        const base = lineShare / (1 + (taxRatePct / 100));
+                                        lineTax = lineShare - base;
+                                    } else {
+                                        lineTax = lineShare * (taxRatePct / 100);
+                                    }
+                                    if (!taxAgg[taxId]) {
+                                        taxAgg[taxId] = { rate: taxRatePct, amount: 0 };
+                                    }
+                                    taxAgg[taxId].amount += lineTax;
+                                });
 
-                            Object.keys(taxAgg).forEach(function(taxId) {
-                                const amount = taxAgg[taxId].amount;
-                                totalTax += amount;
-                                const $row = $('.taxList[data-tax-id="' + taxId + '"]');
-                                if ($row.length) {
-                                    const taxEl = $row.find(".tax-value");
-                                    taxEl.html(formatCurrency(amount.toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
-                                    $row.show();
-                                }
-                            });
+                                Object.keys(taxAgg).forEach(function(taxId) {
+                                    const amount = taxAgg[taxId].amount;
+                                    totalTax += amount;
+                                    const $row = $('.taxList[data-tax-id="' + taxId + '"]');
+                                    if ($row.length) {
+                                        const taxEl = $row.find(".tax-value");
+                                        taxEl.html(formatCurrency(amount.toFixed(2), taxEl.data("symbol") || currencySymbol, taxEl.data("position") || currencyPosition));
+                                        $row.show();
+                                    }
+                                });
+                            }
                         } else {
                             totalTax = 0;
                         }
@@ -3401,8 +3424,14 @@
                         var safeCartTitle = escapeHtmlText(item.name);
                         var gstCartSuffix = '';
                         if ($("input[name='gst_option']:checked").val() === 'with') {
-                            var cartRate = item.tax_rate != null && item.tax_rate !== '' ? parseFloat(item.tax_rate) : NaN;
-                            var cartTaxName = (item.tax_name && String(item.tax_name).trim()) ? String(item.tax_name).trim() : 'GST';
+                            var cartRate, cartTaxName;
+                            if (gstApplyMode === 'overall') {
+                                cartRate = parseFloat(overallGstRate);
+                                cartTaxName = overallGstName || 'GST';
+                            } else {
+                                cartRate = item.tax_rate != null && item.tax_rate !== '' ? parseFloat(item.tax_rate) : NaN;
+                                cartTaxName = (item.tax_name && String(item.tax_name).trim()) ? String(item.tax_name).trim() : 'GST';
+                            }
                             var cartRateStr = isNaN(cartRate) ? '0' : String(cartRate).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
                             gstCartSuffix = ` <small class="text-muted">(${escapeHtmlText(cartTaxName)} ${escapeHtmlText(cartRateStr)}%)</small>`;
                         }

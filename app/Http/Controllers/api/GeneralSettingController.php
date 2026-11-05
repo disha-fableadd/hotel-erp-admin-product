@@ -35,6 +35,9 @@ class GeneralSettingController extends Controller
             $settings->currency_position = 'left';
             $settings->low_stock         = 10;
             $settings->default_gst_option = 'without';
+            $settings->gst_apply_mode = 'product';
+            $settings->overall_gst_rate = null;
+            $settings->overall_gst_name = 'GST';
             $settings->default_payment_method = 'cash';
             $settings->default_paid_type = 'fully';
             $settings->show_hr_dashboard = 1;
@@ -68,6 +71,9 @@ class GeneralSettingController extends Controller
             'low_stock'         => 'nullable',
             'allow_item_level_discount' => 'nullable|boolean',
             'default_gst_option' => 'nullable|in:with,without',
+            'gst_apply_mode' => 'nullable|in:product,overall',
+            'overall_gst_rate' => 'nullable|numeric|min:0|max:100',
+            'overall_gst_name' => 'nullable|string|max:100',
             'default_payment_method' => 'nullable|in:pending,cash,debit card,cash+online,scan',
             'default_paid_type' => 'nullable|in:fully,partially',
             'state_code'        => 'nullable',
@@ -137,6 +143,17 @@ class GeneralSettingController extends Controller
         }
         if ($request->has('default_gst_option')) {
             $settings->default_gst_option = $request->default_gst_option === 'with' ? 'with' : 'without';
+        }
+        if ($request->has('gst_apply_mode')) {
+            $settings->gst_apply_mode = $request->gst_apply_mode === 'overall' ? 'overall' : 'product';
+        }
+        if ($request->has('overall_gst_rate')) {
+            $rate = $request->overall_gst_rate;
+            $settings->overall_gst_rate = ($rate === '' || $rate === null) ? null : max(0, min(100, (float) $rate));
+        }
+        if ($request->has('overall_gst_name')) {
+            $label = trim((string) $request->overall_gst_name);
+            $settings->overall_gst_name = $label !== '' ? $label : 'GST';
         }
         if ($request->has('default_payment_method')) {
             $allowedPay = ['pending', 'cash', 'debit card', 'cash+online', 'scan'];

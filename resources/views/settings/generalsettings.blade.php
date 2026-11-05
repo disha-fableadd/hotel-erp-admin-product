@@ -275,6 +275,33 @@
 
                             <div class="col-lg-3 col-sm-6 col-6">
                                 <div class="form-group">
+                                    <label>GST Apply Mode</label>
+                                    <select id="gst_apply_mode" class="form-select">
+                                        <option value="product">Product-wise (each item tax)</option>
+                                        <option value="overall">Overall bill (one rate)</option>
+                                    </select>
+                                    <small class="text-muted">Product-wise uses each product’s tax. Overall applies one % on the full bill after discount.</small>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3 col-sm-6 col-6" id="overall_gst_rate_wrap">
+                                <div class="form-group">
+                                    <label>Overall Bill GST %</label>
+                                    <input type="number" id="overall_gst_rate" class="form-control" min="0" max="100" step="0.01" placeholder="e.g. 5, 12, 18, 28">
+                                    <small class="text-muted">Used only when GST Apply Mode = Overall bill.</small>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3 col-sm-6 col-6" id="overall_gst_name_wrap">
+                                <div class="form-group">
+                                    <label>Overall GST Label</label>
+                                    <input type="text" id="overall_gst_name" class="form-control" maxlength="100" placeholder="GST">
+                                    <small class="text-muted">Shown on bill totals (e.g. GST / CGST).</small>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3 col-sm-6 col-6">
+                                <div class="form-group">
                                     <label>Default Payment Method (POS)</label>
                                     <select id="default_payment_method" class="form-select">
                                         <option value="cash">Cash</option>
@@ -1124,6 +1151,13 @@
                 url += "?selectedSubAdminId=" + selectedSubAdminId;
             }
 
+            window.toggleOverallGstFields = function() {
+                var overall = $("#gst_apply_mode").val() === 'overall';
+                $("#overall_gst_rate_wrap, #overall_gst_name_wrap").toggle(overall);
+            };
+            $(document).on('change', '#gst_apply_mode', window.toggleOverallGstFields);
+            window.toggleOverallGstFields();
+
             // =====================================================================
             // GEOCODING ENGINE  (Nominatim + Photon — free, no API key)
             // =====================================================================
@@ -1368,6 +1402,18 @@
                         $("#default_gst_option").val(
                             settings.default_gst_option === 'with' ? 'with' : 'without'
                         );
+                        $("#gst_apply_mode").val(
+                            settings.gst_apply_mode === 'overall' ? 'overall' : 'product'
+                        );
+                        $("#overall_gst_rate").val(
+                            settings.overall_gst_rate != null && settings.overall_gst_rate !== ''
+                                ? settings.overall_gst_rate
+                                : ''
+                        );
+                        $("#overall_gst_name").val(settings.overall_gst_name || 'GST');
+                        if (typeof window.toggleOverallGstFields === 'function') {
+                            window.toggleOverallGstFields();
+                        }
                         var payDefaults = ['pending', 'cash', 'debit card', 'cash+online', 'scan'];
                         var payVal = settings.default_payment_method || 'cash';
                         $("#default_payment_method").val(payDefaults.indexOf(payVal) !== -1 ? payVal : 'cash');
@@ -1768,6 +1814,9 @@
                 formData.append("low_stock", $("#low_stock").val());
                 formData.append("allow_item_level_discount", $("#allow_item_level_discount").val());
                 formData.append("default_gst_option", $("#default_gst_option").val());
+                formData.append("gst_apply_mode", $("#gst_apply_mode").val() || 'product');
+                formData.append("overall_gst_rate", $("#overall_gst_rate").val() || '');
+                formData.append("overall_gst_name", $("#overall_gst_name").val() || 'GST');
                 formData.append("default_payment_method", $("#default_payment_method").val() || 'cash');
                 formData.append("default_paid_type", $("#default_paid_type").val() || 'fully');
                 formData.append("shop_name", $("#shop_name").val());

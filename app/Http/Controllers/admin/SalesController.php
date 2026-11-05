@@ -381,13 +381,19 @@ class SalesController extends Controller
         $totalAmount = $orderItems->sum('total_amount');
         $withGst = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
         $frozenBreakdown = is_array($sales->tax_breakdown ?? null) ? $sales->tax_breakdown : [];
+        $gstOpts = [
+            'gst_apply_mode' => (($sales->gst_apply_mode ?? '') === 'overall') ? 'overall' : 'product',
+            'overall_gst_rate' => (float) ($sales->overall_gst_rate ?? 0),
+            'overall_gst_name' => 'GST',
+        ];
         if (! empty($frozenBreakdown)) {
             $money = ['tax_breakdown' => $frozenBreakdown, 'total' => (float) ($sales->total_amount ?? $totalAmount)];
         } else {
             $money = app(PosPricingService::class)->calculateFromOrderItems(
                 $orderItems,
                 (float) ($sales->discount ?? 0),
-                $withGst
+                $withGst,
+                $gstOpts
             );
         }
         $taxes = collect($money['tax_breakdown'] ?? [])->map(function ($row) {
@@ -635,7 +641,12 @@ class SalesController extends Controller
                 'total' => (float) ($sales->total_amount ?? $subtotal),
             ];
         } else {
-            $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst);
+            $gstOpts = [
+                'gst_apply_mode' => (($sales->gst_apply_mode ?? '') === 'overall') ? 'overall' : 'product',
+                'overall_gst_rate' => (float) ($sales->overall_gst_rate ?? 0),
+                'overall_gst_name' => 'GST',
+            ];
+            $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst, $gstOpts);
             $discountAmount = (float) ($money['discount_amount'] ?? (($discountPercent / 100) * $subtotal));
             $afterDiscount = (float) ($money['subtotal'] ?? $subtotal) - $discountAmount;
         }
@@ -790,7 +801,12 @@ class SalesController extends Controller
                 'total' => (float) ($sales->total_amount ?? $subtotal),
             ];
         } else {
-            $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst);
+            $gstOpts = [
+                'gst_apply_mode' => (($sales->gst_apply_mode ?? '') === 'overall') ? 'overall' : 'product',
+                'overall_gst_rate' => (float) ($sales->overall_gst_rate ?? 0),
+                'overall_gst_name' => 'GST',
+            ];
+            $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst, $gstOpts);
             $discountAmount = (float) ($money['discount_amount'] ?? (($discountPercent / 100) * $subtotal));
             $afterDiscount = (float) ($money['subtotal'] ?? $subtotal) - $discountAmount;
         }

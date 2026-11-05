@@ -21,6 +21,8 @@ class Order extends Model
         'tax_id',
         'tax_breakdown',
         'gst_option',
+        'gst_apply_mode',
+        'overall_gst_rate',
         'branch_id',
         'created_by',
         'total_amount',

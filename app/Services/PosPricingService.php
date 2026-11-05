@@ -177,11 +177,30 @@ class PosPricingService
     }
 
     /**
+     * GST options from shop settings (or order snapshot).
+     *
+     * @return array{gst_apply_mode: string, overall_gst_rate: float, overall_gst_name: string}
+     */
+    public static function gstOptionsFromSetting($setting): array
+    {
+        $mode = is_object($setting) ? (string) ($setting->gst_apply_mode ?? 'product') : 'product';
+        $rate = is_object($setting) ? (float) ($setting->overall_gst_rate ?? 0) : 0.0;
+        $name = is_object($setting) ? trim((string) ($setting->overall_gst_name ?? 'GST')) : 'GST';
+
+        return [
+            'gst_apply_mode' => $mode === 'overall' ? 'overall' : 'product',
+            'overall_gst_rate' => max(0, $rate),
+            'overall_gst_name' => $name !== '' ? $name : 'GST',
+        ];
+    }
+
+    /**
      * Recalculate order money from trusted lines + discount % + optional GST.
      *
      * @param  array<int, array>  $resolvedLines
+     * @param  array{gst_apply_mode?: string, overall_gst_rate?: float, overall_gst_name?: string}  $options
      */
-    public function calculateOrderTotals(array $resolvedLines, float $discountPercent, bool $withGst, $branchId = null): array
+    public function calculateOrderTotals(array $resolvedLines, float $discountPercent, bool $withGst, $branchId = null, array $options = []): array
     {
         $subtotal = 0.0;
         foreach ($resolvedLines as $line) {
@@ -196,8 +215,23 @@ class PosPricingService
         $taxIds = [];
         $taxBreakdown = [];
 
-        // With GST: prefer line snapshot (sale-time), else live product.tax_id.
-        if ($withGst && $subtotal > 0) {
+        $mode = (($options['gst_apply_mode'] ?? 'product') === 'overall') ? 'overall' : 'product';
+        $overallRate = max(0, (float) ($options['overall_gst_rate'] ?? 0));
+        $overallName = trim((string) ($options['overall_gst_name'] ?? 'GST')) ?: 'GST';
+
+        if ($withGst && $subtotal > 0 && $mode === 'overall') {
+            // One rate on the whole bill (after discount)
+            if ($overallRate > 0) {
+                $taxTotal = round($afterDiscount * ($overallRate / 100), 2);
+                $taxBreakdown[] = [
+                    'id' => null,
+                    'name' => $overallName,
+                    'rate' => $overallRate,
+                    'amount' => $taxTotal,
+                ];
+            }
+        } elseif ($withGst && $subtotal > 0) {
+            // Product-wise: prefer line snapshot (sale-time), else live product.tax_id.
             foreach ($resolvedLines as $line) {
                 $snap = self::resolveLineTax($line);
                 if ($snap['tax_id'] === null && $snap['tax_rate'] === null) {
@@ -236,6 +270,7 @@ class PosPricingService
                 $taxBreakdown[$key]['amount'] = round($taxBreakdown[$key]['amount'] + $lineTax, 2);
                 $taxTotal += $lineTax;
             }
+            $taxBreakdown = array_values($taxBreakdown);
         }
 
         $grand = round($afterDiscount + $taxTotal, 2);
@@ -246,7 +281,9 @@ class PosPricingService
             'discount_amount' => $discountAmount,
             'tax_total' => round($taxTotal, 2),
             'tax_ids' => array_values(array_unique($taxIds)),
-            'tax_breakdown' => array_values($taxBreakdown),
+            'tax_breakdown' => $taxBreakdown,
+            'gst_apply_mode' => $mode,
+            'overall_gst_rate' => $mode === 'overall' ? $overallRate : null,
             'total' => $grand,
         ];
     }
@@ -288,8 +325,9 @@ class PosPricingService
      * today's product master when a snapshot column exists but is empty (old bills).
      *
      * @param  iterable  $orderItems
+     * @param  array{gst_apply_mode?: string, overall_gst_rate?: float, overall_gst_name?: string}  $options
      */
-    public function calculateFromOrderItems($orderItems, float $discountPercent, bool $withGst): array
+    public function calculateFromOrderItems($orderItems, float $discountPercent, bool $withGst, array $options = []): array
     {
         $hasSnapCol = Schema::hasColumn('order_items', 'tax_rate');
         $resolvedLines = [];
@@ -323,7 +361,31 @@ class PosPricingService
             $resolvedLines[] = $line;
         }
 
-        return $this->calculateOrderTotals($resolvedLines, $discountPercent, $withGst);
+        return $this->calculateOrderTotals($resolvedLines, $discountPercent, $withGst, null, $options);
+    }
+
+    /**
+     * Override line tax snapshot when shop uses overall-bill GST.
+     */
+    public static function applyOverallSnapshotToLineFields(array $fields, array $gstOpts): array
+    {
+        if (($gstOpts['gst_apply_mode'] ?? 'product') !== 'overall') {
+            return $fields;
+        }
+        if (array_key_exists('tax_id', $fields)) {
+            $fields['tax_id'] = null;
+        }
+        if (array_key_exists('tax_name', $fields)) {
+            $fields['tax_name'] = $gstOpts['overall_gst_name'] ?? 'GST';
+        }
+        if (array_key_exists('tax_rate', $fields)) {
+            $fields['tax_rate'] = (float) ($gstOpts['overall_gst_rate'] ?? 0);
+        }
+        if (array_key_exists('tax_inclusive', $fields)) {
+            $fields['tax_inclusive'] = false;
+        }
+
+        return $fields;
     }
 
     /**
