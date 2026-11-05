@@ -925,7 +925,29 @@
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
-    /* ===== Action Dropdown ===== */
+    /* ===== Action Dropdown / Print column (desktop table) ===== */
+    @media (min-width: 1281px) {
+        #order-table tbody tr {
+            vertical-align: middle !important;
+        }
+        #order-table tbody td {
+            vertical-align: middle !important;
+        }
+        #order-table td:last-child {
+            white-space: nowrap !important;
+            width: 1% !important;
+        }
+        #order-table td:last-child > * {
+            vertical-align: middle;
+        }
+        #order-table .sl-desktop-head {
+            line-height: 1.35;
+        }
+        #order-table .sl-desktop-head .status-pill {
+            margin-top: 4px;
+        }
+    }
+
     #order-table .order-print-btn {
         display: inline-flex;
         align-items: center;
@@ -939,6 +961,7 @@
         border: 1px solid #dee2e6;
         border-radius: 8px;
         text-decoration: none;
+        vertical-align: middle;
     }
     #order-table .order-print-btn:hover {
         color: #212529;
@@ -946,7 +969,9 @@
     }
     .action-dropdown-wrap {
         position: relative;
-        display: inline-block;
+        display: inline-flex;
+        vertical-align: middle;
+        align-items: center;
     }
     .ellipsis-btn {
         background: #f1f3f5;
@@ -1821,7 +1846,7 @@
 <script>
 
     function getOrderTypeBadge(order) {
-        if (order.type === 'dinein') {
+        if (order.type === 'dinein' || order.order_type === 'dinein' || order.order_type === 'Dine In') {
             return `<span class="status-pill" style="background-color:#20c997; margin-top:4px; display:inline-block;">
                 <i class="fas fa-utensils"></i> Dine In - Table ${order.table_no || 'N/A'}
             </span>`;
@@ -1830,6 +1855,75 @@
                 <i class="fas fa-shopping-bag"></i> Take Away
             </span>`;
         }
+    }
+
+    function isDineInOrder(order) {
+        var t = String(order.type || '').toLowerCase();
+        var ot = String(order.order_type || '').toLowerCase();
+        return t === 'dinein' || ot === 'dinein' || ot === 'dine in';
+    }
+
+    function buildOrderTypeCell(order) {
+        if (isDineInOrder(order)) {
+            return `<span class="status-pill" style="background-color:#20c997;">Dine In</span>`;
+        }
+        var ot = String(order.order_type || '');
+        var isDelivery = /delivery/i.test(ot) || ot === '';
+        var isPickup = /self\s*pickup|self_pickup|pickup/i.test(ot);
+        return `<select class="form-select form-select-sm order-type-update" data-id="${order.id}">
+            <option value="Delivery" ${isDelivery && !isPickup ? 'selected' : ''}>Delivery</option>
+            <option value="Self Pickup" ${isPickup ? 'selected' : ''}>Self Pickup</option>
+        </select>`;
+    }
+
+    function clearOrdersTableFilters(table) {
+        if (!table) return;
+        try {
+            table.search('');
+            table.columns().search('');
+        } catch (e) {}
+        // Remove previously stacked financial-year custom filters
+        if ($.fn.dataTable && $.fn.dataTable.ext && Array.isArray($.fn.dataTable.ext.search)) {
+            $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function (fn) {
+                return !fn || !fn._isOrdersFyFilter;
+            });
+        }
+    }
+
+    /** Parse API date strings without UTC day-shift (avoids empty date filter results). */
+    function parseOrderLocalDate(value) {
+        if (!value) return null;
+        if (value instanceof Date && !isNaN(value.getTime())) return value;
+        var s = String(value).trim();
+        // "05-Nov-2026 09:32 PM" / "05-Nov-2026"
+        var m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})(?:\s+(\d{1,2}):(\d{2})\s*(AM|PM))?/i);
+        if (m) {
+            var months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+            var day = parseInt(m[1], 10);
+            var mon = months[m[2].toLowerCase()];
+            var year = parseInt(m[3], 10);
+            var hour = m[4] ? parseInt(m[4], 10) : 0;
+            var min = m[5] ? parseInt(m[5], 10) : 0;
+            var ap = (m[6] || '').toUpperCase();
+            if (ap === 'PM' && hour < 12) hour += 12;
+            if (ap === 'AM' && hour === 12) hour = 0;
+            return new Date(year, mon, day, hour, min, 0);
+        }
+        // "YYYY-MM-DD ..."
+        var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (iso) {
+            return new Date(parseInt(iso[1], 10), parseInt(iso[2], 10) - 1, parseInt(iso[3], 10));
+        }
+        var d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    function toLocalYmd(dateObj) {
+        if (!dateObj || isNaN(dateObj.getTime())) return '';
+        var y = dateObj.getFullYear();
+        var m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        var d = String(dateObj.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
     }
     // ===== HELPER FUNCTION TO CALCULATE TOTALS =====
     function calculateTotals() {
@@ -3008,16 +3102,14 @@
                             getMethodPill(order.payment_method),
                             displayAmount,
                             assignedStaffDropdown,
-                            `<select class="form-select form-select-sm order-type-update" data-id="${order.id}">
-                                <option value="Delivery" ${order.order_type === 'Delivery' ? 'selected' : ''}>Delivery</option>
-                                <option value="Self Pickup" ${order.order_type === 'Self Pickup' ? 'selected' : ''}>Self Pickup</option>
-                            </select>`,
+                            buildOrderTypeCell(order),
                             getBillerPill(order.biller),
                             actionBtns
                         ]);
                     });
 
 
+                    clearOrdersTableFilters(table);
                     table.clear().rows.add(tableBody).draw();
                     calculateTotals();
                     setTimeout(() => {
@@ -3194,6 +3286,15 @@
             const selectedMonth = $("#filter-month").val();
             const selectedYear = $("#filter-year").val();
 
+            // Date / FY conflict with month-year column search
+            $('#filter-date').val('');
+            $('#filter-financial-year').val('');
+            if ($.fn.dataTable && $.fn.dataTable.ext && Array.isArray($.fn.dataTable.ext.search)) {
+                $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function (fn) {
+                    return !fn || !fn._isOrdersFyFilter;
+                });
+            }
+
             let regex = "";
             if (selectedMonth && selectedYear) regex = `${monthNames[selectedMonth]}.*${selectedYear}`;
             else if (selectedMonth) regex = `${monthNames[selectedMonth]}`;
@@ -3234,36 +3335,48 @@
         // Apply financial year filter
         $("#filter-financial-year").on("change", function() {
             const financialYear = $(this).val();
-            
+
+            // Always remove previous FY filter callbacks first (prevents stacking → empty results)
+            if ($.fn.dataTable && $.fn.dataTable.ext && Array.isArray($.fn.dataTable.ext.search)) {
+                $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function (fn) {
+                    return !fn || !fn._isOrdersFyFilter;
+                });
+            }
+
             if (!financialYear) {
-                table.column(2).search("").draw(); // Clear search
+                table.column(2).search("").draw();
                 calculateTotals();
                 return;
             }
-            
+
+            // Clear conflicting month/year/date UI state
+            $('#filter-month').val('');
+            $('#filter-year').val('');
+            $('#filter-date').val('');
+            table.column(2).search('');
+
             // Parse financial year (e.g., "2024-25" -> start: 2024-04-01, end: 2025-03-31)
-            const [startYear, endYear] = financialYear.split('-').map(y => parseInt(y));
+            const startYear = parseInt(String(financialYear).split('-')[0], 10);
             const startDate = new Date(startYear, 3, 1); // April 1st
             const endDate = new Date(startYear + 1, 2, 31); // March 31st next year
-            
-            // Filter rows by date within financial year
-            $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-                if (settings.nTable.id !== 'order-table') return true;
-                
-                const dateText = data[2]; // Date column
+
+            var fyFilter = function(settings, data) {
+                if (!settings || !settings.nTable || settings.nTable.id !== 'order-table') return true;
+
+                const dateText = (data[2] || '').toString().replace(/<[^>]*>/g, ' ').trim();
                 if (!dateText) return false;
-                
+
                 try {
-                    // Parse date format: "DD-MMM-YYYY HH:MM AM/PM"
-                    const dateParts = dateText.split(' ');
-                    const date = new Date(dateParts[0]); // Will parse "DD-MMM-YYYY"
-                    
+                    const date = parseOrderLocalDate(dateText);
+                    if (!date) return false;
                     return date >= startDate && date <= endDate;
-                } catch(e) {
+                } catch (e) {
                     return false;
                 }
-            });
-            
+            };
+            fyFilter._isOrdersFyFilter = true;
+            $.fn.dataTable.ext.search.push(fyFilter);
+
             table.draw();
             calculateTotals();
         });
@@ -3274,22 +3387,24 @@
         });
 
 
-        $('#filter-date').on('dp.change', function() {
-            let selectedDate = $(this).val().trim(); // e.g. DD-MM-YYYY
+        $('#filter-date').on('dp.change change', function() {
+            let selectedDate = String($(this).val() || '').trim(); // e.g. DD-MM-YYYY
 
-            // Clear month & year dropdowns
+            // Clear month / year / FY UI + any leftover DataTable searches that zero-out rows
             $('#filter-month').val('');
             $('#filter-year').val('');
+            $('#filter-financial-year').val('');
+            clearOrdersTableFilters(table);
 
             if (selectedDate === '') {
                 fetchAllOrders();
                 return;
             }
 
-            // Convert to YYYY-MM-DD
+            // Convert DD-MM-YYYY → YYYY-MM-DD for API (same as Orders list backend)
             if (selectedDate.includes('-')) {
                 let parts = selectedDate.split('-');
-                if (parts.length === 3) {
+                if (parts.length === 3 && parts[0].length <= 2) {
                     selectedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
                 }
             }
@@ -3306,39 +3421,37 @@
                 },
                 success: function(response) {
                     if (response.status) {
-                        renderOrders(response.data, selectedDate);
+                        // API already filtered by date — do not re-filter client-side
+                        renderOrders(response.data, null);
                         calculateTotals();
                     }
+                },
+                error: function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Filter failed',
+                        text: 'Could not load orders for the selected date.'
+                    });
                 }
             });
         });
 
-        // Month/Year filter handled by column search above
-
-        // Function to calculate total from server response
-        // function updateTotalFromData(data) {
-        //     let total = 0;
-        //     data.forEach(row => {
-        //         total += parseFloat(row.amount) || 0; // adjust key if your amount field differs
-        //     });
-
-        //     const currencySymbol = "₹";
-        //     $('#filtered-total').text(`${currencySymbol}${total.toFixed(2)}`);
-        // }
-
-
-
         function fetchAllOrders() {
+            clearOrdersTableFilters(table);
             $.ajax({
-                url: '/api/orders/filter', // Or '/api/orders/all' if available
+                url: '/api/orders/filter',
                 method: 'GET',
                 dataType: 'json',
+                data: {
+                    selectedSubAdminId: selectedSubAdminId
+                },
                 headers: {
                     "Authorization": "Bearer " + authToken,
                 },
                 success: function(response) {
                     if (response.status) {
-                        renderOrders(response.data, null); // no filter
+                        renderOrders(response.data, null);
+                        calculateTotals();
                     }
                 }
             });
@@ -3541,32 +3654,25 @@
                 </select>
             `;
 
-            // ---- Generate Order Type Dropdown ----
-            let orderTypeHtml = `
-                <select class="form-select order-type-update" data-id="${order.id}">
-                    <option value="delivery" ${order.order_type === 'delivery' ? 'selected' : ''}>Delivery</option>
-                    <option value="self_pickup" ${order.order_type === 'self_pickup' ? 'selected' : ''}>Self Pickup</option>
-                </select>
-            `;
-
             tableBody.push([
                 /* Order column: desktop header + mobile/tablet Pooja ERP card */
                 `
                 <div class="sl-desktop-head">
-                    <strong>${order.order_number || ''}</strong>
+                    <strong>${order.order_number || ''}</strong><br>
+                    ${getOrderTypeBadge(order)}
                 </div>
-                ${buildCard(order, order.user?.name || 'N/A')}
+                ${buildCard(order, order.user?.name || order.customer_name || 'N/A')}
                 `,
                 /* Details column (hidden) */
                 "",
                 /* Desktop-only columns */
-                order.created_date || 'N/A',
-                order.user?.name || 'N/A',
+                order.created_date || formattedDate || 'N/A',
+                order.user?.name || order.customer_name || 'N/A',
                 (function(s){ const sl=(s||'').toLowerCase().trim(); let c='pill-default-status'; if(sl==='pending')c='pill-pending'; else if(sl==='partial')c='pill-partial'; else if(sl==='completed')c='pill-completed'; else if(sl==='extra paid'||sl==='extra_paid')c='pill-extra-paid'; return `<span class="status-pill ${c}">${s||''}</span>`; })(order.payment_status),
                 (function(m){ const ml=(m||'').toLowerCase().trim(); let c='pill-method-default'; if(ml==='scan')c='pill-scan'; else if(ml==='cash')c='pill-cash'; else if(ml==='online')c='pill-online'; else if(ml==='cash+online'||ml==='cash_online'||ml==='cash + online')c='pill-cash-online'; else if(ml==='pending')c='pill-method-pending'; return `<span class="status-pill ${c}">${m||''}</span>`; })(order.payment_method),
                 displayAmount || '0.00',
                 assignedStaffHtml,
-                orderTypeHtml,
+                buildOrderTypeCell(order),
                 `<span class="status-pill pill-biller">${order.biller || 'Admin'}</span>`,
                 actionBtns
             ]);
@@ -3574,7 +3680,9 @@
 
         if ($.fn.DataTable.isDataTable('#order-table')) {
             const table = $('#order-table').DataTable();
+            clearOrdersTableFilters(table);
             table.clear().rows.add(tableBody).draw();
+            if (typeof calculateTotals === 'function') calculateTotals();
         }
     }
 
@@ -3584,32 +3692,19 @@
         const currencyPosition = 'left';
 
         data.forEach(order => {
-            if (!order.created_date) return;
+            if (!order.created_date && !order.created_at) return;
 
-            const orderDate = new Date(order.created_date).toISOString().split('T')[0]; // 'YYYY-MM-DD'
-
-            // If selectedDate exists and doesn't match, skip this
-            if (selectedDate && selectedDate !== orderDate) return;
-
-            // Format and push to table
-            let date = new Date(order.created_date);
-            let day = String(date.getDate()).padStart(2, '0');
-            let monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-            ];
-            let month = monthNames[date.getMonth()];
-            let year = date.getFullYear();
-
-            let hours = date.getHours();
-            let minutes = String(date.getMinutes()).padStart(2, '0');
-            let ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12 || 12;
+            // Prefer API formatted date; only optionally filter with local (non-UTC) parse
+            let date = parseOrderLocalDate(order.created_date || order.created_at);
+            if (selectedDate && date) {
+                if (toLocalYmd(date) !== selectedDate) return;
+            }
 
             let amount = parseFloat(order.total_amount).toFixed(2);
             let displayAmount = currencyPosition === 'right' ?
                 amount + currencySymbol : currencySymbol + amount;
 
-            const formattedDate = `${day}-${month}-${year} ${hours}:${minutes} ${ampm}`;
+            const formattedDate = order.created_date || (date ? date.toLocaleString() : 'N/A');
 
             // 🔹 Build ellipsis dropdown (renderOrders)
             let payBtnHtml3 = '';
@@ -3697,32 +3792,25 @@
                 </select>
             `;
 
-            // ---- Generate Order Type Dropdown ----
-            let orderTypeHtml = `
-                <select class="form-select order-type-update" data-id="${order.id}">
-                    <option value="delivery" ${order.order_type === 'delivery' ? 'selected' : ''}>Delivery</option>
-                    <option value="self_pickup" ${order.order_type === 'self_pickup' ? 'selected' : ''}>Self Pickup</option>
-                </select>
-            `;
-
             tableBody.push([
                 /* Order column: desktop header + mobile/tablet Pooja ERP card */
                 `
                 <div class="sl-desktop-head">
-                    <strong>${order.order_number || ''}</strong>
+                    <strong>${order.order_number || ''}</strong><br>
+                    ${getOrderTypeBadge(order)}
                 </div>
-                ${buildCard(order, order.user?.name || 'N/A')}
+                ${buildCard(order, order.user?.name || order.customer_name || 'N/A')}
                 `,
                 /* Details column (hidden) */
                 "",
                 /* Desktop-only columns */
-                order.created_date || 'N/A',
-                order.user?.name || 'N/A',
+                `<span data-sort="${date ? date.getTime() : 0}">${formattedDate}</span>`,
+                order.user?.name || order.customer_name || 'N/A',
                 (function(s){ const sl=(s||'').toLowerCase().trim(); let c='pill-default-status'; if(sl==='pending')c='pill-pending'; else if(sl==='partial')c='pill-partial'; else if(sl==='completed')c='pill-completed'; else if(sl==='extra paid'||sl==='extra_paid')c='pill-extra-paid'; return `<span class="status-pill ${c}">${s||''}</span>`; })(order.payment_status),
                 (function(m){ const ml=(m||'').toLowerCase().trim(); let c='pill-method-default'; if(ml==='scan')c='pill-scan'; else if(ml==='cash')c='pill-cash'; else if(ml==='online')c='pill-online'; else if(ml==='cash+online'||ml==='cash_online'||ml==='cash + online')c='pill-cash-online'; else if(ml==='pending')c='pill-method-pending'; return `<span class="status-pill ${c}">${m||''}</span>`; })(order.payment_method),
                 displayAmount || '0.00',
                 assignedStaffHtml,
-                orderTypeHtml,
+                buildOrderTypeCell(order),
                 `<span class="status-pill pill-biller">${order.biller || 'Admin'}</span>`,
                 actionBtns
             ]);
@@ -3730,7 +3818,9 @@
 
         if ($.fn.DataTable.isDataTable('#order-table')) {
             const table = $('#order-table').DataTable();
+            clearOrdersTableFilters(table);
             table.clear().rows.add(tableBody).draw();
+            if (typeof calculateTotals === 'function') calculateTotals();
         }
     }
     // ===== Ellipsis dropdown toggle logic (fixed positioning to escape overflow:auto) =====
