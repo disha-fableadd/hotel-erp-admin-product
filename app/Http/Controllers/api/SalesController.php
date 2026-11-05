@@ -715,7 +715,7 @@ class SalesController extends Controller
             }
 
             // Create order
-            $order = Order::create([
+            $orderPayload = [
                 'order_number'    => $orderNumber,
                 'user_id'         => $customer_id,
                 'customer_name'   => $cust_name ?: null,
@@ -735,7 +735,11 @@ class SalesController extends Controller
                 'table_status'    => $tableNoInt ? 1 : 0,
                 'branch_id'       => $branchIdToUse,
                 'created_by'      => $userData->id,
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'tax_breakdown')) {
+                $orderPayload['tax_breakdown'] = $money['tax_breakdown'] ?? [];
+            }
+            $order = Order::create($orderPayload);
 
             // Insert order items and reduce finished-good stock when track_inventory is on
             foreach ($resolvedLines as $line) {
@@ -774,7 +778,7 @@ class SalesController extends Controller
                     }
                 }
 
-                OrderItem::create([
+                OrderItem::create(array_merge([
                     'order_id' => $order->id,
                     'user_id' => $customer_id ?? null,
                     'category_id' => $line['category_id'] ?? null,
@@ -790,7 +794,7 @@ class SalesController extends Controller
                     'total_amount' => $line['line_total'],
                     'branch_id' => $branchIdToUse,
                     'created_by' => $userData->id,
-                ]);
+                ], PosPricingService::orderItemSnapshotFields($line)));
             }
             if ($tableNoInt) {
                 $this->syncTableStatus($tableNoInt);
@@ -1326,7 +1330,7 @@ class SalesController extends Controller
             $isCheckout = ($request->table_checkout ?? '') === 'checkout';
 
             // Update order
-            $order->update([
+            $orderUpdate = [
                 'user_id' => $customer_id,
                 'payment_method' => $request->payment_method,
                 'discount' => $request->discount ?? 0,
@@ -1339,7 +1343,11 @@ class SalesController extends Controller
                 'type' => $request->table_type ?? 'dinein',
                 // Mark the order inactive only when the table is checked out.
                 'table_status' => $isCheckout ? 0 : 1,
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'tax_breakdown')) {
+                $orderUpdate['tax_breakdown'] = $money['tax_breakdown'] ?? [];
+            }
+            $order->update($orderUpdate);
 
             // Insert updated order items & reduce stock
             $keptKotKeys = [];
@@ -1386,7 +1394,7 @@ class SalesController extends Controller
                 // so KOT only shows what changed on THIS Update (e.g. only kadhi-khichdi).
                 $printedCarry = max($prevPrinted, $prevQty);
 
-                $itemPayload = [
+                $itemPayload = array_merge([
                     'order_id' => $order->id,
                     'user_id' => $customer_id,
                     'category_id' => $line['category_id'] ?? null,
@@ -1402,7 +1410,7 @@ class SalesController extends Controller
                     'total_amount' => $line['line_total'],
                     'branch_id' => $branchIdToUse,
                     'created_by' => $userData->id,
-                ];
+                ], PosPricingService::orderItemSnapshotFields($line));
                 if ($hasKotPrintedCol) {
                     $itemPayload['kot_printed_qty'] = $printedCarry;
                 }
@@ -1800,7 +1808,10 @@ class SalesController extends Controller
                     }
                 }
                 $variantName = optional($item->variant)->name;
-                $displayName = (string) (optional($item->product)->name ?? 'Item');
+                $displayName = trim((string) ($item->product_name ?? ''));
+                if ($displayName === '') {
+                    $displayName = (string) (optional($item->product)->name ?? 'Item');
+                }
                 if ($variantName) {
                     $displayName .= ' (' . $variantName . ')';
                 }
@@ -1969,6 +1980,7 @@ class SalesController extends Controller
 
             $totalTax = 0;
             $taxJson = null;
+            $moneyTax = ['tax_ids' => [], 'tax_total' => 0, 'tax_breakdown' => []];
 
             // Product-level taxes only (same rules as PosPricingService)
             if ($request->gst_option === 'with_gst' || $request->gst_option === 'with') {
@@ -2002,7 +2014,7 @@ class SalesController extends Controller
             $remainingAmount = $grandTotal;
 
             // Update Order
-            $order->update([
+            $legacyOrderUpdate = [
                 'user_name' => $request->customer_id,
                 'user_phone' => $request->customer_phone,
                 'payment_method' => 'pending',
@@ -2016,8 +2028,11 @@ class SalesController extends Controller
                 'remaining_amount' => $remainingAmount,
                 'payment_status' => 'pending',
                 'order_type' => $request->order_type ?? $order->order_type,
-            ]);
-            // dd($order);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'tax_breakdown')) {
+                $legacyOrderUpdate['tax_breakdown'] = $moneyTax['tax_breakdown'] ?? [];
+            }
+            $order->update($legacyOrderUpdate);
 
             // Remove old order items
             OrderItem::where('order_id', $order->id)->delete();
@@ -2032,7 +2047,11 @@ class SalesController extends Controller
                     $total = $price * $quantity;
 
                     try {
-                        OrderItem::create([
+                        $snapLine = [
+                            'product' => $product,
+                            'product_name' => (string) ($product->name ?? 'Item'),
+                        ] + PosPricingService::taxSnapshotFromProduct($product);
+                        OrderItem::create(array_merge([
                             'order_id' => $order->id,
                             'user_id' => $order->user_id ?? null,
                             'category_id' => $product->category_id ?? null,
@@ -2043,7 +2062,7 @@ class SalesController extends Controller
                             'total_amount' => $total,
                             'branch_id' => $branchIdToUse,
                             'created_by' => $userData->id,
-                        ]);
+                        ], PosPricingService::orderItemSnapshotFields($snapLine)));
                     } catch (\Exception $e) {
                         \Log::error("Failed to insert OrderItem for product ID: " . $productId . " error: " . $e->getMessage());
                         throw $e;

@@ -507,7 +507,10 @@
                 @php
                     $qty = (float) $item->quantity;
                     $qtyLabel = fmod($qty, 1.0) == 0.0 ? number_format($qty, 0) : number_format($qty, $dp);
-                    $pName = $item->product->name ?? 'Product';
+                    $pName = trim((string) ($item->product_name ?? ''));
+                    if ($pName === '') {
+                        $pName = $item->product->name ?? 'Product';
+                    }
                     if (!empty($inv['truncate_product_names']) && mb_strlen($pName) > 22) {
                         $pName = mb_substr($pName, 0, 22) . '…';
                     }

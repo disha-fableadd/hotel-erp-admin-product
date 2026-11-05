@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\ProductAddon;
 use App\Models\ProductVariant;
 use App\Models\TaxRate;
+use Illuminate\Support\Facades\Schema;
 
 class PosPricingService
 {
@@ -94,8 +95,11 @@ class PosPricingService
             $qtyTypeId = is_numeric($product->quantity_type_id) ? (int) $product->quantity_type_id : null;
         }
 
+        $snap = self::taxSnapshotFromProduct($product);
+
         return [
             'product' => $product,
+            'product_name' => (string) ($product->name ?? 'Item'),
             'variant_id' => $variantId,
             'variant_name' => $variantName,
             'addons' => $addonPayload,
@@ -106,7 +110,70 @@ class PosPricingService
             'category_id' => $item['categoryId'] ?? $item['category_id'] ?? $product->category_id,
             'quantity_type_id' => $qtyTypeId,
             'quantity' => $qty,
+            'tax_id' => $snap['tax_id'],
+            'tax_name' => $snap['tax_name'],
+            'tax_rate' => $snap['tax_rate'],
+            'tax_inclusive' => $snap['tax_inclusive'],
         ];
+    }
+
+    /**
+     * Freeze product tax fields as they were at sale time.
+     *
+     * @return array{tax_id: ?int, tax_name: ?string, tax_rate: ?float, tax_inclusive: bool}
+     */
+    public static function taxSnapshotFromProduct($product): array
+    {
+        if (! $product) {
+            return [
+                'tax_id' => null,
+                'tax_name' => null,
+                'tax_rate' => null,
+                'tax_inclusive' => false,
+            ];
+        }
+
+        if (method_exists($product, 'loadMissing')) {
+            $product->loadMissing('tax');
+        }
+
+        $tax = $product->tax ?? null;
+        $taxId = $product->tax_id ?? ($tax->id ?? null);
+
+        return [
+            'tax_id' => $taxId ? (int) $taxId : null,
+            'tax_name' => $tax ? (string) ($tax->tax_name ?? 'GST') : null,
+            'tax_rate' => $tax ? (float) ($tax->tax_rate ?? 0) : (empty($taxId) ? null : 0.0),
+            'tax_inclusive' => (bool) ($product->tax_inclusive ?? false),
+        ];
+    }
+
+    /**
+     * Columns to persist on order_items so later product edits never change old bills.
+     */
+    public static function orderItemSnapshotFields(array $resolvedLine): array
+    {
+        $product = $resolvedLine['product'] ?? null;
+        $fields = [
+            'product_name' => $resolvedLine['product_name']
+                ?? (is_object($product) ? (string) ($product->name ?? 'Item') : 'Item'),
+            'tax_id' => $resolvedLine['tax_id'] ?? null,
+            'tax_name' => $resolvedLine['tax_name'] ?? null,
+            'tax_rate' => array_key_exists('tax_rate', $resolvedLine)
+                ? $resolvedLine['tax_rate']
+                : null,
+            'tax_inclusive' => (bool) ($resolvedLine['tax_inclusive'] ?? false),
+        ];
+
+        // Drop unknown columns when migration has not run yet.
+        if (! Schema::hasColumn('order_items', 'product_name')) {
+            unset($fields['product_name']);
+        }
+        if (! Schema::hasColumn('order_items', 'tax_id')) {
+            unset($fields['tax_id'], $fields['tax_name'], $fields['tax_rate'], $fields['tax_inclusive']);
+        }
+
+        return $fields;
     }
 
     /**
@@ -129,27 +196,18 @@ class PosPricingService
         $taxIds = [];
         $taxBreakdown = [];
 
-        // With GST: only product.tax_id rates. No product tax → 0% (do not apply all tax master rows).
+        // With GST: prefer line snapshot (sale-time), else live product.tax_id.
         if ($withGst && $subtotal > 0) {
             foreach ($resolvedLines as $line) {
-                $product = $line['product'] ?? null;
-                if (! $product) {
-                    continue;
-                }
-                $taxId = $product->tax_id ?? null;
-                if (empty($taxId)) {
-                    continue;
-                }
-
-                $tax = $product->relationLoaded('tax') ? $product->tax : TaxRate::find($taxId);
-                if (! $tax || (int) ($tax->isDeleted ?? 0) === 1) {
+                $snap = self::resolveLineTax($line);
+                if ($snap['tax_id'] === null && $snap['tax_rate'] === null) {
                     continue;
                 }
 
                 $lineTotal = (float) ($line['line_total'] ?? 0);
                 $lineShare = round($lineTotal * (1 - ($discountPercent / 100)), 2);
-                $rate = (float) $tax->tax_rate;
-                $inclusive = (bool) ($product->tax_inclusive ?? false);
+                $rate = (float) ($snap['tax_rate'] ?? 0);
+                $inclusive = (bool) ($snap['tax_inclusive'] ?? false);
 
                 if ($inclusive && $rate > 0) {
                     $base = round($lineShare / (1 + ($rate / 100)), 2);
@@ -162,17 +220,20 @@ class PosPricingService
                     continue;
                 }
 
-                $tid = (int) $tax->id;
-                if (! isset($taxBreakdown[$tid])) {
-                    $taxBreakdown[$tid] = [
-                        'id' => $tid,
-                        'name' => (string) ($tax->tax_name ?? 'Tax'),
+                $tid = (int) ($snap['tax_id'] ?? 0);
+                $key = $tid > 0 ? $tid : ('r'.str_replace('.', '_', (string) $rate));
+                if (! isset($taxBreakdown[$key])) {
+                    $taxBreakdown[$key] = [
+                        'id' => $tid > 0 ? $tid : null,
+                        'name' => (string) ($snap['tax_name'] ?? 'Tax'),
                         'rate' => $rate,
                         'amount' => 0.0,
                     ];
-                    $taxIds[] = $tid;
+                    if ($tid > 0) {
+                        $taxIds[] = $tid;
+                    }
                 }
-                $taxBreakdown[$tid]['amount'] = round($taxBreakdown[$tid]['amount'] + $lineTax, 2);
+                $taxBreakdown[$key]['amount'] = round($taxBreakdown[$key]['amount'] + $lineTax, 2);
                 $taxTotal += $lineTax;
             }
         }
@@ -191,22 +252,75 @@ class PosPricingService
     }
 
     /**
-     * Recalculate money from saved order items (uses each product's tax_id).
+     * @param  array  $line
+     * @return array{tax_id: ?int, tax_name: ?string, tax_rate: ?float, tax_inclusive: bool}
+     */
+    protected static function resolveLineTax(array $line): array
+    {
+        // Explicit snapshot on the resolved line (new sales)
+        if (array_key_exists('tax_rate', $line) || ! empty($line['tax_id'])) {
+            return [
+                'tax_id' => ! empty($line['tax_id']) ? (int) $line['tax_id'] : null,
+                'tax_name' => $line['tax_name'] ?? 'GST',
+                'tax_rate' => array_key_exists('tax_rate', $line) && $line['tax_rate'] !== null
+                    ? (float) $line['tax_rate']
+                    : null,
+                'tax_inclusive' => (bool) ($line['tax_inclusive'] ?? false),
+            ];
+        }
+
+        $product = $line['product'] ?? null;
+        if (! $product) {
+            return [
+                'tax_id' => null,
+                'tax_name' => null,
+                'tax_rate' => null,
+                'tax_inclusive' => false,
+            ];
+        }
+
+        return self::taxSnapshotFromProduct($product);
+    }
+
+    /**
+     * Recalculate money from saved order items.
+     * Prefers sale-time tax snapshot on order_items; does not invent rates from
+     * today's product master when a snapshot column exists but is empty (old bills).
      *
      * @param  iterable  $orderItems
      */
     public function calculateFromOrderItems($orderItems, float $discountPercent, bool $withGst): array
     {
+        $hasSnapCol = Schema::hasColumn('order_items', 'tax_rate');
         $resolvedLines = [];
+
         foreach ($orderItems as $item) {
-            $product = $item->product ?? null;
-            if ($product && method_exists($product, 'loadMissing')) {
-                $product->loadMissing('tax');
-            }
-            $resolvedLines[] = [
-                'product' => $product,
+            $line = [
                 'line_total' => (float) ($item->total_amount ?? 0),
             ];
+
+            $hasItemSnap = $hasSnapCol && (
+                $item->tax_rate !== null
+                || $item->tax_id !== null
+                || ($item->tax_name !== null && $item->tax_name !== '')
+            );
+
+            if ($hasItemSnap) {
+                $line['tax_id'] = $item->tax_id !== null ? (int) $item->tax_id : null;
+                $line['tax_name'] = $item->tax_name ?: 'GST';
+                $line['tax_rate'] = $item->tax_rate !== null ? (float) $item->tax_rate : 0.0;
+                $line['tax_inclusive'] = (bool) ($item->tax_inclusive ?? false);
+            } elseif (! $hasSnapCol) {
+                // Migration not applied yet — fall back to live product (legacy behaviour).
+                $product = $item->product ?? null;
+                if ($product && method_exists($product, 'loadMissing')) {
+                    $product->loadMissing('tax');
+                }
+                $line['product'] = $product;
+            }
+            // else: snapshot columns exist but this old row has none → do not use live product tax
+
+            $resolvedLines[] = $line;
         }
 
         return $this->calculateOrderTotals($resolvedLines, $discountPercent, $withGst);
@@ -214,26 +328,44 @@ class PosPricingService
 
     /**
      * Short GST label for a line item, e.g. "GST 28%" or "GST 0%".
+     * Uses sale-time snapshot when present so product edits do not rewrite old bills.
      */
     public static function itemGstLabel($item, bool $withGst = true): string
     {
         if (! $withGst) {
             return '';
         }
-        $product = is_object($item) ? ($item->product ?? null) : null;
-        if (! $product) {
-            return 'GST 0%';
+
+        $hasSnapCol = Schema::hasColumn('order_items', 'tax_rate');
+        $rate = null;
+        $name = 'GST';
+
+        if (is_object($item) && $hasSnapCol && (
+            $item->tax_rate !== null
+            || $item->tax_id !== null
+            || (! empty($item->tax_name))
+        )) {
+            $rate = (float) ($item->tax_rate ?? 0);
+            $name = trim((string) ($item->tax_name ?? 'GST')) ?: 'GST';
+        } elseif (is_object($item) && ! $hasSnapCol) {
+            $product = $item->product ?? null;
+            if ($product) {
+                if (method_exists($product, 'loadMissing')) {
+                    $product->loadMissing('tax');
+                }
+                $tax = $product->tax ?? null;
+                $rate = (float) ($tax->tax_rate ?? 0);
+                $name = trim((string) ($tax->tax_name ?? 'GST')) ?: 'GST';
+            } else {
+                return '';
+            }
+        } else {
+            // Snapshot columns exist but this historical line has no frozen tax → omit label
+            // so live product edits cannot rewrite the printed bill.
+            return '';
         }
-        if (method_exists($product, 'loadMissing')) {
-            $product->loadMissing('tax');
-        }
-        $tax = $product->tax ?? null;
-        $rate = (float) ($tax->tax_rate ?? 0);
-        $name = trim((string) ($tax->tax_name ?? 'GST'));
-        if ($name === '') {
-            $name = 'GST';
-        }
-        $rateStr = rtrim(rtrim(number_format($rate, 2, '.', ''), '0'), '.');
+
+        $rateStr = rtrim(rtrim(number_format((float) $rate, 2, '.', ''), '0'), '.');
         if ($rateStr === '') {
             $rateStr = '0';
         }

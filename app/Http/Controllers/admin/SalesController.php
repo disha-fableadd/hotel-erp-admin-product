@@ -376,15 +376,20 @@ class SalesController extends Controller
         // Company info (branch-specific setting)
         $compenyinfo = $setting;
 
-        // Order items & per-product GST totals (do not apply every tax % on full subtotal)
+        // Order items & sale-time GST (prefer frozen tax_breakdown / line snapshots)
         $orderItems = OrderItem::with(['product.tax'])->where('order_id', $id)->get();
         $totalAmount = $orderItems->sum('total_amount');
         $withGst = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
-        $money = app(PosPricingService::class)->calculateFromOrderItems(
-            $orderItems,
-            (float) ($sales->discount ?? 0),
-            $withGst
-        );
+        $frozenBreakdown = is_array($sales->tax_breakdown ?? null) ? $sales->tax_breakdown : [];
+        if (! empty($frozenBreakdown)) {
+            $money = ['tax_breakdown' => $frozenBreakdown, 'total' => (float) ($sales->total_amount ?? $totalAmount)];
+        } else {
+            $money = app(PosPricingService::class)->calculateFromOrderItems(
+                $orderItems,
+                (float) ($sales->discount ?? 0),
+                $withGst
+            );
+        }
         $taxes = collect($money['tax_breakdown'] ?? [])->map(function ($row) {
             return (object) [
                 'id' => $row['id'] ?? null,
@@ -613,15 +618,27 @@ class SalesController extends Controller
                 : $symbol . $amount;
         };
 
-        // Subtotal + per-product GST (same rules as POS save)
+        // Subtotal + sale-time GST (frozen snapshots / order.tax_breakdown)
         $orderItems = OrderItem::with(['product.tax', 'quantityType', 'variant'])->where('order_id', $view_id)->get();
         $subtotal = $orderItems->sum('total_amount');
 
         $discountPercent = (float) ($sales->discount ?? 0);
         $withGst = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
-        $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst);
-        $discountAmount = (float) ($money['discount_amount'] ?? (($discountPercent / 100) * $subtotal));
-        $afterDiscount = (float) ($money['subtotal'] ?? $subtotal) - $discountAmount;
+        $frozenBreakdown = is_array($sales->tax_breakdown ?? null) ? $sales->tax_breakdown : [];
+        if (! empty($frozenBreakdown)) {
+            $discountAmount = round($subtotal * ($discountPercent / 100), 2);
+            $afterDiscount = round($subtotal - $discountAmount, 2);
+            $money = [
+                'discount_amount' => $discountAmount,
+                'subtotal' => $subtotal,
+                'tax_breakdown' => $frozenBreakdown,
+                'total' => (float) ($sales->total_amount ?? $subtotal),
+            ];
+        } else {
+            $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst);
+            $discountAmount = (float) ($money['discount_amount'] ?? (($discountPercent / 100) * $subtotal));
+            $afterDiscount = (float) ($money['subtotal'] ?? $subtotal) - $discountAmount;
+        }
 
         $taxDetails = [];
         foreach (($money['tax_breakdown'] ?? []) as $tax) {
@@ -756,15 +773,27 @@ class SalesController extends Controller
             return $position === 'right' ? $amount . $symbol : $symbol . $amount;
         };
 
-        // Order items + per-product GST (same rules as POS / thermal invoice)
+        // Order items + sale-time GST snapshots
         $orderItems = OrderItem::with(['product.tax', 'quantityType', 'variant'])->where('order_id', $view_id)->get();
         $subtotal   = $orderItems->sum('total_amount');
 
         $discountPercent = (float) ($sales->discount ?? 0);
         $withGst = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
-        $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst);
-        $discountAmount = (float) ($money['discount_amount'] ?? (($discountPercent / 100) * $subtotal));
-        $afterDiscount = (float) ($money['subtotal'] ?? $subtotal) - $discountAmount;
+        $frozenBreakdown = is_array($sales->tax_breakdown ?? null) ? $sales->tax_breakdown : [];
+        if (! empty($frozenBreakdown)) {
+            $discountAmount = round($subtotal * ($discountPercent / 100), 2);
+            $afterDiscount = round($subtotal - $discountAmount, 2);
+            $money = [
+                'discount_amount' => $discountAmount,
+                'subtotal' => $subtotal,
+                'tax_breakdown' => $frozenBreakdown,
+                'total' => (float) ($sales->total_amount ?? $subtotal),
+            ];
+        } else {
+            $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst);
+            $discountAmount = (float) ($money['discount_amount'] ?? (($discountPercent / 100) * $subtotal));
+            $afterDiscount = (float) ($money['subtotal'] ?? $subtotal) - $discountAmount;
+        }
 
         $taxDetails = [];
         foreach (($money['tax_breakdown'] ?? []) as $tax) {

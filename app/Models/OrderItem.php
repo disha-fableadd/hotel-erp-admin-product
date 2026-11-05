@@ -14,6 +14,7 @@ class OrderItem extends Model
         'order_id',
         'user_id',
         'product_id',
+        'product_name',
         'variant_id',
         'addons',
         'category_id',
@@ -25,6 +26,10 @@ class OrderItem extends Model
         'item_discount_percent',
         'item_discount_amount',
         'total_amount',
+        'tax_id',
+        'tax_name',
+        'tax_rate',
+        'tax_inclusive',
         'branch_id',
         'created_by',
         'isDeleted',
@@ -98,7 +103,11 @@ class OrderItem extends Model
 
     public function displayName(): string
     {
-        $name = (string) (optional($this->product)->name ?? 'Item');
+        // Prefer sale-time product name so later renames do not rewrite old bills
+        $name = trim((string) ($this->product_name ?? ''));
+        if ($name === '') {
+            $name = (string) (optional($this->product)->name ?? 'Item');
+        }
         $variant = $this->variantLabel();
         if ($variant) {
             $name .= ' (' . $variant . ')';

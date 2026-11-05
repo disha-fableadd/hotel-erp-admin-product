@@ -19,6 +19,7 @@ class Order extends Model
         'customer_phone',
         'discount',
         'tax_id',
+        'tax_breakdown',
         'gst_option',
         'branch_id',
         'created_by',
@@ -42,6 +43,7 @@ class Order extends Model
 
     protected $casts = [
         'kot_pending_cancels' => 'array',
+        'tax_breakdown' => 'array',
     ];
 
     public function order_items()
