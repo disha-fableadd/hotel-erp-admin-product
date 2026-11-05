@@ -61,15 +61,17 @@
                         <rect x="26" y="47" width="12" height="5" rx="1.5" fill="currentColor" opacity="0.28"/>
                     </svg>
                 </div>
-                <div class="table-card__name">{{ $table->table_name }}</div>
-                <div class="table-card__bill {{ $showBill && $billTotal !== null ? 'is-visible' : '' }}">
-                    <span class="table-card__bill-label">Total</span>
-                    <strong class="table-card__bill-total">{{ $formattedBill }}</strong>
+                <div class="table-card__identity">
+                    <div class="table-card__name">{{ $table->table_name }}</div>
+                    <div class="table-card__bill {{ $showBill && $billTotal !== null ? 'is-visible' : '' }}">
+                        <span class="table-card__bill-label">Total</span>
+                        <strong class="table-card__bill-total">{{ $formattedBill }}</strong>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="table-card__actions">
+        <div class="table-card__actions {{ (!empty($table->last_order_id) && $isAvailable) || $isOccupied || $isPrinted ? 'is-multi' : 'is-single' }}">
             @if($isAvailable)
                 @if(!empty($table->last_order_id) && app('hasPermission')(2, 'edit'))
                     <button type="button"
@@ -92,15 +94,24 @@
                         <i class="fa-solid fa-utensils"></i>
                         <span>Continue</span>
                     </button>
+                    <button type="button"
+                        class="table-card__action table-card__action--reserve table-card__action--ghost js-reserve-table"
+                        title="Reserve this table"
+                        data-table-id="{{ $table->id }}"
+                        data-table-name="{{ $table->table_name }}">
+                        <i class="fa-regular fa-calendar-check"></i>
+                        <span>Reserve</span>
+                    </button>
+                @else
+                    <button type="button"
+                        class="table-card__action table-card__action--reserve js-reserve-table"
+                        title="Reserve this table"
+                        data-table-id="{{ $table->id }}"
+                        data-table-name="{{ $table->table_name }}">
+                        <i class="fa-regular fa-calendar-check"></i>
+                        <span>Reserve</span>
+                    </button>
                 @endif
-                <button type="button"
-                    class="table-card__action table-card__action--reserve js-reserve-table"
-                    title="Reserve this table"
-                    data-table-id="{{ $table->id }}"
-                    data-table-name="{{ $table->table_name }}">
-                    <i class="fa-regular fa-calendar-check"></i>
-                    <span>Reserve</span>
-                </button>
             @elseif($isOccupied || $isPrinted)
                 @if(app('hasPermission')(2, 'edit') && !empty($table->order_id))
                     <button type="button"

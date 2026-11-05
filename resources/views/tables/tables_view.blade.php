@@ -1941,8 +1941,8 @@
 
         .table-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(auto-fill, minmax(188px, 1fr));
+            gap: 12px;
             align-items: stretch;
         }
 
@@ -1954,9 +1954,9 @@
 
         .table-box.table-card {
             width: 100%;
-            min-height: 210px;
+            min-height: 0;
             height: 100%;
-            border-radius: 16px;
+            border-radius: 14px;
             font-weight: 600;
             display: flex;
             flex-direction: column;
@@ -1981,7 +1981,7 @@
 
         .table-box.table-card.running-table {
             border-color: #86efac;
-            background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 42%);
+            background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 48%);
         }
 
         .table-box.table-card.running-table:hover {
@@ -1991,7 +1991,7 @@
 
         .table-box.table-card.printed-table {
             border-color: #facc15;
-            background: linear-gradient(180deg, #fefce8 0%, #ffffff 42%);
+            background: linear-gradient(180deg, #fefce8 0%, #ffffff 48%);
         }
 
         .table-box.table-card.printed-table:hover {
@@ -2001,7 +2001,7 @@
 
         .table-box.table-card.reserved-table {
             border-color: #fcd34d;
-            background: linear-gradient(180deg, #fffbeb 0%, #ffffff 42%);
+            background: linear-gradient(180deg, #fffbeb 0%, #ffffff 48%);
         }
 
         .table-box.table-card.reserved-table:hover {
@@ -2009,18 +2009,18 @@
         }
 
         .table-card__accent {
-            height: 4px;
+            height: 3px;
             width: 100%;
             background: var(--table-accent, #94a3b8);
             flex-shrink: 0;
         }
 
         .table-card__body {
-            padding: 14px 14px 10px;
-            flex: 1;
+            padding: 10px 12px 8px;
+            flex: 0 0 auto;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
         }
 
         .table-card__meta {
@@ -2028,16 +2028,16 @@
             align-items: center;
             justify-content: space-between;
             gap: 8px;
-            min-height: 22px;
+            min-height: 20px;
         }
 
         .table-card__badge {
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 700;
             letter-spacing: 0.04em;
             text-transform: uppercase;
-            padding: 3px 8px;
-            border-radius: 6px;
+            padding: 3px 7px;
+            border-radius: 999px;
             background: #f1f5f9;
             color: #64748b;
             border: 0;
@@ -2076,14 +2076,23 @@
         }
 
         .table-card__center {
-            text-align: center;
-            padding: 2px 0 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-align: left;
+            padding: 2px 0 0;
+        }
+
+        .table-card__identity {
+            min-width: 0;
+            flex: 1 1 auto;
         }
 
         .table-card__visual {
-            width: 42px;
-            height: 42px;
-            margin: 0 auto 8px;
+            width: 36px;
+            height: 36px;
+            margin: 0;
+            flex-shrink: 0;
             color: #64748b;
             opacity: 1;
         }
@@ -2107,18 +2116,18 @@
 
         .table-card__name {
             margin: 0;
-            text-align: center;
-            font-size: 15px;
+            text-align: left;
+            font-size: 14px;
             font-weight: 800;
             letter-spacing: -0.02em;
             color: #0f172a;
-            text-transform: uppercase;
+            text-transform: none;
             line-height: 1.2;
         }
 
         .table-card__bill {
             display: none;
-            margin-top: 8px;
+            margin-top: 2px;
         }
 
         .table-card__bill.is-visible {
@@ -2126,60 +2135,86 @@
         }
 
         .table-card__bill-label {
-            display: block;
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            color: #64748b;
-            margin-bottom: 2px;
+            display: none;
         }
 
         .table-card__bill-total {
             display: block;
-            font-size: 16px;
+            font-size: 13px;
             font-weight: 800;
-            letter-spacing: -0.03em;
+            letter-spacing: -0.02em;
             color: #15803d;
             line-height: 1.15;
         }
 
         .table-card__actions {
-            display: flex;
-            align-items: stretch;
-            justify-content: stretch;
-            gap: 8px;
-            padding: 10px 12px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px;
+            padding: 8px 10px 10px;
             border-top: 1px solid #f1f5f9;
-            background: #fafbfc;
+            background: #f8fafc;
             margin-top: auto;
+        }
+
+        .table-card__actions.is-multi {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .table-card__actions.is-multi .table-card__action--ghost,
+        .table-card__actions.is-multi .table-card__action--print {
+            grid-column: 1 / -1;
         }
 
         .table-card__action {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            flex: 1 1 auto;
+            gap: 5px;
+            flex: 0 0 auto;
             width: 100%;
-            min-height: 36px;
-            padding: 8px 10px;
+            min-height: 34px;
+            min-width: 0;
+            padding: 7px 8px;
             border: 1px solid #e2e8f0;
             background: #fff;
             color: #334155;
-            border-radius: 10px;
-            font-size: 12px;
+            border-radius: 9px;
+            font-size: 11.5px;
             font-weight: 700;
-            line-height: 1;
+            line-height: 1.1;
+            white-space: nowrap;
             text-decoration: none !important;
             cursor: pointer;
             box-sizing: border-box;
             transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
         }
 
-        .table-card__action--reserve:hover {
+        .table-card__action i {
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .table-card__action span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .table-card__action--ghost {
+            min-height: 30px;
+            padding: 5px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            background: transparent;
+            border-style: dashed;
+        }
+
+        .table-card__action--reserve:hover,
+        .table-card__action--ghost:hover {
             background: #fff7ed;
             border-color: #fdba74;
+            border-style: solid;
             color: #c2410c;
         }
 
@@ -2191,8 +2226,8 @@
 
         .table-card__action--update-last {
             color: #c2410c;
-            border-color: rgba(255, 159, 67, 0.4);
-            background: rgba(255, 159, 67, 0.1);
+            border-color: rgba(255, 159, 67, 0.45);
+            background: #fff7ed;
         }
 
         .table-card__action--update-last:hover {
@@ -2204,7 +2239,7 @@
         .table-card__action--reoccupy {
             color: #1d4ed8;
             border-color: rgba(59, 130, 246, 0.4);
-            background: rgba(219, 234, 254, 0.7);
+            background: #eff6ff;
         }
 
         .table-card__action--reoccupy:hover {
@@ -2216,7 +2251,7 @@
         .table-card__action--clear-bill {
             color: #b91c1c;
             border-color: rgba(239, 68, 68, 0.35);
-            background: rgba(254, 226, 226, 0.65);
+            background: #fef2f2;
         }
 
         .table-card__action--clear-bill:hover {
@@ -2226,8 +2261,7 @@
         }
 
         .table-card__action-spacer {
-            flex: 1;
-            min-height: 36px;
+            display: none;
         }
 
         .table-icons {
@@ -2293,8 +2327,17 @@
                 gap: 10px;
             }
 
+            .table-card__actions.is-multi {
+                grid-template-columns: 1fr;
+            }
+
+            .table-card__actions.is-multi .table-card__action--ghost,
+            .table-card__actions.is-multi .table-card__action--print {
+                grid-column: auto;
+            }
+
             .table-card__bill-total {
-                font-size: 14px;
+                font-size: 13px;
             }
         }
         /* Header ni niche space - heading ane Take Away button banne mate */
@@ -3795,10 +3838,12 @@
             }
             const lastOrderId = $card.attr('data-last-order-id') || '';
             const activeOrderId = isActiveTable ? (orderId || '') : '';
-            $actions.empty();
+            $actions.empty().removeClass('is-multi is-single');
             var safeTableName = String(tableName).replace(/"/g, '&quot;');
+            var actionMode = 'is-single';
             if (nextStatus === 'blank' || nextStatus === 'available') {
                 if (canEditBill && lastOrderId) {
+                    actionMode = 'is-multi';
                     $actions.append(
                         '<button type="button" class="table-card__action table-card__action--reoccupy js-reoccupy-last-bill"' +
                         ' title="Put last bill back on this table (Occupied)" data-order-id="' + lastOrderId + '"' +
@@ -3811,13 +3856,20 @@
                         ' data-table-id="' + tableId + '" data-table-name="' + safeTableName + '" data-open-dine="1">' +
                         '<i class="fa-solid fa-utensils"></i><span>Continue</span></button>'
                     );
+                    $actions.append(
+                        '<button type="button" class="table-card__action table-card__action--reserve table-card__action--ghost js-reserve-table" title="Reserve this table"' +
+                        ' data-table-id="' + tableId + '" data-table-name="' + safeTableName + '">' +
+                        '<i class="fa-regular fa-calendar-check"></i><span>Reserve</span></button>'
+                    );
+                } else {
+                    $actions.append(
+                        '<button type="button" class="table-card__action table-card__action--reserve js-reserve-table" title="Reserve this table"' +
+                        ' data-table-id="' + tableId + '" data-table-name="' + safeTableName + '">' +
+                        '<i class="fa-regular fa-calendar-check"></i><span>Reserve</span></button>'
+                    );
                 }
-                $actions.append(
-                    '<button type="button" class="table-card__action table-card__action--reserve js-reserve-table" title="Reserve this table"' +
-                    ' data-table-id="' + tableId + '" data-table-name="' + safeTableName + '">' +
-                    '<i class="fa-regular fa-calendar-check"></i><span>Reserve</span></button>'
-                );
             } else if (nextStatus === 'running' || nextStatus === 'printed') {
+                actionMode = 'is-multi';
                 if (canEditBill && activeOrderId) {
                     $actions.append(
                         '<button type="button" class="table-card__action table-card__action--update-last js-open-dine-bill"' +
@@ -3840,6 +3892,7 @@
             } else {
                 $actions.append('<span class="table-card__action-spacer"></span>');
             }
+            $actions.addClass(actionMode);
         };
 
         function reserveSelectedTable(payload) {
