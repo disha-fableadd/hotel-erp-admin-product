@@ -2893,6 +2893,36 @@
                     return parseFloat(num.toFixed(4)).toString();
                 }
 
+                // Prepared food never OOS; negative selling never blocks add/qty
+                function posIsPreparedFood(product) {
+                    return String(product && product.product_kind ? product.product_kind : '') === 'prepared_food';
+                }
+                function posAllowsOversell(product) {
+                    if (!product) return true;
+                    if (product.allow_oversell === false || product.allow_oversell === 0) return false;
+                    return true;
+                }
+                function posShowOutOfStock(product) {
+                    if (!product) return false;
+                    if (typeof product.show_out_of_stock !== 'undefined') {
+                        return !!product.show_out_of_stock;
+                    }
+                    if (posIsPreparedFood(product) || product.track_inventory === false || product.track_inventory === 0) {
+                        return false;
+                    }
+                    return Number(product.quantity) <= 0;
+                }
+                function posEffectiveStock(productOrStock, productMeta) {
+                    // Negative selling / prepared food → no hard cart cap
+                    if (productMeta) {
+                        if (posIsPreparedFood(productMeta) || posAllowsOversell(productMeta) || productMeta.track_inventory === false || productMeta.track_inventory === 0) {
+                            return 999999;
+                        }
+                    }
+                    var n = parseInt(productOrStock, 10);
+                    return isNaN(n) ? 999999 : Math.max(n, 0) || 999999;
+                }
+
                 // function calculateTotals() {
                 //     const firstTaxElement = $(".tax-value").first();
                 //     const currencySymbol = firstTaxElement.data("symbol") || '{{ $currency_symbol }}'; // fallback
@@ -3339,7 +3369,11 @@
                     );
                     var productCode = "PT001";
                     var $checkIcon = $product.find(".check-product i");
-                    var productStock = parseInt($product.data("stock")) || 0;
+                    var productStock = posEffectiveStock($product.data("stock"), {
+                        product_kind: $product.data("product-kind"),
+                        track_inventory: $product.data("track-inventory") !== 0 && $product.data("track-inventory") !== '0',
+                        allow_oversell: $product.data("allow-oversell") !== 0 && $product.data("allow-oversell") !== '0'
+                    });
                     var quantity_type_id = $product.data("quantity_type_id") || quantity_type123 || quantity_type;
                     if (quantity_type_id && ['undefined', 'null'].includes(quantity_type_id.toString().toLowerCase())) {
                         quantity_type_id = "";
@@ -3366,19 +3400,10 @@
                         var uniqueId = productId;
                         if (selectedItems.has(uniqueId)) {
                             var existingItem = selectedItems.get(uniqueId);
-                            if (existingItem.quantity < productStock) {
-                                existingItem.quantity++;
-                                selectedItems.set(uniqueId, existingItem);
-                                updateTotalItems();
-                            } else {
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Stock Limit Reached',
-                                    text: 'Cannot exceed available stock (' + productStock + ')',
-                                    confirmButtonColor: '#ff9f43',
-                                    confirmButtonText: 'OK'
-                                });
-                            }
+                            // Negative selling: always allow increase
+                            existingItem.quantity++;
+                            selectedItems.set(uniqueId, existingItem);
+                            updateTotalItems();
                         } else {
                             selectedItems.set(uniqueId, {
                                 id: uniqueId,
@@ -3442,19 +3467,10 @@
                     var itemId = $(this).data("id");
                     if (selectedItems.has(itemId)) {
                         var item = selectedItems.get(itemId);
-                        if (item.quantity < item.stock) {
-                            item.quantity++;
-                            selectedItems.set(itemId, item);
-                            updateTotalItems();
-                        } else {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Stock Limit Reached',
-                                text: 'Cannot exceed available stock (' + item.stock + ')',
-                                confirmButtonColor: '#ff9f43',
-                                confirmButtonText: 'OK'
-                            });
-                        }
+                        // Negative selling: no hard stock cap
+                        item.quantity++;
+                        selectedItems.set(itemId, item);
+                        updateTotalItems();
                     }
                 });
 
@@ -3465,16 +3481,7 @@
                     if (selectedItems.has(itemId)) {
                         var item = selectedItems.get(itemId);
 
-                        if (newQty > item.stock) {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Stock Quantity Exceeded',
-                                text: 'Only ' + item.stock + ' quantity are available.',
-                                confirmButtonColor: '#3085d6',
-                                confirmButtonText: 'OK'
-                            });
-                            newQty = item.stock;
-                        } else if (newQty < 1 || isNaN(newQty)) {
+                        if (newQty < 1 || isNaN(newQty)) {
                             newQty = 1;
                         }
 
@@ -4044,12 +4051,13 @@
                             let displayPrice = currencyPosition === 'right' ? `${price}${currencySymbol}` :
                                 `${currencySymbol}${price}`;
 
-                            // Check if product is out of stock
+                            // Prepared food never OOS; negative selling keeps card clickable
                             let outOfStockBadge = '';
                             let disabledClass = '';
                             let addButtonDisabled = '';
+                            var effectiveStock = posEffectiveStock(product.quantity, product);
 
-                            if (Number(product.quantity) === 0) {
+                            if (posShowOutOfStock(product) && !posAllowsOversell(product)) {
                                 outOfStockBadge = `<div style="
                                     position: absolute;
                                     top: 10px;
@@ -4062,9 +4070,8 @@
                                     font-size: 12px;
                                     z-index: 10;
                                     ">Out of Stock</div>`;
-
-                                disabledClass = 'disabled-product'; // optional styling class
-                                addButtonDisabled = 'disabled'; // disable button
+                                disabledClass = 'disabled-product';
+                                addButtonDisabled = 'disabled';
                             }
 
                             var variantsList = product.variants || [];
@@ -4080,7 +4087,7 @@
                             var safeNoImage = escapeHtmlAttr(POS_NO_IMAGE);
                             productsHtml += `
                                         <div class="col-lg-3 col-sm-6 d-flex position-relative">
-                                            <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
+                                            <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                 ${outOfStockBadge}
                                                 ${hasOptionsBadge}
                                                 <div class="productsetimg">
@@ -4242,7 +4249,9 @@
                                                 data-quantity_type_id="${product.quantity_type_id || ''}"
                                                 data-quantity_type123="${product.quantity_type_id || ''}"
                                                 data-image="${searchImg}"
-                                                data-stock="${product.stock ?? 10}"
+                                                data-stock="${posEffectiveStock(product.stock, product)}"
+                                                data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}"
+                                                data-allow-oversell="1"
                                                 data-category="${product.category_id ?? 0}">+ Add</button>
                                         </div>
                                     `);
@@ -4287,7 +4296,10 @@
                     const productName = $btn.data("name");
                     const productPrice = $btn.data("price");
                     const productImage = resolveProductImage($btn.attr("data-image") || $btn.data("image"));
-                    const productStock = parseInt($btn.data("stock")) || 0;
+                    const productStock = posEffectiveStock($btn.data("stock"), {
+                        product_kind: $btn.data("product-kind"),
+                        allow_oversell: true
+                    });
                     const categoryId = $btn.data("category");
                     const basePrice = parseFloat($btn.attr('data-raw-price')) || parseFloat(String(productPrice).replace(/[^0-9.-]+/g, '')) || 0;
 
@@ -4322,19 +4334,9 @@
 
                     if (selectedItems.has(productId)) {
                         var existingItem = selectedItems.get(productId);
-                        if (existingItem.quantity < productStock) {
-                            existingItem.quantity++;
-                            selectedItems.set(productId, existingItem);
-                            updateTotalItems();
-                        } else {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Stock Limit Reached',
-                                text: 'Cannot exceed available stock (' + productStock + ')',
-                                confirmButtonColor: '#ff9f43',
-                                confirmButtonText: 'OK'
-                            });
-                        }
+                        existingItem.quantity++;
+                        selectedItems.set(productId, existingItem);
+                        updateTotalItems();
                     } else {
                         selectedItems.set(productId, {
                             id: productId,

@@ -46,6 +46,10 @@ class ProductMasterService
     public function extractRestaurantAttributes(Request $request): array
     {
         $kind = $request->input('product_kind', 'general') ?: 'general';
+        // Prepared food is recipe-driven — never treat finished-good qty as a hard stock limit.
+        $trackInventory = $kind === 'prepared_food'
+            ? false
+            : $this->boolFromRequest($request->input('track_inventory'), true);
 
         return [
             'product_kind' => $kind,
@@ -54,7 +58,7 @@ class ProductMasterService
             'tax_id' => $request->filled('tax_id') ? $request->tax_id : null,
             'tax_inclusive' => $this->boolFromRequest($request->input('tax_inclusive'), false),
             'is_pos_available' => $this->boolFromRequest($request->input('is_pos_available'), true),
-            'track_inventory' => $this->boolFromRequest($request->input('track_inventory'), true),
+            'track_inventory' => $trackInventory,
             'recipe_required' => $this->boolFromRequest($request->input('recipe_required'), false),
             'kitchen_station' => $request->input('kitchen_station'),
             'prep_time_minutes' => $request->filled('prep_time_minutes') ? (int) $request->prep_time_minutes : null,

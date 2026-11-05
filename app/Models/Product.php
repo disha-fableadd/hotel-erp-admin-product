@@ -153,6 +153,54 @@ class Product extends Model
         return $this->hasOne(ProductInventory::class, 'product_id');
     }
 
+    public function isPreparedFood(): bool
+    {
+        return ($this->product_kind ?? 'general') === 'prepared_food';
+    }
+
+    /**
+     * Finished dishes / recipe items should not block POS on finished-good qty.
+     */
+    public function tracksInventory(): bool
+    {
+        if ($this->isPreparedFood()) {
+            return false;
+        }
+
+        if (array_key_exists('track_inventory', $this->getAttributes())) {
+            return (bool) $this->track_inventory;
+        }
+
+        return true;
+    }
+
+    /**
+     * Hotel POS allows selling below zero stock (negative selling).
+     */
+    public function allowsOversell(): bool
+    {
+        return true;
+    }
+
+    public function shouldBlockSaleForQty($qtyNeeded): bool
+    {
+        if ($this->allowsOversell() || ! $this->tracksInventory()) {
+            return false;
+        }
+
+        return (float) $this->quantity < (float) $qtyNeeded;
+    }
+
+    /** Show "Out of Stock" badge (informational). Prepared food never shows it. */
+    public function showOutOfStockBadge(): bool
+    {
+        if ($this->isPreparedFood() || ! $this->tracksInventory()) {
+            return false;
+        }
+
+        return (float) $this->quantity <= 0;
+    }
+
     protected static function boot()
     {
         parent::boot();

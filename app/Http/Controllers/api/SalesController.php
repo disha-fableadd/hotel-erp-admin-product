@@ -402,7 +402,9 @@ class SalesController extends Controller
                     'category_name' => $product->category ? $product->category->name : 'Uncategorized',
                     'product_kind' => $product->product_kind ?? 'general',
                     'food_type' => $product->food_type ?? 'na',
-                    'track_inventory' => (bool) ($product->track_inventory ?? true),
+                    'track_inventory' => $product->tracksInventory(),
+                    'allow_oversell' => $product->allowsOversell(),
+                    'show_out_of_stock' => $product->showOutOfStockBadge(),
                     'kitchen_station' => $product->kitchen_station,
                     'variants' => ($product->variants ?? collect())->map(function ($v) {
                         return [
@@ -567,10 +569,16 @@ class SalesController extends Controller
             $branchIdToUse = $userData->id;
         }
         try {
-            // Check if all items have enough stock before proceeding
+            // Stock check (prepared food / negative selling never blocks)
             foreach ($request->items as $item) {
                 $product = Product::find($item['product_id']);
-                if (!$product || $product->quantity < $item['quantity']) {
+                if (! $product) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => "Product not found: {$item['product_id']}",
+                    ], 400);
+                }
+                if ($product->shouldBlockSaleForQty($item['quantity'] ?? 0)) {
                     return response()->json([
                         'status' => false,
                         'message' => "Insufficient stock for product ID: {$item['product_id']}",
@@ -735,15 +743,16 @@ class SalesController extends Controller
             // Insert order items and reduce finished-good stock when track_inventory is on
             foreach ($resolvedLines as $line) {
                 $product = $line['product'];
-                $trackInventory = array_key_exists('track_inventory', $product->getAttributes())
-                    ? (bool) $product->track_inventory
-                    : true;
+                $trackInventory = $product->tracksInventory();
 
                 if ($trackInventory) {
                     $beforeQty = (int) $product->quantity;
-                    $product->quantity = max(0, $beforeQty - (int) $line['quantity']);
-                    if ((int) $product->quantity === 0) {
+                    // Negative selling: allow quantity to go below zero
+                    $product->quantity = $beforeQty - (int) $line['quantity'];
+                    if (! $product->isPreparedFood() && (int) $product->quantity <= 0) {
                         $product->availablility = 'out_stock';
+                    } elseif ((int) $product->quantity > 0) {
+                        $product->availablility = 'in_stock';
                     }
                     $product->save();
 
@@ -1288,13 +1297,10 @@ class SalesController extends Controller
                 );
             }
 
-            // Check updated stock availability
+            // Check updated stock availability (prepared food / oversell never blocks)
             foreach ($resolvedLines as $line) {
                 $p = $line['product'];
-                $trackInventory = array_key_exists('track_inventory', $p->getAttributes())
-                    ? (bool) $p->track_inventory
-                    : true;
-                if ($trackInventory && $p->quantity < $line['quantity']) {
+                if ($p->shouldBlockSaleForQty($line['quantity'] ?? 0)) {
                     return response()->json([
                         'status' => false,
                         'message' => "Insufficient stock for Product ID: {$p->id}",
@@ -1343,13 +1349,17 @@ class SalesController extends Controller
             $fireTicket = []; // exact lines for THIS Update's KOT (Petpooja: only what changed now)
             foreach ($resolvedLines as $line) {
                 $product = $line['product'];
-                $trackInventory = array_key_exists('track_inventory', $product->getAttributes())
-                    ? (bool) $product->track_inventory
-                    : true;
+                $trackInventory = $product->tracksInventory();
 
                 if ($trackInventory) {
                     $beforeQty = (int) $product->quantity;
-                    $product->quantity = max(0, $beforeQty - (int) $line['quantity']);
+                    // Negative selling: allow quantity to go below zero
+                    $product->quantity = $beforeQty - (int) $line['quantity'];
+                    if (! $product->isPreparedFood() && (int) $product->quantity <= 0) {
+                        $product->availablility = 'out_stock';
+                    } elseif ((int) $product->quantity > 0) {
+                        $product->availablility = 'in_stock';
+                    }
                     $product->save();
 
                     ProductInventory::create([
@@ -1917,9 +1927,8 @@ class SalesController extends Controller
 
                     $difference = $quantity - $oldQty;
 
-                    // Check if stock is available for increment
-                    if ($difference > 0 && $product->quantity < $difference) {
-                        // Abort early with error
+                    // Check if stock is available for increment (skip when oversell / prepared food)
+                    if ($difference > 0 && $product->shouldBlockSaleForQty($difference)) {
                         DB::rollBack();
                         return response()->json([
                             'success' => false,
@@ -1927,10 +1936,10 @@ class SalesController extends Controller
                         ], 422);
                     }
 
-                    // Stock adjustment
-                    if ($difference > 0) {
+                    // Stock adjustment (negative selling allowed)
+                    if ($difference > 0 && $product->tracksInventory()) {
                         $product->decrement('quantity', $difference);
-                    } elseif ($difference < 0) {
+                    } elseif ($difference < 0 && $product->tracksInventory()) {
                         $product->increment('quantity', abs($difference));
                     }
 

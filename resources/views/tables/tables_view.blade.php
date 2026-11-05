@@ -3166,6 +3166,30 @@
                 return parseFloat(num.toFixed(4)).toString();
             }
 
+            function posIsPreparedFood(product) {
+                return String(product && product.product_kind ? product.product_kind : '') === 'prepared_food';
+            }
+            function posAllowsOversell(product) {
+                if (!product) return true;
+                if (product.allow_oversell === false || product.allow_oversell === 0) return false;
+                return true;
+            }
+            function posShowOutOfStock(product) {
+                if (!product) return false;
+                if (typeof product.show_out_of_stock !== 'undefined') return !!product.show_out_of_stock;
+                if (posIsPreparedFood(product) || product.track_inventory === false || product.track_inventory === 0) return false;
+                return Number(product.quantity) <= 0;
+            }
+            function posEffectiveStock(productOrStock, productMeta) {
+                if (productMeta) {
+                    if (posIsPreparedFood(productMeta) || posAllowsOversell(productMeta) || productMeta.track_inventory === false || productMeta.track_inventory === 0) {
+                        return 999999;
+                    }
+                }
+                var n = parseInt(productOrStock, 10);
+                return isNaN(n) ? 999999 : (n > 0 ? n : 999999);
+            }
+
             function escapeHtmlAttr(value) {
                 return String(value == null ? '' : value)
                     .replace(/&/g, '&amp;')
@@ -3454,12 +3478,13 @@
                         let displayPrice = currencyPosition === 'right' ? `${price}${currencySymbol}` :
                             `${currencySymbol}${price}`;
 
-                        // Check if product is out of stock
+                        // Prepared food never OOS; negative selling keeps card clickable
                         let outOfStockBadge = '';
                         let disabledClass = '';
                         let addButtonDisabled = '';
+                        var effectiveStock = posEffectiveStock(product.quantity, product);
 
-                        if (Number(product.quantity) === 0) {
+                        if (posShowOutOfStock(product) && !posAllowsOversell(product)) {
                             outOfStockBadge = `<div style="
                                                 position: absolute;
                                                 top: 10px;
@@ -3472,9 +3497,8 @@
                                                 font-size: 12px;
                                                 z-index: 10;
                                                 ">Out of Stock</div>`;
-
-                            disabledClass = 'disabled-product'; // optional styling class
-                            addButtonDisabled = 'disabled'; // disable button
+                            disabledClass = 'disabled-product';
+                            addButtonDisabled = 'disabled';
                         }
 
                         var safeName = escapeHtmlAttr(product.name);
@@ -3487,7 +3511,7 @@
 
                         productsHtml += `
                                                     <div class="col-lg-4 col-md-6 col-sm-6 d-flex position-relative product-card-col">
-                                                        <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${product.quantity}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
+                                                        <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                             ${outOfStockBadge}
                                                             <div class="productsetimg">
                                                                 <img src="${safeImage}" alt="${safeName}" class="productsetimgin">
@@ -4089,19 +4113,9 @@
                 var itemId = $(this).data("id");
                 if (selectedItems.has(itemId)) {
                     var item = selectedItems.get(itemId);
-                    if (item.quantity < item.stock) {
-                        item.quantity++;
-                        selectedItems.set(itemId, item);
-                        updateTotalItems();
-                    } else {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Stock Limit Reached',
-                            text: 'Cannot exceed available stock (' + item.stock + ')',
-                            confirmButtonColor: '#ff9f43',
-                            confirmButtonText: 'OK'
-                        });
-                    }
+                    item.quantity++;
+                    selectedItems.set(itemId, item);
+                    updateTotalItems();
                 }
             });
 
@@ -4112,23 +4126,14 @@
                 if (selectedItems.has(itemId)) {
                     var item = selectedItems.get(itemId);
 
-                    if (newQty > item.stock) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Stock Quantity Exceeded',
-                            text: 'Only ' + item.stock + ' quantity are available.',
-                            confirmButtonColor: '#3085d6',
-                            confirmButtonText: 'OK'
-                        });
-                        newQty = item.stock;
-                    } else if (newQty < 1 || isNaN(newQty)) {
+                    if (newQty < 1 || isNaN(newQty)) {
                         newQty = 1;
                     }
 
                     item.quantity = newQty;
                     selectedItems.set(itemId, item);
                     updateTotalItems();
-                    $(this).val(newQty); // update input box with valid value
+                    $(this).val(newQty);
                 }
             });
 

@@ -79,6 +79,10 @@
     $showHrSection = $hasOtherHrItems;
     $showErpSection = $showErpSection || $showStaffInErp;
     $showSettingsSection = tenant_has_module(['General Settings', 'Tax Rates', 'Settings']) || $showBranchInSettings;
+
+    $canQuickTakeaway = tenant_has_module('Orders') && app('hasPermission')(2, 'add') && \Illuminate\Support\Facades\Route::has('sales.add');
+    $canQuickDineIn = tenant_has_module('Tables') && (app('hasPermission')(9, 'view') || app('hasPermission')(9, 'add') || app('hasPermission')(2, 'add') || app('hasPermission')(2, 'view')) && \Illuminate\Support\Facades\Route::has('tables.create');
+    $showSidebarQuickFooter = $canQuickTakeaway || $canQuickDineIn;
 @endphp
 <style>
     body.mini-sidebar:not(.expand-menu) .sidebar .sidebar-menu>ul>li.menu-title {
@@ -316,9 +320,82 @@
         color: #64748b;
         transition: color 0.2s ease;
     }
+
+    .sidebar-quick-footer {
+        display: none;
+    }
+    @media (min-width: 992px) {
+        .sidebar-quick-footer {
+            display: flex;
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 6;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--theme-color-4, #fff);
+            border-top: 1px solid var(--theme-color-24, #ece9f1);
+            box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.06);
+        }
+        #sidebar.has-quick-footer #sidebar-menu {
+            padding-bottom: 84px !important;
+        }
+        .sidebar-quick-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 38px;
+            background: #ff9f43;
+            color: #fff !important;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-decoration: none;
+            white-space: nowrap;
+            padding: 0 8px;
+        }
+        .sidebar-quick-btn:hover,
+        .sidebar-quick-btn:focus {
+            background: #f08a28;
+            color: #fff !important;
+        }
+        .sidebar-quick-btn i {
+            font-size: 12px;
+        }
+        .sidebar-quick-btn.sidebar-quick-dinein {
+            background: #1b2850;
+        }
+        .sidebar-quick-btn.sidebar-quick-dinein:hover,
+        .sidebar-quick-btn.sidebar-quick-dinein:focus {
+            background: #151e3d;
+        }
+        body.mini-sidebar:not(.expand-menu) .sidebar-quick-footer {
+            flex-direction: column;
+            padding: 8px 8px;
+            gap: 6px;
+        }
+        body.mini-sidebar:not(.expand-menu) .sidebar-quick-btn {
+            height: 34px;
+            padding: 0;
+        }
+        body.mini-sidebar:not(.expand-menu) .sidebar-quick-btn span {
+            display: none;
+        }
+        body.mini-sidebar:not(.expand-menu) #sidebar.has-quick-footer #sidebar-menu {
+            padding-bottom: 96px !important;
+        }
+    }
+    @media (max-width: 991px) {
+        .sidebar-quick-footer {
+            display: none !important;
+        }
+    }
 </style>
 
-<div class="sidebar" id="sidebar">
+<div class="sidebar{{ $showSidebarQuickFooter ? ' has-quick-footer' : '' }}" id="sidebar">
     <div class="sidebar-inner slimscroll">
         <div id="sidebar-menu" class="sidebar-menu">
             <div class="sidebar-search-wrap">
@@ -903,4 +980,21 @@
             </ul>
         </div>
     </div>
+
+    @if ($showSidebarQuickFooter)
+        <div class="sidebar-quick-footer">
+            @if ($canQuickTakeaway)
+                <a href="{{ route('sales.add') }}" class="sidebar-quick-btn" title="New Takeaway / Delivery order">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span>Takeaway / Delivery</span>
+                </a>
+            @endif
+            @if ($canQuickDineIn)
+                <a href="{{ route('tables.create') }}" class="sidebar-quick-btn sidebar-quick-dinein" title="New Dine In order">
+                    <i class="fas fa-utensils"></i>
+                    <span>Dine In</span>
+                </a>
+            @endif
+        </div>
+    @endif
 </div>
