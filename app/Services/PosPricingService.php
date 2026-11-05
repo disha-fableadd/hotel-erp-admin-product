@@ -189,4 +189,55 @@ class PosPricingService
             'total' => $grand,
         ];
     }
+
+    /**
+     * Recalculate money from saved order items (uses each product's tax_id).
+     *
+     * @param  iterable  $orderItems
+     */
+    public function calculateFromOrderItems($orderItems, float $discountPercent, bool $withGst): array
+    {
+        $resolvedLines = [];
+        foreach ($orderItems as $item) {
+            $product = $item->product ?? null;
+            if ($product && method_exists($product, 'loadMissing')) {
+                $product->loadMissing('tax');
+            }
+            $resolvedLines[] = [
+                'product' => $product,
+                'line_total' => (float) ($item->total_amount ?? 0),
+            ];
+        }
+
+        return $this->calculateOrderTotals($resolvedLines, $discountPercent, $withGst);
+    }
+
+    /**
+     * Short GST label for a line item, e.g. "GST 28%" or "GST 0%".
+     */
+    public static function itemGstLabel($item, bool $withGst = true): string
+    {
+        if (! $withGst) {
+            return '';
+        }
+        $product = is_object($item) ? ($item->product ?? null) : null;
+        if (! $product) {
+            return 'GST 0%';
+        }
+        if (method_exists($product, 'loadMissing')) {
+            $product->loadMissing('tax');
+        }
+        $tax = $product->tax ?? null;
+        $rate = (float) ($tax->tax_rate ?? 0);
+        $name = trim((string) ($tax->tax_name ?? 'GST'));
+        if ($name === '') {
+            $name = 'GST';
+        }
+        $rateStr = rtrim(rtrim(number_format($rate, 2, '.', ''), '0'), '.');
+        if ($rateStr === '') {
+            $rateStr = '0';
+        }
+
+        return $name.' '.$rateStr.'%';
+    }
 }

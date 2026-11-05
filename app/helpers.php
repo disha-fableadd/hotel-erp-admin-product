@@ -652,6 +652,7 @@ if (! function_exists('default_invoice_customization')) {
             'show_item_barcode' => false,
             'show_item_qty' => true,
             'show_item_description' => false,
+            'show_item_gst' => true,
             'show_hsn' => false,
             'show_item_mrp' => false,
             'show_item_sp' => true,

@@ -3448,6 +3448,7 @@
                         item_discount_percent: parseFloat(item.item_discount_percent || 0) || 0,
                         tax_id: product.tax_id || (taxObj && taxObj.id) || null,
                         tax_rate: taxObj ? parseFloat(taxObj.tax_rate) : (product.tax_rate != null ? parseFloat(product.tax_rate) : null),
+                        tax_name: (taxObj && taxObj.tax_name) ? taxObj.tax_name : (product.tax_name || null),
                         tax_inclusive: !!(product.tax_inclusive)
                     });
 
@@ -3636,7 +3637,7 @@
 
                         productsHtml += `
                                                     <div class="col-lg-4 col-md-6 col-sm-6 d-flex position-relative product-card-col">
-                                                        <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-tax-id="${product.tax_id || ''}" data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}" data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
+                                                        <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-tax-id="${product.tax_id || ''}" data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}" data-tax-name="${escapeHtmlAttr(product.tax_name || (product.tax && product.tax.tax_name) || '')}" data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                             ${outOfStockBadge}
                                                             <div class="productsetimg">
                                                                 <img src="${safeImage}" alt="${safeName}" class="productsetimgin">
@@ -3950,6 +3951,13 @@
 
                     var safeCartImage = escapeHtmlAttr(resolveProductImage(item.image));
                     var safeCartName = escapeHtmlAttr(item.name);
+                    var gstCartSuffix = '';
+                    if ($("input[name='gst_option']:checked").val() === 'with') {
+                        var cartRate = item.tax_rate != null && item.tax_rate !== '' ? parseFloat(item.tax_rate) : NaN;
+                        var cartTaxName = (item.tax_name && String(item.tax_name).trim()) ? String(item.tax_name).trim() : 'GST';
+                        var cartRateStr = isNaN(cartRate) ? '0' : String(cartRate).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+                        gstCartSuffix = ` <small class="text-muted">(${escapeHtmlAttr(cartTaxName)} ${escapeHtmlAttr(cartRateStr)}%)</small>`;
+                    }
 
                     var discPct = parseFloat(item.item_discount_percent || 0) || 0;
                     var discHtml = canItemDiscount
@@ -3964,7 +3972,7 @@
                                                         <img src="${safeCartImage}" alt="${safeCartName}">
                                                     </div>
                                                     <div class="productcontet">
-                                                        <h4 style="text-transform: capitalize;">${safeCartName}
+                                                        <h4 style="text-transform: capitalize;">${safeCartName}${gstCartSuffix}
                                                             <a href="javascript:void(0);" class="ms-2 edit-item" data-id="${item.id}">
                                                                 <img src="{{ env('ImagePath') . '/admin/assets/img/icons/edit-5.svg' }}" alt="edit">
                                                             </a>
@@ -4167,6 +4175,7 @@
                     item_discount_percent: 0,
                     tax_id: pendingPosProduct.tax_id || null,
                     tax_rate: pendingPosProduct.tax_rate != null ? pendingPosProduct.tax_rate : null,
+                    tax_name: pendingPosProduct.tax_name || null,
                     tax_inclusive: !!pendingPosProduct.tax_inclusive,
                     uniqueId: uniqueId
                 });
@@ -4195,6 +4204,7 @@
                 var productTaxId = $product.data("tax-id") || null;
                 var productTaxRate = $product.attr("data-tax-rate");
                 productTaxRate = (productTaxRate === '' || productTaxRate == null) ? null : parseFloat(productTaxRate);
+                var productTaxName = ($product.attr("data-tax-name") || '').toString().trim() || null;
                 var productTaxInclusive = $product.data("tax-inclusive") === 1 || $product.data("tax-inclusive") === '1';
 
                 var apiQtyAttr = $product.attr("data-selected-qty");
@@ -4218,6 +4228,7 @@
                         stock: productStock,
                         tax_id: productTaxId,
                         tax_rate: productTaxRate,
+                        tax_name: productTaxName,
                         tax_inclusive: productTaxInclusive
                     });
                     $product.removeAttr("data-selected-qty");
@@ -4239,6 +4250,7 @@
                     basePrice: basePrice,
                     tax_id: productTaxId,
                     tax_rate: productTaxRate,
+                    tax_name: productTaxName,
                     tax_inclusive: productTaxInclusive
                 };
 
@@ -4263,6 +4275,7 @@
                     stock: productStock,
                     tax_id: productTaxId,
                     tax_rate: productTaxRate,
+                    tax_name: productTaxName,
                     tax_inclusive: productTaxInclusive,
                     uniqueId: productId
                 });
@@ -4346,7 +4359,11 @@
                 }
             });
             $(document).on("change", "input[name='gst_option']", function () {
-                calculateTotals();
+                if (typeof updateTotalItems === 'function') {
+                    updateTotalItems();
+                } else {
+                    calculateTotals();
+                }
             });
 
             $(".btn-totallabel").click(function (event) {

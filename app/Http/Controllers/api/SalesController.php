@@ -1754,27 +1754,36 @@ class SalesController extends Controller
 
         $companyInfo = Setting::where('branch_id', $selectedSubAdminID)->first()
             ?? Setting::where('branch_id', $authUser->id)->first();
-        $taxIds = json_decode($sales->tax_id, true) ?? [];
         $paidAmount = PaymentStore::where('order_id', $sales->id)
             ->where('isDeleted', 0)
             ->sum('payment_amount');
-        // dd($paidAmount);
 
-        // ✅ Pending amount comes directly from orders table
+        // Pending amount comes directly from orders table
         $pendingAmount = $sales->remaining_amount ?? 0;
-        $taxDetails = TaxRate::whereIn('id', $taxIds)
-            ->where('isDeleted', 0)
-            ->where('status', 'active')
-            ->get(['id', 'tax_name', 'tax_rate']);
-        // ✅ Format created_at to "2025-10-29 11:46 AM" (IST)
+
         $formattedCreatedAt = $sales->created_at
             ? $sales->created_at->format('Y-m-d h:i A')
             : null;
-        // Fetch order items with product & include date
-            $orderItems = OrderItem::where('order_id', $id)
+
+        $withGst = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
+        $orderItemModels = OrderItem::where('order_id', $id)
             ->with(['product.tax', 'quantityType', 'variant'])
-            ->get()
-            ->map(function ($item) {
+            ->get();
+        $money = $this->posPricing()->calculateFromOrderItems(
+            $orderItemModels,
+            (float) ($sales->discount ?? 0),
+            $withGst
+        );
+        $taxDetails = collect($money['tax_breakdown'] ?? [])->map(function ($row) {
+            return [
+                'id' => $row['id'] ?? null,
+                'tax_name' => $row['name'] ?? 'GST',
+                'tax_rate' => $row['rate'] ?? 0,
+                'amount' => $row['amount'] ?? 0,
+            ];
+        })->values();
+
+        $orderItems = $orderItemModels->map(function ($item) use ($withGst) {
                 $addonRows = is_array($item->addons) ? $item->addons : [];
                 $addonIds = [];
                 $addonNames = [];
@@ -1798,6 +1807,7 @@ class SalesController extends Controller
                 if ($addonNames) {
                     $displayName .= ' + ' . implode(', ', $addonNames);
                 }
+                $gstLabel = PosPricingService::itemGstLabel($item, $withGst);
 
                 return [
                     'id' => $item->id,
@@ -1809,6 +1819,7 @@ class SalesController extends Controller
                     'addons' => $addonRows,
                     'addon_names' => $addonNames,
                     'display_name' => $displayName,
+                    'gst_label' => $gstLabel,
                     'category_id' => $item->category_id,
                     'quantity' => $item->quantity,
                     'quantity_type' => $item->quantityType,
@@ -1820,7 +1831,6 @@ class SalesController extends Controller
                         : null,
                 ];
             });
-        // dd($orderItems);
 
         return response()->json([
             'status' => true,

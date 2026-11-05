@@ -3369,6 +3369,7 @@
                         item_discount_percent: 0,
                         tax_id: pendingPosProduct.tax_id || null,
                         tax_rate: pendingPosProduct.tax_rate != null ? pendingPosProduct.tax_rate : null,
+                        tax_name: pendingPosProduct.tax_name || null,
                         tax_inclusive: !!pendingPosProduct.tax_inclusive,
                         uniqueId: uniqueId
                     });
@@ -3398,6 +3399,13 @@
                         var safeCartImage = escapeHtmlAttr(resolvedCartImage);
                         var safeCartName = escapeHtmlAttr(item.name || 'Product');
                         var safeCartTitle = escapeHtmlText(item.name);
+                        var gstCartSuffix = '';
+                        if ($("input[name='gst_option']:checked").val() === 'with') {
+                            var cartRate = item.tax_rate != null && item.tax_rate !== '' ? parseFloat(item.tax_rate) : NaN;
+                            var cartTaxName = (item.tax_name && String(item.tax_name).trim()) ? String(item.tax_name).trim() : 'GST';
+                            var cartRateStr = isNaN(cartRate) ? '0' : String(cartRate).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+                            gstCartSuffix = ` <small class="text-muted">(${escapeHtmlText(cartTaxName)} ${escapeHtmlText(cartRateStr)}%)</small>`;
+                        }
                         var safeQtyType = escapeHtmlText(qtyType);
                         var safeNoImage = escapeHtmlAttr(POS_NO_IMAGE);
                         var safeDeleteIcon = escapeHtmlAttr(POS_DELETE_ICON);
@@ -3406,7 +3414,7 @@
     <ul class="product-lists">
         <li class="cart-row">
             <h4 class="cart-item-name">
-                <span class="cart-item-title">${safeCartTitle}</span>
+                <span class="cart-item-title">${safeCartTitle}${gstCartSuffix}</span>
             </h4>
 
             <div class="cart-item-controls">
@@ -3473,6 +3481,7 @@
                     var productTaxId = $product.data("tax-id") || null;
                     var productTaxRate = $product.attr("data-tax-rate");
                     productTaxRate = (productTaxRate === '' || productTaxRate == null) ? null : parseFloat(productTaxRate);
+                    var productTaxName = ($product.attr("data-tax-name") || '').toString().trim() || null;
                     var productTaxInclusive = $product.data("tax-inclusive") === 1 || $product.data("tax-inclusive") === '1';
                     var quantity_type_id = $product.data("quantity_type_id") || quantity_type123 || quantity_type;
                     if (quantity_type_id && ['undefined', 'null'].includes(quantity_type_id.toString().toLowerCase())) {
@@ -3496,6 +3505,7 @@
                         basePrice: basePrice,
                         tax_id: productTaxId,
                         tax_rate: productTaxRate,
+                        tax_name: productTaxName,
                         tax_inclusive: productTaxInclusive
                     };
 
@@ -3524,6 +3534,7 @@
                                 item_discount_percent: 0,
                                 tax_id: productTaxId,
                                 tax_rate: productTaxRate,
+                                tax_name: productTaxName,
                                 tax_inclusive: productTaxInclusive
                             });
                             $checkIcon.addClass("selected");
@@ -3667,8 +3678,12 @@
                     }
                 });
                 $(document).on("change", "input[name='gst_option']", function() {
-                    // calculateTotals shows only product-applied tax rows
-                    calculateTotals();
+                    // Refresh cart labels (GST % after name) + totals for product-applied tax
+                    if (typeof updateTotalItems === 'function') {
+                        updateTotalItems();
+                    } else {
+                        calculateTotals();
+                    }
                 });
 
                 $(".btn-totallabel").click(function(event) {
@@ -4175,7 +4190,7 @@
                             var safeNoImage = escapeHtmlAttr(POS_NO_IMAGE);
                             productsHtml += `
                                         <div class="col-lg-3 col-sm-6 d-flex position-relative">
-                                            <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-tax-id="${product.tax_id || ''}" data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}" data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
+                                            <div class="productset flex-fill text-center ${disabledClass}" data-id="${product.id}" data-stock="${effectiveStock}" data-raw-stock="${product.quantity}" data-product-kind="${escapeHtmlAttr(product.product_kind || 'general')}" data-track-inventory="${product.track_inventory === false || product.track_inventory === 0 ? '0' : '1'}" data-allow-oversell="1" data-tax-id="${product.tax_id || ''}" data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}" data-tax-name="${escapeHtmlAttr(product.tax_name || '')}" data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}" data-quantity_type_id="${product.quantity_type_id || ''}" data-base-price="${basePriceNum}" data-variants="${variantsJson}" data-addons="${addonsJson}" style="position: relative;">
                                                 ${outOfStockBadge}
                                                 ${hasOptionsBadge}
                                                 <div class="productsetimg">
@@ -4348,6 +4363,7 @@
                                     data-allow-oversell="1"
                                     data-tax-id="${product.tax_id || ''}"
                                     data-tax-rate="${product.tax_rate != null ? product.tax_rate : ''}"
+                                    data-tax-name="${escapeHtmlAttr(product.tax_name || '')}"
                                     data-tax-inclusive="${product.tax_inclusive ? '1' : '0'}"
                                     data-category="${product.category_id || product.categoryId || 0}">+ Add</button>
                             </div>
@@ -4467,6 +4483,7 @@
                     var searchTaxId = $btn.data("tax-id") || null;
                     var searchTaxRate = $btn.attr("data-tax-rate");
                     searchTaxRate = (searchTaxRate === '' || searchTaxRate == null) ? null : parseFloat(searchTaxRate);
+                    var searchTaxName = ($btn.attr("data-tax-name") || '').toString().trim() || null;
                     var searchTaxInclusive = $btn.data("tax-inclusive") === 1 || $btn.data("tax-inclusive") === '1';
 
                     const meta = {
@@ -4482,6 +4499,7 @@
                         basePrice: basePrice,
                         tax_id: searchTaxId,
                         tax_rate: searchTaxRate,
+                        tax_name: searchTaxName,
                         tax_inclusive: searchTaxInclusive
                     };
 
@@ -4512,6 +4530,7 @@
                             item_discount_percent: 0,
                             tax_id: searchTaxId,
                             tax_rate: searchTaxRate,
+                            tax_name: searchTaxName,
                             tax_inclusive: searchTaxInclusive
                         });
                         updateTotalItems();

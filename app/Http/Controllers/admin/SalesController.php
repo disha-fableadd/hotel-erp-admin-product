@@ -16,6 +16,7 @@ use App\Models\QuantityType;
 use App\Models\Setting;
 use App\Models\Delivery;
 use App\Models\DeliveryItem;
+use App\Services\PosPricingService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -365,28 +366,41 @@ class SalesController extends Controller
         $currencySymbol = $setting->currency_symbol ?? 'â‚¹';
         $currencyPosition = $setting->currency_position ?? 'left';
 
-        // ðŸ”¹ Load sales with order items + products
-        $sales = Order::with(['order_items.product'])->find($id);
+        // Load sales with order items + products + per-product tax
+        $sales = Order::with(['order_items.product.tax'])->find($id);
 
         if (!$sales) {
             return redirect()->route('sales.list')->with('error', 'Order not found.');
         }
 
-        // ðŸ”¹ Company info (branch-specific setting)
+        // Company info (branch-specific setting)
         $compenyinfo = $setting;
 
-        // ðŸ”¹ Get taxes (safely handle null/empty tax_id)
-        $taxIds = !empty($sales->tax_id) ? json_decode($sales->tax_id, true) : [];
-        $taxes = !empty($taxIds)
-            ? TaxRate::where('branch_id', $branchIdToUse)
-            ->whereIn('id', $taxIds)
-            ->where('isDeleted', 0)
-            ->get()
-            : collect();
-
-        // ðŸ”¹ Order items & totals
-        $orderItems = OrderItem::where('order_id', $id)->get();
+        // Order items & per-product GST totals (do not apply every tax % on full subtotal)
+        $orderItems = OrderItem::with(['product.tax'])->where('order_id', $id)->get();
         $totalAmount = $orderItems->sum('total_amount');
+        $withGst = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
+        $money = app(PosPricingService::class)->calculateFromOrderItems(
+            $orderItems,
+            (float) ($sales->discount ?? 0),
+            $withGst
+        );
+        $taxes = collect($money['tax_breakdown'] ?? [])->map(function ($row) {
+            return (object) [
+                'id' => $row['id'] ?? null,
+                'tax_name' => $row['name'] ?? 'GST',
+                'tax_rate' => $row['rate'] ?? 0,
+                'amount' => $row['amount'] ?? 0,
+            ];
+        });
+        $taxDetails = collect($money['tax_breakdown'] ?? [])->map(function ($row) {
+            return [
+                'name' => $row['name'] ?? 'GST',
+                'rate' => $row['rate'] ?? 0,
+                'amount' => $row['amount'] ?? 0,
+            ];
+        })->all();
+        $finalTotal = isset($sales->total_amount) ? (float) $sales->total_amount : (float) ($money['total'] ?? $totalAmount);
 
         $view_id = $id; // define view_id for blade
         $user = $sales->user_id ? User::with('userDetail')->find($sales->user_id) : null;
@@ -421,12 +435,16 @@ class SalesController extends Controller
             'view_id',
             'sales',
             'taxes',
+            'taxDetails',
             'totalAmount',
+            'finalTotal',
             'compenyinfo',
             'setting',
             'currencySymbol',
             'currencyPosition',
-            'hasPaymentStarted'
+            'hasPaymentStarted',
+            'withGst',
+            'orderItems'
         ));
     }
 
@@ -595,35 +613,31 @@ class SalesController extends Controller
                 : $symbol . $amount;
         };
 
-        // âœ… Subtotal
-        $orderItems = OrderItem::with(['product', 'quantityType', 'variant'])->where('order_id', $view_id)->get();
+        // Subtotal + per-product GST (same rules as POS save)
+        $orderItems = OrderItem::with(['product.tax', 'quantityType', 'variant'])->where('order_id', $view_id)->get();
         $subtotal = $orderItems->sum('total_amount');
 
-        // âœ… Discount
-        $discountPercent = $sales->discount ?? 0;
-        $discountAmount = ($discountPercent / 100) * $subtotal;
-        $afterDiscount = $subtotal - $discountAmount;
+        $discountPercent = (float) ($sales->discount ?? 0);
+        $withGst = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
+        $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst);
+        $discountAmount = (float) ($money['discount_amount'] ?? (($discountPercent / 100) * $subtotal));
+        $afterDiscount = (float) ($money['subtotal'] ?? $subtotal) - $discountAmount;
 
-        // âœ… Tax calculation only if gst_option = 'with'
         $taxDetails = [];
-        if ($sales->gst_option === 'with_gst') {
-            $taxIds = json_decode($sales->tax_id, true) ?? [];
-            if (!empty($taxIds)) {
-                $taxes = TaxRate::whereIn('id', $taxIds)->get();
-                foreach ($taxes as $tax) {
-                    $taxAmount = ($tax->tax_rate / 100) * $afterDiscount;
-                    $taxDetails[] = [
-                        'name' => $tax->tax_name,
-                        'rate' => $tax->tax_rate,
-                        'amount' => $taxAmount,
-                        'formatted_amount' => $formatCurrency($taxAmount)
-                    ];
-                }
-            }
+        foreach (($money['tax_breakdown'] ?? []) as $tax) {
+            $taxAmount = (float) ($tax['amount'] ?? 0);
+            $taxDetails[] = [
+                'name' => $tax['name'] ?? 'GST',
+                'rate' => $tax['rate'] ?? 0,
+                'amount' => $taxAmount,
+                'formatted_amount' => $formatCurrency($taxAmount),
+            ];
         }
 
-        // âœ… Final total
-        $finalTotal = $afterDiscount + collect($taxDetails)->sum('amount');
+        // Prefer stored order total so invoice matches what customer paid
+        $finalTotal = isset($sales->total_amount)
+            ? (float) $sales->total_amount
+            : (float) ($money['total'] ?? ($afterDiscount + collect($taxDetails)->sum('amount')));
 
         // âœ… Prepare formatted values
         $formattedSubtotal = $formatCurrency($subtotal);
@@ -742,34 +756,30 @@ class SalesController extends Controller
             return $position === 'right' ? $amount . $symbol : $symbol . $amount;
         };
 
-        // Order items
-        $orderItems = OrderItem::with(['product', 'quantityType', 'variant'])->where('order_id', $view_id)->get();
+        // Order items + per-product GST (same rules as POS / thermal invoice)
+        $orderItems = OrderItem::with(['product.tax', 'quantityType', 'variant'])->where('order_id', $view_id)->get();
         $subtotal   = $orderItems->sum('total_amount');
 
-        // Discount
-        $discountPercent = $sales->discount ?? 0;
-        $discountAmount  = ($discountPercent / 100) * $subtotal;
-        $afterDiscount   = $subtotal - $discountAmount;
+        $discountPercent = (float) ($sales->discount ?? 0);
+        $withGst = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
+        $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst);
+        $discountAmount = (float) ($money['discount_amount'] ?? (($discountPercent / 100) * $subtotal));
+        $afterDiscount = (float) ($money['subtotal'] ?? $subtotal) - $discountAmount;
 
-        // Tax (only if with_gst)
         $taxDetails = [];
-        if ($sales->gst_option === 'with_gst') {
-            $taxIds = json_decode($sales->tax_id, true) ?? [];
-            if (!empty($taxIds)) {
-                $taxes = TaxRate::whereIn('id', $taxIds)->get();
-                foreach ($taxes as $tax) {
-                    $taxAmount    = ($tax->tax_rate / 100) * $afterDiscount;
-                    $taxDetails[] = [
-                        'name'             => $tax->tax_name,
-                        'rate'             => $tax->tax_rate,
-                        'amount'           => $taxAmount,
-                        'formatted_amount' => $formatCurrency($taxAmount),
-                    ];
-                }
-            }
+        foreach (($money['tax_breakdown'] ?? []) as $tax) {
+            $taxAmount = (float) ($tax['amount'] ?? 0);
+            $taxDetails[] = [
+                'name'             => $tax['name'] ?? 'GST',
+                'rate'             => $tax['rate'] ?? 0,
+                'amount'           => $taxAmount,
+                'formatted_amount' => $formatCurrency($taxAmount),
+            ];
         }
 
-        $finalTotal = $afterDiscount + collect($taxDetails)->sum('amount');
+        $finalTotal = isset($sales->total_amount)
+            ? (float) $sales->total_amount
+            : (float) ($money['total'] ?? ($afterDiscount + collect($taxDetails)->sum('amount')));
 
         // Table info
         $tableName = null;

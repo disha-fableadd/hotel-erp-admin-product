@@ -226,24 +226,20 @@
                     $subtotal = $totalAmount;
                     $discountPercentage = $sales->discount ?? 0;
                     $discountAmount = ($subtotal * $discountPercentage) / 100;
-
-                    // ✅ Apply discount before tax
-                    $taxableAmount = $subtotal - $discountAmount;
-
-                    $taxDetails = [];
-                    $totalTaxAmount = 0;
-
-                    foreach ($taxes as $tax) {
-                    $taxAmount = ($taxableAmount * $tax->tax_rate) / 100;
-                    $taxDetails[] = [
-                    'name' => $tax->tax_name,
-                    'rate' => $tax->tax_rate,
-                    'amount' => $taxAmount,
-                    ];
-                    $totalTaxAmount += $taxAmount;
+                    // Prefer controller-built per-product GST breakdown (avoids applying every rate on full bill)
+                    if (!isset($taxDetails) || !is_array($taxDetails)) {
+                        $taxDetails = [];
+                        foreach ($taxes as $tax) {
+                            $taxDetails[] = [
+                                'name' => $tax->tax_name ?? 'GST',
+                                'rate' => $tax->tax_rate ?? 0,
+                                'amount' => $tax->amount ?? 0,
+                            ];
+                        }
                     }
-
-                    $finalTotal = $taxableAmount + $totalTaxAmount;
+                    if (!isset($finalTotal)) {
+                        $finalTotal = ($subtotal - $discountAmount) + collect($taxDetails)->sum('amount');
+                    }
                     @endphp
 
                     <div class="col-lg-6">
@@ -402,6 +398,10 @@
                     const sale = response.sales;
                     // console.log(sale.user.gst_number);
                     const company_info = response.company_info;
+                    // Prefer API-mapped lines (display_name + product.tax) over nested sale.order_items
+                    const lineItems = (response.order_items && response.order_items.length)
+                        ? response.order_items
+                        : (sale.order_items || []);
 
 
 
@@ -427,7 +427,7 @@
                     $("#paidAmountText").text(paidAmount);
                     $("#pendingAmountText").text(pendingAmount);
                     // Populate product rows
-                    const items = sale.order_items;
+                    const items = lineItems;
 
                     // Check if each section has any real data
                     const hasCustomerData = sale.user_name || sale.user_phone || sale.user_email || sale.user_address || sale.user?.gst_number || sale.user?.pan_number;
@@ -566,7 +566,14 @@
                                    <td style="padding: 10px; vertical-align: top;">
                                         <a href="/product-view/${product.id || ''}" class="d-flex align-items-center text-decoration-none text-dark">
                                             <img src="${imagePath}" alt="${product.name || 'product'}" class="me-2" style="width:40px; height:40px; object-fit: cover; border-radius: 4px;" onerror="this.onerror=null; this.src='${defaultProductImage}';">
-                                            ${product.name || 'N/A'}
+                                            ${item.display_name || product.name || 'N/A'}${item.gst_label ? ` <small class="text-muted">(${item.gst_label})</small>` : (() => {
+                                                const rate = product.tax && product.tax.tax_rate != null ? parseFloat(product.tax.tax_rate) : null;
+                                                if (sale.gst_option !== 'with_gst' && sale.gst_option !== 'with') return '';
+                                                const label = product.tax && product.tax.tax_name ? product.tax.tax_name : 'GST';
+                                                if (rate === null || isNaN(rate)) return ` <small class="text-muted">(${label} 0%)</small>`;
+                                                const rateStr = String(rate).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+                                                return ` <small class="text-muted">(${label} ${rateStr}%)</small>`;
+                                            })()}
                                         </a>
                                     </td>
                                     <td style="padding: 10px;vertical-align: top;">${item.quantity}</td>

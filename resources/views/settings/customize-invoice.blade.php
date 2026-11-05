@@ -352,6 +352,7 @@
                         <div class="ci-row"><div><div class="lbl">Item Barcodes</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="show_item_barcode"></div></div>
                         <div class="ci-row"><div><div class="lbl">Item Quantity</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="show_item_qty"></div></div>
                         <div class="ci-row"><div><div class="lbl">Item Description</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="show_item_description"></div></div>
+                        <div class="ci-row"><div><div class="lbl">Item GST %</div><div class="hint">Show tax name + % after each item (e.g. GST 28%)</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="show_item_gst"></div></div>
                         <div class="ci-row"><div><div class="lbl">HSN Code</div></div><div class="form-check form-switch m-0"><input class="form-check-input inv-bool" type="checkbox" name="show_hsn"></div></div>
                     </div>
                     <div class="ci-card">
@@ -453,12 +454,12 @@
             var shopAddr = @json($setting->address ?? '');
             var state = Object.assign({}, initial);
             var products = [
-                { n: 'Product A', q: 1, m: 120, s: 100, cgst: 9, sgst: 9 },
-                { n: 'Product B', q: 2, m: 80, s: 70, cgst: 6.3, sgst: 6.3 },
-                { n: 'Product C', q: 1, m: 200, s: 180, cgst: 16.2, sgst: 16.2 },
-                { n: 'Product D', q: 3, m: 50, s: 45, cgst: 4.05, sgst: 4.05 },
-                { n: 'Product E', q: 1, m: 150, s: 140, cgst: 12.6, sgst: 12.6 },
-                { n: 'Product F', q: 2, m: 90, s: 85, cgst: 7.65, sgst: 7.65 }
+                { n: 'Product A', q: 1, m: 120, s: 100, cgst: 9, sgst: 9, gst: 18 },
+                { n: 'Product B', q: 2, m: 80, s: 70, cgst: 6.3, sgst: 6.3, gst: 18 },
+                { n: 'Product C', q: 1, m: 200, s: 180, cgst: 16.2, sgst: 16.2, gst: 28 },
+                { n: 'Product D', q: 3, m: 50, s: 45, cgst: 4.05, sgst: 4.05, gst: 5 },
+                { n: 'Product E', q: 1, m: 150, s: 140, cgst: 12.6, sgst: 12.6, gst: 12 },
+                { n: 'Product F', q: 2, m: 90, s: 85, cgst: 7.65, sgst: 7.65, gst: 18 }
             ];
             var tplNames = {
                 1: 'Template 1 — Cash sale bill',
@@ -585,6 +586,12 @@
                 }
                 return html;
             }
+            function itemNameWithGst(name, sampleRate) {
+                var n = esc(pname(name));
+                if (state.show_item_gst === false) return n;
+                var rate = sampleRate != null ? sampleRate : 28;
+                return n + ' <span style="font-weight:600;font-size:7.5px;">(GST ' + rate + '%)</span>';
+            }
 
             /* ===== 5 DISTINCT TEMPLATE PREVIEWS ===== */
             function renderTpl1() {
@@ -603,7 +610,7 @@
                 products.slice(0, 4).forEach(function(p, i) {
                     html += '<tr>';
                     if (state.show_serial) html += '<td>' + (i + 1) + '</td>';
-                    html += '<td class="text-start" style="' + wrapStyle() + '">' + esc(pname(p.n)) + itemExtras(p, i) + '</td>';
+                    html += '<td class="text-start" style="' + wrapStyle() + '">' + itemNameWithGst(p.n, p.gst) + itemExtras(p, i) + '</td>';
                     if (state.show_item_qty) html += '<td>' + p.q + '</td>';
                     if (state.show_item_mrp) html += '<td>' + money(p.m) + '</td>';
                     if (state.show_item_sp) html += '<td>' + money(state.sp_price_source === 'mrp' ? p.m : p.s) + '</td>';
@@ -635,7 +642,7 @@
                 products.forEach(function(p, i) {
                     totCgst += p.cgst; totSgst += p.sgst;
                     totMrp += p.m * p.q; totAmt += p.s * p.q; totQty += p.q;
-                    html += '<tr><td class="text-start" style="' + wrapStyle() + '"><strong>' + esc(pname(p.n)) + '</strong>';
+                    html += '<tr><td class="text-start" style="' + wrapStyle() + '"><strong>' + itemNameWithGst(p.n, p.gst) + '</strong>';
                     html += '<div class="tax-line">CGST: ' + money(p.cgst) + ' | SGST: ' + money(p.sgst) + ' | GST: ' + money(p.cgst + p.sgst) + '</div>';
                     html += itemExtras(p, i) + '</td>';
                     if (state.show_item_mrp) html += '<td>' + money(p.m) + '</td>';
@@ -677,7 +684,7 @@
                 products.forEach(function(p, i) {
                     html += '<tr>';
                     if (state.show_serial) html += '<td>' + (i + 1) + '</td>';
-                    html += '<td class="text-start" style="' + wrapStyle() + '"><strong>' + esc(pname(p.n)) + '</strong>';
+                    html += '<td class="text-start" style="' + wrapStyle() + '"><strong>' + itemNameWithGst(p.n, p.gst) + '</strong>';
                     html += '<div class="tax-line">CGST 9% | SGST 9% | GST ' + money(p.cgst + p.sgst) + '</div>';
                     html += itemExtras(p, i) + '</td>';
                     if (state.show_item_qty) html += '<td>' + p.q + '</td>';
@@ -720,7 +727,7 @@
                 var mrpTot = 0, billTot = 0, qtyTot = 0;
                 products.slice(0, 5).forEach(function(p, i) {
                     mrpTot += p.m * p.q; billTot += p.s * p.q; qtyTot += p.q;
-                    html += '<tr><td class="text-start" style="' + wrapStyle() + '">' + esc(pname(p.n)) + itemExtras(p, i) + '</td>';
+                    html += '<tr><td class="text-start" style="' + wrapStyle() + '">' + itemNameWithGst(p.n, p.gst) + itemExtras(p, i) + '</td>';
                     if (state.show_item_mrp) html += '<td>' + money(p.m) + '</td>';
                     if (state.show_item_sp) html += '<td>' + money(p.s) + '</td>';
                     if (state.show_item_qty) html += '<td>' + p.q + '</td>';
@@ -752,7 +759,7 @@
                 if (state.show_item_total) html += '<th>TOTAL</th>';
                 html += '</tr></thead><tbody>';
                 products.forEach(function(p, i) {
-                    html += '<tr><td class="text-start" style="' + wrapStyle() + '">' + esc(pname(p.n));
+                    html += '<tr><td class="text-start" style="' + wrapStyle() + '">' + itemNameWithGst(p.n, p.gst);
                     if (state.show_item_mrp === false) html += '<div class="tax-line">MRP ' + money(p.m) + '</div>';
                     html += itemExtras(p, i) + '</td>';
                     if (state.show_item_qty) html += '<td>' + p.q + '</td>';
@@ -794,7 +801,7 @@
                     var sp = state.sp_price_source === 'mrp' ? p.m : p.s;
                     html += '<tr>';
                     if (state.show_serial) html += '<td>' + (i + 1) + '</td>';
-                    html += '<td class="text-start" style="' + wrapStyle() + '">' + esc(pname(p.n)) + itemExtras(p, i) + '</td>';
+                    html += '<td class="text-start" style="' + wrapStyle() + '">' + itemNameWithGst(p.n, p.gst) + itemExtras(p, i) + '</td>';
                     if (state.show_item_qty) html += '<td>' + p.q + 'Pcs</td>';
                     if (state.show_item_mrp) html += '<td>' + money(p.m) + '</td>';
                     if (state.show_item_sp) html += '<td>' + money(sp) + '</td>';
