@@ -1376,7 +1376,7 @@
                                                 <h4 style="font-size: 14px; font-weight: 600; margin: 0.5rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                     ${product.name}
                                                 </h4>
-                                                <h1 class="d-none">${product.categoryId || 'Uncategorized'}</h5>
+                                                <h1 class="d-none">${product.categoryId != null && product.categoryId !== '' ? product.categoryId : ''}</h1>
                                                 <h2 class="d-none">${product.quantity_type || 'pcs'}</h5>
                                                 <h3 class="d-none">${product.quantity_type_id || 'pcs'}</h5>
                                                 

@@ -92,6 +92,56 @@ class SalesController extends Controller
         return $item;
     }
 
+    /**
+     * Coerce POS cart line IDs before validation.
+     * Handles uniqueId-style product_id ("12-v0-a"), blank/"Uncategorized" categoryId, etc.
+     */
+    protected function normalizeSaleOrderItems(Request $request): void
+    {
+        $items = $request->input('items');
+        if (!is_array($items)) {
+            return;
+        }
+
+        $normalized = [];
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $pid = $item['product_id'] ?? null;
+            if (is_string($pid) && preg_match('/^(\d+)/', trim($pid), $m)) {
+                $pid = (int) $m[1];
+            } elseif (is_numeric($pid)) {
+                $pid = (int) $pid;
+            } else {
+                $pid = null;
+            }
+
+            $cat = $item['categoryId'] ?? $item['category_id'] ?? null;
+            if ($cat === '' || $cat === null || !is_numeric($cat)) {
+                $cat = null;
+            } else {
+                $cat = (int) $cat;
+            }
+
+            $variantId = $item['variant_id'] ?? null;
+            if ($variantId === '' || $variantId === null || !is_numeric($variantId)) {
+                $variantId = null;
+            } else {
+                $variantId = (int) $variantId;
+            }
+
+            $item['product_id'] = $pid;
+            $item['categoryId'] = $cat;
+            $item['category_id'] = $cat;
+            $item['variant_id'] = $variantId;
+            $normalized[] = $item;
+        }
+
+        $request->merge(['items' => $normalized]);
+    }
+
     protected function recipeStock(): RecipeStockService
     {
         return app(RecipeStockService::class);
@@ -541,6 +591,8 @@ class SalesController extends Controller
     {
         // dd($request->all());
 
+        $this->normalizeSaleOrderItems($request);
+
         // Validate the request data
         $request->validate([
             'customer_id' => 'nullable|string|max:255',
@@ -557,7 +609,8 @@ class SalesController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
             'items.*.total' => 'required|numeric|min:0',
-            'items.*.categoryId' => 'nullable|integer|exists:categories,id',
+            // Category may be missing / orphaned; do not block placing the order
+            'items.*.categoryId' => 'nullable|integer',
             'total' => 'required|numeric|min:0',
         ]);
 
@@ -1251,7 +1304,11 @@ class SalesController extends Controller
         // dd($request->all());
         $order_id = $request->update_id;
 
-        // Validate request
+        $this->normalizeSaleOrderItems($request);
+
+        // Validate request.
+        // Do NOT require exists:products,id here: merging into a running table order
+        // re-sends prior line items; deleted/orphaned products must not block updates.
         $request->validate([
             'customer_id' => 'nullable|string|max:255',
             'payment_method' => 'required|string',
@@ -1262,10 +1319,11 @@ class SalesController extends Controller
             'tax.*.rate' => 'nullable|numeric|min:0',
             'tax.*.amount' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.product_id' => 'required|integer',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
             'items.*.total' => 'required|numeric|min:0',
+            'items.*.categoryId' => 'nullable|integer',
             'total' => 'required|numeric|min:0',
         ]);
 

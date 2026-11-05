@@ -3443,6 +3443,56 @@
                 }
             }
 
+            function parsePosProductId(value) {
+                if (value === null || value === undefined || value === '') return null;
+                if (typeof value === 'number' && Number.isFinite(value)) return Math.trunc(value);
+                var match = String(value).trim().match(/^(\d+)/);
+                return match ? parseInt(match[1], 10) : null;
+            }
+
+            function parsePosCategoryId(value) {
+                if (value === null || value === undefined || value === '') return null;
+                if (typeof value === 'number' && Number.isFinite(value)) return Math.trunc(value);
+                var raw = String(value).trim();
+                if (!raw || raw.toLowerCase() === 'uncategorized') return null;
+                return /^\d+$/.test(raw) ? parseInt(raw, 10) : null;
+            }
+
+            function buildTableOrderItemsPayload() {
+                var orderItems = [];
+                selectedItems.forEach(function (item) {
+                    var productId = parsePosProductId(item.productId != null ? item.productId : item.id);
+                    if (!productId) {
+                        return;
+                    }
+                    var priceRaw = item.price;
+                    var price = parseFloat(String(priceRaw == null ? '0' : priceRaw).replace(/[^0-9.-]+/g, '')) || 0;
+                    var discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
+                    var lineGross = price * item.quantity;
+                    var qt = item.quantity_type123 || item.quantity_type_id || null;
+                    if (qt === null || qt === undefined || qt === '') {
+                        qt = null;
+                    } else {
+                        qt = String(qt).trim();
+                        qt = /^\d+$/.test(qt) ? parseInt(qt, 10) : null;
+                    }
+                    orderItems.push({
+                        product_id: productId,
+                        variant_id: item.variant_id || null,
+                        addon_ids: item.addon_ids || [],
+                        addons: item.addon_ids || [],
+                        quantity: item.quantity,
+                        quantity_type_id: qt,
+                        quantity_type123: qt,
+                        categoryId: parsePosCategoryId(item.categoryId),
+                        price: price,
+                        item_discount_percent: discPct,
+                        total: lineGross - (lineGross * discPct / 100)
+                    });
+                });
+                return orderItems;
+            }
+
             // Load existing table order items into cart from API data.
             // Do NOT rely on .productset clicks — only the active category is in the DOM.
             window.hydrateCartFromOrderItems = function (orderItems) {
@@ -3494,10 +3544,10 @@
                     selectedItems.set(uniqueId, {
                         id: uniqueId,
                         uniqueId: uniqueId,
-                        productId: productId,
+                        productId: parsePosProductId(productId),
                         variant_id: variantId,
                         addon_ids: addonIds,
-                        categoryId: item.category_id || product.category_id || '',
+                        categoryId: parsePosCategoryId(item.category_id || product.category_id || product.categoryId || ''),
                         name: displayName,
                         price: formatCurrency(priceNum.toFixed(2), currencySymbol, currencyPosition),
                         image: resolveProductImage(product.images || product.image || product.image_url),
@@ -3707,7 +3757,7 @@
                                                             </div>
                                                             <div class="productsetcontent">
                                                                 <h4>${safeName}</h4>
-                                                                <h1 class="d-none">${product.categoryId || 'Uncategorized'}</h1>
+                                                                <h1 class="d-none">${product.categoryId != null && product.categoryId !== '' ? product.categoryId : ''}</h1>
                                                                 <h2 class="d-none">${product.quantity_type || ''}</h2>
                                                                 <h3 class="d-none">${product.quantity_type_id || ''}</h3>
 
@@ -4301,10 +4351,13 @@
 
             $(document).on("click", ".productset", function () {
                 var $product = $(this);
-                var productId = $product.data("id");
+                var productId = parsePosProductId($product.data("id"));
+                if (!productId) {
+                    return;
+                }
                 var productName = $product.find("h4").text().trim();
                 var productPrice = $product.find(".productsetcontent h6").text().trim();
-                var categoryId = $product.find(".productsetcontent h1").text().trim();
+                var categoryId = parsePosCategoryId($product.find(".productsetcontent h1").text().trim());
                 var quantity_type = $product.find(".productsetcontent h2").text().trim();
                 var quantity_type123 = $product.find(".productsetcontent h3").text().trim();
 
@@ -4540,33 +4593,12 @@
 
 
                 // Prepare order items data
-                let orderItems = [];
-                selectedItems.forEach(function (item) {
-
-
-                    const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
-                    var discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
-                    var lineGross = price * item.quantity;
-                    orderItems.push({
-                        product_id: item.productId,
-                        variant_id: item.variant_id || null,
-                        addon_ids: item.addon_ids || [],
-                        addons: item.addon_ids || [],
-                        quantity: item.quantity,
-                        quantity_type_id: (function () {
-                            var qt = item.quantity_type123 || item.quantity_type_id || null;
-                            if (qt === null || qt === undefined || qt === '') return null;
-                            qt = String(qt).trim();
-                            if (!/^\d+$/.test(qt)) return null;
-                            return parseInt(qt, 10);
-                        })(),
-                        quantity_type123: item.quantity_type123,
-                        categoryId: item.categoryId,
-                        price: price,
-                        item_discount_percent: discPct,
-                        total: lineGross - (lineGross * discPct / 100)
-                    });
-                });
+                let orderItems = buildTableOrderItemsPayload();
+                if (!orderItems.length) {
+                    $(".error_total").text("Please select at least one valid product").show();
+                    $btn.html(originalText).prop('disabled', false);
+                    return;
+                }
 
                 // Prepare tax data
                 // let taxes = [];
@@ -4759,33 +4791,12 @@
 
 
                 // Prepare order items data
-                let orderItems = [];
-                selectedItems.forEach(function (item) {
-
-
-                    const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
-                    var discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
-                    var lineGross = price * item.quantity;
-                    orderItems.push({
-                        product_id: item.productId,
-                        variant_id: item.variant_id || null,
-                        addon_ids: item.addon_ids || [],
-                        addons: item.addon_ids || [],
-                        quantity: item.quantity,
-                        quantity_type_id: (function () {
-                            var qt = item.quantity_type123 || item.quantity_type_id || null;
-                            if (qt === null || qt === undefined || qt === '') return null;
-                            qt = String(qt).trim();
-                            if (!/^\d+$/.test(qt)) return null;
-                            return parseInt(qt, 10);
-                        })(),
-                        quantity_type123: item.quantity_type123,
-                        categoryId: item.categoryId,
-                        price: price,
-                        item_discount_percent: discPct,
-                        total: lineGross - (lineGross * discPct / 100)
-                    });
-                });
+                let orderItems = buildTableOrderItemsPayload();
+                if (!orderItems.length) {
+                    $(".error_total").text("Please select at least one valid product").show();
+                    $btn.html(originalText).prop('disabled', false);
+                    return;
+                }
 
                 // Prepare tax data
                 // let taxes = [];
@@ -4979,33 +4990,12 @@
 
 
                 // Prepare order items data
-                let orderItems = [];
-                selectedItems.forEach(function (item) {
-
-
-                    const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
-                    var discPct = canItemDiscount ? (parseFloat(item.item_discount_percent) || 0) : 0;
-                    var lineGross = price * item.quantity;
-                    orderItems.push({
-                        product_id: item.productId,
-                        variant_id: item.variant_id || null,
-                        addon_ids: item.addon_ids || [],
-                        addons: item.addon_ids || [],
-                        quantity: item.quantity,
-                        quantity_type_id: (function () {
-                            var qt = item.quantity_type123 || item.quantity_type_id || null;
-                            if (qt === null || qt === undefined || qt === '') return null;
-                            qt = String(qt).trim();
-                            if (!/^\d+$/.test(qt)) return null;
-                            return parseInt(qt, 10);
-                        })(),
-                        quantity_type123: item.quantity_type123,
-                        categoryId: item.categoryId,
-                        price: price,
-                        item_discount_percent: discPct,
-                        total: lineGross - (lineGross * discPct / 100)
-                    });
-                });
+                let orderItems = buildTableOrderItemsPayload();
+                if (!orderItems.length) {
+                    $(".error_total").text("Please select at least one valid product").show();
+                    $btn.html(originalText).prop('disabled', false);
+                    return;
+                }
 
                 // Prepare tax data
                 // let taxes = [];
