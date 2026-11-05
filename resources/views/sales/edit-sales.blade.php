@@ -170,7 +170,7 @@
                                     placeholder="Search dishes, drinks, items… (same as Order / Dine-in)"
                                     autocomplete="off">
                                 <div class="pos-search-results-box list-group"></div>
-                            </div>
+                                </div>
                             <small class="text-muted">Type to search the POS catalog, then click <strong>+ Add</strong>. GST follows each category’s Apply GST setting.</small>
                         </div>
                     </div>
@@ -719,7 +719,7 @@
                 $('#no-products-row').remove();
                 $('#product-table-body').append(newRow);
                 renumberEditRows();
-                calculateAllTotals();
+                    calculateAllTotals();
             }
 
             // ── POS-style live product search ─────────────────────────────
@@ -1021,7 +1021,7 @@
                         const rateMap = {};
                         rateMap[String(rate)] = gstBase * (rate / 100);
                         renderCgstSgstFromAgg(rateMap);
-                    } else {
+                } else {
                         const rateMap = {};
                         lines.forEach(function (line) {
                             if (!line.gst_applicable) return;
@@ -1073,7 +1073,7 @@
 
             // Initial calculation on page load
             renumberEditRows();
-            calculateAllTotals();
+                calculateAllTotals();
 
             // Form submission handler
             $(document).on("click", '.btn-submit', function(e) {
@@ -1146,7 +1146,7 @@
                     grand_total: $('#grand-total').text().replace(/[^0-9.-]+/g, '').trim(),
                     gst_option: $('input[name="gst_option"]:checked').val(),
                     selectedSubAdminId: selectedSubAdminId || null,
-                    created_by: createdBy,
+                     created_by: createdBy,
                 };
 
 

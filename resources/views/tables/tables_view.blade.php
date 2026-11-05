@@ -2497,7 +2497,7 @@
                 @endphp
                 <div class="tables-today-sales" id="tablesTodaySales"
                     data-refresh-url="{{ route('tables.todaySales') }}"
-                    title="Liquor = categories with Apply GST off">
+                    title="Same as Orders list for today. Liquor = categories with Apply GST off. Food + Liquor = Total.">
                     <div class="tts-card is-total">
                         <span class="tts-label">Today Total Sales</span>
                         <span class="tts-value" data-tts="total_sales">{{ $ttsFmt($tts['total_sales'] ?? 0) }}</span>

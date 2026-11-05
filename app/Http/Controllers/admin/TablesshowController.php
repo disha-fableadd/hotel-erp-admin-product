@@ -22,9 +22,11 @@ class TablesshowController extends Controller
 {
     /**
      * Today's sales summary for tables floor.
-     * Categories with Apply GST OFF are treated as Liquor; GST ON = Food.
+     * Matches Orders list: same branch + DATE(created_at) = today (IST).
+     * Categories with Apply GST OFF = Liquor; GST ON = Food.
+     * Food + Liquor are allocated from bill totals so they always equal Total Sales.
      *
-     * @return array{total_sales: float, food_sales: float, liquor_sales: float, currency_symbol: string, currency_position: string}
+     * @return array{total_sales: float, food_sales: float, liquor_sales: float, currency_symbol: string, currency_position: string, date: string}
      */
     protected function todaySalesSummary($branchIdToUse, ?Setting $setting = null): array
     {
@@ -32,25 +34,27 @@ class TablesshowController extends Controller
         $currencySymbol = $setting->currency_symbol ?? '₹';
         $currencyPosition = $setting->currency_position ?? 'left';
 
-        $start = Carbon::now('Asia/Kolkata')->startOfDay();
-        $end = Carbon::now('Asia/Kolkata')->endOfDay();
+        // Same day boundary Orders list uses with whereDate(...)
+        $today = Carbon::now('Asia/Kolkata')->format('Y-m-d');
 
         $ordersQuery = Order::query()
             ->where('isDeleted', 0)
-            ->whereBetween('created_at', [$start, $end]);
+            ->whereRaw('DATE(created_at) = ?', [$today]);
 
         if (! empty($branchIdToUse)) {
             $ordersQuery->where('branch_id', $branchIdToUse);
         }
 
-        $totalSales = round((float) (clone $ordersQuery)->sum('total_amount'), 2);
+        // Bill totals — same field as Orders "Total" column
+        $orders = (clone $ordersQuery)->get(['id', 'total_amount']);
+        $totalSales = round((float) $orders->sum('total_amount'), 2);
 
         $foodSales = 0.0;
         $liquorSales = 0.0;
 
-        $orderIds = (clone $ordersQuery)->pluck('id');
-        if ($orderIds->isNotEmpty()) {
-            $itemsQuery = OrderItem::query()
+        $orderIds = $orders->pluck('id');
+        if ($orderIds->isNotEmpty() && $totalSales > 0) {
+            $items = OrderItem::query()
                 ->whereIn('order_id', $orderIds)
                 ->where(function ($q) {
                     $q->where('isDeleted', 0)->orWhereNull('isDeleted');
@@ -64,11 +68,9 @@ class TablesshowController extends Controller
                     'quantity',
                     'total_amount',
                     'item_discount_amount',
-                ]);
+                ])
+                ->get();
 
-            $items = $itemsQuery->get();
-
-            // Resolve category GST flags in one pass
             $categoryIds = $items->pluck('category_id')->filter()->unique()->values();
             $gstByCategory = [];
             if ($categoryIds->isNotEmpty() && Schema::hasColumn('categories', 'gst_applicable')) {
@@ -78,7 +80,6 @@ class TablesshowController extends Controller
                     ->all();
             }
 
-            // Fallback: products → category when order_item.category_id missing
             $missingCatProductIds = $items
                 ->filter(fn ($i) => empty($i->category_id))
                 ->pluck('product_id')
@@ -101,6 +102,9 @@ class TablesshowController extends Controller
                 }
             }
 
+            // Line nets per order → split each bill's total_amount by food/liquor share
+            $lineFoodByOrder = [];
+            $lineLiquorByOrder = [];
             foreach ($items as $item) {
                 $line = (float) ($item->total_amount ?? 0);
                 if ($line <= 0) {
@@ -112,28 +116,58 @@ class TablesshowController extends Controller
                 $catId = $item->category_id ?: ($productCategoryMap[$item->product_id] ?? null);
                 $isFood = true;
                 if ($catId !== null && $catId !== '') {
-                    if (array_key_exists((int) $catId, $gstByCategory)) {
-                        $isFood = (bool) $gstByCategory[(int) $catId];
+                    $cid = (int) $catId;
+                    if (array_key_exists($cid, $gstByCategory)) {
+                        $isFood = (bool) $gstByCategory[$cid];
                     } else {
                         $isFood = PosPricingService::categoryGstApplicable($catId);
                     }
                 }
 
-                // GST OFF on category => Liquor; GST ON => Food
+                $oid = (int) $item->order_id;
                 if ($isFood) {
-                    $foodSales += $line;
+                    $lineFoodByOrder[$oid] = ($lineFoodByOrder[$oid] ?? 0) + $line;
                 } else {
-                    $liquorSales += $line;
+                    $lineLiquorByOrder[$oid] = ($lineLiquorByOrder[$oid] ?? 0) + $line;
                 }
             }
+
+            foreach ($orders as $order) {
+                $oid = (int) $order->id;
+                $billTotal = (float) ($order->total_amount ?? 0);
+                if ($billTotal <= 0) {
+                    continue;
+                }
+                $f = (float) ($lineFoodByOrder[$oid] ?? 0);
+                $l = (float) ($lineLiquorByOrder[$oid] ?? 0);
+                $net = $f + $l;
+                if ($net <= 0) {
+                    // No line split available — count whole bill as food
+                    $foodSales += $billTotal;
+                    continue;
+                }
+                $foodPart = round($billTotal * ($f / $net), 2);
+                $liquorPart = round($billTotal - $foodPart, 2);
+                $foodSales += $foodPart;
+                $liquorSales += $liquorPart;
+            }
+        }
+
+        $foodSales = round($foodSales, 2);
+        $liquorSales = round($liquorSales, 2);
+        // Keep Food + Liquor == Total (fix 1-paisa rounding drift)
+        $partsSum = round($foodSales + $liquorSales, 2);
+        if ($totalSales > 0 && abs($partsSum - $totalSales) <= 0.05) {
+            $liquorSales = round($totalSales - $foodSales, 2);
         }
 
         return [
             'total_sales' => $totalSales,
-            'food_sales' => round($foodSales, 2),
-            'liquor_sales' => round($liquorSales, 2),
+            'food_sales' => $foodSales,
+            'liquor_sales' => $liquorSales,
             'currency_symbol' => $currencySymbol,
             'currency_position' => $currencyPosition,
+            'date' => $today,
         ];
     }
 
