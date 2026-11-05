@@ -485,7 +485,9 @@
             margin-bottom: 3px;
         }
 
-        #tableOrderModal #discount {
+        #tableOrderModal #discount,
+        #tableOrderModal #discount_amount_input,
+        #tableOrderModal #service_tax_rate {
             border-radius: 9px;
             border: 1px solid #e2e8f0;
             height: 36px;
@@ -493,7 +495,9 @@
             padding: 6px 10px;
         }
 
-        #tableOrderModal .error_discount {
+        #tableOrderModal .error_discount,
+        #tableOrderModal .error_discount_amount,
+        #tableOrderModal .error_service_tax {
             font-size: 11px;
             display: block;
             margin-top: 3px;
@@ -2626,12 +2630,27 @@
                                     </div>
                                     <div class="product-table"></div>
 
-                                    <div class="select-split">
-                                        <div class="select-group w-100">
-                                            <label for="discount">Discount (%)</label>
+                                    <div class="select-split" style="display:flex; gap:10px; flex-wrap:wrap;">
+                                        <div class="select-group" style="flex:1 1 110px; min-width:110px;">
+                                            <label for="discount">Overall Discount (%)</label>
                                             <input type="number" class="form-control" placeholder="0"
-                                                name="discount" id="discount">
+                                                name="discount" id="discount" min="0" max="100" step="0.01">
                                             <span class="error_discount"></span>
+                                        </div>
+                                        <div class="select-group" style="flex:1 1 110px; min-width:110px;">
+                                            <label for="discount_amount_input">Overall Discount ({{ $currency_symbol }})</label>
+                                            <input type="number" class="form-control" placeholder="0"
+                                                name="discount_amount_input" id="discount_amount_input"
+                                                min="0" step="0.01" value="">
+                                            <span class="error_discount_amount"></span>
+                                        </div>
+                                        <div class="select-group" style="flex:1 1 110px; min-width:110px;">
+                                            <label for="service_tax_rate">{{ trim((string) (optional($setting)->service_tax_name ?? 'Service Tax')) ?: 'Service Tax' }} (%)</label>
+                                            <input type="number" class="form-control" placeholder="0"
+                                                name="service_tax_rate" id="service_tax_rate"
+                                                min="0" max="100" step="0.01"
+                                                value="{{ (optional($setting)->service_tax_enabled ?? false) ? number_format((float) (optional($setting)->service_tax_rate ?? 0), 2, '.', '') : '0' }}">
+                                            <span class="error_service_tax"></span>
                                         </div>
                                     </div>
 
@@ -2986,6 +3005,97 @@
         const serviceTaxEnabled = @json((bool) (optional($setting)->service_tax_enabled ?? false));
         const serviceTaxRate = @json((float) (optional($setting)->service_tax_rate ?? 0));
         const serviceTaxName = @json(trim((string) (optional($setting)->service_tax_name ?? 'Service Tax')) ?: 'Service Tax');
+        const defaultServiceTaxRate = serviceTaxEnabled ? (parseFloat(serviceTaxRate) || 0) : 0;
+
+        function getBillServiceTaxRate() {
+            const raw = $("#service_tax_rate").val();
+            if (raw === "" || raw === null || typeof raw === "undefined") {
+                return 0;
+            }
+            const rate = parseFloat(raw);
+            if (isNaN(rate) || rate < 0) return 0;
+            return Math.min(100, rate);
+        }
+
+        function resetBillServiceTaxRate(rate) {
+            const next = (typeof rate === "number" && !isNaN(rate))
+                ? rate
+                : defaultServiceTaxRate;
+            $("#service_tax_rate").val(next > 0 ? String(next) : "0");
+        }
+
+        let discountFieldSyncLock = false;
+
+        function getCartSubtotalForDiscount() {
+            let subtotal = 0;
+            if (typeof selectedItems === "undefined" || !selectedItems) {
+                return 0;
+            }
+            selectedItems.forEach(function (item) {
+                const price = parseFloat(String(item.price).replace(/[^0-9.-]+/g, "")) || 0;
+                const gross = price * item.quantity;
+                const discPct = (typeof canItemDiscount !== "undefined" && canItemDiscount)
+                    ? (parseFloat(item.item_discount_percent) || 0)
+                    : 0;
+                subtotal += gross - (gross * discPct / 100);
+            });
+            return Math.round(subtotal * 100) / 100;
+        }
+
+        function syncDiscountAmountFromPercent() {
+            if (discountFieldSyncLock) return;
+            discountFieldSyncLock = true;
+            const subtotal = getCartSubtotalForDiscount();
+            const pct = parseFloat($("#discount").val()) || 0;
+            const amt = subtotal > 0 ? Math.round((subtotal * (pct / 100)) * 100) / 100 : 0;
+            if (pct <= 0 || subtotal <= 0) {
+                $("#discount_amount_input").val("");
+            } else {
+                $("#discount_amount_input").val(amt.toFixed(2));
+            }
+            discountFieldSyncLock = false;
+        }
+
+        function applyOverallDiscountAmountFromInput() {
+            if (discountFieldSyncLock) return;
+            const subtotal = getCartSubtotalForDiscount();
+            const raw = $("#discount_amount_input").val();
+            $(".error_discount_amount").text("");
+
+            if (raw === "" || raw === null) {
+                discountFieldSyncLock = true;
+                $("#discount").val("");
+                discountFieldSyncLock = false;
+                $(".error_discount").text("");
+                if (typeof window.calculateTotals === "function") window.calculateTotals();
+                return;
+            }
+
+            let amt = parseFloat(raw);
+            if (isNaN(amt) || amt < 0) {
+                $(".error_discount_amount").text("Enter a valid amount").css("color", "red");
+                return;
+            }
+            if (subtotal <= 0) {
+                $(".error_discount_amount").text("Add items first").css("color", "red");
+                $("#discount_amount_input").val("");
+                return;
+            }
+            if (amt > subtotal) {
+                amt = subtotal;
+                $("#discount_amount_input").val(amt.toFixed(2));
+                $(".error_discount_amount").text("Capped at subtotal").css("color", "orange");
+            }
+
+            const pct = Math.round(((amt / subtotal) * 100) * 10000) / 10000;
+            discountFieldSyncLock = true;
+            $("#discount").val(pct > 0 ? String(pct) : "");
+            discountFieldSyncLock = false;
+            $(".error_discount").text(pct > 0 ? "Discount Applied" : "").css("color", "green");
+            if (typeof window.calculateTotals === "function") {
+                window.calculateTotals();
+            }
+        }
         @php
             $_dinePay = optional($setting)->default_payment_method ?: 'cash';
             if (!in_array($_dinePay, ['pending', 'cash', 'debit card', 'cash+online', 'scan'], true)) {
@@ -3151,7 +3261,16 @@
             }
             if (response.sales && response.sales.discount !== null && response.sales.discount !== undefined) {
                 $('#discount').val(response.sales.discount).trigger('input');
+            } else {
+                $('#discount').val("");
+                $('#discount_amount_input').val("");
             }
+            if (response.sales && response.sales.service_tax_rate !== null && response.sales.service_tax_rate !== undefined) {
+                resetBillServiceTaxRate(parseFloat(response.sales.service_tax_rate) || 0);
+            } else {
+                resetBillServiceTaxRate(defaultServiceTaxRate);
+            }
+            $('#service_tax_rate').trigger('input');
 
             var custName = response.sales.customer_name || response.sales.user_name || '';
             var custPhone = response.sales.customer_phone || response.sales.user_phone || '';
@@ -3212,6 +3331,8 @@
             $('input[name="gst_option"]').prop("checked", false);
             $(`input[name="gst_option"][value="${defaultGstOption || 'without'}"]`).prop("checked", true).trigger('change');
             $('#discount').val("").trigger('input');
+            $('#discount_amount_input').val("");
+            resetBillServiceTaxRate(defaultServiceTaxRate);
             resetDineInCustomerFields();
             tableOrderModal.show();
         }
@@ -3689,8 +3810,11 @@
                         $('input[name="gst_option"]').prop("checked", false);
                         $(`input[name="gst_option"][value="${defaultGstOption || 'without'}"]`).prop("checked", true).trigger('change');
 
-                        // Clear discount
+                        // Clear discount / restore default service tax %
                         $('#discount').val("").trigger('input');
+                        $('#discount_amount_input').val("");
+                        resetBillServiceTaxRate(defaultServiceTaxRate);
+                        $('#service_tax_rate').trigger('input');
                         resetDineInCustomerFields();
 
                         modal.show();
@@ -4517,10 +4641,11 @@
                         totalTax = 0;
                     }
 
-                    // Whole-bill service tax (settings %) — after discount, not split into CGST/SGST
-                    if (serviceTaxEnabled && (parseFloat(serviceTaxRate) || 0) > 0 && priceAfterDiscount > 0) {
-                        const serviceTaxAmt = Math.round((priceAfterDiscount * (parseFloat(serviceTaxRate) / 100)) * 100) / 100;
-                        const svcRateLabel = String(parseFloat(serviceTaxRate)).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+                    // Whole-bill service tax (editable per bill %) — after discount, not split into CGST/SGST
+                    const billSvcRate = getBillServiceTaxRate();
+                    if (billSvcRate > 0 && priceAfterDiscount > 0) {
+                        const serviceTaxAmt = Math.round((priceAfterDiscount * (billSvcRate / 100)) * 100) / 100;
+                        const svcRateLabel = String(billSvcRate).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
                         upsertSplitGstRow('service-tax', (serviceTaxName || 'Service Tax') + ' (' + svcRateLabel + '%)', serviceTaxAmt);
                         totalTax += serviceTaxAmt;
                     }
@@ -4550,6 +4675,9 @@
                     $(".discount-amount").html(formatCurrency(discountAmount.toFixed(2), currencySymbol,
                         currencyPosition));
                     $("input[name='discount_amount']").val(discountAmount.toFixed(2));
+                    if (!discountFieldSyncLock && !$("#discount_amount_input").is(":focus")) {
+                        syncDiscountAmountFromPercent();
+                    }
 
                     $(".price-after-discount").html(formatCurrency(priceAfterDiscount.toFixed(2), currencySymbol,
                         currencyPosition));
@@ -4584,8 +4712,14 @@
                     $("input[name='price_after_discount']").val("0.00");
                     $("input[name='total']").val("0.00");
                     $("#onlineAmount").val("0.00");
+                    if (!discountFieldSyncLock) {
+                        discountFieldSyncLock = true;
+                        $("#discount_amount_input").val("");
+                        discountFieldSyncLock = false;
+                    }
                 }
             }
+            window.calculateTotals = calculateTotals;
 
             window.updateTotalItems = function () {
                 $(".totalitem h4").text("Total items : " + selectedItems.size);
@@ -4994,6 +5128,32 @@
                 updateTotalItems();
             });
 
+            $("#service_tax_rate").on("input", function () {
+                const svcValue = parseFloat($(this).val());
+
+                if ($(this).val() === "") {
+                    $(".error_service_tax").text("");
+                    calculateTotals();
+                    return;
+                }
+
+                if (svcValue < 0 || svcValue > 100) {
+                    $(".error_service_tax").text("Must be between 0-100%").css("color", "red");
+                    $(this).val("0");
+                    calculateTotals();
+                } else if (isNaN(svcValue)) {
+                    $(".error_service_tax").text("");
+                    calculateTotals();
+                } else {
+                    $(".error_service_tax").text("");
+                    calculateTotals();
+                }
+            });
+
+            $("#discount_amount_input").on("input", function () {
+                applyOverallDiscountAmountFromInput();
+            });
+
             $("#discount").on("input", function () {
                 const discountValue = parseFloat($(this).val());
 
@@ -5001,6 +5161,11 @@
                     // If empty, treat as 0 and remove error
                     $(".error_discount").text("");
                     $("#discount").val(""); // keep it blank for UX
+                    if (!discountFieldSyncLock) {
+                        discountFieldSyncLock = true;
+                        $("#discount_amount_input").val("");
+                        discountFieldSyncLock = false;
+                    }
                     calculateTotals(); // recalculate with 0 discount
                     return;
                 }
@@ -5014,6 +5179,7 @@
                     calculateTotals();
                 } else {
                     $(".error_discount").text("Discount Applied").css("color", "green");
+                    syncDiscountAmountFromPercent();
                     calculateTotals();
                 }
             });
@@ -5143,6 +5309,7 @@
                     subtotal: subtotal,
                     discount: discount,
                     discount_amount: subtotal * (discount / 100),
+                    service_tax_rate: getBillServiceTaxRate(),
                     tax: taxes,
                     gst_option: gstOption,
                     total: total,
@@ -5178,6 +5345,8 @@
                             selectedItems.clear();
                             $(".check-product i").removeClass("selected");
                             $("#discount").val("");
+                            $("#discount_amount_input").val("");
+                            resetBillServiceTaxRate(defaultServiceTaxRate);
                             if (typeof window.applyDefaultPosPayment === 'function') {
                                 window.applyDefaultPosPayment();
                             }
@@ -5338,6 +5507,7 @@
                     subtotal: subtotal,
                     discount: discount,
                     discount_amount: subtotal * (discount / 100),
+                    service_tax_rate: getBillServiceTaxRate(),
                     tax: taxes,
                     gst_option: gstOption,
                     total: total,
@@ -5373,6 +5543,8 @@
                             selectedItems.clear();
                             $(".check-product i").removeClass("selected");
                             $("#discount").val("");
+                            $("#discount_amount_input").val("");
+                            resetBillServiceTaxRate(defaultServiceTaxRate);
                             if (typeof window.applyDefaultPosPayment === 'function') {
                                 window.applyDefaultPosPayment();
                             }
@@ -5533,6 +5705,7 @@
                     subtotal: subtotal,
                     discount: discount,
                     discount_amount: subtotal * (discount / 100),
+                    service_tax_rate: getBillServiceTaxRate(),
                     tax: taxes,
                     gst_option: gstOption,
                     total: total,
@@ -5573,6 +5746,8 @@
                             selectedItems.clear();
                             $(".check-product i").removeClass("selected");
                             $("#discount").val("");
+                            $("#discount_amount_input").val("");
+                            resetBillServiceTaxRate(defaultServiceTaxRate);
                             if (typeof window.applyDefaultPosPayment === 'function') {
                                 window.applyDefaultPosPayment();
                             }

@@ -41,6 +41,28 @@ class SalesController extends Controller
     }
 
     /**
+     * Allow a per-bill Service Tax % override from POS / dine-in (Discount-style).
+     */
+    protected function applyBillServiceTaxOverride(array $gstOpts, Request $request): array
+    {
+        if (! $request->exists('service_tax_rate')) {
+            return $gstOpts;
+        }
+
+        $rate = max(0, min(100, (float) $request->input('service_tax_rate', 0)));
+        $gstOpts['service_tax_rate'] = $rate;
+        $gstOpts['service_tax_enabled'] = $rate > 0;
+        if ($request->filled('service_tax_name')) {
+            $name = trim((string) $request->input('service_tax_name'));
+            if ($name !== '') {
+                $gstOpts['service_tax_name'] = $name;
+            }
+        }
+
+        return $gstOpts;
+    }
+
+    /**
      * Frozen GST mode options from a saved order (falls back to product-wise).
      */
     protected function gstOptionsFromOrder($order): array
@@ -946,7 +968,10 @@ class SalesController extends Controller
                 );
             }
             $withGst = ($request->gst_option === 'with' || $request->gst_option === 'with_gst');
-            $gstOpts = $this->gstOptionsForBranch($branchIdToUse);
+            $gstOpts = $this->applyBillServiceTaxOverride(
+                $this->gstOptionsForBranch($branchIdToUse),
+                $request
+            );
             $money = $this->posPricing()->calculateOrderTotals(
                 $resolvedLines,
                 (float) ($request->discount ?? 0),
@@ -1609,7 +1634,10 @@ class SalesController extends Controller
             }
 
             $withGst = ($request->gst_option === 'with' || $request->gst_option === 'with_gst');
-            $gstOpts = $this->gstOptionsForBranch($branchIdToUse);
+            $gstOpts = $this->applyBillServiceTaxOverride(
+                $this->gstOptionsForBranch($branchIdToUse),
+                $request
+            );
             $money = $this->posPricing()->calculateOrderTotals(
                 $resolvedLines,
                 (float) ($request->discount ?? 0),
@@ -2612,7 +2640,10 @@ class SalesController extends Controller
             $moneyTax = ['tax_ids' => [], 'tax_total' => 0, 'tax_breakdown' => []];
 
             // Product-level / overall-bill taxes (same rules as PosPricingService)
-            $gstOptsLegacy = $this->gstOptionsForBranch($branchIdToUse);
+            $gstOptsLegacy = $this->applyBillServiceTaxOverride(
+                $this->gstOptionsForBranch($branchIdToUse),
+                $request
+            );
             if ($request->gst_option === 'with_gst' || $request->gst_option === 'with') {
                 $products->loadMissing(['tax', 'category']);
                 $resolvedForTax = [];
