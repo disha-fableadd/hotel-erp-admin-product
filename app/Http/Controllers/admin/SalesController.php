@@ -381,10 +381,14 @@ class SalesController extends Controller
         $totalAmount = $orderItems->sum('total_amount');
         $withGst = in_array((string) ($sales->gst_option ?? ''), ['with', 'with_gst'], true);
         $frozenBreakdown = is_array($sales->tax_breakdown ?? null) ? $sales->tax_breakdown : [];
+        $svcRate = (float) ($sales->service_tax_rate ?? 0);
         $gstOpts = [
             'gst_apply_mode' => (($sales->gst_apply_mode ?? '') === 'overall') ? 'overall' : 'product',
             'overall_gst_rate' => (float) ($sales->overall_gst_rate ?? 0),
             'overall_gst_name' => 'GST',
+            'service_tax_enabled' => $svcRate > 0,
+            'service_tax_rate' => $svcRate,
+            'service_tax_name' => trim((string) ($sales->service_tax_name ?? 'Service Tax')) ?: 'Service Tax',
         ];
         if (! empty($frozenBreakdown)) {
             $money = [
@@ -644,10 +648,14 @@ class SalesController extends Controller
                 'total' => (float) ($sales->total_amount ?? $subtotal),
             ];
         } else {
+            $svcRate = (float) ($sales->service_tax_rate ?? 0);
             $gstOpts = [
                 'gst_apply_mode' => (($sales->gst_apply_mode ?? '') === 'overall') ? 'overall' : 'product',
                 'overall_gst_rate' => (float) ($sales->overall_gst_rate ?? 0),
                 'overall_gst_name' => 'GST',
+                'service_tax_enabled' => $svcRate > 0,
+                'service_tax_rate' => $svcRate,
+                'service_tax_name' => trim((string) ($sales->service_tax_name ?? 'Service Tax')) ?: 'Service Tax',
             ];
             $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst, $gstOpts);
             $discountAmount = (float) ($money['discount_amount'] ?? (($discountPercent / 100) * $subtotal));
@@ -804,10 +812,14 @@ class SalesController extends Controller
                 'total' => (float) ($sales->total_amount ?? $subtotal),
             ];
         } else {
+            $svcRate = (float) ($sales->service_tax_rate ?? 0);
             $gstOpts = [
                 'gst_apply_mode' => (($sales->gst_apply_mode ?? '') === 'overall') ? 'overall' : 'product',
                 'overall_gst_rate' => (float) ($sales->overall_gst_rate ?? 0),
                 'overall_gst_name' => 'GST',
+                'service_tax_enabled' => $svcRate > 0,
+                'service_tax_rate' => $svcRate,
+                'service_tax_name' => trim((string) ($sales->service_tax_name ?? 'Service Tax')) ?: 'Service Tax',
             ];
             $money = app(PosPricingService::class)->calculateFromOrderItems($orderItems, $discountPercent, $withGst, $gstOpts);
             $discountAmount = (float) ($money['discount_amount'] ?? (($discountPercent / 100) * $subtotal));

@@ -2484,6 +2484,9 @@
             const gstApplyMode = @json(((optional($setting)->gst_apply_mode ?? 'product') === 'overall') ? 'overall' : 'product');
             const overallGstRate = @json((float) (optional($setting)->overall_gst_rate ?? 0));
             const overallGstName = @json(trim((string) (optional($setting)->overall_gst_name ?? 'GST')) ?: 'GST');
+            const serviceTaxEnabled = @json((bool) (optional($setting)->service_tax_enabled ?? false));
+            const serviceTaxRate = @json((float) (optional($setting)->service_tax_rate ?? 0));
+            const serviceTaxName = @json(trim((string) (optional($setting)->service_tax_name ?? 'Service Tax')) ?: 'Service Tax');
             const defaultPaymentMethod = @json($defaultPayMethod ?? 'cash');
             const defaultPaidType = @json($defaultPaidType ?? 'fully');
             const posCurrencySymbol = @json($currency_symbol ?? '₹');
@@ -3229,6 +3232,15 @@
                             }
                         } else {
                             totalTax = 0;
+                        }
+
+                        // Whole-bill service tax (settings %) — after discount, not split into CGST/SGST
+                        let serviceTaxAmt = 0;
+                        if (serviceTaxEnabled && (parseFloat(serviceTaxRate) || 0) > 0 && priceAfterDiscount > 0) {
+                            serviceTaxAmt = Math.round((priceAfterDiscount * (parseFloat(serviceTaxRate) / 100)) * 100) / 100;
+                            const svcRateLabel = String(parseFloat(serviceTaxRate)).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+                            upsertSplitGstRow('service-tax', (serviceTaxName || 'Service Tax') + ' (' + svcRateLabel + '%)', serviceTaxAmt);
+                            totalTax += serviceTaxAmt;
                         }
 
                         // ✅ Final total (price after discount + tax + shipping)

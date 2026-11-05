@@ -2773,6 +2773,9 @@
         const gstApplyMode = @json(((optional($setting)->gst_apply_mode ?? 'product') === 'overall') ? 'overall' : 'product');
         const overallGstRate = @json((float) (optional($setting)->overall_gst_rate ?? 0));
         const overallGstName = @json(trim((string) (optional($setting)->overall_gst_name ?? 'GST')) ?: 'GST');
+        const serviceTaxEnabled = @json((bool) (optional($setting)->service_tax_enabled ?? false));
+        const serviceTaxRate = @json((float) (optional($setting)->service_tax_rate ?? 0));
+        const serviceTaxName = @json(trim((string) (optional($setting)->service_tax_name ?? 'Service Tax')) ?: 'Service Tax');
         @php
             $_dinePay = optional($setting)->default_payment_method ?: 'cash';
             if (!in_array($_dinePay, ['pending', 'cash', 'debit card', 'cash+online', 'scan'], true)) {
@@ -3978,7 +3981,15 @@
                         totalTax = 0;
                     }
 
-                    // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ Final total (price after discount + tax + shipping)
+                    // Whole-bill service tax (settings %) — after discount, not split into CGST/SGST
+                    if (serviceTaxEnabled && (parseFloat(serviceTaxRate) || 0) > 0 && priceAfterDiscount > 0) {
+                        const serviceTaxAmt = Math.round((priceAfterDiscount * (parseFloat(serviceTaxRate) / 100)) * 100) / 100;
+                        const svcRateLabel = String(parseFloat(serviceTaxRate)).replace(/\.00$/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+                        upsertSplitGstRow('service-tax', (serviceTaxName || 'Service Tax') + ' (' + svcRateLabel + '%)', serviceTaxAmt);
+                        totalTax += serviceTaxAmt;
+                    }
+
+                    // Final total (price after discount + tax + shipping)
                     const shipping = parseFloat($("#shipping").val()) || 0;
                     const total = priceAfterDiscount + totalTax + shipping;
                     $("#cashAmount").on("input", function () {

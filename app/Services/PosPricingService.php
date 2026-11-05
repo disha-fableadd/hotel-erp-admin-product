@@ -177,28 +177,48 @@ class PosPricingService
     }
 
     /**
-     * GST options from shop settings (or order snapshot).
+     * GST + service-tax options from shop settings (or order snapshot).
      *
-     * @return array{gst_apply_mode: string, overall_gst_rate: float, overall_gst_name: string}
+     * @return array{
+     *   gst_apply_mode: string,
+     *   overall_gst_rate: float,
+     *   overall_gst_name: string,
+     *   service_tax_enabled: bool,
+     *   service_tax_rate: float,
+     *   service_tax_name: string
+     * }
      */
     public static function gstOptionsFromSetting($setting): array
     {
         $mode = is_object($setting) ? (string) ($setting->gst_apply_mode ?? 'product') : 'product';
         $rate = is_object($setting) ? (float) ($setting->overall_gst_rate ?? 0) : 0.0;
         $name = is_object($setting) ? trim((string) ($setting->overall_gst_name ?? 'GST')) : 'GST';
+        $svcEnabled = is_object($setting) ? (bool) ($setting->service_tax_enabled ?? false) : false;
+        $svcRate = is_object($setting) ? (float) ($setting->service_tax_rate ?? 0) : 0.0;
+        $svcName = is_object($setting) ? trim((string) ($setting->service_tax_name ?? 'Service Tax')) : 'Service Tax';
 
         return [
             'gst_apply_mode' => $mode === 'overall' ? 'overall' : 'product',
             'overall_gst_rate' => max(0, $rate),
             'overall_gst_name' => $name !== '' ? $name : 'GST',
+            'service_tax_enabled' => $svcEnabled,
+            'service_tax_rate' => max(0, $svcRate),
+            'service_tax_name' => $svcName !== '' ? $svcName : 'Service Tax',
         ];
     }
 
     /**
-     * Recalculate order money from trusted lines + discount % + optional GST.
+     * Recalculate order money from trusted lines + discount % + optional GST + whole-bill service tax.
      *
      * @param  array<int, array>  $resolvedLines
-     * @param  array{gst_apply_mode?: string, overall_gst_rate?: float, overall_gst_name?: string}  $options
+     * @param  array{
+     *   gst_apply_mode?: string,
+     *   overall_gst_rate?: float,
+     *   overall_gst_name?: string,
+     *   service_tax_enabled?: bool,
+     *   service_tax_rate?: float,
+     *   service_tax_name?: string
+     * }  $options
      */
     public function calculateOrderTotals(array $resolvedLines, float $discountPercent, bool $withGst, $branchId = null, array $options = []): array
     {
@@ -273,16 +293,36 @@ class PosPricingService
             $taxBreakdown = array_values($taxBreakdown);
         }
 
-        $grand = round($afterDiscount + $taxTotal, 2);
-
         // Bill display: split combined GST into CGST + SGST (half each)
         $taxBreakdown = self::expandCgstSgstBreakdown(array_values($taxBreakdown));
+
+        // Whole-bill service tax (settings % on amount after discount) — not split into CGST/SGST
+        $svcEnabled = (bool) ($options['service_tax_enabled'] ?? false);
+        $svcRate = max(0, (float) ($options['service_tax_rate'] ?? 0));
+        $svcName = trim((string) ($options['service_tax_name'] ?? 'Service Tax')) ?: 'Service Tax';
+        $serviceTaxAmount = 0.0;
+        if ($svcEnabled && $svcRate > 0 && $afterDiscount > 0) {
+            $serviceTaxAmount = round($afterDiscount * ($svcRate / 100), 2);
+            $taxBreakdown[] = [
+                'id' => 'service_tax',
+                'name' => $svcName,
+                'rate' => $svcRate,
+                'amount' => $serviceTaxAmount,
+                'kind' => 'service',
+            ];
+        }
+
+        $grand = round($afterDiscount + $taxTotal + $serviceTaxAmount, 2);
 
         return [
             'subtotal' => round($subtotal, 2),
             'discount' => $discountPercent,
             'discount_amount' => $discountAmount,
-            'tax_total' => round($taxTotal, 2),
+            'tax_total' => round($taxTotal + $serviceTaxAmount, 2),
+            'gst_total' => round($taxTotal, 2),
+            'service_tax_amount' => $serviceTaxAmount,
+            'service_tax_rate' => ($svcEnabled && $svcRate > 0) ? $svcRate : null,
+            'service_tax_name' => ($svcEnabled && $svcRate > 0) ? $svcName : null,
             'tax_ids' => array_values(array_unique($taxIds)),
             'tax_breakdown' => $taxBreakdown,
             'gst_apply_mode' => $mode,
@@ -318,6 +358,23 @@ class PosPricingService
                     'name' => (string) ($row['name'] ?? $name),
                     'rate' => $rate,
                     'amount' => $amount,
+                ];
+                continue;
+            }
+
+            // Whole-bill service tax / service charge — never split into CGST/SGST
+            $kind = strtolower((string) ($row['kind'] ?? ''));
+            if ($kind === 'service'
+                || str_contains($name, 'SERVICE TAX')
+                || str_contains($name, 'SERVICE CHARGE')
+                || ($row['id'] ?? null) === 'service_tax'
+            ) {
+                $expanded[] = [
+                    'id' => $row['id'] ?? 'service_tax',
+                    'name' => (string) ($row['name'] ?? 'Service Tax'),
+                    'rate' => $rate,
+                    'amount' => $amount,
+                    'kind' => 'service',
                 ];
                 continue;
             }

@@ -38,6 +38,9 @@ class GeneralSettingController extends Controller
             $settings->gst_apply_mode = 'product';
             $settings->overall_gst_rate = null;
             $settings->overall_gst_name = 'GST';
+            $settings->service_tax_enabled = 0;
+            $settings->service_tax_rate = null;
+            $settings->service_tax_name = 'Service Tax';
             $settings->default_payment_method = 'cash';
             $settings->default_paid_type = 'fully';
             $settings->show_hr_dashboard = 1;
@@ -74,6 +77,9 @@ class GeneralSettingController extends Controller
             'gst_apply_mode' => 'nullable|in:product,overall',
             'overall_gst_rate' => 'nullable|numeric|min:0|max:100',
             'overall_gst_name' => 'nullable|string|max:100',
+            'service_tax_enabled' => 'nullable|boolean',
+            'service_tax_rate' => 'nullable|numeric|min:0|max:100',
+            'service_tax_name' => 'nullable|string|max:100',
             'default_payment_method' => 'nullable|in:pending,cash,debit card,cash+online,scan',
             'default_paid_type' => 'nullable|in:fully,partially',
             'state_code'        => 'nullable',
@@ -154,6 +160,19 @@ class GeneralSettingController extends Controller
         if ($request->has('overall_gst_name')) {
             $label = trim((string) $request->overall_gst_name);
             $settings->overall_gst_name = $label !== '' ? $label : 'GST';
+        }
+        if ($request->has('service_tax_enabled')) {
+            // Accept "0"/"1" strings from FormData reliably
+            $rawSvc = $request->input('service_tax_enabled');
+            $settings->service_tax_enabled = in_array($rawSvc, [1, '1', true, 'true', 'on', 'yes'], true) ? 1 : 0;
+        }
+        if ($request->has('service_tax_rate')) {
+            $svcRate = $request->service_tax_rate;
+            $settings->service_tax_rate = ($svcRate === '' || $svcRate === null) ? null : max(0, min(100, (float) $svcRate));
+        }
+        if ($request->has('service_tax_name')) {
+            $svcLabel = trim((string) $request->service_tax_name);
+            $settings->service_tax_name = $svcLabel !== '' ? $svcLabel : 'Service Tax';
         }
         if ($request->has('default_payment_method')) {
             $allowedPay = ['pending', 'cash', 'debit card', 'cash+online', 'scan'];

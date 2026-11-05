@@ -377,7 +377,7 @@
  */
 (function(window) {
     'use strict';
-    window.__INVOICE_QZ_PRINT_VER = '2026-10-16h';
+    window.__INVOICE_QZ_PRINT_VER = '2026-11-05a';
     window.__QZ_CERT_URL = @json(url('/qz/certificate'));
     window.__QZ_SIGN_URL = @json(url('/qz/sign'));
     window.__QZ_INSTALL_BAT_URL = @json(url('/qz/install-qz-trust.bat'));
@@ -1670,8 +1670,21 @@
             return promise;
         }
 
+        function thermalSafePdfUrl(pdfUrl) {
+            try {
+                var u = new URL(absoluteUrl(pdfUrl));
+                var allowLogo = false;
+                try { allowLogo = localStorage.getItem('posPrintLogo') === '1' || localStorage.getItem('btPrintLogo') === '1'; } catch (e) {}
+                if (!allowLogo) u.searchParams.set('no_logo', '1');
+                u.searchParams.set('thermal', '1');
+                return u.href;
+            } catch (e2) {
+                return pdfUrl + (String(pdfUrl).indexOf('?') >= 0 ? '&' : '?') + 'thermal=1&no_logo=1';
+            }
+        }
+
         function rasterBillBytes(pdfUrl, autoCut) {
-            return billCanvas(pdfUrl).then(function(canvas) {
+            return billCanvas(thermalSafePdfUrl(pdfUrl)).then(function(canvas) {
                 return canvasToEscPosRaster(canvas, autoCut);
             });
         }
@@ -1966,7 +1979,14 @@
                 raw(0x1B, 0x45, boldOn);
                 raw(0x1B, 0x47, boldOn);
                 align(true);
-                if (images[0]) {
+                // Skip logo raster by default — many POS80 printers print logo bytes as garbage
+                // (|, ?, accented chars) at the top of the bill. Text shop name is reliable.
+                var printLogoRaster = false;
+                try {
+                    printLogoRaster = localStorage.getItem('btPrintLogo') === '1'
+                        || localStorage.getItem('posPrintLogo') === '1';
+                } catch (eLogo) {}
+                if (printLogoRaster && images[0]) {
                     image(images[0]);
                     gap(6);
                 }
@@ -2683,9 +2703,19 @@
                 try {
                     var u = new URL(absoluteUrl(pdfUrl));
                     u.searchParams.set('usb_print', '1');
+                    // Skip logo on thermal USB — logo raster prints as garbage on some POS80 printers
+                    var allowLogo = false;
+                    try { allowLogo = localStorage.getItem('posPrintLogo') === '1'; } catch (e2) {}
+                    if (!allowLogo) {
+                        u.searchParams.set('no_logo', '1');
+                    }
                     return u.href;
                 } catch (e) {
-                    return pdfUrl + (String(pdfUrl).indexOf('?') >= 0 ? '&' : '?') + 'usb_print=1';
+                    var extra = 'usb_print=1&no_logo=1';
+                    try {
+                        if (localStorage.getItem('posPrintLogo') === '1') extra = 'usb_print=1';
+                    } catch (e3) {}
+                    return pdfUrl + (String(pdfUrl).indexOf('?') >= 0 ? '&' : '?') + extra;
                 }
             })();
 

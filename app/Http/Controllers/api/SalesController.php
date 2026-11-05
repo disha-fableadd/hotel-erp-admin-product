@@ -45,27 +45,35 @@ class SalesController extends Controller
      */
     protected function gstOptionsFromOrder($order): array
     {
+        $svcRate = (float) ($order->service_tax_rate ?? 0);
+        $svcName = trim((string) ($order->service_tax_name ?? 'Service Tax')) ?: 'Service Tax';
+        $svc = [
+            'service_tax_enabled' => $svcRate > 0,
+            'service_tax_rate' => max(0, $svcRate),
+            'service_tax_name' => $svcName,
+        ];
+
         $mode = (string) ($order->gst_apply_mode ?? '');
         if ($mode === 'overall') {
-            return [
+            return array_merge([
                 'gst_apply_mode' => 'overall',
                 'overall_gst_rate' => (float) ($order->overall_gst_rate ?? 0),
                 'overall_gst_name' => 'GST',
-                ];
+            ], $svc);
         }
         if ($mode === 'product') {
-            return [
+            return array_merge([
                 'gst_apply_mode' => 'product',
                 'overall_gst_rate' => 0,
                 'overall_gst_name' => 'GST',
-            ];
+            ], $svc);
         }
-        // Legacy orders: if every line has the same snap rate and no product tax ids, treat as overall
-        return [
+        // Legacy orders: treat GST as product-wise; still honour frozen service tax if present
+        return array_merge([
             'gst_apply_mode' => 'product',
             'overall_gst_rate' => 0,
             'overall_gst_name' => 'GST',
-        ];
+        ], $svc);
     }
 
     protected function allowsItemLevelDiscount($branchId): bool
@@ -848,6 +856,15 @@ class SalesController extends Controller
                     ? $gstOpts['overall_gst_rate']
                     : null;
             }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'service_tax_rate')) {
+                $orderPayload['service_tax_rate'] = $money['service_tax_rate'] ?? null;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'service_tax_amount')) {
+                $orderPayload['service_tax_amount'] = $money['service_tax_amount'] ?? 0;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'service_tax_name')) {
+                $orderPayload['service_tax_name'] = $money['service_tax_name'] ?? null;
+            }
             $order = Order::create($orderPayload);
 
             // Insert order items and reduce finished-good stock when track_inventory is on
@@ -1478,6 +1495,15 @@ class SalesController extends Controller
                 $orderUpdate['overall_gst_rate'] = ($gstOpts['gst_apply_mode'] === 'overall')
                     ? $gstOpts['overall_gst_rate']
                     : null;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'service_tax_rate')) {
+                $orderUpdate['service_tax_rate'] = $money['service_tax_rate'] ?? null;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'service_tax_amount')) {
+                $orderUpdate['service_tax_amount'] = $money['service_tax_amount'] ?? 0;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'service_tax_name')) {
+                $orderUpdate['service_tax_name'] = $money['service_tax_name'] ?? null;
             }
             $order->update($orderUpdate);
 
@@ -2195,6 +2221,15 @@ class SalesController extends Controller
                 $legacyOrderUpdate['overall_gst_rate'] = ($gstOptsLegacy['gst_apply_mode'] === 'overall')
                     ? $gstOptsLegacy['overall_gst_rate']
                     : null;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'service_tax_rate')) {
+                $legacyOrderUpdate['service_tax_rate'] = $moneyTax['service_tax_rate'] ?? null;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'service_tax_amount')) {
+                $legacyOrderUpdate['service_tax_amount'] = $moneyTax['service_tax_amount'] ?? 0;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'service_tax_name')) {
+                $legacyOrderUpdate['service_tax_name'] = $moneyTax['service_tax_name'] ?? null;
             }
             $order->update($legacyOrderUpdate);
 

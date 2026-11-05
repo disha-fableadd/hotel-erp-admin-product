@@ -409,6 +409,20 @@
     $custAddr = trim((string) ($customer['address'] ?? ''));
     $showLogo = $invOn('show_logo', true);
     $showCompany = $invOn('show_company_name', true);
+    // Thermal / QZ USB print: logo/SVG raster becomes garbage text on many POS80 printers.
+    // Prefer text shop name only for those jobs.
+    $isThermalUsb = request()->boolean('usb_print') || request()->boolean('thermal') || request()->boolean('no_logo');
+    if ($isThermalUsb) {
+        $showLogo = false;
+        if (! $showCompany) {
+            $showCompany = true; // always show shop name when logo is suppressed
+        }
+    }
+    // Never embed SVG placeholder logo on thermal bills (DomPDF SVG → some printers print binary as text)
+    $logoIsSvg = is_string($logoBase64) && (str_contains($logoBase64, 'image/svg') || str_contains($logoBase64, 'svg+xml'));
+    if ($logoIsSvg) {
+        $logoBase64 = null;
+    }
     $showShopGst = $invOn('show_shop_gst', true);
     $showShopAddr = $invOn('show_shop_address', false);
     $showShopPhone = $invOn('show_shop_phone', true);
@@ -442,13 +456,8 @@
             <div style="margin-bottom: 2px;">
                 <img src="{{ $logoBase64 }}" style="max-height: {{ $logoMaxH }}px; max-width: {{ $logoMaxW }}px; display: inline-block;" alt="Logo">
             </div>
-        @elseif ($showLogo)
-            <div>
-                <img src="{{ $forkKnifeIconDataUri }}" class="restaurant-icon" alt="Restaurant">
-            </div>
-            <div class="restaurant-title">Restaurant</div>
-            <div class="restaurant-tagline">Food &amp; Drinks</div>
         @endif
+        {{-- Do not print SVG fork/knife placeholder: many thermal printers render it as garbage characters --}}
 
         @if ($showCompany)
             <div class="shop-name">{{ $setting->name ?? 'ABC CAFE & RESTRO' }}</div>

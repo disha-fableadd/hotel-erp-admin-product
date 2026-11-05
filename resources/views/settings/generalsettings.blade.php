@@ -302,6 +302,33 @@
 
                             <div class="col-lg-3 col-sm-6 col-6">
                                 <div class="form-group">
+                                    <label>Service Tax on Bill</label>
+                                    <select id="service_tax_enabled" class="form-select">
+                                        <option value="0">Off</option>
+                                        <option value="1">On (whole bill %)</option>
+                                    </select>
+                                    <small class="text-muted">Adds a % on the full bill amount after discount (e.g. 10%).</small>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3 col-sm-6 col-6" id="service_tax_rate_wrap">
+                                <div class="form-group">
+                                    <label>Service Tax %</label>
+                                    <input type="number" id="service_tax_rate" class="form-control" min="0" max="100" step="0.01" placeholder="e.g. 10">
+                                    <small class="text-muted">Applied on whole bill after discount.</small>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3 col-sm-6 col-6" id="service_tax_name_wrap">
+                                <div class="form-group">
+                                    <label>Service Tax Label</label>
+                                    <input type="text" id="service_tax_name" class="form-control" maxlength="100" placeholder="Service Tax">
+                                    <small class="text-muted">Shown on bill totals (e.g. Service Tax / Service Charge).</small>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3 col-sm-6 col-6">
+                                <div class="form-group">
                                     <label>Default Payment Method (POS)</label>
                                     <select id="default_payment_method" class="form-select">
                                         <option value="cash">Cash</option>
@@ -1155,8 +1182,14 @@
                 var overall = $("#gst_apply_mode").val() === 'overall';
                 $("#overall_gst_rate_wrap, #overall_gst_name_wrap").toggle(overall);
             };
+            window.toggleServiceTaxFields = function() {
+                var on = $("#service_tax_enabled").val() === '1';
+                $("#service_tax_rate_wrap, #service_tax_name_wrap").toggle(on);
+            };
             $(document).on('change', '#gst_apply_mode', window.toggleOverallGstFields);
+            $(document).on('change', '#service_tax_enabled', window.toggleServiceTaxFields);
             window.toggleOverallGstFields();
+            window.toggleServiceTaxFields();
 
             // =====================================================================
             // GEOCODING ENGINE  (Nominatim + Photon — free, no API key)
@@ -1411,8 +1444,20 @@
                                 : ''
                         );
                         $("#overall_gst_name").val(settings.overall_gst_name || 'GST');
+                        $("#service_tax_enabled").val(
+                            settings.service_tax_enabled == 1 || settings.service_tax_enabled === true ? '1' : '0'
+                        );
+                        $("#service_tax_rate").val(
+                            settings.service_tax_rate != null && settings.service_tax_rate !== ''
+                                ? settings.service_tax_rate
+                                : ''
+                        );
+                        $("#service_tax_name").val(settings.service_tax_name || 'Service Tax');
                         if (typeof window.toggleOverallGstFields === 'function') {
                             window.toggleOverallGstFields();
+                        }
+                        if (typeof window.toggleServiceTaxFields === 'function') {
+                            window.toggleServiceTaxFields();
                         }
                         var payDefaults = ['pending', 'cash', 'debit card', 'cash+online', 'scan'];
                         var payVal = settings.default_payment_method || 'cash';
@@ -1817,6 +1862,9 @@
                 formData.append("gst_apply_mode", $("#gst_apply_mode").val() || 'product');
                 formData.append("overall_gst_rate", $("#overall_gst_rate").val() || '');
                 formData.append("overall_gst_name", $("#overall_gst_name").val() || 'GST');
+                formData.append("service_tax_enabled", $("#service_tax_enabled").val() || '0');
+                formData.append("service_tax_rate", $("#service_tax_rate").val() || '');
+                formData.append("service_tax_name", $("#service_tax_name").val() || 'Service Tax');
                 formData.append("default_payment_method", $("#default_payment_method").val() || 'cash');
                 formData.append("default_paid_type", $("#default_paid_type").val() || 'fully');
                 formData.append("shop_name", $("#shop_name").val());
