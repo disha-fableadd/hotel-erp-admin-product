@@ -220,11 +220,70 @@ if (! function_exists('canUseBranches')) {
     }
 }
 
+if (! function_exists('flatten_tenant_sub_module_list')) {
+    /**
+     * Normalize admin_erp / plan sub-module payloads into a flat lowercase name list.
+     * Supports flat arrays, nested module=>[subs], and [{name, sub_modules}] shapes.
+     *
+     * @param mixed $raw
+     * @return array<int, string>
+     */
+    function flatten_tenant_sub_module_list($raw): array
+    {
+        if ($raw === null || $raw === '' || $raw === []) {
+            return [];
+        }
+
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : preg_split('/[\n,]+/', $raw);
+        }
+
+        if (! is_array($raw)) {
+            $val = strtolower(trim((string) $raw));
+            return $val !== '' ? [$val] : [];
+        }
+
+        $out = [];
+        $walk = function ($items) use (&$walk, &$out) {
+            foreach ((array) $items as $key => $item) {
+                if (is_array($item)) {
+                    if (isset($item['name']) && is_string($item['name'])) {
+                        $name = strtolower(trim($item['name']));
+                        if ($name !== '') {
+                            $out[] = $name;
+                        }
+                    }
+                    if (isset($item['sub_modules']) && is_array($item['sub_modules'])) {
+                        $walk($item['sub_modules']);
+                        continue;
+                    }
+                    // Associative module => [sub, sub] or nested lists
+                    $walk($item);
+                    continue;
+                }
+
+                if (is_string($item) || is_numeric($item)) {
+                    $name = strtolower(trim((string) $item));
+                    if ($name !== '' && $name !== 'array') {
+                        $out[] = $name;
+                    }
+                }
+            }
+        };
+        $walk($raw);
+
+        return array_values(array_unique($out));
+    }
+}
+
 if (! function_exists('tenant_has_sub_module')) {
     /**
      * Check if current tenant has access to given sub-module name(s) / slug(s).
      * If $parentModuleName is given, checks if tenant has the parent module first.
      * If tenancy is disabled or not active, returns true.
+     *
+     * Admin Edit Setup (tenant sub_module_names) is preferred over local plan.sub_modules.
      *
      * @param string|array $subModuleNames
      * @param string|array|null $parentModuleName
@@ -240,36 +299,78 @@ if (! function_exists('tenant_has_sub_module')) {
             return false;
         }
 
-        $rawNames = tenant('sub_module_names') ?: tenant('sub_modules') ?: [];
+        // 1) Admin Edit Setup assignment (source of truth)
+        $tenantNames = flatten_tenant_sub_module_list(
+            tenant('sub_module_names') ?: tenant('sub_modules') ?: []
+        );
+
+        // Also include nested modules_with_sub_modules from resolve payload
+        $modulesWithSub = tenant('modules_with_sub_modules', []);
+        if (! empty($modulesWithSub)) {
+            $tenantNames = array_values(array_unique(array_merge(
+                $tenantNames,
+                flatten_tenant_sub_module_list($modulesWithSub)
+            )));
+        }
+
+        // 2) Local plan sub_modules — merge as fallback/supplement, never overwrite tenant
+        $planNames = [];
         try {
             $dbPlanSub = null;
-            if (auth()->check() && auth()->user()->plan && !empty(auth()->user()->plan->sub_modules)) {
+            if (auth()->check() && auth()->user()->plan && ! empty(auth()->user()->plan->sub_modules)) {
                 $dbPlanSub = auth()->user()->plan->sub_modules;
             } else {
                 $activePlan = \Illuminate\Support\Facades\DB::table('plans')->where('is_active', 1)->latest('id')->first();
-                if ($activePlan && !empty($activePlan->sub_modules)) {
+                if ($activePlan && ! empty($activePlan->sub_modules)) {
                     $dbPlanSub = $activePlan->sub_modules;
                 }
             }
-            if (!empty($dbPlanSub)) {
-                $rawNames = is_array($dbPlanSub) ? $dbPlanSub : (json_decode($dbPlanSub, true) ?: []);
-            }
-        } catch (\Throwable $e) {}
+            $planNames = flatten_tenant_sub_module_list($dbPlanSub);
+        } catch (\Throwable $e) {
+        }
 
-        $activeNames = array_map(function ($m) {
-            return strtolower(trim((string) $m));
-        }, (array) $rawNames);
+        $activeNames = array_values(array_unique(array_merge($tenantNames, $planNames)));
         $activeSlugs = array_map('strtolower', (array) tenant('sub_module_slugs', []));
+        foreach ($activeNames as $n) {
+            $activeSlugs[] = \Illuminate\Support\Str::slug($n);
+        }
+        $activeSlugs = array_values(array_unique(array_filter($activeSlugs)));
 
         if (empty($activeNames) && empty($activeSlugs)) {
             return $parentModuleName ? tenant_has_module($parentModuleName) : true;
         }
 
-        $checkList = is_array($subModuleNames) ? $subModuleNames : [$subModuleNames];
+        // Name/slug spelling variants only (do not alias distinct menu labels like Sales vs Orders Report)
+        static $subAliasGroups = [
+            ['purchase report', 'purchase-report', 'purchases report', 'purchases-report'],
+            ['expenses report', 'expense-report', 'expense report', 'expenses-report'],
+            ['profit & loss statement', 'profit-loss-statement', 'profit loss report', 'profit-loss-report', 'profit and loss statement'],
+            ['sales pool report', 'sales-pool-report'],
+            ['tds report', 'tds-report'],
+            ['sales report', 'sales-report'],
+            ['orders report', 'orders-report', 'order report', 'order-report'],
+        ];
 
+        $checkList = is_array($subModuleNames) ? $subModuleNames : [$subModuleNames];
+        $expanded = [];
         foreach ($checkList as $name) {
             $norm = strtolower(trim((string) $name));
-            if (in_array($norm, $activeNames, true) || in_array($norm, $activeSlugs, true)) {
+            if ($norm === '') {
+                continue;
+            }
+            $expanded[$norm] = true;
+            $expanded[\Illuminate\Support\Str::slug($norm)] = true;
+            foreach ($subAliasGroups as $group) {
+                if (in_array($norm, $group, true) || in_array(\Illuminate\Support\Str::slug($norm), $group, true)) {
+                    foreach ($group as $alias) {
+                        $expanded[$alias] = true;
+                    }
+                }
+            }
+        }
+
+        foreach (array_keys($expanded) as $name) {
+            if (in_array($name, $activeNames, true) || in_array($name, $activeSlugs, true)) {
                 return true;
             }
         }

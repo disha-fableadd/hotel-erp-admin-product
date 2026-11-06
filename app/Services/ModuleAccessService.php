@@ -106,6 +106,37 @@ class ModuleAccessService
             return 'Categories & Brands';
         }
 
+        // 4a. Report pages (must resolve to Reports — not Orders/Purchases/Expenses)
+        $reportRouteNames = [
+            'sales.report',
+            'sales.report.view_page',
+            'sale.report.exportpdf',
+            'sales.pool_report',
+            'tds.report',
+            'purchase.report',
+            'purchase.report.view_page',
+            'purchase.report.exportpdf',
+            'expense.report',
+            'expense.report.view_page',
+            'expense.report.exportpdf',
+            'profit-loss-statement.index',
+        ];
+        if ($normalizedRouteName && in_array($normalizedRouteName, $reportRouteNames, true)) {
+            return ['Reports', 'Report'];
+        }
+        if ($request->is(
+            'sales-report',
+            'sales/report*',
+            'purchase-report',
+            'purchase/report*',
+            'expense-report',
+            'expense/report*',
+            'tds-report*',
+            'profit-loss-statement*'
+        )) {
+            return ['Reports', 'Report'];
+        }
+
         // 4. Orders / Sales
         if ($normalizedRouteName && (str_starts_with($normalizedRouteName, 'sales.') || str_starts_with($normalizedRouteName, 'order.'))) {
             return 'Orders';
