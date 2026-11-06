@@ -92,5 +92,5 @@ We have implemented automatic fallbacks in the Flutter Desktop App so that the a
    Fixed a SQLite syntax error where `"Item"` double-quotes were treated as a column name, causing table active order queries to fail and show `₹0.00` on occupied tables. Changed to single quotes `'Item'` and added multi-column coalesce (`p.name`, `oi.product_name`, `oi.product_gst_details`).
 3. **Multi-Source Fallback in Cart & KOT**:
    Both Dine-In table order views and Kitchen KOT now resolve product names from:
-   `oi.product_name` -> `products.name` (matching local id or remote id) -> `product_gst_details` -> `catalogProducts`.
+   `oi.product_name` -> `products.name` (matching local id or remote id) -> `product_gst_details` -> `catalogProducts`.     
 
