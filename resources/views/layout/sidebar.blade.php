@@ -321,6 +321,40 @@
         transition: color 0.2s ease;
     }
 
+    /* Theme sets .slimScrollDiv { overflow: visible !important } which blocks scroll */
+    #sidebar {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    #sidebar > .slimScrollDiv,
+    #sidebar > .sidebar-inner.slimscroll,
+    #sidebar .slimScrollDiv,
+    #sidebar .sidebar-inner {
+        flex: 1 1 auto;
+        min-height: 0 !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+    #sidebar.has-quick-footer > .slimScrollDiv,
+    #sidebar.has-quick-footer > .sidebar-inner.slimscroll,
+    #sidebar.has-quick-footer .slimScrollDiv,
+    #sidebar.has-quick-footer .sidebar-inner {
+        max-height: calc(100% - 68px) !important;
+        height: calc(100% - 68px) !important;
+    }
+    body.mini-sidebar:not(.expand-menu) #sidebar.has-quick-footer > .slimScrollDiv,
+    body.mini-sidebar:not(.expand-menu) #sidebar.has-quick-footer > .sidebar-inner.slimscroll,
+    body.mini-sidebar:not(.expand-menu) #sidebar.has-quick-footer .slimScrollDiv,
+    body.mini-sidebar:not(.expand-menu) #sidebar.has-quick-footer .sidebar-inner {
+        max-height: calc(100% - 96px) !important;
+        height: calc(100% - 96px) !important;
+    }
+
     .sidebar-quick-footer {
         display: none;
     }
@@ -337,9 +371,10 @@
             background: var(--theme-color-4, #fff);
             border-top: 1px solid var(--theme-color-24, #ece9f1);
             box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.06);
+            flex-shrink: 0;
         }
         #sidebar.has-quick-footer #sidebar-menu {
-            padding-bottom: 84px !important;
+            padding-bottom: 12px !important;
         }
         .sidebar-quick-btn {
             flex: 1;
@@ -385,12 +420,26 @@
             display: none;
         }
         body.mini-sidebar:not(.expand-menu) #sidebar.has-quick-footer #sidebar-menu {
-            padding-bottom: 96px !important;
+            padding-bottom: 12px !important;
         }
     }
     @media (max-width: 991px) {
         .sidebar-quick-footer {
             display: none !important;
+        }
+        #sidebar > .slimScrollDiv,
+        #sidebar > .sidebar-inner.slimscroll,
+        #sidebar .slimScrollDiv,
+        #sidebar .sidebar-inner {
+            height: calc(100vh - 120px) !important;
+            max-height: calc(100vh - 120px) !important;
+        }
+        #sidebar.has-quick-footer > .slimScrollDiv,
+        #sidebar.has-quick-footer > .sidebar-inner.slimscroll,
+        #sidebar.has-quick-footer .slimScrollDiv,
+        #sidebar.has-quick-footer .sidebar-inner {
+            height: calc(100vh - 120px) !important;
+            max-height: calc(100vh - 120px) !important;
         }
     }
 </style>

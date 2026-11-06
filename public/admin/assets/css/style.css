@@ -4550,7 +4550,8 @@ span.select2-container.select2-container--default.select2-container--open {
 
 .sidebar .slimScrollDiv {
     width: 260px !important;
-    overflow: visible !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
     background: #fff
 }
 
