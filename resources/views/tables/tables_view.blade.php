@@ -3372,19 +3372,90 @@
                                         </div>
                                     </div>
 
-                                    <div class="select-group kot-remarks-box mb-2">
-                                        <label for="kot_remarks">Remarks for KOT only</label>
-                                        <textarea id="kot_remarks" name="kot_remarks" class="form-control"
-                                            rows="2" maxlength="500"
-                                            placeholder="Add any remarks for kitchen (KOT only)..."></textarea>
-                                        <small class="text-muted" style="font-size:11px;">Shown on kitchen ticket only — not on customer bill.</small>
+                                    <div class="kot-remarks-collapse is-collapsed mb-2" id="dineKotRemarksCollapse">
+                                        <button type="button" class="kot-remarks-collapse-toggle" id="kotRemarksCollapseToggle" aria-expanded="false">
+                                            <span class="kot-remarks-collapse-label">Remarks for KOT</span>
+                                            <span class="kot-remarks-collapse-value">
+                                                <span class="js-kot-remarks-preview">Optional</span>
+                                                <i class="fas fa-chevron-down kot-remarks-chevron"></i>
+                                            </span>
+                                        </button>
+                                        <div class="kot-remarks-collapse-body">
+                                            <label for="kot_remarks" class="visually-hidden">Remarks for KOT only</label>
+                                            <textarea id="kot_remarks" name="kot_remarks" class="form-control"
+                                                rows="2" maxlength="500"
+                                                placeholder="Add any remarks for kitchen (KOT only)..."></textarea>
+                                            <small class="text-muted" style="font-size:11px;">Shown on kitchen ticket only — not on customer bill.</small>
+                                        </div>
                                     </div>
                                     <style>
-                                        #tableOrderModal .kot-remarks-box label {
+                                        #tableOrderModal .kot-remarks-collapse-toggle {
+                                            width: 100%;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: space-between;
+                                            gap: 10px;
+                                            border: 1px solid #e2e8f0;
+                                            background: #fff;
+                                            border-radius: 10px;
+                                            padding: 8px 10px;
+                                            cursor: pointer;
+                                            text-align: left;
+                                            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+                                        }
+                                        #tableOrderModal .kot-remarks-collapse-label {
                                             font-size: 12px;
                                             font-weight: 700;
                                             color: #64748b;
-                                            margin-bottom: 4px;
+                                            white-space: nowrap;
+                                        }
+                                        #tableOrderModal .kot-remarks-collapse-value {
+                                            display: inline-flex;
+                                            align-items: center;
+                                            gap: 8px;
+                                            min-width: 0;
+                                            max-width: 62%;
+                                            padding: 5px 10px;
+                                            border-radius: 8px;
+                                            border: 1px solid #e2e8f0;
+                                            background: #f8fafc;
+                                            color: #64748b;
+                                            font-size: 12.5px;
+                                            font-weight: 600;
+                                        }
+                                        #tableOrderModal .js-kot-remarks-preview {
+                                            overflow: hidden;
+                                            text-overflow: ellipsis;
+                                            white-space: nowrap;
+                                            max-width: 180px;
+                                        }
+                                        #tableOrderModal .js-kot-remarks-preview.has-text {
+                                            color: #0f172a;
+                                            font-weight: 700;
+                                        }
+                                        #tableOrderModal .kot-remarks-chevron {
+                                            color: #94a3b8;
+                                            font-size: 11px;
+                                            transition: transform 0.2s ease;
+                                            flex-shrink: 0;
+                                        }
+                                        #tableOrderModal .kot-remarks-collapse.is-open .kot-remarks-chevron {
+                                            transform: rotate(180deg);
+                                        }
+                                        #tableOrderModal .kot-remarks-collapse.is-open .kot-remarks-collapse-toggle {
+                                            border-color: #fdba74;
+                                            background: #fff7ed;
+                                        }
+                                        #tableOrderModal .kot-remarks-collapse-body {
+                                            display: none;
+                                            margin-top: 8px;
+                                            padding: 8px;
+                                            border: 1px solid #e8edf3;
+                                            border-radius: 10px;
+                                            background: #f8fafc;
+                                        }
+                                        #tableOrderModal .kot-remarks-collapse.is-open .kot-remarks-collapse-body {
+                                            display: block;
                                         }
                                         #tableOrderModal #kot_remarks {
                                             font-size: 13px;
@@ -3392,6 +3463,7 @@
                                             border-radius: 8px;
                                             resize: vertical;
                                             min-height: 58px;
+                                            background: #fff;
                                         }
                                         #tableOrderModal #kot_remarks:focus {
                                             border-color: #ff9f43;
@@ -3811,6 +3883,34 @@
             $('#payMethodCollapseToggle').attr('aria-expanded', isOpen ? 'true' : 'false');
         }
 
+        function syncKotRemarksPreview() {
+            var text = ($('#kot_remarks').val() || '').toString().trim();
+            var $preview = $('#tableOrderModal .js-kot-remarks-preview');
+            if (text) {
+                $preview.text(text).addClass('has-text');
+            } else {
+                $preview.text('Optional').removeClass('has-text');
+            }
+        }
+
+        function setKotRemarksCollapseOpen(isOpen) {
+            var $wrap = $('#dineKotRemarksCollapse');
+            $wrap.toggleClass('is-open', !!isOpen);
+            $wrap.toggleClass('is-collapsed', !isOpen);
+            $('#kotRemarksCollapseToggle').attr('aria-expanded', isOpen ? 'true' : 'false');
+            if (isOpen) {
+                setTimeout(function () {
+                    $('#kot_remarks').trigger('focus');
+                }, 50);
+            }
+        }
+
+        function resetKotRemarksField() {
+            $('#kot_remarks').val('');
+            syncKotRemarksPreview();
+            setKotRemarksCollapseOpen(false);
+        }
+
         function applyDefaultPosPayment() {
             var pay = defaultPaymentMethod || 'cash';
             var paid = defaultPaidType || 'fully';
@@ -3917,12 +4017,25 @@
         // Use event delegation to handle dynamically created elements
         $(document).ready(function () {
             applyDefaultPosPayment();
+            syncKotRemarksPreview();
+            setKotRemarksCollapseOpen(false);
 
             $(document).on('click', '#payMethodCollapseToggle', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 var willOpen = !$('#dinePayMethodCollapse').hasClass('is-open');
                 setPayMethodCollapseOpen(willOpen);
+            });
+
+            $(document).on('click', '#kotRemarksCollapseToggle', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var willOpen = !$('#dineKotRemarksCollapse').hasClass('is-open');
+                setKotRemarksCollapseOpen(willOpen);
+            });
+
+            $(document).on('input change', '#kot_remarks', function () {
+                syncKotRemarksPreview();
             });
 
             $(document).on("click", "#tableOrderModal .paymentmethod", function () {
@@ -3991,7 +4104,10 @@
                 resetBillServiceTaxRate(defaultServiceTaxRate);
             }
             $('#service_tax_rate').trigger('input');
-            $('#kot_remarks').val((response.sales && response.sales.kot_remarks) ? response.sales.kot_remarks : '');
+            var existingKotRemarks = (response.sales && response.sales.kot_remarks) ? String(response.sales.kot_remarks) : '';
+            $('#kot_remarks').val(existingKotRemarks);
+            syncKotRemarksPreview();
+            setKotRemarksCollapseOpen(existingKotRemarks.trim() !== '');
 
             var custName = response.sales.customer_name || response.sales.user_name || '';
             var custPhone = response.sales.customer_phone || response.sales.user_phone || '';
@@ -4053,7 +4169,7 @@
             $(`input[name="gst_option"][value="${defaultGstOption || 'without'}"]`).prop("checked", true).trigger('change');
             $('#discount').val("").trigger('input');
             $('#discount_amount_input').val("");
-            $('#kot_remarks').val('');
+            resetKotRemarksField();
             resetBillServiceTaxRate(defaultServiceTaxRate);
             resetDineInCustomerFields();
             tableOrderModal.show();
@@ -4545,7 +4661,7 @@
                         // Clear discount / restore default service tax %
                         $('#discount').val("").trigger('input');
                         $('#discount_amount_input').val("");
-                        $('#kot_remarks').val('');
+                        resetKotRemarksField();
                         resetBillServiceTaxRate(defaultServiceTaxRate);
                         $('#service_tax_rate').trigger('input');
                         resetDineInCustomerFields();
@@ -6125,7 +6241,7 @@
                             $(".check-product i").removeClass("selected");
                             $("#discount").val("");
                             $("#discount_amount_input").val("");
-                            $("#kot_remarks").val("");
+                            resetKotRemarksField();
                             resetBillServiceTaxRate(defaultServiceTaxRate);
                             if (typeof window.applyDefaultPosPayment === 'function') {
                                 window.applyDefaultPosPayment();
@@ -6328,7 +6444,7 @@
                             $(".check-product i").removeClass("selected");
                             $("#discount").val("");
                             $("#discount_amount_input").val("");
-                            $("#kot_remarks").val("");
+                            resetKotRemarksField();
                             resetBillServiceTaxRate(defaultServiceTaxRate);
                             if (typeof window.applyDefaultPosPayment === 'function') {
                                 window.applyDefaultPosPayment();
@@ -6536,7 +6652,7 @@
                             $(".check-product i").removeClass("selected");
                             $("#discount").val("");
                             $("#discount_amount_input").val("");
-                            $("#kot_remarks").val("");
+                            resetKotRemarksField();
                             resetBillServiceTaxRate(defaultServiceTaxRate);
                             if (typeof window.applyDefaultPosPayment === 'function') {
                                 window.applyDefaultPosPayment();

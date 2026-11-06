@@ -1052,10 +1052,7 @@
             padding-bottom: 8px !important;
         }
         .payment_panel_header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 6px !important;
+            display: none !important;
         }
         .payment_panel_title {
             font-size: 12px !important;
@@ -1068,6 +1065,66 @@
         .setvaluecash {
             display: block !important;
             margin: 0 0 6px !important;
+        }
+        .pay-method-collapse-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            border-radius: 10px;
+            padding: 8px 10px;
+            cursor: pointer;
+            text-align: left;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        .pay-method-collapse-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
+            white-space: nowrap;
+        }
+        .pay-method-collapse-value {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            padding: 5px 10px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .pay-method-collapse-value > i:first-child {
+            color: #16a34a;
+            font-size: 13px;
+        }
+        .pay-method-chevron {
+            color: #94a3b8;
+            font-size: 11px;
+            transition: transform 0.2s ease;
+        }
+        .setvaluecash.is-open .pay-method-chevron {
+            transform: rotate(180deg);
+        }
+        .setvaluecash.is-open .pay-method-collapse-toggle {
+            border-color: #fdba74;
+            background: #fff7ed;
+        }
+        .pay-method-collapse-body {
+            display: none;
+            margin-top: 8px;
+            padding: 8px;
+            border: 1px solid #e8edf3;
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+        .setvaluecash.is-open .pay-method-collapse-body {
+            display: block;
         }
         .setvaluecash ul {
             display: grid !important;
@@ -2030,11 +2087,6 @@
                             </div>{{-- /.body_space_two --}}
                             </div>{{-- /.pos-order-scroll --}}
                             <div class="payment_panel">
-                                <div class="payment_panel_header">
-                                    <span class="payment_panel_title">
-                                        <i class="fas fa-wallet" style="color: var(--pos-primary);"></i> Payment Method
-                                    </span>
-                                </div>
                                 @php
                                     $defaultPayMethod = optional($setting)->default_payment_method ?: 'cash';
                                     $allowedPayMethods = ['pending', 'cash', 'debit card', 'cash+online', 'scan'];
@@ -2042,8 +2094,33 @@
                                         $defaultPayMethod = 'cash';
                                     }
                                     $defaultPaidType = (optional($setting)->default_paid_type === 'partially') ? 'partially' : 'fully';
+                                    $posPayLabels = [
+                                        'pending' => 'Pay Later',
+                                        'cash' => 'Cash',
+                                        'debit card' => 'Debit',
+                                        'cash+online' => 'Cash+Online',
+                                        'scan' => 'Scan',
+                                    ];
+                                    $posPayIcons = [
+                                        'pending' => 'fa-history',
+                                        'cash' => 'fa-money-bill-wave',
+                                        'debit card' => 'fa-credit-card',
+                                        'cash+online' => 'fa-money-check-alt',
+                                        'scan' => 'fa-qrcode',
+                                    ];
+                                    $defaultPayLabel = $posPayLabels[$defaultPayMethod] ?? 'Cash';
+                                    $defaultPayIcon = $posPayIcons[$defaultPayMethod] ?? 'fa-money-bill-wave';
                                 @endphp
-                                <div class="setvaluecash">
+                                <div class="setvaluecash is-collapsed" id="posPayMethodCollapse">
+                                    <button type="button" class="pay-method-collapse-toggle" id="posPayMethodCollapseToggle" aria-expanded="false">
+                                        <span class="pay-method-collapse-label">Payment Method</span>
+                                        <span class="pay-method-collapse-value">
+                                            <i class="fas {{ $defaultPayIcon }} js-selected-pay-icon"></i>
+                                            <span class="js-selected-pay-label">{{ $defaultPayLabel }}</span>
+                                            <i class="fas fa-chevron-down pay-method-chevron"></i>
+                                        </span>
+                                    </button>
+                                    <div class="pay-method-collapse-body">
                                     <ul>
                                         <li>
                                             <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'pending' ? 'active' : '' }}">
@@ -2259,6 +2336,7 @@
                                         </div>
                                     </div>
                                     <span class="error_peymentmethod"></span>
+                                    </div>{{-- /.pay-method-collapse-body --}}
                                 </div>
 
                                 <div class="btn-totallabel">
@@ -2826,7 +2904,35 @@
                     this.classList.add('active');
                 });
             });
+            function syncPosSelectedPayMethodSummary() {
+                var $active = $('#posPayMethodCollapse .paymentmethod.active').first();
+                if (!$active.length) {
+                    $active = $('#posPayMethodCollapse input[name="payment_method"]:checked').closest('.paymentmethod');
+                }
+                var label = ($active.find('span').first().text() || 'Cash').toString().trim() || 'Cash';
+                var iconClass = ($active.find('i.fas').first().attr('class') || 'fas fa-money-bill-wave');
+                $('#posPayMethodCollapse .js-selected-pay-label').text(label);
+                var $icon = $('#posPayMethodCollapse .js-selected-pay-icon');
+                if ($icon.length) {
+                    $icon.attr('class', iconClass + ' js-selected-pay-icon');
+                }
+            }
+
+            function setPosPayMethodCollapseOpen(isOpen) {
+                var $wrap = $('#posPayMethodCollapse');
+                $wrap.toggleClass('is-open', !!isOpen);
+                $wrap.toggleClass('is-collapsed', !isOpen);
+                $('#posPayMethodCollapseToggle').attr('aria-expanded', isOpen ? 'true' : 'false');
+            }
+
             $(document).ready(function() {
+                $(document).on('click', '#posPayMethodCollapseToggle', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var willOpen = !$('#posPayMethodCollapse').hasClass('is-open');
+                    setPosPayMethodCollapseOpen(willOpen);
+                });
+
                 $(document).on("click", ".paymentmethod", function() {
                     let value = $(this).find("input[name='payment_method']").val();
 
@@ -2834,6 +2940,7 @@
                     $(this).find("input[name='payment_method']").prop("checked", true);
                     $(".paymentmethod").removeClass("active");
                     $(this).addClass("active");
+                    syncPosSelectedPayMethodSummary();
 
                     // Methods that need Paid Type sub-panel
                     const paidTypeMethods = ['cash', 'debit card', 'scan'];
@@ -2856,6 +2963,7 @@
                         $("#cashOnlinePaidTypeSelect").val(defaultPaidType || "fully").trigger("change");
                         // Load banks (non-blocking)
                         try { loadBanksInto("#cashOnlineBankSelect"); } catch(e) { console.warn("loadBanksInto error:", e); }
+                        setPosPayMethodCollapseOpen(true);
                     } else if (paidTypeMethods.includes(value)) {
                         $("#cashOnlineBox").slideUp();
                         $("#paidTypeBox").slideDown();
@@ -2887,11 +2995,15 @@
                         // Hide the other type's extra fields and clear
                         $("#debitBankSelect").val(""); $("#debitRemark").val("");
                         $("#scanBankSelect").val(""); $("#scanRemark").val("");
+                        // Keep open if partially paid needs amount fields; else collapse for space
+                        var paidVal = $("#paidTypeSelect").val() || defaultPaidType || 'fully';
+                        setPosPayMethodCollapseOpen(paidVal === 'partially' || value === 'debit card' || value === 'scan');
                     } else {
                         // Pay Later — hide everything
                         $("#cashOnlineBox").slideUp();
                         $("#paidTypeBox").slideUp();
                         $("#paidTypeError, #enterAmountError, #debitBankError, #scanBankError, #cashOnlinePaidTypeError, #cashOnlineEnterAmountError, #cashAmountError, #cashOnlineBankError").text("");
+                        setPosPayMethodCollapseOpen(false);
                     }
                 });
 
@@ -3084,6 +3196,9 @@
                 if ($("#cashOnlinePaidTypeSelect").length && pay === 'cash+online') {
                     $("#cashOnlinePaidTypeSelect").val(paid === 'partially' ? 'partially' : 'fully').trigger('change');
                 }
+                syncPosSelectedPayMethodSummary();
+                // Default collapsed unless split/partial needs extra fields
+                setPosPayMethodCollapseOpen(pay === 'cash+online' || paid === 'partially');
             }
             window.applyDefaultPosPayment = applyDefaultPosPayment;
 
