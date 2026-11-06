@@ -395,7 +395,7 @@ $user = auth()->user();
         </li>
         @endif
 
-        @if (in_array($user->role, ['staff', 'hr'])) {{-- Staff & HR can check in/out via the header buttons --}}
+        @if (in_array($user->role, ['staff', 'hr']) && tenant_has_module('Attendance') && (app('hasPermission')(26, 'view') || app('hasPermission')(26, 'add')))
         <li class="nav-item" id="headerAttendanceContainer"
             style="display:flex; align-items:center; gap:8px; margin-right:12px;">
             <button id="btnHeaderCheckIn" class="btn-check-in"
@@ -476,7 +476,7 @@ $user = auth()->user();
         </div>
         @endif
 
-        @if (in_array($user->role, ['staff', 'hr']))
+        @if (in_array($user->role, ['staff', 'hr']) && tenant_has_module('Attendance') && (app('hasPermission')(26, 'view') || app('hasPermission')(26, 'add')))
         <div class="mobile-attendance-btn">
             <button class="btn-check-in"
                 style="display:flex; align-items:center; justify-content:center; height:34px; background:#ff9f43; color:#fff;

@@ -412,42 +412,26 @@ class StaffController extends Controller
                 'face_photo' => $facePhotoPath,
             ]);
 
-            // ✅ Default permissions for Attendance and Leaves
-            $attendance = Module::firstOrCreate(['module' => 'Attendance']);
-            $leaves = Module::firstOrCreate(['module' => 'Leaves']);
-            $payroll = Module::firstOrCreate(['module' => 'Payroll']);
-
-            $defaultModules = [$attendance->id, $leaves->id];
-            if ($request->role === 'hr') {
-                $defaultModules[] = $payroll->id;
-            }
-
-            foreach ($defaultModules as $moduleId) {
-                UserPermission::create([
-                    'user_id'   => $customer->id,
-                    'module_id' => $moduleId,
-                    'view'      => 1,
-                    'add'       => 1,
-                    'edit'      => 1,
-                    'delete'    => 1,
-                ]);
-            }
-
-            // ✅ Custom module permissions from request (skip defaults to avoid duplicates)
+            // Save only modules explicitly checked in the form (no forced Attendance/Leaves)
             if ((int) $request->input('permission_type', 0) === 1 && is_array($request->modules)) {
                 foreach ($request->modules as $moduleData) {
-                    // Skip if already added as default
-                    if (in_array($moduleData['module_id'], $defaultModules)) {
+                    $view = isset($moduleData['view']) ? 1 : 0;
+                    $add = isset($moduleData['add']) ? 1 : 0;
+                    $edit = isset($moduleData['edit']) ? 1 : 0;
+                    $delete = isset($moduleData['delete']) ? 1 : 0;
+
+                    // Skip rows with no access selected
+                    if (!$view && !$add && !$edit && !$delete) {
                         continue;
                     }
 
                     UserPermission::create([
                         'user_id'   => $customer->id,
                         'module_id' => $moduleData['module_id'],
-                        'view'      => isset($moduleData['view']) ? 1 : 0,
-                        'add'       => isset($moduleData['add']) ? 1 : 0,
-                        'edit'      => isset($moduleData['edit']) ? 1 : 0,
-                        'delete'    => isset($moduleData['delete']) ? 1 : 0,
+                        'view'      => $view,
+                        'add'       => $add,
+                        'edit'      => $edit,
+                        'delete'    => $delete,
                     ]);
                 }
             }
@@ -727,76 +711,50 @@ class StaffController extends Controller
 
             $customerDetail->save();
 
-            // ✅ Default module IDs for Leave and Attendance
-            $attendance = Module::firstOrCreate(['module' => 'Attendance']);
-            $leaves = Module::firstOrCreate(['module' => 'Leaves']);
-            $payroll = Module::firstOrCreate(['module' => 'Payroll']);
-
-            $defaultModules = [$attendance->id, $leaves->id];
-            if ($request->input('role', $customer->role) === 'hr') {
-                $defaultModules[] = $payroll->id;
-            }
-            // Update permissions according to selected permission type
+            // Update permissions according to selected permission type (no forced Attendance/Leaves)
             if ((int) $request->input('permission_type', 0) === 0) {
-                // Without permission: remove all permissions EXCEPT default modules
-                UserPermission::where('user_id', $customer->id)
-                    ->whereNotIn('module_id', $defaultModules)
-                    ->delete();
-
-                // ✅ Always ensure default permissions exist
-                foreach ($defaultModules as $moduleId) {
-                    UserPermission::updateOrCreate(
-                        [
-                            'user_id'   => $customer->id,
-                            'module_id' => $moduleId,
-                        ],
-                        [
-                            'view'   => 1,
-                            'add'    => 1,
-                            'edit'   => 1,
-                            'delete' => 1,
-                        ]
-                    );
-                }
+                // Without permission: remove all module permissions
+                UserPermission::where('user_id', $customer->id)->delete();
             } else {
                 $moduleInputs = $request->input('modules', []);
+                $keptModuleIds = [];
 
-                // ✅ Always ensure default permissions exist
-                foreach ($defaultModules as $moduleId) {
-                    UserPermission::updateOrCreate(
-                        [
-                            'user_id'   => $customer->id,
-                            'module_id' => $moduleId,
-                        ],
-                        [
-                            'view'   => 1,
-                            'add'    => 1,
-                            'edit'   => 1,
-                            'delete' => 1,
-                        ]
-                    );
-                }
-
-                // Upsert submitted permissions (skip default modules to avoid override)
                 foreach ($moduleInputs as $moduleData) {
-                    // Skip default modules — already handled above
-                    if (in_array((int) $moduleData['module_id'], $defaultModules)) {
+                    $moduleId = (int) ($moduleData['module_id'] ?? 0);
+                    if ($moduleId <= 0) {
                         continue;
                     }
 
+                    $view = !empty($moduleData['view']) ? 1 : 0;
+                    $add = !empty($moduleData['add']) ? 1 : 0;
+                    $edit = !empty($moduleData['edit']) ? 1 : 0;
+                    $delete = !empty($moduleData['delete']) ? 1 : 0;
+
+                    if (!$view && !$add && !$edit && !$delete) {
+                        continue;
+                    }
+
+                    $keptModuleIds[] = $moduleId;
                     UserPermission::updateOrCreate(
                         [
                             'user_id'   => $customer->id,
-                            'module_id' => (int) $moduleData['module_id'],
+                            'module_id' => $moduleId,
                         ],
                         [
-                            'view'   => !empty($moduleData['view']) ? (int) $moduleData['view'] : 0,
-                            'add'    => !empty($moduleData['add']) ? (int) $moduleData['add'] : 0,
-                            'edit'   => !empty($moduleData['edit']) ? (int) $moduleData['edit'] : 0,
-                            'delete' => !empty($moduleData['delete']) ? (int) $moduleData['delete'] : 0,
+                            'view'   => $view,
+                            'add'    => $add,
+                            'edit'   => $edit,
+                            'delete' => $delete,
                         ]
                     );
                 }
+
+                // Drop modules that were unchecked / not submitted
+                $deleteQuery = UserPermission::where('user_id', $customer->id);
+                if (!empty($keptModuleIds)) {
+                    $deleteQuery->whereNotIn('module_id', $keptModuleIds);
+                }
+                $deleteQuery->delete();
             }
         });
 

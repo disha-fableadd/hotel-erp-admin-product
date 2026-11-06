@@ -1273,7 +1273,8 @@ class AuthController extends Controller
             // 'recentMeetings',
             'monthName',
             'currentMonth',
-            'currentYear'
+            'currentYear',
+            'previousYear'
         ));
     }
 

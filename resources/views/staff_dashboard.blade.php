@@ -616,13 +616,19 @@
         </div>
     </div>
 
+    @php
+        $canStaffAttendance = tenant_has_module('Attendance') && (app('hasPermission')(26, 'view') || app('hasPermission')(26, 'add'));
+        $canStaffLeaves = tenant_has_module('Leaves') && (app('hasPermission')(28, 'view') || app('hasPermission')(28, 'add'));
+    @endphp
+
+    @if($canStaffAttendance)
     <div class="attendance-overview">
         <div class="attendance-overview-head">
             <div>
                 <h5 class="attendance-overview-title">Today's Attendance</h5>
                 <div class="attendance-overview-sub">
                     {{ $todayAttendance ? 'Your attendance is recorded for today.' : 'No attendance record found for today.' }}
-                    @if ($todayLeave)
+                    @if ($canStaffLeaves && $todayLeave)
                         You are on approved leave today.
                     @endif
                 </div>
@@ -651,12 +657,16 @@
             <div class="attendance-pill">
                 <div class="attendance-pill-label">This Month</div>
                 <div class="attendance-pill-value">{{ fmod((float) $totalPresent, 1.0) === 0.0 ? number_format($totalPresent, 0) : number_format($totalPresent, 1) }} present</div>
+                @if($canStaffLeaves)
                 <div class="attendance-overview-sub">{{ $totalLeave }} leave days</div>
+                @endif
             </div>
         </div>
     </div>
+    @endif
 
     <div class="row mb-4">
+        @if($canStaffAttendance)
         <div class="col-6 col-md-3">
             <div class="staff-stat-card card-attendance">
                 <div>
@@ -669,7 +679,9 @@
                 <i class="fas fa-calendar-check stat-icon"></i>
             </div>
         </div>
+        @endif
 
+        @if($canStaffLeaves)
         <div class="col-6 col-md-3">
             <div class="staff-stat-card card-leave">
                 <div>
@@ -680,6 +692,7 @@
                 <i class="fas fa-user-times stat-icon"></i>
             </div>
         </div>
+        @endif
 
         {{-- <div class="col-6 col-md-3">
             <div class="staff-stat-card card-meeting">
