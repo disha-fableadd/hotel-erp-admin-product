@@ -186,6 +186,7 @@ class OrderItemsTable extends Table with SyncColumns {
   TextColumn get orderClientUuid => text()();
   IntColumn get productId => integer().nullable()();
   TextColumn get productClientUuid => text().nullable()();
+  TextColumn get productName => text().nullable()();
   RealColumn get quantity => real().withDefault(const Constant(1.0))();
   RealColumn get price => real().withDefault(const Constant(0.0))();
   RealColumn get totalAmount => real().withDefault(const Constant(0.0))();

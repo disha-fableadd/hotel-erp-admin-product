@@ -432,7 +432,13 @@ class SyncController extends Controller
                 $query->with(['category', 'brand', 'quantityType']);
             }
             if ($tableKey === 'orders') {
-                $query->with(['order_items', 'user', 'payments']);
+                $query->with([
+                    'order_items' => function ($q) {
+                        $q->with('product:id,name,client_uuid,category_id');
+                    },
+                    'user',
+                    'payments'
+                ]);
             }
             if ($tableKey === 'order_items') {
                 $query->with(['product:id,name,client_uuid,category_id', 'order:id,client_uuid,order_number']);
@@ -477,6 +483,17 @@ class SyncController extends Controller
                         'client_uuid' => $r->client_uuid ?? null,
                     ];
                 } else {
+                    if ($tableKey === 'order_items') {
+                        if (empty($r->product_name) || trim((string) $r->product_name) === '') {
+                            $r->product_name = optional($r->product)->name ?? 'Item';
+                        }
+                    } elseif ($tableKey === 'orders' && !empty($r->order_items)) {
+                        foreach ($r->order_items as $item) {
+                            if (empty($item->product_name) || trim((string) $item->product_name) === '') {
+                                $item->product_name = optional($item->product)->name ?? 'Item';
+                            }
+                        }
+                    }
                     $active[] = $r;
                 }
             }
@@ -935,6 +952,11 @@ class SyncController extends Controller
                             $orderItem->created_by = $it['created_by'] ?? $order->user_id ?? $userId;
                             $orderItem->client_uuid = $itemUuid;
 
+                            $resolvedProductName = !empty($it['product_name'])
+                                ? trim((string) $it['product_name'])
+                                : (optional($prd)->name ?? 'Item');
+                            $orderItem->product_name = $resolvedProductName;
+
                             if (isset($it['variant_id'])) $orderItem->variant_id = $it['variant_id'];
                             if (isset($it['addons'])) $orderItem->addons = $it['addons'];
                             if (isset($it['isDeleted'])) $orderItem->isDeleted = (int)$it['isDeleted'];
@@ -1025,6 +1047,11 @@ class SyncController extends Controller
                     $orderItem->branch_id = $it['branch_id'] ?? $branchId;
                     $orderItem->created_by = $it['created_by'] ?? $itemUserId;
                     $orderItem->client_uuid = $itemUuid;
+
+                    $resolvedProductName = !empty($it['product_name'])
+                        ? trim((string) $it['product_name'])
+                        : (optional($prd)->name ?? 'Item');
+                    $orderItem->product_name = $resolvedProductName;
 
                     if (isset($it['variant_id'])) $orderItem->variant_id = $it['variant_id'];
                     if (isset($it['addons'])) $orderItem->addons = $it['addons'];

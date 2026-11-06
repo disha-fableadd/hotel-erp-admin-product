@@ -52,6 +52,22 @@ class OrderItem extends Model
         return $this->attributes['product_client_uuid'] ?? $this->product?->client_uuid ?? null;
     }
 
+    /**
+     * Always guarantee a non-empty product_name for Sync Pull and serializers.
+     */
+    public function getProductNameAttribute($value)
+    {
+        $val = trim((string) $value);
+        if ($val !== '') {
+            return $val;
+        }
+        $name = optional($this->product)->name;
+        if (!empty($name)) {
+            return (string) $name;
+        }
+        return 'Item';
+    }
+
     protected $casts = [
         'addons' => 'array',
     ];
