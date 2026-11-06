@@ -2397,10 +2397,15 @@ class SalesController extends Controller
         $userId = $user->id;
         $selectedSubAdminID = $request->input('selectedSubAdminId');
 
-        $query = Order::with([
+        $with = [
             'user:id,name,phone',
             'creator:id,name',
-        ])
+        ];
+        if (Schema::hasTable('table_no')) {
+            $with[] = 'tableNo';
+        }
+
+        $query = Order::with($with)
             ->where('isDeleted', 1)
             ->orderByDesc('updated_at')
             ->orderByDesc('id');
@@ -2416,6 +2421,7 @@ class SalesController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
                     ->orWhere('id', $search)
+                    ->orWhere('table_no', 'like', "%{$search}%")
                     ->orWhereHas('user', function ($u) use ($search) {
                         $u->where('name', 'like', "%{$search}%");
                     });
@@ -2436,6 +2442,25 @@ class SalesController extends Controller
             $order->created_date = $order->created_at
                 ? $order->created_at->format('d-M-Y h:i A')
                 : null;
+
+            $tableLabel = null;
+            if ($order->relationLoaded('tableNo') && $order->tableNo) {
+                $tableLabel = $order->tableNo->table_name
+                    ?? $order->tableNo->table_number
+                    ?? $order->tableNo->name
+                    ?? null;
+            }
+            if ($tableLabel === null && $order->table_no !== null && $order->table_no !== '') {
+                $tableLabel = $order->table_no;
+            }
+            $order->table_label = $tableLabel;
+
+            $type = strtolower((string) ($order->type ?? ''));
+            $isDineIn = in_array($type, ['dinein', 'dine_in', 'dine-in', 'dine in'], true)
+                || ($order->table_no !== null && $order->table_no !== '');
+            $order->channel_label = $isDineIn
+                ? ('Dine In - Table ' . ($tableLabel ?? 'N/A'))
+                : 'Take Away';
 
             return $order;
         });

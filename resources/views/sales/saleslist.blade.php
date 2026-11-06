@@ -2038,7 +2038,7 @@
                                 <th>Bill Date</th>
                                 <th>Deleted At</th>
                                 <th>Customer</th>
-                                <th>Type</th>
+                                <th>Order Type</th>
                                 <th>Total</th>
                                 <th>Action</th>
                             </tr>
@@ -4188,15 +4188,46 @@
             return pos === 'right' ? (a + sym) : (sym + a);
         }
 
-        function orderTypeLabel(order) {
-            var t = (order.order_type || order.type || '').toString().toLowerCase();
-            if (t === 'dine_in' || t === 'dine-in' || t === 'dinein' || t === 'dine in') {
-                var tableLabel = order.table_no ? (' - Table ' + order.table_no) : '';
-                return 'Dine In' + tableLabel;
+        function isRecoverDineIn(order) {
+            var t = String(order.type || '').toLowerCase();
+            var ot = String(order.order_type || '').toLowerCase();
+            return t === 'dinein' || t === 'dine_in' || t === 'dine-in' || t === 'dine in'
+                || ot === 'dinein' || ot === 'dine in' || ot === 'dine_in' || ot === 'dine-in'
+                || !!(order.table_no && String(order.table_no).trim() !== '');
+        }
+
+        function recoverTableLabel(order) {
+            if (order.table_label) return String(order.table_label);
+            if (order.tableNo && (order.tableNo.table_name || order.tableNo.table_number || order.tableNo.name)) {
+                return String(order.tableNo.table_name || order.tableNo.table_number || order.tableNo.name);
             }
-            if (t === 'takeaway' || t === 'take_away' || t === 'take-away' || t === 'take away') return 'Take Away';
-            if (t === 'delivery') return 'Delivery';
-            return order.order_type || '—';
+            if (order.table_no != null && String(order.table_no).trim() !== '') {
+                return String(order.table_no);
+            }
+            return 'N/A';
+        }
+
+        function recoverChannelBadge(order) {
+            if (isRecoverDineIn(order)) {
+                return '<span class="status-pill" style="background-color:#20c997;margin-top:4px;display:inline-block;">'
+                    + '<i class="fas fa-utensils"></i> Dine In - Table ' + $('<div>').text(recoverTableLabel(order)).html()
+                    + '</span>';
+            }
+            return '<span class="status-pill" style="background-color:#6c757d;margin-top:4px;display:inline-block;">'
+                + '<i class="fas fa-shopping-bag"></i> Take Away'
+                + '</span>';
+        }
+
+        function recoverFulfillmentLabel(order) {
+            if (isRecoverDineIn(order)) {
+                return 'Dine In - Table ' + recoverTableLabel(order);
+            }
+            var ot = String(order.order_type || '').trim();
+            if (/self\s*pickup|self_pickup|pickup/i.test(ot)) return 'Take Away · Self Pickup';
+            if (/delivery/i.test(ot)) return 'Take Away · Delivery';
+            if (/take\s*away|takeaway|take_away/i.test(ot)) return 'Take Away';
+            // Default takeaway channel when not dine-in
+            return ot ? ('Take Away · ' + ot) : 'Take Away';
         }
 
         function renderDeletedBills(orders, currencySymbol, currencyPosition) {
@@ -4208,15 +4239,19 @@
             var rows = orders.map(function (order) {
                 var customer = (order.user && order.user.name) ? order.user.name : 'Unregistered Customer';
                 var totalHtml = formatRecoverAmount(order.total_amount, currencySymbol, currencyPosition);
+                var orderNo = order.order_number || order.id;
                 return '<tr data-order-id="' + order.id + '">' +
-                    '<td><strong>' + (order.order_number || order.id) + '</strong></td>' +
+                    '<td>' +
+                        '<strong>' + $('<div>').text(String(orderNo)).html() + '</strong><br>' +
+                        recoverChannelBadge(order) +
+                    '</td>' +
                     '<td>' + (order.created_date || '—') + '</td>' +
                     '<td>' + (order.deleted_at_display || '—') + '</td>' +
                     '<td>' + $('<div>').text(customer).html() + '</td>' +
-                    '<td>' + $('<div>').text(orderTypeLabel(order)).html() + '</td>' +
+                    '<td>' + $('<div>').text(recoverFulfillmentLabel(order)).html() + '</td>' +
                     '<td>' + totalHtml + '</td>' +
                     '<td class="recover-row-actions">' +
-                        '<button type="button" class="btn btn-sm btn-success js-restore-deleted-bill" data-id="' + order.id + '" data-number="' + $('<div>').text(order.order_number || order.id).html() + '">' +
+                        '<button type="button" class="btn btn-sm btn-success js-restore-deleted-bill" data-id="' + order.id + '" data-number="' + $('<div>').text(String(orderNo)).html() + '">' +
                             '<i class="fas fa-undo me-1"></i>Recover' +
                         '</button>' +
                     '</td>' +
