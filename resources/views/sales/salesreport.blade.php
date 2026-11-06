@@ -415,27 +415,34 @@
         <div class="card">
             <div class="card-body" style="overflow:auto;">
                 <div class="table-top">
-                    <div class="search-set">
-                        <select id="date-filter" class="form-select form-select-sm">
+                    <div class="search-set" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                        <select id="date-filter" class="form-select form-select-sm" style="width:auto;min-width:140px;">
                             <option value="">All Time</option>
                             <option value="today">Today</option>
-                            <option value="tomorrow">Tomorrow</option>
+                            <option value="yesterday">Yesterday</option>
                             <option value="this_week">This Week</option>
                             <option value="this_month">This Month</option>
                             <option value="last_6_months">Last 6 Months</option>
                             <option value="this_year">This Year</option>
                             <option value="previous_year">Previous Year</option>
+                            <option value="custom">Custom Range</option>
                         </select>
 
-                        <select id="month-filter" class="form-select form-select-sm"
-                            style="margin-right:8px; margin-left: 8px;">
+                        <div id="custom-date-range" class="d-none align-items-center" style="gap:6px;flex-wrap:wrap;">
+                            <input type="date" id="from-date-filter" class="form-control form-control-sm" style="width:150px;" title="From date">
+                            <span class="text-muted" style="font-size:12px;">to</span>
+                            <input type="date" id="to-date-filter" class="form-control form-control-sm" style="width:150px;" title="To date">
+                            <button type="button" id="apply-date-range" class="btn btn-sm btn-primary" style="background:#ff9f43;border-color:#ff9f43;">Apply</button>
+                        </div>
+
+                        <select id="month-filter" class="form-select form-select-sm" style="width:auto;min-width:130px;">
                             <option value="">All Months</option>
                             @for ($m = 1; $m <= 12; $m++)
                                 <option value="{{ $m }}">{{ date('F', mktime(0, 0, 0, $m, 1)) }}</option>
                             @endfor
                         </select>
 
-                        <select id="year-filter" class="form-select form-select-sm" style="margin-right:8px;">
+                        <select id="year-filter" class="form-select form-select-sm" style="width:auto;min-width:110px;">
                             <option value="">All Years</option>
                             @for ($y = date('Y'); $y >= date('Y') - 10; $y--)
                                 <option value="{{ $y }}">{{ $y }}</option>
@@ -443,7 +450,7 @@
                         </select>
 
                         <select id="vendor-filter" class="form-select form-select-sm"
-                            style="margin-right:8px; min-width: 180px;">
+                            style="width:auto;min-width: 180px;">
                             <option value="">All Customers</option>
                             @isset($customers)
                                 @foreach ($customers as $customer)
@@ -453,7 +460,7 @@
                         </select>
 
                         <select id="category-filter" class="form-select form-select-sm"
-                            style="margin-right:8px; min-width: 180px;">
+                            style="width:auto;min-width: 180px;">
                             <option value="">All Categories</option>
                             @isset($categories)
                                 @foreach ($categories as $category)
@@ -523,9 +530,31 @@
             // Global data map for expandable rows
             window.salesReportDataMap = {};
 
+            function todayYmd() {
+                var d = new Date();
+                var m = String(d.getMonth() + 1).padStart(2, '0');
+                var day = String(d.getDate()).padStart(2, '0');
+                return d.getFullYear() + '-' + m + '-' + day;
+            }
+
+            function syncCustomDateRangeUi() {
+                var isCustom = $('#date-filter').val() === 'custom';
+                var $wrap = $('#custom-date-range');
+                if (isCustom) {
+                    $wrap.removeClass('d-none').addClass('d-flex');
+                    if (!$('#from-date-filter').val()) $('#from-date-filter').val(todayYmd());
+                    if (!$('#to-date-filter').val()) $('#to-date-filter').val(todayYmd());
+                    $('#month-filter, #year-filter').prop('disabled', true);
+                } else {
+                    $wrap.addClass('d-none').removeClass('d-flex');
+                    $('#month-filter, #year-filter').prop('disabled', false);
+                }
+            }
+
             function getReportFilters() {
-                return {
-                    filter: $('#date-filter').val(),
+                var filter = $('#date-filter').val();
+                var payload = {
+                    filter: filter,
                     month: $('#month-filter').val(),
                     year: $('#year-filter').val(),
                     customer_id: $('#vendor-filter').val(),
@@ -533,6 +562,14 @@
                     report_type: activeReportType || 'all',
                     selectedSubAdminId: selectedSubAdminId
                 };
+                if (filter === 'custom') {
+                    payload.from_date = $('#from-date-filter').val() || '';
+                    payload.to_date = $('#to-date-filter').val() || '';
+                    // Custom range replaces month/year
+                    payload.month = '';
+                    payload.year = '';
+                }
+                return payload;
             }
 
             function refreshOrderReport() {
@@ -541,13 +578,58 @@
             }
 
             // 🔹 Initial Load
+            syncCustomDateRangeUi();
             refreshOrderReport();
 
             // 🔹 Trigger filters
             $('#date-filter, #month-filter, #year-filter, #vendor-filter, #category-filter').on('change',
                 function() {
+                    if (this.id === 'date-filter') {
+                        syncCustomDateRangeUi();
+                        // Wait for Apply when switching to custom (unless dates already set)
+                        if ($(this).val() === 'custom') {
+                            var from = $('#from-date-filter').val();
+                            var to = $('#to-date-filter').val();
+                            if (!from || !to) return;
+                        }
+                    }
                     refreshOrderReport();
                 });
+
+            $('#apply-date-range').on('click', function() {
+                var from = $('#from-date-filter').val();
+                var to = $('#to-date-filter').val();
+                if (!from || !to) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Select dates',
+                        text: 'Please choose both From and To dates.',
+                        confirmButtonColor: '#ff9f43'
+                    });
+                    return;
+                }
+                if (from > to) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Invalid range',
+                        text: 'From date cannot be after To date.',
+                        confirmButtonColor: '#ff9f43'
+                    });
+                    return;
+                }
+                $('#date-filter').val('custom');
+                syncCustomDateRangeUi();
+                refreshOrderReport();
+            });
+
+            $('#from-date-filter, #to-date-filter').on('change', function() {
+                if ($('#date-filter').val() !== 'custom') return;
+                var from = $('#from-date-filter').val();
+                var to = $('#to-date-filter').val();
+                if (from && to && from <= to) {
+                    refreshOrderReport();
+                }
+            });
 
             // 🔹 All / Food / Liquor tabs
             $(document).on('click', '.order-report-tabs .ort-tab', function() {
@@ -975,12 +1057,16 @@
                 const monthText = $('#month-filter option:selected').text();
                 const yearText = $('#year-filter option:selected').text();
                 const dateText = $('#date-filter option:selected').text();
+                const dateFilterVal = $('#date-filter').val();
+                const fromDate = $('#from-date-filter').val();
+                const toDate = $('#to-date-filter').val();
 
                 const hasCustomer = $('#vendor-filter').val() !== "";
                 const hasCategory = $('#category-filter').val() !== "";
-                const hasMonth = $('#month-filter').val() !== "";
-                const hasYear = $('#year-filter').val() !== "";
-                const hasDate = $('#date-filter').val() !== "";
+                const hasMonth = dateFilterVal !== 'custom' && $('#month-filter').val() !== "";
+                const hasYear = dateFilterVal !== 'custom' && $('#year-filter').val() !== "";
+                const hasDate = dateFilterVal !== "";
+                const hasCustomRange = dateFilterVal === 'custom' && fromDate && toDate;
 
                 // Prefer order grand-total summary (matches All Orders list); fallback to line sum
                 let totalAmount = 0;
@@ -1011,13 +1097,19 @@
                 if (activeReportType === 'liquor') parts.push(`<strong>Liquor</strong>`);
                 if (hasCustomer) parts.push(`<strong>${customerText}</strong>`);
                 if (hasCategory) parts.push(`in <strong>${categoryText}</strong>`);
-                if (hasMonth || hasYear) {
-                    let timeText = [];
-                    if (hasMonth) timeText.push(monthText);
-                    if (hasYear) timeText.push(yearText);
-                    parts.push(`at <strong>${timeText.join(' ')}</strong>`);
+                if (hasCustomRange) {
+                    parts.push(`from <strong>${fromDate}</strong> to <strong>${toDate}</strong>`);
+                } else {
+                    if (hasMonth || hasYear) {
+                        let timeText = [];
+                        if (hasMonth) timeText.push(monthText);
+                        if (hasYear) timeText.push(yearText);
+                        parts.push(`at <strong>${timeText.join(' ')}</strong>`);
+                    }
+                    if (hasDate && dateText !== "All Time" && dateText !== "Custom Range") {
+                        parts.push(`(${dateText})`);
+                    }
                 }
-                if (hasDate && dateText !== "All Time") parts.push(`(${dateText})`);
 
                 const message = parts.length
                     ? `Showing sales for ${parts.join(' ')}`

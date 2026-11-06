@@ -260,6 +260,9 @@ Route::middleware(['auth.api'])->group(function () {
     Route::post('orders/{id}/clear-dine', [SalesController::class, 'clearDineInOrder'])->name('orders.clear_dine');
     Route::post('orders/{id}/reoccupy-dine', [SalesController::class, 'reoccupyDineInOrder'])->name('orders.reoccupy_dine');
     Route::post('delete/{id}', [SalesController::class, 'delete'])->name('delete');
+    Route::get('orders/deleted', [SalesController::class, 'getDeletedOrders'])->name('orders.deleted');
+    Route::get('orders/activity-logs', [SalesController::class, 'getOrderActivityLogs'])->name('orders.activity_logs');
+    Route::post('orders/{id}/restore', [SalesController::class, 'restoreOrder'])->name('orders.restore');
     Route::post('update_sale', [SalesController::class, 'update_sale'])->name('update_sale');
     Route::post('update_sale_order', [SalesController::class, 'update_sale_order'])->name('update_sale_order');
     Route::post('update_order_type', [SalesController::class, 'update_order_type'])->name('update_order_type');

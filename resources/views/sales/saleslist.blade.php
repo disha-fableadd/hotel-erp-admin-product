@@ -1182,10 +1182,122 @@
     }, 4000);
 </script>
 @endif
+<style>
+    .page-title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+    }
+    .page-title h4 {
+        margin-bottom: 0;
+    }
+    .recover-deleted-btn,
+    .bill-history-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 34px;
+        padding: 0 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none !important;
+        white-space: nowrap;
+        vertical-align: middle;
+        line-height: 1;
+    }
+    .recover-deleted-btn {
+        border: 1px solid #fdba74;
+        background: #fff7ed;
+        color: #c2410c !important;
+    }
+    .recover-deleted-btn:hover,
+    .recover-deleted-btn:focus {
+        background: #ffedd5;
+        border-color: #ff9f43;
+        color: #9a3412 !important;
+    }
+    .bill-history-btn {
+        border: 1px solid #93c5fd;
+        background: #eff6ff;
+        color: #1d4ed8 !important;
+    }
+    .bill-history-btn:hover,
+    .bill-history-btn:focus {
+        background: #dbeafe;
+        border-color: #60a5fa;
+        color: #1e40af !important;
+    }
+    .recover-deleted-btn i,
+    .bill-history-btn i { font-size: 13px; }
+    #recoverDeletedModal .modal-header {
+        background: #fff7ed;
+        border-bottom: 1px solid #fed7aa;
+    }
+    #billHistoryModal .modal-header {
+        background: #eff6ff;
+        border-bottom: 1px solid #bfdbfe;
+    }
+    #recoverDeletedModal .recover-row-actions .btn {
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 10px;
+    }
+    #recoverDeletedModal .table th,
+    #recoverDeletedModal .table td,
+    #billHistoryModal .table th,
+    #billHistoryModal .table td {
+        vertical-align: middle;
+        font-size: 13px;
+    }
+    .bh-action-pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.5;
+        white-space: nowrap;
+    }
+    .bh-action-bill_created { background: #d1fae5; color: #065f46; }
+    .bh-action-item_added { background: #dbeafe; color: #1e40af; }
+    .bh-action-item_removed { background: #fee2e2; color: #991b1b; }
+    .bh-action-item_qty_reduced { background: #ffedd5; color: #9a3412; }
+    .bh-action-item_qty_increased { background: #e0e7ff; color: #3730a3; }
+    .bh-action-bill_deleted { background: #fecaca; color: #7f1d1d; }
+    .bh-action-bill_restored { background: #ccfbf1; color: #115e59; }
+    .bh-action-bill_cleared { background: #f3e8ff; color: #6b21a8; }
+    #billHistoryModal .bh-filter-wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+    #billHistoryModal .bh-custom-dates {
+        display: none;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+    #billHistoryModal .bh-custom-dates.is-open {
+        display: flex;
+    }
+</style>
 <div class="content">
     <div class="page-header">
         <div class="page-title">
             <h4>All Orders</h4>
+            @if(auth()->check() && (auth()->user()->role === 'admin' || (int) auth()->user()->role_id === 1))
+                <a href="javascript:void(0);" id="openBillHistoryBtn" class="bill-history-btn" title="Bill change history">
+                    <i class="fas fa-history"></i>
+                    <span>History</span>
+                </a>
+                <a href="javascript:void(0);" id="openRecoverDeletedBtn" class="recover-deleted-btn" title="Recover deleted bills">
+                    <i class="fas fa-trash-restore"></i>
+                    <span>Recover Deleted</span>
+                </a>
+            @endif
             <!-- <h6>Manage your sales</h6> -->
         </div>
         <div class="page-btn">
@@ -1202,7 +1314,19 @@
     <!-- Mobile & Tablet Quick Header and Summary Slot -->
     <div class="sl-quick-links d-none">
         <div class="sl-quick-head">
-            <div class="sl-quick-title">All Orders</div>
+            <div class="sl-quick-title">
+                All Orders
+                @if(auth()->check() && (auth()->user()->role === 'admin' || (int) auth()->user()->role_id === 1))
+                    <a href="javascript:void(0);" class="bill-history-btn open-bill-history-btn ms-2" title="Bill change history" style="height:28px;padding:0 8px;font-size:11px;">
+                        <i class="fas fa-history"></i>
+                        <span>History</span>
+                    </a>
+                    <a href="javascript:void(0);" class="recover-deleted-btn open-recover-deleted-btn" title="Recover deleted bills" style="height:28px;padding:0 8px;font-size:11px;">
+                        <i class="fas fa-trash-restore"></i>
+                        <span>Recover</span>
+                    </a>
+                @endif
+            </div>
             @if (app('hasPermission')(2, 'add'))
                 <div class="sl-quick-actions">
                     <a href="{{ route('sales.add') }}" class="btn btn-sm btn-added">
@@ -1815,6 +1939,125 @@
         </div>
     </div>
 </div>
+
+@if(auth()->check() && (auth()->user()->role === 'admin' || (int) auth()->user()->role_id === 1))
+<!-- Admin: Bill Activity History Modal -->
+<div class="modal fade" id="billHistoryModal" tabindex="-1" aria-labelledby="billHistoryLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="billHistoryLabel">
+                    <i class="fas fa-history me-2"></i>Bill History Log
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="bh-filter-wrap mb-3">
+                    <div class="btn-group" role="group" aria-label="History date filter">
+                        <button type="button" class="btn btn-sm btn-primary" id="bhFilterTodayBtn">Today</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="bhFilterCustomBtn">Custom Date</button>
+                    </div>
+                    <div class="bh-custom-dates" id="bhCustomDates">
+                        <input type="date" id="bhFromDate" class="form-control form-control-sm" style="width:150px;">
+                        <span class="text-muted">to</span>
+                        <input type="date" id="bhToDate" class="form-control form-control-sm" style="width:150px;">
+                        <button type="button" class="btn btn-sm btn-primary" id="bhApplyCustomBtn">Apply</button>
+                    </div>
+                    <div class="input-group" style="max-width: 280px;">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" id="bhSearch" class="form-control form-control-sm" placeholder="Order / staff / product">
+                    </div>
+                    <select id="bhActionFilter" class="form-select form-select-sm" style="width:160px;">
+                        <option value="">All Actions</option>
+                        <option value="bill_created">Bill Created</option>
+                        <option value="item_added">Item Added</option>
+                        <option value="item_removed">Item Removed</option>
+                        <option value="item_qty_reduced">Qty Reduced</option>
+                        <option value="item_qty_increased">Qty Increased</option>
+                        <option value="bill_deleted">Bill Deleted</option>
+                        <option value="bill_restored">Bill Recovered</option>
+                        <option value="bill_cleared">Bill Cleared</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="bhRefreshBtn">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <small class="text-muted ms-auto" id="bhFilterHint">Showing today’s logs</small>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mb-0" id="billHistoryTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:140px;">Time</th>
+                                <th style="width:130px;">Staff</th>
+                                <th style="width:120px;">Action</th>
+                                <th style="width:140px;">Order</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="billHistoryTbody">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">Loading history…</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin: Recover Deleted Bills Modal -->
+<div class="modal fade" id="recoverDeletedModal" tabindex="-1" aria-labelledby="recoverDeletedLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="recoverDeletedLabel">
+                    <i class="fas fa-trash-restore me-2"></i>Recover Deleted Bills
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                    <div class="input-group" style="max-width: 320px;">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" id="recoverDeletedSearch" class="form-control" placeholder="Search order no / customer">
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshRecoverDeletedBtn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <small class="text-muted ms-auto">Admin only — restore soft-deleted bills to All Orders</small>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mb-0" id="recoverDeletedTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Order Number</th>
+                                <th>Bill Date</th>
+                                <th>Deleted At</th>
+                                <th>Customer</th>
+                                <th>Type</th>
+                                <th>Total</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recoverDeletedTbody">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">Loading deleted bills…</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 @include('partials.bill-generated-modal')
 @endsection
@@ -3255,6 +3498,7 @@
                 }
             });
         }
+        window.fetchAllOrders = fetchAllOrders;
         
         $(document).on('change', '.order-type-update', function() {
             let orderId = $(this).data('id');
@@ -3920,6 +4164,338 @@
             }
         });
     });
+
+    // Admin: Recover Deleted Bills
+    (function () {
+        var recoverSearchTimer = null;
+        var isAdminRecover = {{ (auth()->check() && (auth()->user()->role === 'admin' || (int) auth()->user()->role_id === 1)) ? 'true' : 'false' }};
+        if (!isAdminRecover) return;
+
+        function recoverAuthHeaders() {
+            return {
+                "Authorization": "Bearer " + (localStorage.getItem("authToken") || ''),
+                'X-CSRF-TOKEN': "{{ csrf_token() }}",
+                'Accept': 'application/json'
+            };
+        }
+
+        function formatRecoverAmount(amount, symbol, position) {
+            var n = parseFloat(amount);
+            if (!isFinite(n)) n = 0;
+            var a = n.toFixed(2);
+            var sym = symbol || window._ordersCurrencySymbol || '₹';
+            var pos = position || window._ordersCurrencyPosition || 'left';
+            return pos === 'right' ? (a + sym) : (sym + a);
+        }
+
+        function orderTypeLabel(order) {
+            var t = (order.order_type || order.type || '').toString().toLowerCase();
+            if (t === 'dine_in' || t === 'dine-in' || t === 'dinein' || t === 'dine in') {
+                var tableLabel = order.table_no ? (' - Table ' + order.table_no) : '';
+                return 'Dine In' + tableLabel;
+            }
+            if (t === 'takeaway' || t === 'take_away' || t === 'take-away' || t === 'take away') return 'Take Away';
+            if (t === 'delivery') return 'Delivery';
+            return order.order_type || '—';
+        }
+
+        function renderDeletedBills(orders, currencySymbol, currencyPosition) {
+            var $tbody = $('#recoverDeletedTbody');
+            if (!orders || !orders.length) {
+                $tbody.html('<tr><td colspan="7" class="text-center text-muted py-4">No deleted bills found.</td></tr>');
+                return;
+            }
+            var rows = orders.map(function (order) {
+                var customer = (order.user && order.user.name) ? order.user.name : 'Unregistered Customer';
+                var totalHtml = formatRecoverAmount(order.total_amount, currencySymbol, currencyPosition);
+                return '<tr data-order-id="' + order.id + '">' +
+                    '<td><strong>' + (order.order_number || order.id) + '</strong></td>' +
+                    '<td>' + (order.created_date || '—') + '</td>' +
+                    '<td>' + (order.deleted_at_display || '—') + '</td>' +
+                    '<td>' + $('<div>').text(customer).html() + '</td>' +
+                    '<td>' + $('<div>').text(orderTypeLabel(order)).html() + '</td>' +
+                    '<td>' + totalHtml + '</td>' +
+                    '<td class="recover-row-actions">' +
+                        '<button type="button" class="btn btn-sm btn-success js-restore-deleted-bill" data-id="' + order.id + '" data-number="' + $('<div>').text(order.order_number || order.id).html() + '">' +
+                            '<i class="fas fa-undo me-1"></i>Recover' +
+                        '</button>' +
+                    '</td>' +
+                '</tr>';
+            }).join('');
+            $tbody.html(rows);
+        }
+
+        function loadDeletedBills(search) {
+            var selectedSubAdminId = localStorage.getItem('selectedSubAdminId');
+            $('#recoverDeletedTbody').html('<tr><td colspan="7" class="text-center text-muted py-4">Loading deleted bills…</td></tr>');
+            $.ajax({
+                url: '/api/orders/deleted',
+                method: 'GET',
+                dataType: 'json',
+                data: {
+                    selectedSubAdminId: selectedSubAdminId || '',
+                    search: search || ''
+                },
+                headers: recoverAuthHeaders(),
+                success: function (response) {
+                    if (response.status) {
+                        if (response.currency_symbol) window._ordersCurrencySymbol = response.currency_symbol;
+                        if (response.currency_position) window._ordersCurrencyPosition = response.currency_position;
+                        renderDeletedBills(response.data || [], response.currency_symbol, response.currency_position);
+                    } else {
+                        $('#recoverDeletedTbody').html('<tr><td colspan="7" class="text-center text-danger py-4">' + (response.message || 'Failed to load') + '</td></tr>');
+                    }
+                },
+                error: function (xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to load deleted bills.';
+                    $('#recoverDeletedTbody').html('<tr><td colspan="7" class="text-center text-danger py-4">' + msg + '</td></tr>');
+                }
+            });
+        }
+
+        function openRecoverModal() {
+            var el = document.getElementById('recoverDeletedModal');
+            if (!el) return;
+            $('#recoverDeletedSearch').val('');
+            loadDeletedBills('');
+            var modal = bootstrap.Modal.getOrCreateInstance(el);
+            modal.show();
+        }
+
+        $(document).on('click', '#openRecoverDeletedBtn, .open-recover-deleted-btn', function (e) {
+            e.preventDefault();
+            openRecoverModal();
+        });
+
+        $(document).on('click', '#refreshRecoverDeletedBtn', function () {
+            loadDeletedBills($('#recoverDeletedSearch').val() || '');
+        });
+
+        $(document).on('input', '#recoverDeletedSearch', function () {
+            var q = $(this).val() || '';
+            clearTimeout(recoverSearchTimer);
+            recoverSearchTimer = setTimeout(function () {
+                loadDeletedBills(q);
+            }, 350);
+        });
+
+        $(document).on('click', '.js-restore-deleted-bill', function () {
+            var $btn = $(this);
+            var orderId = $btn.data('id');
+            var orderNumber = $btn.data('number') || orderId;
+            if (!orderId) return;
+
+            Swal.fire({
+                icon: 'question',
+                title: 'Recover this bill?',
+                html: 'Order <strong>' + $('<div>').text(String(orderNumber)).html() + '</strong> will return to All Orders.',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Recover',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#28a745'
+            }).then(function (result) {
+                if (!result.isConfirmed) return;
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Recovering');
+                $.ajax({
+                    url: '/api/orders/' + orderId + '/restore',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: {
+                        selectedSubAdminId: localStorage.getItem('selectedSubAdminId') || ''
+                    },
+                    headers: recoverAuthHeaders(),
+                    success: function (response) {
+                        if (response.status) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Recovered',
+                                text: response.message || 'Bill recovered successfully.',
+                                timer: 1800,
+                                showConfirmButton: false
+                            });
+                            $btn.closest('tr').fadeOut(200, function () {
+                                $(this).remove();
+                                if (!$('#recoverDeletedTbody tr').length) {
+                                    $('#recoverDeletedTbody').html('<tr><td colspan="7" class="text-center text-muted py-4">No deleted bills found.</td></tr>');
+                                }
+                            });
+                            if (typeof window.fetchAllOrders === 'function') {
+                                window.fetchAllOrders();
+                            } else {
+                                setTimeout(function () { window.location.reload(); }, 900);
+                            }
+                        } else {
+                            $btn.prop('disabled', false).html('<i class="fas fa-undo me-1"></i>Recover');
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed',
+                                text: response.message || 'Could not recover bill.'
+                            });
+                        }
+                    },
+                    error: function (xhr) {
+                        $btn.prop('disabled', false).html('<i class="fas fa-undo me-1"></i>Recover');
+                        var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Could not recover bill.';
+                        Swal.fire({ icon: 'error', title: 'Failed', text: msg });
+                    }
+                });
+            });
+        });
+
+        // ---- Bill History Log (admin) ----
+        var bhMode = 'today';
+        var bhSearchTimer = null;
+
+        function todayYmdLocal() {
+            var d = new Date();
+            var m = String(d.getMonth() + 1).padStart(2, '0');
+            var day = String(d.getDate()).padStart(2, '0');
+            return d.getFullYear() + '-' + m + '-' + day;
+        }
+
+        function setBhFilterUi(mode) {
+            bhMode = mode;
+            if (mode === 'today') {
+                $('#bhFilterTodayBtn').removeClass('btn-outline-primary').addClass('btn-primary');
+                $('#bhFilterCustomBtn').removeClass('btn-primary').addClass('btn-outline-primary');
+                $('#bhCustomDates').removeClass('is-open');
+                $('#bhFilterHint').text("Showing today’s logs");
+            } else {
+                $('#bhFilterCustomBtn').removeClass('btn-outline-primary').addClass('btn-primary');
+                $('#bhFilterTodayBtn').removeClass('btn-primary').addClass('btn-outline-primary');
+                $('#bhCustomDates').addClass('is-open');
+                var from = $('#bhFromDate').val() || '';
+                var to = $('#bhToDate').val() || '';
+                $('#bhFilterHint').text(from && to ? ('Showing ' + from + ' to ' + to) : 'Pick custom dates');
+            }
+        }
+
+        function escapeHtml(str) {
+            return $('<div>').text(str == null ? '' : String(str)).html();
+        }
+
+        function renderBillHistory(logs) {
+            var $tbody = $('#billHistoryTbody');
+            if (!logs || !logs.length) {
+                $tbody.html('<tr><td colspan="5" class="text-center text-muted py-4">No history found for this filter.</td></tr>');
+                return;
+            }
+            var rows = logs.map(function (log) {
+                var action = log.action || 'unknown';
+                var label = log.action_label || action;
+                var orderLabel = log.order_number || (log.order_id ? ('#' + log.order_id) : '—');
+                if (log.table_no) {
+                    orderLabel += ' <small class="text-muted">(T' + escapeHtml(log.table_no) + ')</small>';
+                }
+                var staff = escapeHtml(log.actor_name || '—');
+                if (log.actor_role) {
+                    staff += ' <small class="text-muted">(' + escapeHtml(log.actor_role) + ')</small>';
+                }
+                return '<tr>' +
+                    '<td>' + escapeHtml(log.created_at_display || log.time_display || '—') + '</td>' +
+                    '<td>' + staff + '</td>' +
+                    '<td><span class="bh-action-pill bh-action-' + escapeHtml(action) + '">' + escapeHtml(label) + '</span></td>' +
+                    '<td><strong>' + orderLabel + '</strong></td>' +
+                    '<td>' + escapeHtml(log.details || log.product_name || '—') + '</td>' +
+                '</tr>';
+            }).join('');
+            $tbody.html(rows);
+        }
+
+        function loadBillHistory() {
+            var selectedSubAdminId = localStorage.getItem('selectedSubAdminId');
+            var payload = {
+                selectedSubAdminId: selectedSubAdminId || '',
+                mode: bhMode,
+                search: $('#bhSearch').val() || '',
+                action: $('#bhActionFilter').val() || ''
+            };
+            if (bhMode === 'custom') {
+                payload.from_date = $('#bhFromDate').val() || '';
+                payload.to_date = $('#bhToDate').val() || '';
+                if (!payload.from_date || !payload.to_date) {
+                    $('#billHistoryTbody').html('<tr><td colspan="5" class="text-center text-muted py-4">Select from &amp; to dates, then Apply.</td></tr>');
+                    return;
+                }
+            }
+            $('#billHistoryTbody').html('<tr><td colspan="5" class="text-center text-muted py-4">Loading history…</td></tr>');
+            $.ajax({
+                url: '/api/orders/activity-logs',
+                method: 'GET',
+                dataType: 'json',
+                data: payload,
+                headers: recoverAuthHeaders(),
+                success: function (response) {
+                    if (response.status) {
+                        renderBillHistory(response.data || []);
+                        if (response.filter) {
+                            if (response.filter.mode === 'today') {
+                                $('#bhFilterHint').text("Showing today’s logs (" + (response.filter.date || '') + ")");
+                            } else if (response.filter.from_date && response.filter.to_date) {
+                                $('#bhFilterHint').text('Showing ' + response.filter.from_date + ' to ' + response.filter.to_date);
+                            } else if (response.filter.date) {
+                                $('#bhFilterHint').text('Showing ' + response.filter.date);
+                            }
+                        }
+                    } else {
+                        $('#billHistoryTbody').html('<tr><td colspan="5" class="text-center text-danger py-4">' + escapeHtml(response.message || 'Failed to load') + '</td></tr>');
+                    }
+                },
+                error: function (xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to load history.';
+                    $('#billHistoryTbody').html('<tr><td colspan="5" class="text-center text-danger py-4">' + escapeHtml(msg) + '</td></tr>');
+                }
+            });
+        }
+
+        function openBillHistoryModal() {
+            var el = document.getElementById('billHistoryModal');
+            if (!el) return;
+            var today = todayYmdLocal();
+            $('#bhFromDate').val(today);
+            $('#bhToDate').val(today);
+            $('#bhSearch').val('');
+            $('#bhActionFilter').val('');
+            setBhFilterUi('today');
+            loadBillHistory();
+            bootstrap.Modal.getOrCreateInstance(el).show();
+        }
+
+        $(document).on('click', '#openBillHistoryBtn, .open-bill-history-btn', function (e) {
+            e.preventDefault();
+            openBillHistoryModal();
+        });
+
+        $(document).on('click', '#bhFilterTodayBtn', function () {
+            setBhFilterUi('today');
+            loadBillHistory();
+        });
+
+        $(document).on('click', '#bhFilterCustomBtn', function () {
+            setBhFilterUi('custom');
+            var today = todayYmdLocal();
+            if (!$('#bhFromDate').val()) $('#bhFromDate').val(today);
+            if (!$('#bhToDate').val()) $('#bhToDate').val(today);
+        });
+
+        $(document).on('click', '#bhApplyCustomBtn, #bhRefreshBtn', function () {
+            if ($('#bhCustomDates').hasClass('is-open')) {
+                setBhFilterUi('custom');
+            }
+            loadBillHistory();
+        });
+
+        $(document).on('change', '#bhActionFilter', function () {
+            loadBillHistory();
+        });
+
+        $(document).on('input', '#bhSearch', function () {
+            clearTimeout(bhSearchTimer);
+            bhSearchTimer = setTimeout(function () {
+                loadBillHistory();
+            }, 350);
+        });
+    })();
 </script>
 @if(session('success'))
 <script>

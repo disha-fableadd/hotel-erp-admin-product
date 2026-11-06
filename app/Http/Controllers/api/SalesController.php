@@ -13,6 +13,7 @@ use App\Models\TaxRate;
 use App\Models\Table_no;
 use App\Models\User;
 use App\Models\UserDetail;
+use App\Services\OrderActivityLogService;
 use App\Services\PosPricingService;
 use App\Services\RecipeStockService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -30,6 +31,11 @@ class SalesController extends Controller
     protected function posPricing(): PosPricingService
     {
         return app(PosPricingService::class);
+    }
+
+    protected function activityLog(): OrderActivityLogService
+    {
+        return app(OrderActivityLogService::class);
     }
 
     /**
@@ -1205,6 +1211,22 @@ class SalesController extends Controller
             DB::commit();
 
             try {
+                $createdItemLines = [];
+                foreach ($resolvedLines as $line) {
+                    $p = $line['product'] ?? null;
+                    $createdItemLines[] = [
+                        'product_id' => $p->id ?? ($line['product_id'] ?? null),
+                        'name' => $p->name ?? ($line['product_name'] ?? 'Item'),
+                        'qty' => (float) ($line['quantity'] ?? 0),
+                        'variant_id' => $line['variant_id'] ?? null,
+                    ];
+                }
+                $this->activityLog()->logBillCreated($order->fresh(), $userData, $createdItemLines);
+            } catch (\Throwable $e) {
+                Log::warning('Order activity log (create) failed: ' . $e->getMessage());
+            }
+
+            try {
                 $this->recipeStock()->consumeForOrder($order->fresh());
             } catch (\Throwable $e) {
                 Log::error('Recipe consume error: ' . $e->getMessage());
@@ -1826,6 +1848,66 @@ class SalesController extends Controller
                 $order->save();
             }
 
+            // Admin history: item add / qty change / remove on bill update
+            try {
+                $activityChanges = [];
+                foreach ($resolvedLines as $line) {
+                    $product = $line['product'];
+                    $kotKey = ((int) $product->id) . ':' . ((int) ($line['variant_id'] ?? 0));
+                    $newQty = (int) ($line['quantity'] ?? 0);
+                    $prevQty = (int) ($oldKotQty[$kotKey] ?? 0);
+                    $diff = $newQty - $prevQty;
+                    if ($diff === 0) {
+                        continue;
+                    }
+                    $variantName = $line['variant_name'] ?? ($oldKotMeta[$kotKey]['variant_name'] ?? null);
+                    if ($diff > 0) {
+                        $activityChanges[] = [
+                            'action' => $prevQty <= 0 ? 'new' : 'increase',
+                            'product_id' => (int) $product->id,
+                            'name' => $product->name ?? 'Item',
+                            'variant_name' => $variantName,
+                            'qty' => abs($diff),
+                            'old_quantity' => $prevQty,
+                            'new_quantity' => $newQty,
+                        ];
+                    } else {
+                        $activityChanges[] = [
+                            'action' => 'reduce',
+                            'product_id' => (int) $product->id,
+                            'name' => $product->name ?? 'Item',
+                            'variant_name' => $variantName,
+                            'qty' => abs($diff),
+                            'old_quantity' => $prevQty,
+                            'new_quantity' => $newQty,
+                        ];
+                    }
+                }
+                foreach ($oldKotMeta as $kotKey => $meta) {
+                    if (! empty($keptKotKeys[$kotKey])) {
+                        continue;
+                    }
+                    $removedQty = (int) ($meta['qty'] ?? 0);
+                    if ($removedQty <= 0) {
+                        continue;
+                    }
+                    $activityChanges[] = [
+                        'action' => 'cancel',
+                        'product_id' => $meta['product_id'] ?? null,
+                        'name' => $meta['name'] ?? 'Item',
+                        'variant_name' => $meta['variant_name'] ?? null,
+                        'qty' => $removedQty,
+                        'old_quantity' => $removedQty,
+                        'new_quantity' => 0,
+                    ];
+                }
+                if (! empty($activityChanges)) {
+                    $this->activityLog()->logItemChanges($order->fresh(), $userData, $activityChanges);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Order activity log (update_sale_order) failed: ' . $e->getMessage());
+            }
+
             // Delete old payment entries
             PaymentStore::where('order_id', $order->id)->delete();
 
@@ -2283,9 +2365,279 @@ class SalesController extends Controller
             $this->syncTableStatus((int) $order->table_no);
         }
 
+        try {
+            $actor = Auth::guard('api')->user() ?: Auth::guard('web')->user();
+            $this->activityLog()->logBillAction($order, $actor, 'bill_deleted', 'Bill deleted');
+        } catch (\Throwable $e) {
+            Log::warning('Order activity log (delete) failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'status' => true,
             'message' => 'Order deleted successfully.',
+        ]);
+    }
+
+    /**
+     * Admin only: list soft-deleted bills for recovery.
+     */
+    public function getDeletedOrders(Request $request)
+    {
+        $this->ensureTenantDatabaseFromSession($request);
+
+        $user = Auth::guard('api')->user() ?: Auth::guard('web')->user();
+        if (! $user) {
+            return response()->json(['status' => false, 'message' => 'Unauthenticated access'], 401);
+        }
+
+        if (($user->role ?? '') !== 'admin' && (int) ($user->role_id ?? 0) !== 1) {
+            return response()->json(['status' => false, 'message' => 'Only admin can view deleted bills.'], 403);
+        }
+
+        $userId = $user->id;
+        $selectedSubAdminID = $request->input('selectedSubAdminId');
+
+        $query = Order::with([
+            'user:id,name,phone',
+            'creator:id,name',
+        ])
+            ->where('isDeleted', 1)
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
+
+        if ($selectedSubAdminID) {
+            $query->where('branch_id', $selectedSubAdminID);
+        } else {
+            $query->where('branch_id', $userId);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                    ->orWhere('id', $search)
+                    ->orWhereHas('user', function ($u) use ($search) {
+                        $u->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $orders = $query->limit(200)->get();
+
+        $settingsBranch = $selectedSubAdminID ?: $userId;
+        $settings = DB::table('settings')->where('branch_id', $settingsBranch)->first();
+        $currencySymbol = $settings->currency_symbol ?? '₹';
+        $currencyPosition = $settings->currency_position ?? 'left';
+
+        $orders->transform(function ($order) {
+            $order->deleted_at_display = $order->updated_at
+                ? $order->updated_at->format('d-M-Y h:i A')
+                : null;
+            $order->created_date = $order->created_at
+                ? $order->created_at->format('d-M-Y h:i A')
+                : null;
+
+            return $order;
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Deleted bills fetched successfully',
+            'currency_symbol' => $currencySymbol,
+            'currency_position' => $currencyPosition,
+            'data' => $orders,
+        ]);
+    }
+
+    /**
+     * Admin only: restore a soft-deleted bill back to All Orders.
+     */
+    public function restoreOrder(Request $request, $id)
+    {
+        $this->ensureTenantDatabaseFromSession($request);
+
+        $user = Auth::guard('api')->user() ?: Auth::guard('web')->user();
+        if (! $user) {
+            return response()->json(['status' => false, 'message' => 'Unauthenticated access'], 401);
+        }
+
+        if (($user->role ?? '') !== 'admin' && (int) ($user->role_id ?? 0) !== 1) {
+            return response()->json(['status' => false, 'message' => 'Only admin can recover deleted bills.'], 403);
+        }
+
+        $order = Order::where('id', $id)->where('isDeleted', 1)->first();
+        if (! $order) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Deleted bill not found (or already restored).',
+            ], 404);
+        }
+
+        DB::beginTransaction();
+        try {
+            $order->isDeleted = 0;
+            // Keep table free unless admin re-occupies from floor — avoid colliding with a live bill
+            if (! empty($order->table_no)) {
+                $otherActive = Order::where('table_no', $order->table_no)
+                    ->where('isDeleted', 0)
+                    ->where('table_status', 1)
+                    ->where('id', '!=', $order->id)
+                    ->exists();
+                if ($otherActive) {
+                    $order->table_status = 0;
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
+                        $order->bill_printed = 0;
+                    }
+                }
+            }
+            $order->save();
+
+            OrderItem::where('order_id', $order->id)->update(['isDeleted' => 0]);
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('payment_stores', 'isDeleted')) {
+                PaymentStore::where('order_id', $order->id)->update(['isDeleted' => 0]);
+            }
+
+            DB::commit();
+
+            try {
+                $this->activityLog()->logBillAction($order->fresh(), $user, 'bill_restored');
+            } catch (\Throwable $e) {
+                Log::warning('Order activity log (restore) failed: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Bill recovered successfully. It is back in All Orders.',
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Restore order failed: ' . $e->getMessage());
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to recover bill. Please try again.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin only: bill / item change history (create, item remove, qty change, delete, restore).
+     * Default filter = today (Asia/Kolkata). Supports custom date / from-to.
+     */
+    public function getOrderActivityLogs(Request $request)
+    {
+        $this->ensureTenantDatabaseFromSession($request);
+
+        $user = Auth::guard('api')->user() ?: Auth::guard('web')->user();
+        if (! $user) {
+            return response()->json(['status' => false, 'message' => 'Unauthenticated access'], 401);
+        }
+
+        if (($user->role ?? '') !== 'admin' && (int) ($user->role_id ?? 0) !== 1) {
+            return response()->json(['status' => false, 'message' => 'Only admin can view bill history.'], 403);
+        }
+
+        if (! $this->activityLog()->ensureTable()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'No history yet',
+                'filter' => ['mode' => 'today', 'date' => Carbon::now('Asia/Kolkata')->toDateString()],
+                'data' => [],
+            ]);
+        }
+
+        $userId = $user->id;
+        $selectedSubAdminID = $request->input('selectedSubAdminId');
+        $branchId = $selectedSubAdminID ?: $userId;
+
+        $tz = 'Asia/Kolkata';
+        $today = Carbon::now($tz)->toDateString();
+        $mode = strtolower(trim((string) $request->input('mode', 'today')));
+        $date = $request->input('date');
+        $from = $request->input('from_date') ?: $request->input('from');
+        $to = $request->input('to_date') ?: $request->input('to');
+
+        $query = \App\Models\OrderActivityLog::query()
+            ->where('branch_id', $branchId)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        if ($mode === 'custom' || $mode === 'range') {
+            if ($from && $to) {
+                $fromDate = Carbon::parse($from, $tz)->startOfDay();
+                $toDate = Carbon::parse($to, $tz)->endOfDay();
+                $query->whereBetween('created_at', [$fromDate, $toDate]);
+                $filter = [
+                    'mode' => 'custom',
+                    'from_date' => $fromDate->toDateString(),
+                    'to_date' => $toDate->toDateString(),
+                ];
+            } elseif ($date) {
+                $d = Carbon::parse($date, $tz);
+                $query->whereDate('created_at', $d->toDateString());
+                $filter = ['mode' => 'custom', 'date' => $d->toDateString()];
+            } else {
+                $query->whereDate('created_at', $today);
+                $filter = ['mode' => 'today', 'date' => $today];
+            }
+        } elseif ($mode === 'date' && $date) {
+            $d = Carbon::parse($date, $tz);
+            $query->whereDate('created_at', $d->toDateString());
+            $filter = ['mode' => 'custom', 'date' => $d->toDateString()];
+        } else {
+            // Default: today only
+            $query->whereDate('created_at', $today);
+            $filter = ['mode' => 'today', 'date' => $today];
+        }
+
+        if ($request->filled('action')) {
+            $query->where('action', $request->input('action'));
+        }
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                    ->orWhere('product_name', 'like', "%{$search}%")
+                    ->orWhere('actor_name', 'like', "%{$search}%")
+                    ->orWhere('details', 'like', "%{$search}%")
+                    ->orWhere('order_id', $search);
+            });
+        }
+
+        $logs = $query->limit(500)->get();
+
+        $actionLabels = [
+            'bill_created' => 'Bill Created',
+            'item_added' => 'Item Added',
+            'item_removed' => 'Item Removed',
+            'item_qty_reduced' => 'Qty Reduced',
+            'item_qty_increased' => 'Qty Increased',
+            'bill_deleted' => 'Bill Deleted',
+            'bill_restored' => 'Bill Recovered',
+            'bill_cleared' => 'Bill Cleared',
+        ];
+
+        $logs->transform(function ($log) use ($actionLabels, $tz) {
+            $log->action_label = $actionLabels[$log->action] ?? ucwords(str_replace('_', ' ', (string) $log->action));
+            $log->created_at_display = $log->created_at
+                ? Carbon::parse($log->created_at)->timezone($tz)->format('d-M-Y h:i A')
+                : null;
+            $log->time_display = $log->created_at
+                ? Carbon::parse($log->created_at)->timezone($tz)->format('h:i A')
+                : null;
+
+            return $log;
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Bill history fetched successfully',
+            'filter' => $filter,
+            'data' => $logs,
         ]);
     }
 
@@ -2495,6 +2847,13 @@ class SalesController extends Controller
             $tableSync = $this->syncTableStatus($tableId);
 
             DB::commit();
+
+            try {
+                $actor = Auth::guard('api')->user() ?: Auth::guard('web')->user() ?: ($userData ?? null);
+                $this->activityLog()->logBillAction($order->fresh(), $actor, 'bill_cleared', 'Dine-in bill cleared / table freed');
+            } catch (\Throwable $e) {
+                Log::warning('Order activity log (clear) failed: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'status' => true,
@@ -2742,6 +3101,90 @@ class SalesController extends Controller
             }
             $order->update($legacyOrderUpdate);
 
+            // Capture item diffs for admin history before rewrite
+            $legacyActivityChanges = [];
+            try {
+                $oldItems->loadMissing(['product', 'variant']);
+                $oldByKey = [];
+                foreach ($oldItems as $old) {
+                    $k = ((int) $old->product_id) . ':' . ((int) ($old->variant_id ?? 0));
+                    if (! isset($oldByKey[$k])) {
+                        $oldByKey[$k] = [
+                            'product_id' => (int) $old->product_id,
+                            'name' => optional($old->product)->name ?? 'Item',
+                            'variant_name' => optional($old->variant)->name ?? null,
+                            'qty' => 0.0,
+                        ];
+                    }
+                    $oldByKey[$k]['qty'] += (float) ($old->quantity ?? 0);
+                }
+
+                $newByKey = [];
+                foreach ($lineItems as $line) {
+                    $k = ((int) $line['product_id']) . ':' . ((int) ($line['variant_id'] ?? 0));
+                    $product = $products->firstWhere('id', $line['product_id']);
+                    if (! isset($newByKey[$k])) {
+                        $newByKey[$k] = [
+                            'product_id' => (int) $line['product_id'],
+                            'name' => ($line['display_name'] !== '' ? $line['display_name'] : (optional($product)->name ?? 'Item')),
+                            'variant_name' => null,
+                            'qty' => 0.0,
+                        ];
+                    }
+                    $newByKey[$k]['qty'] += (float) $line['quantity'];
+                }
+
+                foreach ($newByKey as $k => $meta) {
+                    $prevQty = (float) ($oldByKey[$k]['qty'] ?? 0);
+                    $newQty = (float) $meta['qty'];
+                    $diff = $newQty - $prevQty;
+                    if ($diff == 0.0) {
+                        continue;
+                    }
+                    if ($diff > 0) {
+                        $legacyActivityChanges[] = [
+                            'action' => $prevQty <= 0 ? 'new' : 'increase',
+                            'product_id' => $meta['product_id'],
+                            'name' => $meta['name'],
+                            'variant_name' => $meta['variant_name'],
+                            'qty' => abs($diff),
+                            'old_quantity' => $prevQty,
+                            'new_quantity' => $newQty,
+                        ];
+                    } else {
+                        $legacyActivityChanges[] = [
+                            'action' => 'reduce',
+                            'product_id' => $meta['product_id'],
+                            'name' => $meta['name'],
+                            'variant_name' => $meta['variant_name'],
+                            'qty' => abs($diff),
+                            'old_quantity' => $prevQty,
+                            'new_quantity' => $newQty,
+                        ];
+                    }
+                }
+                foreach ($oldByKey as $k => $meta) {
+                    if (isset($newByKey[$k])) {
+                        continue;
+                    }
+                    $removedQty = (float) ($meta['qty'] ?? 0);
+                    if ($removedQty <= 0) {
+                        continue;
+                    }
+                    $legacyActivityChanges[] = [
+                        'action' => 'cancel',
+                        'product_id' => $meta['product_id'],
+                        'name' => $meta['name'],
+                        'variant_name' => $meta['variant_name'],
+                        'qty' => $removedQty,
+                        'old_quantity' => $removedQty,
+                        'new_quantity' => 0,
+                    ];
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Order activity diff (update_sale) failed: ' . $e->getMessage());
+            }
+
             // Remove old order items
             OrderItem::where('order_id', $order->id)->delete();
 
@@ -2900,6 +3343,14 @@ class SalesController extends Controller
 
             DB::commit();
 
+            try {
+                if (! empty($legacyActivityChanges)) {
+                    $this->activityLog()->logItemChanges($order->fresh(), $userData, $legacyActivityChanges);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Order activity log (update_sale) failed: ' . $e->getMessage());
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Order updated successfully',
@@ -2935,16 +3386,47 @@ class SalesController extends Controller
         $year = $request->query('year');
         $customerId = $request->query('customer_id');
         $categoryId = $request->query('category_id');
+        $fromDate = $request->query('from_date') ?: $request->query('date_from') ?: $request->query('from');
+        $toDate = $request->query('to_date') ?: $request->query('date_to') ?: $request->query('to');
         $reportType = strtolower(trim((string) $request->query('report_type', 'all')));
         if (! in_array($reportType, ['all', 'food', 'liquor'], true)) {
             $reportType = 'all';
+        }
+
+        $hasCustomRange = false;
+        $rangeStart = null;
+        $rangeEnd = null;
+        if (! empty($fromDate) || ! empty($toDate) || $filter === 'custom') {
+            try {
+                $tz = 'Asia/Kolkata';
+                if (! empty($fromDate) && ! empty($toDate)) {
+                    $rangeStart = Carbon::parse($fromDate, $tz)->startOfDay();
+                    $rangeEnd = Carbon::parse($toDate, $tz)->endOfDay();
+                } elseif (! empty($fromDate)) {
+                    $rangeStart = Carbon::parse($fromDate, $tz)->startOfDay();
+                    $rangeEnd = Carbon::parse($fromDate, $tz)->endOfDay();
+                } elseif (! empty($toDate)) {
+                    $rangeStart = Carbon::parse($toDate, $tz)->startOfDay();
+                    $rangeEnd = Carbon::parse($toDate, $tz)->endOfDay();
+                }
+                if ($rangeStart && $rangeEnd) {
+                    if ($rangeStart->gt($rangeEnd)) {
+                        [$rangeStart, $rangeEnd] = [$rangeEnd->copy()->startOfDay(), $rangeStart->copy()->endOfDay()];
+                    }
+                    $hasCustomRange = true;
+                }
+            } catch (\Throwable $e) {
+                $hasCustomRange = false;
+                $rangeStart = null;
+                $rangeEnd = null;
+            }
         }
 
         $query = OrderItem::with(['product.category', 'product.brand', 'order'])
             ->where(function ($q) {
                 $q->where('isDeleted', 0)->orWhereNull('isDeleted');
             })
-            ->whereHas('order', function ($q) use ($filter, $month, $year, $customerId, $role, $effectiveBranchId, $userId) {
+            ->whereHas('order', function ($q) use ($filter, $month, $year, $customerId, $role, $effectiveBranchId, $userId, $hasCustomRange, $rangeStart, $rangeEnd) {
                 // Align with All Orders list totals: include paid / partial (not only exact "completed")
                 $q->where('isDeleted', 0)
                     ->where(function ($pay) {
@@ -2956,15 +3438,18 @@ class SalesController extends Controller
                 // Staff + admin/sub-admin: same branch-wide order list
                 $q->where('branch_id', $effectiveBranchId);
 
-                // ✅ Date filters
-                if ($filter) {
+                // ✅ Custom date range (takes priority over preset period filter)
+                if ($hasCustomRange && $rangeStart && $rangeEnd) {
+                    $q->whereBetween('created_at', [$rangeStart, $rangeEnd]);
+                } elseif ($filter && $filter !== 'custom') {
+                    // ✅ Preset date filters
                     $today = Carbon::today('Asia/Kolkata');
                     switch ($filter) {
                         case 'today':
                             $q->whereDate('created_at', $today->toDateString());
                             break;
-                        case 'tomorrow':
-                            $q->whereDate('created_at', $today->copy()->addDay()->toDateString());
+                        case 'yesterday':
+                            $q->whereDate('created_at', $today->copy()->subDay()->toDateString());
                             break;
                         case 'this_week':
                             $q->whereBetween('created_at', [
@@ -2990,14 +3475,14 @@ class SalesController extends Controller
                     }
                 }
 
-                // ✅ Month filter
-                if ($month) {
-                    $q->whereMonth('created_at', $month);
-                }
-
-                // ✅ Year filter
-                if ($year) {
-                    $q->whereYear('created_at', $year);
+                // ✅ Month / year only when not using custom range
+                if (! $hasCustomRange) {
+                    if ($month) {
+                        $q->whereMonth('created_at', $month);
+                    }
+                    if ($year) {
+                        $q->whereYear('created_at', $year);
+                    }
                 }
 
                 // ✅ Customer filter
