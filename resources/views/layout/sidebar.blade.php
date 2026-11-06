@@ -321,11 +321,12 @@
         transition: color 0.2s ease;
     }
 
-    /* Theme sets .slimScrollDiv { overflow: visible !important } which blocks scroll */
+    /* Keep sidebar scrollable, but hide scroller chrome (like before) */
     #sidebar {
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        width: 260px;
     }
     #sidebar > .slimScrollDiv,
     #sidebar > .sidebar-inner.slimscroll,
@@ -333,12 +334,31 @@
     #sidebar .sidebar-inner {
         flex: 1 1 auto;
         min-height: 0 !important;
+        width: 260px !important;
         height: 100% !important;
         max-height: 100% !important;
         overflow-x: hidden !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge legacy */
+    }
+    #sidebar .slimScrollDiv::-webkit-scrollbar,
+    #sidebar .sidebar-inner::-webkit-scrollbar,
+    #sidebar::-webkit-scrollbar {
+        width: 0 !important;
+        height: 0 !important;
+        display: none !important;
+    }
+    /* Hide slimScroll plugin bar/rail so no orange gutter appears */
+    #sidebar .slimScrollBar,
+    #sidebar .slimScrollRail {
+        display: none !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
     }
     #sidebar.has-quick-footer > .slimScrollDiv,
     #sidebar.has-quick-footer > .sidebar-inner.slimscroll,
@@ -353,6 +373,7 @@
     body.mini-sidebar:not(.expand-menu) #sidebar.has-quick-footer .sidebar-inner {
         max-height: calc(100% - 96px) !important;
         height: calc(100% - 96px) !important;
+        width: 80px !important;
     }
 
     .sidebar-quick-footer {
@@ -374,7 +395,7 @@
             flex-shrink: 0;
         }
         #sidebar.has-quick-footer #sidebar-menu {
-            padding-bottom: 12px !important;
+            padding-bottom: 84px !important;
         }
         .sidebar-quick-btn {
             flex: 1;
@@ -420,12 +441,19 @@
             display: none;
         }
         body.mini-sidebar:not(.expand-menu) #sidebar.has-quick-footer #sidebar-menu {
-            padding-bottom: 12px !important;
+            padding-bottom: 96px !important;
         }
     }
     @media (max-width: 991px) {
         .sidebar-quick-footer {
             display: none !important;
+        }
+        #sidebar,
+        #sidebar > .slimScrollDiv,
+        #sidebar > .sidebar-inner.slimscroll,
+        #sidebar .slimScrollDiv,
+        #sidebar .sidebar-inner {
+            width: 100% !important;
         }
         #sidebar > .slimScrollDiv,
         #sidebar > .sidebar-inner.slimscroll,
