@@ -618,17 +618,81 @@
         }
 
         #tableOrderModal .setvaluecash {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         #tableOrderModal .setvaluecash::before {
-            content: "Payment Method";
-            display: block;
-            font-size: 11px;
+            content: none !important;
+            display: none !important;
+        }
+
+        #tableOrderModal .pay-method-collapse-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            border-radius: 10px;
+            padding: 8px 10px;
+            cursor: pointer;
+            text-align: left;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+
+        #tableOrderModal .pay-method-collapse-label {
+            font-size: 12px;
             font-weight: 700;
-            letter-spacing: 0.02em;
             color: #64748b;
-            margin-bottom: 8px;
+            white-space: nowrap;
+        }
+
+        #tableOrderModal .pay-method-collapse-value {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            padding: 5px 10px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        #tableOrderModal .pay-method-collapse-value > i:first-child {
+            color: #16a34a;
+            font-size: 13px;
+        }
+
+        #tableOrderModal .pay-method-chevron {
+            color: #94a3b8;
+            font-size: 11px;
+            transition: transform 0.2s ease;
+        }
+
+        #tableOrderModal .setvaluecash.is-open .pay-method-chevron {
+            transform: rotate(180deg);
+        }
+
+        #tableOrderModal .setvaluecash.is-open .pay-method-collapse-toggle {
+            border-color: #fdba74;
+            background: #fff7ed;
+        }
+
+        #tableOrderModal .pay-method-collapse-body {
+            display: none;
+            margin-top: 8px;
+            padding: 8px;
+            border: 1px solid #e8edf3;
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+
+        #tableOrderModal .setvaluecash.is-open .pay-method-collapse-body {
+            display: block;
         }
 
         #tableOrderModal .setvaluecash ul {
@@ -3220,64 +3284,92 @@
                                         }
                                         $defaultPaidType = (optional($setting)->default_paid_type === 'partially') ? 'partially' : 'fully';
                                     @endphp
-                                    <div class="setvaluecash">
-                                        <ul>
-                                            <li class="d-none">
-                                                <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'pending' ? 'active' : '' }}">
-                                                    <input type="radio" name="payment_method" value="pending" {{ $defaultPayMethod === 'pending' ? 'checked' : '' }} hidden>
-                                                    <i class="fas fa-history"></i>
-                                                    <span>Pay Later</span>
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'cash' ? 'active' : '' }}">
-                                                    <input type="radio" name="payment_method" value="cash" {{ $defaultPayMethod === 'cash' ? 'checked' : '' }} hidden>
-                                                    <i class="fas fa-money-bill-wave"></i>
-                                                    <span>Cash</span>
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'debit card' ? 'active' : '' }}">
-                                                    <input type="radio" name="payment_method" value="debit card" {{ $defaultPayMethod === 'debit card' ? 'checked' : '' }} hidden>
-                                                    <i class="fas fa-credit-card"></i>
-                                                    <span>Debit Card</span>
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'cash+online' ? 'active' : '' }}">
-                                                    <input type="radio" name="payment_method" value="cash+online" {{ $defaultPayMethod === 'cash+online' ? 'checked' : '' }} hidden>
-                                                    <i class="fas fa-money-check-alt"></i>
-                                                    <span>Cash + Online</span>
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'scan' ? 'active' : '' }}">
-                                                    <input type="radio" name="payment_method" value="scan" {{ $defaultPayMethod === 'scan' ? 'checked' : '' }} hidden>
-                                                    <i class="fas fa-qrcode"></i>
-                                                    <span>Scan / UPI</span>
-                                                </a>
-                                            </li>
-                                        </ul>
-                                        <div id="paidTypeBox" style="{{ in_array($defaultPayMethod, ['cash', 'debit card', 'scan'], true) ? '' : 'display:none;' }} margin-top:8px;">
-                                            <div class="form-group mb-2">
-                                                <label style="font-size: 12px; font-weight: 600; color: #64748b;">Paid Type</label>
-                                                <select id="paidTypeSelect" class="form-control form-control-sm" name="paid_type">
-                                                    <option value="fully" {{ $defaultPaidType === 'fully' ? 'selected' : '' }}>Fully</option>
-                                                    <option value="partially" {{ $defaultPaidType === 'partially' ? 'selected' : '' }}>Partially</option>
-                                                </select>
+                                    @php
+                                        $payMethodLabels = [
+                                            'pending' => 'Pay Later',
+                                            'cash' => 'Cash',
+                                            'debit card' => 'Debit Card',
+                                            'cash+online' => 'Cash + Online',
+                                            'scan' => 'Scan / UPI',
+                                        ];
+                                        $payMethodIcons = [
+                                            'pending' => 'fa-history',
+                                            'cash' => 'fa-money-bill-wave',
+                                            'debit card' => 'fa-credit-card',
+                                            'cash+online' => 'fa-money-check-alt',
+                                            'scan' => 'fa-qrcode',
+                                        ];
+                                        $defaultPayLabel = $payMethodLabels[$defaultPayMethod] ?? 'Cash';
+                                        $defaultPayIcon = $payMethodIcons[$defaultPayMethod] ?? 'fa-money-bill-wave';
+                                    @endphp
+                                    <div class="setvaluecash is-collapsed" id="dinePayMethodCollapse">
+                                        <button type="button" class="pay-method-collapse-toggle" id="payMethodCollapseToggle" aria-expanded="false">
+                                            <span class="pay-method-collapse-label">Payment Method</span>
+                                            <span class="pay-method-collapse-value">
+                                                <i class="fas {{ $defaultPayIcon }} js-selected-pay-icon"></i>
+                                                <span class="js-selected-pay-label">{{ $defaultPayLabel }}</span>
+                                                <i class="fas fa-chevron-down pay-method-chevron"></i>
+                                            </span>
+                                        </button>
+                                        <div class="pay-method-collapse-body">
+                                            <ul>
+                                                <li class="d-none">
+                                                    <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'pending' ? 'active' : '' }}">
+                                                        <input type="radio" name="payment_method" value="pending" {{ $defaultPayMethod === 'pending' ? 'checked' : '' }} hidden>
+                                                        <i class="fas fa-history"></i>
+                                                        <span>Pay Later</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'cash' ? 'active' : '' }}">
+                                                        <input type="radio" name="payment_method" value="cash" {{ $defaultPayMethod === 'cash' ? 'checked' : '' }} hidden>
+                                                        <i class="fas fa-money-bill-wave"></i>
+                                                        <span>Cash</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'debit card' ? 'active' : '' }}">
+                                                        <input type="radio" name="payment_method" value="debit card" {{ $defaultPayMethod === 'debit card' ? 'checked' : '' }} hidden>
+                                                        <i class="fas fa-credit-card"></i>
+                                                        <span>Debit Card</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'cash+online' ? 'active' : '' }}">
+                                                        <input type="radio" name="payment_method" value="cash+online" {{ $defaultPayMethod === 'cash+online' ? 'checked' : '' }} hidden>
+                                                        <i class="fas fa-money-check-alt"></i>
+                                                        <span>Cash + Online</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="javascript:void(0);" class="paymentmethod {{ $defaultPayMethod === 'scan' ? 'active' : '' }}">
+                                                        <input type="radio" name="payment_method" value="scan" {{ $defaultPayMethod === 'scan' ? 'checked' : '' }} hidden>
+                                                        <i class="fas fa-qrcode"></i>
+                                                        <span>Scan / UPI</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                            <div id="paidTypeBox" style="{{ in_array($defaultPayMethod, ['cash', 'debit card', 'scan'], true) ? '' : 'display:none;' }} margin-top:8px;">
+                                                <div class="form-group mb-2">
+                                                    <label style="font-size: 12px; font-weight: 600; color: #64748b;">Paid Type</label>
+                                                    <select id="paidTypeSelect" class="form-control form-control-sm" name="paid_type">
+                                                        <option value="fully" {{ $defaultPaidType === 'fully' ? 'selected' : '' }}>Fully</option>
+                                                        <option value="partially" {{ $defaultPaidType === 'partially' ? 'selected' : '' }}>Partially</option>
+                                                    </select>
+                                                </div>
                                             </div>
+                                            <div id="cashOnlineBox" style="{{ $defaultPayMethod === 'cash+online' ? '' : 'display:none;' }} margin-top:8px;">
+                                                <div class="form-group mb-2">
+                                                    <label style="font-size: 12px; font-weight: 600; color: #64748b;">Cash Amount</label>
+                                                    <input type="number" class="form-control form-control-sm" id="cashAmount" placeholder="Enter Cash Amount">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label style="font-size: 12px; font-weight: 600; color: #64748b;">Online Amount</label>
+                                                    <input type="number" class="form-control form-control-sm" id="onlineAmount" placeholder="Enter Online Amount" value="0" readonly>
+                                                </div>
+                                            </div>
+                                            <span class="error_peymentmethod"></span>
                                         </div>
-                                        <div id="cashOnlineBox" style="{{ $defaultPayMethod === 'cash+online' ? '' : 'display:none;' }} margin-top:8px;">
-                                            <div class="form-group mb-2">
-                                                <label style="font-size: 12px; font-weight: 600; color: #64748b;">Cash Amount</label>
-                                                <input type="number" class="form-control form-control-sm" id="cashAmount" placeholder="Enter Cash Amount">
-                                            </div>
-                                            <div class="form-group">
-                                                <label style="font-size: 12px; font-weight: 600; color: #64748b;">Online Amount</label>
-                                                <input type="number" class="form-control form-control-sm" id="onlineAmount" placeholder="Enter Online Amount" value="0" readonly>
-                                            </div>
-                                        </div>
-                                        <span class="error_peymentmethod"></span>
                                     </div>
 
                                     <div class="select-group kot-remarks-box mb-2">
@@ -3698,6 +3790,27 @@
         const defaultPaymentMethod = @json($_dinePay);
         const defaultPaidType = @json($_dinePaid);
 
+        function syncSelectedPayMethodSummary() {
+            var $active = $('#tableOrderModal .paymentmethod.active').first();
+            if (!$active.length) {
+                $active = $('#tableOrderModal input[name="payment_method"]:checked').closest('.paymentmethod');
+            }
+            var label = ($active.find('span').first().text() || 'Cash').toString().trim() || 'Cash';
+            var iconClass = ($active.find('i.fas').first().attr('class') || 'fas fa-money-bill-wave');
+            $('#tableOrderModal .js-selected-pay-label').text(label);
+            var $icon = $('#tableOrderModal .js-selected-pay-icon');
+            if ($icon.length) {
+                $icon.attr('class', iconClass + ' js-selected-pay-icon');
+            }
+        }
+
+        function setPayMethodCollapseOpen(isOpen) {
+            var $wrap = $('#dinePayMethodCollapse');
+            $wrap.toggleClass('is-open', !!isOpen);
+            $wrap.toggleClass('is-collapsed', !isOpen);
+            $('#payMethodCollapseToggle').attr('aria-expanded', isOpen ? 'true' : 'false');
+        }
+
         function applyDefaultPosPayment() {
             var pay = defaultPaymentMethod || 'cash';
             var paid = defaultPaidType || 'fully';
@@ -3721,6 +3834,8 @@
                 $("#paidTypeBox").hide();
                 $("#cashOnlineBox").hide();
             }
+            syncSelectedPayMethodSummary();
+            setPayMethodCollapseOpen(false);
         }
         window.applyDefaultPosPayment = applyDefaultPosPayment;
 
@@ -3803,7 +3918,14 @@
         $(document).ready(function () {
             applyDefaultPosPayment();
 
-            $(document).on("click", ".paymentmethod", function () {
+            $(document).on('click', '#payMethodCollapseToggle', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var willOpen = !$('#dinePayMethodCollapse').hasClass('is-open');
+                setPayMethodCollapseOpen(willOpen);
+            });
+
+            $(document).on("click", "#tableOrderModal .paymentmethod", function () {
                 let value = $(this).find("input[name='payment_method']").val();
 
                 // Uncheck all payment methods
@@ -3829,6 +3951,12 @@
                 } else {
                     $("#paidTypeBox").slideUp();
                     $("#cashOnlineBox").slideUp();
+                }
+
+                syncSelectedPayMethodSummary();
+                // Keep cash+online open so amounts can be entered; otherwise collapse to free space
+                if (value !== 'cash+online') {
+                    setPayMethodCollapseOpen(false);
                 }
             });
         });
