@@ -1950,12 +1950,13 @@ class SalesController extends Controller
                     $q->where('isDeleted', 0);
                 },
             ]);
+        // Staff see the same branch-wide order list as admin (not only own created_by)
         if ($role === 'sub-admin') {
             $query->where('branch_id', $userId);
         } elseif ($role === 'admin' && $selectedSubAdminID) {
             $query->where('branch_id', $selectedSubAdminID);
         } elseif ($role === 'staff') {
-            $query->where('created_by', $userId);
+            $query->where('branch_id', $user->branch_id ?: $userId);
         } else {
             $query->where('branch_id', $userId);
         }
@@ -2052,7 +2053,7 @@ class SalesController extends Controller
         } elseif ($role === 'admin' && $selectedSubAdminID) {
             $query->where('branch_id', $selectedSubAdminID);
         } elseif ($role === 'staff') {
-            $query->where('created_by', $userId);
+            $query->where('branch_id', $user->branch_id ?: $userId);
         } else {
             $query->where('branch_id', $userId);
         }
@@ -2952,12 +2953,8 @@ class SalesController extends Controller
                         )->orWhereNull('payment_status');
                     });
 
-                // ✅ Role-based filtering
-                if ($role === 'staff') {
-                    $q->where('created_by', $userId);
-                } else {
-                    $q->where('branch_id', $effectiveBranchId);
-                }
+                // Staff + admin/sub-admin: same branch-wide order list
+                $q->where('branch_id', $effectiveBranchId);
 
                 // ✅ Date filters
                 if ($filter) {
@@ -3344,7 +3341,7 @@ class SalesController extends Controller
         } elseif ($role === 'admin' && $selectedSubAdminID) {
             $query->where('branch_id', $selectedSubAdminID);
         } elseif ($role === 'staff') {
-            $query->where('created_by', $userId);
+            $query->where('branch_id', $user->branch_id ?: $userId);
         } else {
             $query->where('branch_id', $userId);
         }
@@ -3459,13 +3456,13 @@ class SalesController extends Controller
                 });
             }
 
-            // 🔹 Role wise filter
+            // 🔹 Role wise filter — staff see full branch orders (same as admin)
             if ($role === 'sub-admin') {
                 $query->where('branch_id', $userId);
             } elseif ($role === 'admin' && $selectedSubAdminId) {
                 $query->where('branch_id', $selectedSubAdminId);
             } elseif ($role === 'staff') {
-                $query->where('created_by', $userId);
+                $query->where('branch_id', $user->branch_id ?: $userId);
             } else {
                 $query->where('branch_id', $userId);
             }
@@ -3795,13 +3792,13 @@ class SalesController extends Controller
                 $query->whereHas('user', fn($q) => $q->where('name', $request->customerId));
             }
 
-            // 🔹 Role-based branch filtering
+            // 🔹 Role-based branch filtering — staff see full branch orders (same as admin)
             if ($role === 'sub-admin') {
                 $query->where('branch_id', $userId);
             } elseif ($role === 'admin' && $selectedSubAdminId) {
                 $query->where('branch_id', $selectedSubAdminId);
             } elseif ($role === 'staff') {
-                $query->where('created_by', $userId);
+                $query->where('branch_id', $userBranchId ?: $userId);
             } else {
                 $query->where('branch_id', $userId);
             }
