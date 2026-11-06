@@ -2021,14 +2021,25 @@
             </div>
             <div class="modal-body">
                 <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                    <div class="input-group" style="max-width: 320px;">
+                    <div class="btn-group" role="group" aria-label="Deleted bills date filter">
+                        <button type="button" class="btn btn-sm btn-primary" id="rdFilterTodayBtn">Today</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="rdFilterCustomBtn">Custom Date</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="rdFilterAllBtn">All Time</button>
+                    </div>
+                    <div id="rdCustomDates" class="d-none align-items-center" style="gap:6px;flex-wrap:wrap;">
+                        <input type="date" id="rdFromDate" class="form-control form-control-sm" style="width:150px;" title="From date">
+                        <span class="text-muted" style="font-size:12px;">to</span>
+                        <input type="date" id="rdToDate" class="form-control form-control-sm" style="width:150px;" title="To date">
+                        <button type="button" class="btn btn-sm btn-primary" id="rdApplyCustomBtn" style="background:#ff9f43;border-color:#ff9f43;">Apply</button>
+                    </div>
+                    <div class="input-group" style="max-width: 280px;">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                         <input type="text" id="recoverDeletedSearch" class="form-control" placeholder="Search order no / customer">
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshRecoverDeletedBtn">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
-                    <small class="text-muted ms-auto">Admin only — restore soft-deleted bills to All Orders</small>
+                    <small class="text-muted ms-auto" id="rdFilterHint">Showing today’s deleted bills</small>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover mb-0" id="recoverDeletedTable">
@@ -4260,23 +4271,75 @@
             $tbody.html(rows);
         }
 
+        var rdMode = 'today';
+
+        function rdTodayYmd() {
+            var d = new Date();
+            var m = String(d.getMonth() + 1).padStart(2, '0');
+            var day = String(d.getDate()).padStart(2, '0');
+            return d.getFullYear() + '-' + m + '-' + day;
+        }
+
+        function setRdFilterUi(mode) {
+            rdMode = mode || 'today';
+            $('#rdFilterTodayBtn, #rdFilterCustomBtn, #rdFilterAllBtn')
+                .removeClass('btn-primary')
+                .addClass('btn-outline-primary');
+            if (rdMode === 'today') {
+                $('#rdFilterTodayBtn').removeClass('btn-outline-primary').addClass('btn-primary');
+                $('#rdCustomDates').addClass('d-none').removeClass('d-flex');
+                $('#rdFilterHint').text("Showing today’s deleted bills");
+            } else if (rdMode === 'custom') {
+                $('#rdFilterCustomBtn').removeClass('btn-outline-primary').addClass('btn-primary');
+                $('#rdCustomDates').removeClass('d-none').addClass('d-flex');
+                var from = $('#rdFromDate').val() || '';
+                var to = $('#rdToDate').val() || '';
+                $('#rdFilterHint').text(from && to ? ('Showing ' + from + ' to ' + to) : 'Pick custom dates');
+            } else {
+                $('#rdFilterAllBtn').removeClass('btn-outline-primary').addClass('btn-primary');
+                $('#rdCustomDates').addClass('d-none').removeClass('d-flex');
+                $('#rdFilterHint').text('Showing all deleted bills');
+            }
+        }
+
         function loadDeletedBills(search) {
             var selectedSubAdminId = localStorage.getItem('selectedSubAdminId');
+            var payload = {
+                selectedSubAdminId: selectedSubAdminId || '',
+                search: search != null ? search : ($('#recoverDeletedSearch').val() || ''),
+                mode: rdMode || 'today'
+            };
+            if (rdMode === 'today') {
+                payload.date = rdTodayYmd();
+            } else if (rdMode === 'custom') {
+                payload.from_date = $('#rdFromDate').val() || '';
+                payload.to_date = $('#rdToDate').val() || '';
+                if (!payload.from_date || !payload.to_date) {
+                    $('#recoverDeletedTbody').html('<tr><td colspan="7" class="text-center text-muted py-4">Select from &amp; to dates, then Apply.</td></tr>');
+                    return;
+                }
+            }
             $('#recoverDeletedTbody').html('<tr><td colspan="7" class="text-center text-muted py-4">Loading deleted bills…</td></tr>');
             $.ajax({
                 url: '/api/orders/deleted',
                 method: 'GET',
                 dataType: 'json',
-                data: {
-                    selectedSubAdminId: selectedSubAdminId || '',
-                    search: search || ''
-                },
+                data: payload,
                 headers: recoverAuthHeaders(),
                 success: function (response) {
                     if (response.status) {
                         if (response.currency_symbol) window._ordersCurrencySymbol = response.currency_symbol;
                         if (response.currency_position) window._ordersCurrencyPosition = response.currency_position;
                         renderDeletedBills(response.data || [], response.currency_symbol, response.currency_position);
+                        if (response.filter) {
+                            if (response.filter.mode === 'today') {
+                                $('#rdFilterHint').text("Showing today’s deleted bills (" + (response.filter.date || '') + ")");
+                            } else if (response.filter.mode === 'custom' && response.filter.from_date && response.filter.to_date) {
+                                $('#rdFilterHint').text('Showing ' + response.filter.from_date + ' to ' + response.filter.to_date);
+                            } else if (response.filter.mode === 'all') {
+                                $('#rdFilterHint').text('Showing all deleted bills');
+                            }
+                        }
                     } else {
                         $('#recoverDeletedTbody').html('<tr><td colspan="7" class="text-center text-danger py-4">' + (response.message || 'Failed to load') + '</td></tr>');
                     }
@@ -4291,7 +4354,11 @@
         function openRecoverModal() {
             var el = document.getElementById('recoverDeletedModal');
             if (!el) return;
+            var today = rdTodayYmd();
             $('#recoverDeletedSearch').val('');
+            $('#rdFromDate').val(today);
+            $('#rdToDate').val(today);
+            setRdFilterUi('today');
             loadDeletedBills('');
             var modal = bootstrap.Modal.getOrCreateInstance(el);
             modal.show();
@@ -4300,6 +4367,57 @@
         $(document).on('click', '#openRecoverDeletedBtn, .open-recover-deleted-btn', function (e) {
             e.preventDefault();
             openRecoverModal();
+        });
+
+        $(document).on('click', '#rdFilterTodayBtn', function () {
+            setRdFilterUi('today');
+            loadDeletedBills();
+        });
+
+        $(document).on('click', '#rdFilterCustomBtn', function () {
+            var today = rdTodayYmd();
+            if (!$('#rdFromDate').val()) $('#rdFromDate').val(today);
+            if (!$('#rdToDate').val()) $('#rdToDate').val(today);
+            setRdFilterUi('custom');
+        });
+
+        $(document).on('click', '#rdFilterAllBtn', function () {
+            setRdFilterUi('all');
+            loadDeletedBills();
+        });
+
+        $(document).on('click', '#rdApplyCustomBtn', function () {
+            var from = $('#rdFromDate').val();
+            var to = $('#rdToDate').val();
+            if (!from || !to) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Select dates',
+                    text: 'Please choose both From and To dates.',
+                    confirmButtonColor: '#ff9f43'
+                });
+                return;
+            }
+            if (from > to) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid range',
+                    text: 'From date cannot be after To date.',
+                    confirmButtonColor: '#ff9f43'
+                });
+                return;
+            }
+            setRdFilterUi('custom');
+            loadDeletedBills();
+        });
+
+        $(document).on('change', '#rdFromDate, #rdToDate', function () {
+            if (rdMode !== 'custom') return;
+            var from = $('#rdFromDate').val();
+            var to = $('#rdToDate').val();
+            if (from && to && from <= to) {
+                loadDeletedBills();
+            }
         });
 
         $(document).on('click', '#refreshRecoverDeletedBtn', function () {

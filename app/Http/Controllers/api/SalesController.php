@@ -2428,6 +2428,52 @@ class SalesController extends Controller
             });
         }
 
+        // Date filter (default = today). Uses deleted day (updated_at).
+        $tz = 'Asia/Kolkata';
+        $today = Carbon::now($tz)->toDateString();
+        $mode = strtolower(trim((string) $request->input('mode', 'today')));
+        $date = $request->input('date');
+        $from = $request->input('from_date') ?: $request->input('from');
+        $to = $request->input('to_date') ?: $request->input('to');
+        $filterMeta = ['mode' => 'today', 'date' => $today];
+
+        if ($mode === 'all' || $mode === 'all_time') {
+            $filterMeta = ['mode' => 'all'];
+        } elseif ($mode === 'custom' || $mode === 'range') {
+            try {
+                if ($from && $to) {
+                    $fromDate = Carbon::parse($from, $tz)->startOfDay();
+                    $toDate = Carbon::parse($to, $tz)->endOfDay();
+                    if ($fromDate->gt($toDate)) {
+                        [$fromDate, $toDate] = [$toDate->copy()->startOfDay(), $fromDate->copy()->endOfDay()];
+                    }
+                    $query->whereBetween('updated_at', [$fromDate, $toDate]);
+                    $filterMeta = [
+                        'mode' => 'custom',
+                        'from_date' => $fromDate->toDateString(),
+                        'to_date' => $toDate->toDateString(),
+                    ];
+                } elseif ($date || $from || $to) {
+                    $d = Carbon::parse($date ?: $from ?: $to, $tz);
+                    $query->whereDate('updated_at', $d->toDateString());
+                    $filterMeta = ['mode' => 'custom', 'date' => $d->toDateString()];
+                } else {
+                    $query->whereDate('updated_at', $today);
+                }
+            } catch (\Throwable $e) {
+                $query->whereDate('updated_at', $today);
+            }
+        } else {
+            // today (default) — or explicit date=
+            try {
+                $d = $date ? Carbon::parse($date, $tz)->toDateString() : $today;
+            } catch (\Throwable $e) {
+                $d = $today;
+            }
+            $query->whereDate('updated_at', $d);
+            $filterMeta = ['mode' => 'today', 'date' => $d];
+        }
+
         $orders = $query->limit(200)->get();
 
         $settingsBranch = $selectedSubAdminID ?: $userId;
@@ -2470,6 +2516,7 @@ class SalesController extends Controller
             'message' => 'Deleted bills fetched successfully',
             'currency_symbol' => $currencySymbol,
             'currency_position' => $currencyPosition,
+            'filter' => $filterMeta,
             'data' => $orders,
         ]);
     }
