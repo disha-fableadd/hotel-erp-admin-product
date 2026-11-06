@@ -254,66 +254,8 @@ Uploads locally created or modified categories (e.g. cashier changed GST switch 
 }
 ```
 
----
 
-## 6. Direct Web & API Endpoints
-
-### A. Toggle GST Applicable on Category (Instant Switch)
-Used by the Category List table switch widget in the web dashboard:
-
-- **Method:** `POST`
-- **URL:** `/api/categories/{id}/gst-applicable`
-- **Headers:**
-  ```http
-  Authorization: Bearer {token}
-  X-CSRF-TOKEN: {csrf_token}
-  Content-Type: application/json
-  ```
-- **Body:**
-  ```json
-  {
-    "gst_applicable": true,
-    "selectedSubAdminId": ""
-  }
-  ```
-- **Response (200 OK):**
-  ```json
-  {
-    "status": true,
-    "message": "GST will apply to products in this category.",
-    "gst_applicable": true,
-    "category": {
-      "id": 1,
-      "name": "Chinese",
-      "gst_applicable": true
-    }
-  }
-  ```
-
-### B. Add Category
-- **URL:** `POST /api/addCategory`
-- Form Data / JSON:
-  ```json
-  {
-    "name": "Continental",
-    "gst_applicable": "1",
-    "branch_id": "1"
-  }
-  ```
-
-### C. Edit Category
-- **URL:** `POST /api/editCategory/{id}`
-- Form Data / JSON:
-  ```json
-  {
-    "name": "Continental Updated",
-    "gst_applicable": "0"
-  }
-  ```
-
----
-
-## 7. Git Pull and Push Commands
+## 6. Git Pull and Push Commands
 
 To pull latest code from GitHub and push your local branch changes:
 
