@@ -89,14 +89,30 @@
         display: none !important;
     }
 
+    /* Compact menu — remove extra white space / padding (old dense look) */
+    #sidebar .sidebar-menu,
+    #sidebar-menu.sidebar-menu {
+        padding: 10px 8px !important;
+    }
+    #sidebar-menu .sidebar-nav-list > li {
+        margin-bottom: 2px !important;
+    }
+    #sidebar-menu .sidebar-nav-list > li.submenu > ul {
+        padding: 4px 0 !important;
+        margin: 0 0 4px !important;
+    }
+    #sidebar-menu .sidebar-nav-list > li.submenu > ul > li {
+        margin-bottom: 0 !important;
+    }
+
     #sidebar-menu .sidebar-search-wrap {
         display: flex;
         align-items: center;
         box-sizing: border-box;
         width: 100%;
-        height: 40px;
-        margin: 0 0 18px;
-        padding: 0 14px;
+        height: 34px;
+        margin: 0 0 8px;
+        padding: 0 10px;
         background: #fff;
         border: 1px solid #d1d5db;
         border-radius: 6px;
@@ -141,14 +157,30 @@
 
     /* --- Custom Main Menu Styling --- */
     #sidebar-menu .sidebar-nav-list > li > a {
-        border-radius: 8px;
-        margin-bottom: 8px;
-        padding: 10px 15px;
+        border-radius: 5px;
+        margin-bottom: 2px !important;
+        padding: 6px 10px !important;
         display: flex;
         align-items: center;
         font-weight: 600;
-        transition: all 0.3s;
+        transition: all 0.2s;
         border: 1px solid transparent;
+        min-height: 0;
+        line-height: 1.25;
+    }
+    #sidebar-menu .sidebar-nav-list > li > a span {
+        margin-left: 8px !important;
+        font-size: 14px !important;
+    }
+    #sidebar-menu .sidebar-nav-list > li > a .menu-arrow {
+        top: 50% !important;
+        right: 10px !important;
+        transform: translateY(-50%) !important;
+        line-height: 1 !important;
+    }
+    #sidebar-menu .sidebar-nav-list > li > a img {
+        width: 16px !important;
+        height: 16px !important;
     }
 
     /* Dashboard */
@@ -168,10 +200,10 @@
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-erp > a.active {
         background-color: #f8fafc;
         border: 1px solid #e2e8f0;
-        border-left: 4px solid #64748b;
-        border-radius: 6px;
+        border-left: 3px solid #64748b;
+        border-radius: 5px;
         color: #0f172a !important;
-        margin-bottom: 5px;
+        margin-bottom: 2px !important;
     }
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-erp > a i,
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-erp > a:hover i,
@@ -185,10 +217,10 @@
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-accounting > a.active {
         background-color: #f0fdf4;
         border: 1px solid #bbf7d0;
-        border-left: 4px solid #22c55e;
-        border-radius: 6px;
+        border-left: 3px solid #22c55e;
+        border-radius: 5px;
         color: #0f172a !important;
-        margin-bottom: 5px;
+        margin-bottom: 2px !important;
     }
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-accounting > a i,
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-accounting > a:hover i,
@@ -202,10 +234,10 @@
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-hr > a.active {
         background-color: #fff7ed;
         border: 1px solid #fed7aa;
-        border-left: 4px solid #f97316;
-        border-radius: 6px;
+        border-left: 3px solid #f97316;
+        border-radius: 5px;
         color: #0f172a !important;
-        margin-bottom: 5px;
+        margin-bottom: 2px !important;
     }
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-hr > a i,
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-hr > a:hover i,
@@ -219,10 +251,10 @@
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-settings > a.active {
         background-color: #f0f9ff;
         border: 1px solid #bae6fd;
-        border-left: 4px solid #0ea5e9;
-        border-radius: 6px;
+        border-left: 3px solid #0ea5e9;
+        border-radius: 5px;
         color: #0f172a !important;
-        margin-bottom: 5px;
+        margin-bottom: 2px !important;
     }
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-settings > a i,
     #sidebar-menu .sidebar-nav-list > li.sidebar-category-settings > a:hover i,
@@ -240,9 +272,9 @@
 
     /* Add some spacing for icons */
     #sidebar-menu .sidebar-nav-list > li > a i {
-        margin-right: 12px;
-        font-size: 16px;
-        width: 20px;
+        margin-right: 8px;
+        font-size: 14px;
+        width: 18px;
         text-align: center;
     }
     
@@ -265,60 +297,81 @@
         background: transparent !important;
     }
 
-    /* 2. Standard Submenus (e.g. "All Products") - Align text with parent text */
+    /* 2. Standard Submenus — compact, old dense spacing */
     #sidebar-menu .sidebar-nav-list > li > ul > li > a {
         display: flex;
         align-items: center;
-        padding-left: 45px !important; /* Perfectly align with parent's text */
+        padding: 5px 8px 5px 34px !important;
         color: #64748b;
         font-weight: 500;
+        font-size: 13px !important;
         position: relative;
-        transition: all 0.2s ease;
+        transition: color 0.15s ease;
+        line-height: 1.2;
+        min-height: 0;
     }
     
-    /* 3. Add a sleek, modern dot directly under the parent's icon */
+    /* 3. Compact dot under parent icon */
     #sidebar-menu .sidebar-nav-list > li > ul > li > a::before {
         content: "";
         display: block !important;
-        width: 6px;
-        height: 6px;
+        width: 5px;
+        height: 5px;
         border-radius: 50%;
         background-color: #cbd5e1;
         position: absolute;
-        left: 21px; /* perfectly centered under the parent icon */
-        transition: all 0.2s ease;
+        left: 14px;
+        top: 50%;
+        margin-top: -2.5px;
+        transition: background-color 0.15s ease;
     }
 
-    /* Hover & Active states for standard submenus */
+    /* Hover & Active — no padding nudge (avoids extra white gap) */
     #sidebar-menu .sidebar-nav-list > li > ul > li > a:hover,
     #sidebar-menu .sidebar-nav-list > li > ul > li > a.active {
         color: #ff9f43 !important;
-        padding-left: 49px !important; /* Slight nudge on hover for premium feel */
+        padding-left: 34px !important;
     }
 
     #sidebar-menu .sidebar-nav-list > li > ul > li > a:hover::before,
     #sidebar-menu .sidebar-nav-list > li > ul > li > a.active::before {
         background-color: #ff9f43 !important;
-        transform: scale(1.3);
     }
 
     /* 4. Submenus WITH custom icons (like in Settings/Shop) */
     #sidebar-menu .sidebar-nav-list > li > ul > li.sidebar-module > a {
-        padding-left: 45px !important;
+        padding-left: 34px !important;
     }
     #sidebar-menu .sidebar-nav-list > li > ul > li.sidebar-module > a::before {
         display: none !important; /* Hide dot since we have an icon */
     }
     #sidebar-menu .sidebar-nav-list > li > ul > li.sidebar-module > a img,
     #sidebar-menu .sidebar-nav-list > li > ul > li.sidebar-module > a i {
-        width: 18px;
+        width: 15px;
         height: auto;
-        font-size: 15px;
+        font-size: 13px;
         text-align: center;
         position: absolute;
-        left: 15px; /* Align icon directly under parent icon */
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
         color: #64748b;
-        transition: color 0.2s ease;
+        transition: color 0.15s ease;
+    }
+    /* Nested submenu under module (e.g. Reports children) */
+    #sidebar-menu .sidebar-nav-list > li > ul > li.sidebar-module > ul {
+        padding: 2px 0 4px !important;
+        margin: 0 !important;
+        background: transparent !important;
+    }
+    #sidebar-menu .sidebar-nav-list > li > ul > li.sidebar-module > ul > li > a {
+        padding: 4px 8px 4px 42px !important;
+        font-size: 12px !important;
+    }
+    #sidebar-menu .sidebar-nav-list > li > ul > li.sidebar-module > ul > li > a::before {
+        left: 22px !important;
+        width: 4px;
+        height: 4px;
     }
 
     /* Keep sidebar scrollable, but hide scroller chrome (like before) */
