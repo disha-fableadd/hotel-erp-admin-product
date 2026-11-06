@@ -1592,48 +1592,6 @@
                 margin-left: -6px;
             }
 
-            .productset {
-                display: flex;
-            }
-
-            .productset .productsetimg {
-
-                width: 30%;
-            }
-
-            .productsetimgin {
-                object-fit: cover;
-                height: 90px;
-                margin: 0;
-                max-width: 110px;
-            }
-
-            .productsetcontent {
-                text-align: left !important;
-            }
-
-
-
-            .productsetbtn {
-                position: absolute;
-                right: 10px;
-                top: 43px;
-            }
-
-            .productsetbtn button {
-                display: block;
-                width: 100%;
-                height: 33px;
-                background-color: #1b2850;
-                color: white !important;
-                border: none;
-                border-radius: 5px;
-            }
-
-            .productsetbtn button:active {
-                color: white;
-            }
-
             .product-lists {
                 flex-direction: row !important;
             }
@@ -1643,8 +1601,154 @@
             }
 
             a.confirm-text.remove-item {
-                /* font-size: 116px; */
                 margin: 6px;
+            }
+        }
+
+        /* PetPooja-style dense product grid for mobile + tablet dine-in */
+        @media (max-width: 991px) {
+            #tableOrderModal .tabs_wrapper {
+                min-height: 52vh;
+                max-height: none;
+            }
+
+            #tableOrderModal .tabs_container,
+            #tableOrderModal #tableProductSearchResults {
+                max-height: min(58vh, 520px);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #tableOrderModal .tabs_container .row,
+            #tableOrderModal #tableProductSearchResults .row {
+                --bs-gutter-x: 0.45rem;
+                --bs-gutter-y: 0.45rem;
+                display: flex;
+                flex-wrap: wrap;
+            }
+
+            #tableOrderModal .product-card-col {
+                flex: 0 0 50% !important;
+                max-width: 50% !important;
+                width: 50% !important;
+            }
+
+            #tableOrderModal .productset {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                justify-content: flex-start !important;
+                text-align: left !important;
+                padding: 8px !important;
+                margin-bottom: 0 !important;
+                border-radius: 10px !important;
+                min-height: 0 !important;
+                height: auto !important;
+                gap: 4px;
+            }
+
+            #tableOrderModal .productset:hover {
+                transform: none;
+            }
+
+            #tableOrderModal .productset .productsetimg {
+                display: none !important;
+            }
+
+            #tableOrderModal .productsetcontent {
+                text-align: left !important;
+                padding: 0 !important;
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+
+            #tableOrderModal .productsetcontent h4 {
+                font-size: 12.5px !important;
+                font-weight: 700 !important;
+                line-height: 1.25 !important;
+                margin: 0 0 2px !important;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            #tableOrderModal .product-category-subtitle {
+                display: none !important;
+            }
+
+            #tableOrderModal .productsetcontent h6 {
+                font-size: 12.5px !important;
+                font-weight: 800 !important;
+                margin: 0 !important;
+                color: #ff9f43 !important;
+            }
+
+            #tableOrderModal .productsetbtn {
+                position: static !important;
+                margin-top: 4px;
+                width: 100%;
+            }
+
+            #tableOrderModal .productsetbtn button {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                width: 100% !important;
+                height: 28px !important;
+                min-height: 28px !important;
+                padding: 0 8px !important;
+                font-size: 11px !important;
+                font-weight: 700 !important;
+                background-color: #1b2850 !important;
+                color: #fff !important;
+                border: none !important;
+                border-radius: 6px !important;
+                line-height: 1 !important;
+            }
+
+            #tableOrderModal .out-of-stock-badge,
+            #tableOrderModal .check-product {
+                transform: scale(0.85);
+                transform-origin: top right;
+            }
+
+            #tableOrderModal .card-order .table-customer-box,
+            #tableOrderModal .card-order .gst-header {
+                margin-bottom: 8px !important;
+            }
+
+            #tableOrderModal .order-panel-title {
+                font-size: 13px;
+                margin-bottom: 6px;
+            }
+        }
+
+        @media (max-width: 575px) {
+            #tableOrderModal .product-card-col {
+                flex: 0 0 50% !important;
+                max-width: 50% !important;
+            }
+
+            #tableOrderModal .productset {
+                padding: 7px !important;
+            }
+
+            #tableOrderModal .productsetcontent h4 {
+                font-size: 12px !important;
+            }
+
+            #tableOrderModal .productsetcontent h6 {
+                font-size: 12px !important;
+            }
+
+            #tableOrderModal .productsetbtn button {
+                height: 26px !important;
+                font-size: 10.5px !important;
+            }
+
+            #tableOrderModal .tabs_container,
+            #tableOrderModal #tableProductSearchResults {
+                max-height: min(50vh, 420px);
             }
         }
 
@@ -2450,80 +2554,149 @@
         }
 
         @media (max-width: 991px) {
+            .tables-floor {
+                padding-top: 16px;
+            }
+
+            .tables-floor .page-header {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                grid-template-areas:
+                    "title btn"
+                    "sales sales";
+                align-items: start;
+                gap: 12px;
+            }
+
+            .tables-floor .page-title {
+                grid-area: title;
+                min-width: 0;
+            }
+
+            .tables-floor .page-btn {
+                grid-area: btn;
+                align-self: start;
+            }
+
             .tables-today-sales {
-                order: 3;
+                grid-area: sales;
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 8px;
                 width: 100%;
-                flex: 1 1 100%;
+                flex: none;
                 justify-content: stretch;
             }
 
             .tables-today-sales .tts-card {
+                min-width: 0;
                 max-width: none;
+                flex: none;
+                padding: 10px 10px;
             }
-        }
 
-        @media (max-width: 767px) {
-        .tables-floor .page-header {
-            flex-wrap: nowrap;          /* heading ane button ek j row ma */
-            align-items: flex-start;
-            gap: 10px;
-        }
+            .tables-today-sales .tts-card .tts-label {
+                font-size: 9px;
+                letter-spacing: 0.04em;
+                margin-bottom: 3px;
+            }
 
-        .tables-floor .page-title {
-            flex: 1 1 auto;
-            min-width: 0;               /* text ne wrap thava de */
-        }
+            .tables-today-sales .tts-card .tts-value {
+                font-size: 13px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
 
-        .tables-floor .page-title h4 {
-            font-size: 1.05rem;
-        }
+            .tables-toolbar {
+                margin-bottom: 12px;
+            }
 
-        .tables-floor .page-title p {
-            font-size: 0.78rem;
-        }
-
-        .tables-floor .page-btn {
-            flex: 0 0 auto;             /* button nu size fix, sankochay nahi */
-        }
-
-        .tables-floor .btn-added {
-            padding: 8px 12px !important;
-            font-size: 12px;
-            white-space: nowrap;
-        }
-    }
-
-        @media (max-width: 991px) {
-            .tables-floor {
-                padding-top: 32px;
+            .tables-toolbar .legend {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px 12px;
             }
         }
 
         @media (max-width: 767px) {
             .tables-floor {
-                padding-top: 20px;
+                padding-top: 12px;
             }
-        }
-        @media (max-width: 767px) {
+
+            .tables-floor .page-header {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "title"
+                    "btn"
+                    "sales";
+                gap: 10px;
+                margin-bottom: 14px;
+            }
+
             .tables-floor .page-title h4 {
-                font-size: 0.9rem;       /* heading nanu */
+                font-size: 1.15rem;
                 line-height: 1.25;
-                text-align: left;
             }
 
             .tables-floor .page-title p {
-                font-size: 0.64rem;      /* description nanu */
-                line-height: 1.35;
+                font-size: 0.78rem;
+                line-height: 1.4;
                 margin-top: 4px;
-                text-align: left;
+            }
+
+            .tables-floor .page-btn {
+                width: 100%;
             }
 
             .tables-floor .btn-added {
-                padding: 7px 10px !important;
-                font-size: 11px;
+                width: 100%;
+                justify-content: center;
+                padding: 10px 14px !important;
+                font-size: 13px !important;
+                border-radius: 10px !important;
+            }
+
+            .tables-today-sales {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .tables-today-sales .tts-card {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                padding: 10px 12px;
+            }
+
+            .tables-today-sales .tts-card .tts-label {
+                font-size: 10px;
+                margin-bottom: 0;
+            }
+
+            .tables-today-sales .tts-card .tts-value {
+                font-size: 15px;
+            }
+
+            .tables-type-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                flex-wrap: nowrap;
+                padding-bottom: 4px;
+            }
+
+            .table-container {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
             }
         }
-        
+
+        @media (max-width: 380px) {
+            .tables-today-sales .tts-card .tts-value {
+                font-size: 14px;
+            }
+        }
 
     </style>
 
