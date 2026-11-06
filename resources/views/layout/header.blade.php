@@ -100,6 +100,43 @@ $admin = App\Models\User::where('role', 'admin')->first();
         display: none !important;
     }
 
+    /* Mobile + tablet only: reload current page */
+    .header-page-reload-btn {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        margin-left: 6px;
+        padding: 0;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        border-radius: 6px;
+        color: #1b2850;
+        flex-shrink: 0;
+        line-height: 1;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+        cursor: pointer;
+        z-index: 1002;
+    }
+    .header-page-reload-btn i {
+        font-size: 14px;
+    }
+    .header-page-reload-btn:hover,
+    .header-page-reload-btn:focus {
+        background: #f8fafc;
+        border-color: #ff9f43;
+        color: #ff9f43;
+        outline: none;
+    }
+    .header-page-reload-btn.is-spinning i {
+        animation: headerReloadSpin 0.7s linear infinite;
+    }
+    @keyframes headerReloadSpin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
     /* Mobile + tablet: Takeaway / Dine In quick order buttons in header */
     .header-quick-order-btns {
         display: none;
@@ -148,6 +185,9 @@ $admin = App\Models\User::where('role', 'admin')->first();
             position: relative;
             min-height: 60px;
         }
+        .header-page-reload-btn {
+            display: inline-flex;
+        }
         .header-quick-order-btns {
             display: flex;
             position: absolute;
@@ -182,9 +222,14 @@ $admin = App\Models\User::where('role', 'admin')->first();
         }
         .nav.user-menu { display: none !important; }
         .header { min-height: 60px; padding: 0; }
-        .header .header-left { position: absolute !important; left: 56px !important; right: auto !important; width: auto !important; height: 60px; padding: 0 6px !important; border-right: 0 !important; display: flex; align-items: center; justify-content: flex-start; z-index: 3; }
+        .header .header-left { position: absolute !important; left: 56px !important; right: auto !important; width: auto !important; height: 60px; padding: 0 6px !important; border-right: 0 !important; display: flex; align-items: center; justify-content: flex-start; z-index: 3; gap: 4px; }
         .header .header-left .logo { width: auto !important; margin: 0 !important; text-align: left !important; display: inline-flex; align-items: center; }
-        .header .header-left .logo .logo-view { max-width: 86px !important; margin: 0 !important; }
+        .header .header-left .logo .logo-view { max-width: 72px !important; margin: 0 !important; }
+        .header-page-reload-btn {
+            width: 32px;
+            height: 32px;
+            margin-left: 2px;
+        }
 
         .header .mobile-user-menu {
             position: relative !important;
@@ -227,6 +272,10 @@ $canQuickDineIn = tenant_has_module('Tables') && (app('hasPermission')(9, 'view'
                 alt="Logo"
                 onerror="this.onerror=null; this.src='https://fableadtechnolabs.com/favicon-192x192.webp';">
         </a>
+
+        <button type="button" id="headerPageReloadBtn" class="header-page-reload-btn" title="Reload page" aria-label="Reload current page">
+            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+        </button>
 
         <!-- <a id="toggle_btn" href="javascript:void(0);">
         </a> -->
@@ -749,6 +798,14 @@ $canQuickDineIn = tenant_has_module('Tables') && (app('hasPermission')(9, 'view'
 <script>
     const currentUserRole = "{{ auth()->user()->role }}";
     const currentUserId   = "{{ auth()->user()->id }}";
+
+    // Mobile / tablet header: reload current page
+    $(document).on('click', '#headerPageReloadBtn', function(e) {
+        e.preventDefault();
+        var $btn = $(this);
+        $btn.addClass('is-spinning').prop('disabled', true);
+        window.location.reload();
+    });
 
     /* =========================================
        POS INTEGRATION HELPER
