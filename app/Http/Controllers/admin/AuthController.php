@@ -1033,9 +1033,13 @@ class AuthController extends Controller
 
         $latestSales = collect();
         $totalSalesAmount = 0;
+        $salesInvoiceCount = 0;
         $completedSalesCount = 0;
+        $completedSalesAmount = 0;
         $partiallyPaidSalesCount = 0;
+        $partiallyPaidSalesAmount = 0;
         $pendingSalesCount = 0;
+        $pendingSalesAmount = 0;
         if (app('hasPermission')(2, 'view')) {
             $totalSalesAmount = \App\Models\Order::where('isDeleted', '!=', 1)
                 ->where('branch_id', $BranchID)
@@ -1116,9 +1120,13 @@ class AuthController extends Controller
 
         $latestPurchases = collect();
         $totalPurchaseAmount = 0;
+        $purchaseInvoiceCount = 0;
         $completedPurchaseCount = 0;
+        $completedPurchaseAmount = 0;
         $partiallyPaidPurchaseCount = 0;
+        $partiallyPaidPurchaseAmount = 0;
         $pendingPurchaseCount = 0;
+        $pendingPurchaseAmount = 0;
         if (app('hasPermission')(3, 'view')) {
             $totalPurchaseAmount = \App\Models\PurchaseInvoice::where('isDeleted', '!=', 1)
                 ->where('branch_id', $BranchID)
