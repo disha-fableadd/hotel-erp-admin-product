@@ -918,11 +918,16 @@
                 const hasYear = $('#year-filter').val() !== "";
                 const hasDate = $('#date-filter').val() !== "";
 
-                // ✅ Calculate total sold amount
+                // Prefer order grand-total summary (matches All Orders list); fallback to line sum
                 let totalAmount = 0;
-                response.data.forEach(item => {
-                    totalAmount += parseFloat(item.sold_amount.replace(/,/g, '')) || 0;
-                });
+                if (response.summary && response.summary.total_amount != null) {
+                    totalAmount = parseFloat(response.summary.total_amount) || 0;
+                } else if (Array.isArray(response.data)) {
+                    response.data.forEach(item => {
+                        const raw = String(item.sold_amount || '').replace(/[₹,]/g, '');
+                        totalAmount += parseFloat(raw) || 0;
+                    });
+                }
 
                 // ✅ Update total on top
                 $('#total-expense-amount').html(

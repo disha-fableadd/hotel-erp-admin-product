@@ -2934,8 +2934,17 @@ class SalesController extends Controller
         $categoryId = $request->query('category_id');
 
         $query = OrderItem::with(['product.category', 'product.brand', 'order'])
+            ->where(function ($q) {
+                $q->where('isDeleted', 0)->orWhereNull('isDeleted');
+            })
             ->whereHas('order', function ($q) use ($filter, $month, $year, $customerId, $role, $effectiveBranchId, $userId) {
-                $q->where('payment_status', 'completed')->where('isDeleted', 0);
+                // Align with All Orders list totals: include paid / partial (not only exact "completed")
+                $q->where('isDeleted', 0)
+                    ->where(function ($pay) {
+                        $pay->whereRaw(
+                            "LOWER(TRIM(COALESCE(payment_status, ''))) IN ('completed','paid','partial','partially','extra paid','extra_paid')"
+                        )->orWhereNull('payment_status');
+                    });
 
                 // ✅ Role-based filtering
                 if ($role === 'staff') {
@@ -2990,48 +2999,88 @@ class SalesController extends Controller
             });
         }
 
-        // $orderItems = $query->get()->map(function ($item) {
-        //     $product    = $item->product;
-        //     $soldQty    = $item->quantity;
-        //     $soldAmount = $item->price * $soldQty;
+        $rawItems = $query->get();
 
-        //     return [
-        //         'id'          => $item->id,
-        //         'product_id'  => $product->id,
-        //         'name'        => $product->name,
-        //         'SKU'         => $product->SKU,
-        //         'category'    => $product->category->name ?? 'N/A',
-        //         'brand'       => $product->brand->name ?? 'N/A',
-        //         'sold_qty'    => $soldQty,
-        //         'sold_amount' => number_format($soldAmount, 2),
-        //         'image'       => 'storage/' . (json_decode($product->images)[0] ?? 'admin/assets/img/product/noimage.png'),
-        //     ];
-        // });
-        $orderItems = $query->get()->map(function ($item) {
+        // Order grand totals (tax/discount included) — same basis as All Orders list
+        $orderIds = $rawItems->pluck('order_id')->unique()->filter()->values();
+        $ordersById = $orderIds->isEmpty()
+            ? collect()
+            : Order::whereIn('id', $orderIds)->get()->keyBy('id');
+
+        // Full line subtotals per order (all items) so tax/discount allocation stays correct
+        // even when the report is filtered to one category.
+        $lineBaseOf = static function ($row): float {
+            $line = (float) ($row->total_amount ?? 0);
+            if ($line <= 0) {
+                $line = (float) ($row->price ?? 0) * (float) ($row->quantity ?? 0);
+            }
+            return $line;
+        };
+
+        $itemsSumByOrder = $orderIds->isEmpty()
+            ? collect()
+            : OrderItem::query()
+                ->whereIn('order_id', $orderIds)
+                ->where(function ($q) {
+                    $q->where('isDeleted', 0)->orWhereNull('isDeleted');
+                })
+                ->get(['id', 'order_id', 'total_amount', 'price', 'quantity'])
+                ->groupBy('order_id')
+                ->map(fn ($rows) => (float) $rows->sum($lineBaseOf));
+
+        $orderItems = $rawItems->map(function ($item) use ($ordersById, $itemsSumByOrder, $lineBaseOf) {
             $product = $item->product;
-            $soldQty = $item->quantity;
-            $soldAmount = $item->price * $soldQty;
+            $soldQty = (float) ($item->quantity ?? 0);
 
-            // Decode product images
-            $decodedImages = json_decode($product->images, true);
-            $firstImage = $decodedImages[0] ?? 'admin/assets/img/product/noimage.png';
+            $lineBase = $lineBaseOf($item);
+
+            // Allocate order-level tax/discount so product amounts sum to order.total_amount
+            $order = $ordersById->get($item->order_id) ?? $item->order;
+            $itemsSum = (float) ($itemsSumByOrder[$item->order_id] ?? 0);
+            $orderTotal = (float) ($order->total_amount ?? $lineBase);
+            $soldAmount = ($itemsSum > 0.0001)
+                ? ($lineBase / $itemsSum) * $orderTotal
+                : $lineBase;
+
+            $decodedImages = $product ? json_decode($product->images ?? '[]', true) : [];
+            $firstImage = is_array($decodedImages)
+                ? ($decodedImages[0] ?? 'admin/assets/img/product/noimage.png')
+                : 'admin/assets/img/product/noimage.png';
 
             return [
                 'id' => $item->id,
-                'product_id' => $product->id,
-                'name' => $product->name,
-                'SKU' => $product->SKU,
+                'product_id' => $product->id ?? $item->product_id,
+                'name' => $product->name ?? ($item->product_name ?? 'Unknown'),
+                'SKU' => $product->SKU ?? '',
                 'category' => $product->category->name ?? 'N/A',
                 'brand' => $product->brand->name ?? 'N/A',
                 'sold_qty' => $soldQty,
-                'sold_amount' => number_format($soldAmount, 2),
-                // Simple image path
+                'sold_amount' => number_format(round($soldAmount, 2), 2, '.', ''),
+                'sold_amount_raw' => round($soldAmount, 2),
+                'order_id' => $item->order_id,
                 'image' => 'storage/' . $firstImage,
-                // Uses accessor (returns full URLs)
-                'image_url' => $product->image_url,
+                'image_url' => $product->image_url ?? null,
             ];
         });
-        return response()->json(['status' => true, 'data' => $orderItems]);
+
+        // Full order totals when not category-filtered; otherwise sum allocated lines only
+        if ($categoryId) {
+            $ordersTotal = (float) $orderItems->sum('sold_amount_raw');
+        } else {
+            $ordersTotal = (float) $ordersById->sum(function ($order) {
+                return (float) ($order->total_amount ?? 0);
+            });
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $orderItems->values(),
+            'summary' => [
+                'total_amount' => round($ordersTotal, 2),
+                'total_amount_formatted' => number_format($ordersTotal, 2, '.', ''),
+                'orders_count' => $ordersById->count(),
+            ],
+        ]);
     }
 
     // public function orderReport(Request $request)
