@@ -2958,22 +2958,34 @@ class SalesController extends Controller
 
                 // ✅ Date filters
                 if ($filter) {
-                    $today = Carbon::today();
+                    $today = Carbon::today('Asia/Kolkata');
                     switch ($filter) {
+                        case 'today':
+                            $q->whereDate('created_at', $today->toDateString());
+                            break;
+                        case 'tomorrow':
+                            $q->whereDate('created_at', $today->copy()->addDay()->toDateString());
+                            break;
                         case 'this_week':
-                            $q->whereBetween('created_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
+                            $q->whereBetween('created_at', [
+                                Carbon::now('Asia/Kolkata')->startOfWeek(),
+                                Carbon::now('Asia/Kolkata')->endOfWeek(),
+                            ]);
                             break;
                         case 'this_month':
                             $q->whereMonth('created_at', $today->month)->whereYear('created_at', $today->year);
                             break;
                         case 'last_6_months':
-                            $q->whereBetween('created_at', [Carbon::now()->subMonths(6), Carbon::now()]);
+                            $q->whereBetween('created_at', [
+                                Carbon::now('Asia/Kolkata')->subMonths(6),
+                                Carbon::now('Asia/Kolkata'),
+                            ]);
                             break;
                         case 'this_year':
                             $q->whereYear('created_at', $today->year);
                             break;
                         case 'previous_year':
-                            $q->whereYear('created_at', Carbon::now()->subYear()->year);
+                            $q->whereYear('created_at', Carbon::now('Asia/Kolkata')->subYear()->year);
                             break;
                     }
                 }

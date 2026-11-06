@@ -418,6 +418,8 @@
                     <div class="search-set">
                         <select id="date-filter" class="form-select form-select-sm">
                             <option value="">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="tomorrow">Tomorrow</option>
                             <option value="this_week">This Week</option>
                             <option value="this_month">This Month</option>
                             <option value="last_6_months">Last 6 Months</option>

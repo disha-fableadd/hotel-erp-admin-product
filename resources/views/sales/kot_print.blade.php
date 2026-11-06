@@ -14,6 +14,13 @@
             font-size: 13px;
             font-weight: normal;
         }
+        .kot-title {
+            margin: 0 0 4px;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            font-family: Arial, Helvetica, sans-serif !important;
+        }
         .meta {
             font-size: 12px;
             margin-bottom: 10px;
@@ -39,12 +46,16 @@
     </style>
 </head>
 <body onload="window.print()">
+    @php
+        $titleText = $kotTitle ?? ('KOT' . (!empty($station) ? ' - '.$station : ''));
+        $titleText = str_replace(['·', '•', '–', '—'], '-', (string) $titleText);
+    @endphp
     <button class="no-print" onclick="window.print()">Print</button>
+    <div class="kot-title">{{ $titleText }}</div>
     <div class="meta">
         Order #{{ $order->order_number ?? $order->id }}<br>
         {{ optional($order->tableNo)->table_name ? 'Table: '.optional($order->tableNo)->table_name : ($order->type ?? 'Counter') }}
         @if(!empty($order->order_type)) - {{ $order->order_type }}@endif
-        @if(!empty($station)) - {{ $station }}@endif
         <br>
         {{ optional($order->created_at)->format('d M Y, h:i A') ?: now('Asia/Kolkata')->format('d M Y, h:i A') }}
         @if(!empty($isDelta))
