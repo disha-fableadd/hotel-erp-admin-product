@@ -4,22 +4,60 @@
     <meta charset="utf-8">
     <title>KOT #{{ $order->order_number ?? $order->id }}</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 12px; color: #111; }
-        h2 { margin: 0 0 4px; font-size: 18px; }
-        .meta { font-size: 12px; margin-bottom: 10px; }
+        * {
+            font-family: Arial, Helvetica, sans-serif !important;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif !important;
+            padding: 12px;
+            color: #111;
+            font-size: 13px;
+            font-weight: normal;
+        }
+        .kot-title {
+            margin: 0 0 4px;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            font-family: Arial, Helvetica, sans-serif !important;
+        }
+        .meta {
+            font-size: 12px;
+            margin-bottom: 10px;
+            text-align: center;
+            line-height: 1.35;
+            font-weight: normal;
+            font-family: Arial, Helvetica, sans-serif !important;
+        }
         table { width: 100%; border-collapse: collapse; }
-        th, td { text-align: left; padding: 6px 0; border-bottom: 1px dashed #ccc; font-size: 13px; }
-        .qty { text-align: right; font-weight: 700; }
+        th, td {
+            text-align: left;
+            padding: 6px 0;
+            border-bottom: 1px dashed #ccc;
+            font-size: 13px;
+            font-weight: normal;
+            font-family: Arial, Helvetica, sans-serif !important;
+        }
+        th { font-weight: bold; }
+        .qty { text-align: right; font-weight: bold; }
         .cancel { text-decoration: line-through; color: #c00; }
+        strong { font-weight: bold; font-family: Arial, Helvetica, sans-serif !important; }
         @media print { .no-print { display: none; } }
     </style>
 </head>
 <body onload="window.print()">
+    @php
+        $titleText = $kotTitle ?? ('KOT ' . ($station ? '- '.$station : ''));
+        $titleText = str_replace(['·', '•', '–', '—'], '-', (string) $titleText);
+    @endphp
     <button class="no-print" onclick="window.print()">Print</button>
-    <h2>{{ $kotTitle ?? ('KOT ' . ($station ? '· '.$station : '')) }}</h2>
+    <div class="kot-title">{{ $titleText }}</div>
     <div class="meta">
         Order #{{ $order->order_number ?? $order->id }}<br>
-        {{ optional($order->created_at)->format('d M Y, h:i A') }}
+        {{ optional($order->tableNo)->table_name ? 'Table: '.optional($order->tableNo)->table_name : ($order->type ?? 'Counter') }}
+        @if(!empty($order->order_type)) - {{ $order->order_type }}@endif
+        <br>
+        {{ optional($order->created_at)->format('d M Y, h:i A') ?: now('Asia/Kolkata')->format('d M Y, h:i A') }}
         @if(!empty($isDelta))
             <br><strong>Only new / changed items</strong>
         @endif

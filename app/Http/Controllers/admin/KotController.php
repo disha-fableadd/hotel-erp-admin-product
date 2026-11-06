@@ -191,7 +191,7 @@ class KotController extends Controller
 
         if ($isDelta) {
             $items = $this->buildDeltaItems($order, $items, $station);
-            $kotTitle = 'KOT · NEW / CHANGED';
+            $kotTitle = 'KOT - NEW / CHANGED';
         } else {
             $kotTitle = 'KOT';
         }

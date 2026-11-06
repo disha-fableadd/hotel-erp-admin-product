@@ -5,25 +5,65 @@
     <title>KOT #{{ $order->order_number ?? $order->id }}</title>
     <style>
         @page { margin: 6mm 4mm; }
-        body { font-family: DejaVu Sans, Arial, sans-serif; color: #111; font-size: 11px; margin: 0; }
-        h2 { margin: 0 0 4px; font-size: 15px; text-align: center; }
-        .meta { font-size: 10px; margin-bottom: 8px; text-align: center; line-height: 1.35; }
+        * {
+            font-family: DejaVu Sans, Arial, Helvetica, sans-serif !important;
+        }
+        body {
+            font-family: DejaVu Sans, Arial, Helvetica, sans-serif !important;
+            color: #111;
+            font-size: 11px;
+            font-weight: normal;
+            margin: 0;
+        }
+        .kot-title {
+            margin: 0 0 4px;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            font-family: DejaVu Sans, Arial, Helvetica, sans-serif !important;
+        }
+        .meta {
+            font-size: 10px;
+            margin-bottom: 8px;
+            text-align: center;
+            line-height: 1.35;
+            font-weight: normal;
+            font-family: DejaVu Sans, Arial, Helvetica, sans-serif !important;
+        }
         .line { border-top: 1px dashed #333; margin: 6px 0; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { text-align: left; padding: 4px 0; border-bottom: 1px dashed #999; font-size: 11px; }
-        th { font-size: 10px; }
-        .qty { text-align: right; font-weight: 700; width: 28%; }
-        .foot { margin-top: 8px; text-align: center; font-size: 9px; }
-        .badge-new { font-size: 9px; font-weight: 700; }
-        .badge-cancel { font-size: 9px; font-weight: 700; text-decoration: line-through; }
+        th, td {
+            text-align: left;
+            padding: 4px 0;
+            border-bottom: 1px dashed #999;
+            font-size: 11px;
+            font-weight: normal;
+            font-family: DejaVu Sans, Arial, Helvetica, sans-serif !important;
+        }
+        th { font-size: 10px; font-weight: bold; }
+        .qty { text-align: right; font-weight: bold; width: 28%; }
+        .foot {
+            margin-top: 8px;
+            text-align: center;
+            font-size: 9px;
+            font-weight: normal;
+            font-family: DejaVu Sans, Arial, Helvetica, sans-serif !important;
+        }
+        .badge-new { font-size: 9px; font-weight: bold; }
+        .badge-cancel { font-size: 9px; font-weight: bold; text-decoration: line-through; }
+        strong { font-weight: bold; font-family: DejaVu Sans, Arial, Helvetica, sans-serif !important; }
     </style>
 </head>
 <body>
-    <h2>{{ $kotTitle ?? ('KOT' . (!empty($station) ? ' · '.$station : '')) }}</h2>
+    @php
+        $titleText = $kotTitle ?? ('KOT' . (!empty($station) ? ' - '.$station : ''));
+        $titleText = str_replace(['·', '•', '–', '—'], '-', (string) $titleText);
+    @endphp
+    <div class="kot-title">{{ $titleText }}</div>
     <div class="meta">
         Order #{{ $order->order_number ?? $order->id }}<br>
         {{ optional($order->tableNo)->table_name ? 'Table: '.optional($order->tableNo)->table_name : ($order->type ?? 'Counter') }}
-        @if(!empty($order->order_type)) · {{ $order->order_type }}@endif
+        @if(!empty($order->order_type)) - {{ $order->order_type }}@endif
         <br>
         {{ now('Asia/Kolkata')->format('d M Y, h:i A') }}
         @if(!empty($isDelta))
@@ -76,6 +116,6 @@
         </tbody>
     </table>
     <div class="line"></div>
-    <div class="foot">Kitchen Order Ticket{{ !empty($isDelta) ? ' · Delta' : '' }}</div>
+    <div class="foot">Kitchen Order Ticket{{ !empty($isDelta) ? ' - Delta' : '' }}</div>
 </body>
 </html>
