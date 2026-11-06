@@ -136,7 +136,9 @@
                 <a href="javascript:void(0);"
                     class="print-table-order table-card__action table-card__action--print"
                     data-table_no_invoice="{{ $table->id }}"
-                    title="Print / view orders">
+                    data-order-id="{{ $table->order_id ?? '' }}"
+                    data-table-id="{{ $table->id }}"
+                    title="Print bill">
                     <i class="fa-solid fa-print"></i>
                     <span>Print</span>
                 </a>

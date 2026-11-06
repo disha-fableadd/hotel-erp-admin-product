@@ -4493,7 +4493,8 @@
                 }
                 $actions.append(
                     '<a href="javascript:void(0);" class="print-table-order table-card__action table-card__action--print"' +
-                    ' data-table_no_invoice="' + tableId + '" title="Print / view orders">' +
+                    ' data-table_no_invoice="' + tableId + '" data-table-id="' + tableId + '"' +
+                    ' data-order-id="' + (activeOrderId || '') + '" title="Print bill">' +
                     '<i class="fa-solid fa-print"></i><span>Print</span></a>'
                 );
             } else {
@@ -4685,11 +4686,46 @@
             const selectedSubAdminId1 = localStorage.getItem("selectedSubAdminId");
 
 
+            // Table card Print → billing print modal (same as checkout "Bill Generated") + mark bill printed
             $(document).on("click", ".print-table-order", function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-                let tableId = $(this).data("table_no_invoice") || $(this).attr("data-table_no_invoice");
 
+                var $btn = $(this);
+                var tableId = $btn.data("table_no_invoice") || $btn.data("table-id") || $btn.attr("data-table_no_invoice");
+                var $card = $btn.closest(".table-box123, .table-box, .table-card");
+                var orderId = $btn.data("order-id") || $btn.attr("data-order-id")
+                    || ($card.length ? ($card.attr("data-order-id") || $card.data("order-id")) : "")
+                    || "";
+
+                function openBillPrint(oid, tid) {
+                    if (!oid) {
+                        Swal.fire({
+                            icon: "warning",
+                            title: "No bill found",
+                            text: "This table has no active order to print.",
+                            confirmButtonColor: "#ff9f43"
+                        });
+                        return;
+                    }
+                    if (typeof window.showBillGeneratedModal === "function") {
+                        window.showBillGeneratedModal(oid, {
+                            printKot: false,
+                            markBillPrinted: true,
+                            reloadOnClose: false,
+                            tableId: tid || null
+                        });
+                    } else {
+                        window.open("/sales/invoice/pdf/" + oid, "_blank");
+                    }
+                }
+
+                if (orderId) {
+                    openBillPrint(orderId, tableId);
+                    return;
+                }
+
+                // Fallback: resolve latest order for this table
                 $.ajax({
                     url: "/api/get_orders_invoice",
                     method: "GET",
@@ -4701,68 +4737,20 @@
                         "Authorization": "Bearer " + authToken,
                     },
                     success: function (res) {
-
-                        // CHECK IF NO DATA
                         if (!res.status || !Array.isArray(res.data) || res.data.length === 0) {
-
-                            $("#orderListBody").html(`
-                <tr>
-                    <td colspan="8" class="text-center text-danger fw-bold py-3" style="width: 100% !important; display: table-cell !important;">
-                        No orders found
-                    </td>
-                </tr>
-            `);
-
-                            $("#orderListModal").modal("show");
+                            openBillPrint(null, tableId);
                             return;
                         }
-
-                        let rows = "";
-
-                        res.data.forEach(order => {
-
-                            let paymentStatus = `<span class="badge bg-success text-white text-capitalize">${order.payment_status}</span>`;
-                            let paymentMethod = `<span class="badge bg-success text-white text-capitalize">${order.payment_method}</span>`;
-
-                            rows += `
-                <tr>
-                    <td>
-                        ${order.order_number}
-                        <div class="collapse d-md-none mt-2" id="details-order-${order.id}">
-                            <div class="mobile-details-card">
-                                <strong>Date:</strong> ${order.created_date} <br>
-                                <strong>Customer:</strong> ${order.user?.name ?? '-'} <br>
-                                <strong>Payment Status:</strong> ${paymentStatus} <br>
-                                <strong>Payment Method:</strong> ${paymentMethod} <br>
-                                <strong>Total:</strong> ${res.currency_symbol}${order.total_amount} <br>
-                                <strong>Biller:</strong> ${order.creator?.name ?? '-'}
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <a href="javascript:void(0);" class="toggle-details text-info" data-bs-toggle="collapse" data-bs-target="#details-order-${order.id}">
-                            <i class="fas fa-plus-circle"></i>
-                        </a>
-                    </td>
-                    <td>${order.created_date}</td>
-                    <td>${order.user?.name ?? '-'}</td>
-                    <td>${paymentStatus}</td>
-                    <td>${paymentMethod}</td>
-                    <td>${res.currency_symbol}${order.total_amount}</td>
-                    <td>${order.creator?.name ?? '-'}</td>
-                </tr>
-            `;
-                        });
-
-                        $("#orderListBody").html(rows);
-
-                        // OPEN MODAL
-                        $("#orderListModal").modal("show");
+                        var latest = res.data[0];
+                        openBillPrint(latest.id, tableId);
                     },
-
-                    error: function (err) {
-                        console.log(err);
-                        alert("Failed to load orders");
+                    error: function () {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Failed",
+                            text: "Could not load bill for this table.",
+                            confirmButtonColor: "#ff9f43"
+                        });
                     }
                 });
             });
