@@ -108,13 +108,18 @@ class AppServiceProvider extends ServiceProvider
                     30 => 'Credit/Debit Notes',
                 ];
 
-                if (isset($idToNameMap[$moduleId]) && ! tenant_has_module($idToNameMap[$moduleId])) {
-                    return false;
-                }
-
                 $user = Auth::user(); // Use default auth guard for web
 
                 if (!$user) return false;
+
+                // Dashboard (module 0): every logged-in user can access — no permission row required
+                if ((int) $moduleId === 0) {
+                    return true;
+                }
+
+                if (isset($idToNameMap[$moduleId]) && ! tenant_has_module($idToNameMap[$moduleId])) {
+                    return false;
+                }
 
                 // Grant all permissions to main admin users for tenant-allowed modules
                 if (strtolower((string)$user->role) === 'admin' || (int)$user->role_id === 1) {

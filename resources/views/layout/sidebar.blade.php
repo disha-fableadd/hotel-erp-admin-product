@@ -405,20 +405,18 @@
             </div>
             <ul class="sidebar-nav-list">
 
-                {{-- Dashboard --}}
-                @if(tenant_has_module('Dashboard') && ($isStaff || app('hasPermission')(0, 'view')))
-                    <li>
-                        @if($isStaff)
-                            <a href="{{route('auth.staff-dashboard')}}"><img
-                                    src="{{ image_path('admin/assets/img/icons/dashboard.svg') }}" alt="img"><span>
-                                    Dashboard</span> </a>
-                        @else
-                            <a href="{{route('auth.dashboard')}}"><img
-                                    src="{{ image_path('admin/assets/img/icons/dashboard.svg') }}" alt="img"><span>
-                                    Dashboard</span> </a>
-                        @endif
-                    </li>
-                @endif
+                {{-- Dashboard: always available for every logged-in role (no module permission) --}}
+                <li>
+                    @if($isStaff)
+                        <a href="{{route('auth.staff-dashboard')}}"><img
+                                src="{{ image_path('admin/assets/img/icons/dashboard.svg') }}" alt="img"><span>
+                                Dashboard</span> </a>
+                    @else
+                        <a href="{{route('auth.dashboard')}}"><img
+                                src="{{ image_path('admin/assets/img/icons/dashboard.svg') }}" alt="img"><span>
+                                Dashboard</span> </a>
+                    @endif
+                </li>
 
                 {{-- ERP CATEGORY --}}
                 @if($showErpSection)

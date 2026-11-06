@@ -21,12 +21,16 @@ class CheckPermission
         $routeName = $request->route() ? $request->route()->getName() : null;
         $normalizedRouteName = $routeName ? strtolower($routeName) : null;
 
-        // Exempt routes that every authenticated user can always access without permissions
+        // Exempt routes that every authenticated user can always access without permissions.
+        // Dashboard is role-based home for all users — never gated by module permissions.
         $exemptRouteNames = [
             'auth.profile',
             'auth.change-password',
             'auth.forgetpassword',
             'auth.signin',
+            'auth.dashboard',
+            'auth.staff-dashboard',
+            'hr.dashboard',
             'logout',
             'users.ajaxsearch',
             'tenant.storage',
@@ -48,6 +52,9 @@ class CheckPermission
             'change-password',
             'forgetpassword',
             'logout',
+            'dashboard',
+            'staff-dashboard',
+            'hr/dashboard',
             'storage/*',
             'public/storage/*',
             'search-users',
