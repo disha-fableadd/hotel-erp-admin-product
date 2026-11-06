@@ -370,7 +370,8 @@ if (! function_exists('plan_branch_limit')) {
 
 if (! function_exists('can_create_user')) {
     /**
-     * Check if a new user (staff / sub-admin) can be created under the current plan.
+     * Check if a new staff/hr user can be created under the current plan.
+     * Counts only staff + hr (same roles as All Staff list), not admin/sub-admin.
      */
     function can_create_user(): bool
     {
@@ -379,7 +380,10 @@ if (! function_exists('can_create_user')) {
             return true;
         }
 
-        $currentCount = \App\Models\User::where('isDeleted', 0)->count();
+        $currentCount = \App\Models\User::where('isDeleted', 0)
+            ->whereIn('role', ['staff', 'hr'])
+            ->count();
+
         return $currentCount < $limit;
     }
 }
