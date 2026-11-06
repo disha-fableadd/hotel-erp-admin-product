@@ -227,6 +227,7 @@ class DeliveryItemsTable extends Table with SyncColumns {
 class CategoriesTable extends Table with SyncColumns {
   TextColumn get name => text().withLength(min: 1, max: 150)();
   TextColumn get image => text().nullable()();
+  BoolColumn get gstApplicable => boolean().withDefault(const Constant(true))();
   IntColumn get branchId => integer().nullable()();
 }
 
