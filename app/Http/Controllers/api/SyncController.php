@@ -592,6 +592,11 @@ class SyncController extends Controller
                     if (!empty($c['image'])) {
                         $cat->image = $c['image'];
                     }
+                    if (array_key_exists('gst_applicable', $c)) {
+                        $cat->gst_applicable = filter_var($c['gst_applicable'], FILTER_VALIDATE_BOOLEAN);
+                    } elseif (! $cat->exists) {
+                        $cat->gst_applicable = true;
+                    }
                     $cat->branch_id = $c['branch_id'] ?? $branchId;
                     if (isset($c['isDeleted'])) {
                         $cat->isDeleted = (int)$c['isDeleted'];
