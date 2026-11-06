@@ -43,6 +43,7 @@ class Order extends Model
         'table_status',
         'bill_printed',
         'kot_pending_cancels',
+        'kot_remarks',
         'created_at',
         'updated_at',
     ];

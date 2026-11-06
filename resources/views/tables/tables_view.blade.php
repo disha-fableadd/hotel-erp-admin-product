@@ -490,6 +490,34 @@
             border-radius: 10px;
         }
 
+        /* Mobile + tablet: hide cart item images to free space */
+        @media (max-width: 991px) {
+            #tableOrderModal .product-lists .productimgs {
+                display: none !important;
+            }
+
+            #tableOrderModal .product-lists .productimg {
+                gap: 0;
+            }
+
+            #tableOrderModal .product-lists .productcontet {
+                width: 100%;
+                min-width: 0;
+            }
+
+            #tableOrderModal .product-lists .productcontet h4 {
+                white-space: normal;
+                line-height: 1.25;
+                font-size: 12.5px;
+            }
+
+            #tableOrderModal .product-lists {
+                padding: 7px 8px;
+                gap: 6px;
+                margin-bottom: 6px;
+            }
+        }
+
         #tableOrderModal .select-group label {
             font-size: 11.5px;
             font-weight: 700;
@@ -2553,9 +2581,18 @@
             color: #1d4ed8;
         }
 
+        /* Compact tables floor for tablet + mobile — tables visible sooner */
         @media (max-width: 991px) {
+            .page-wrapper:has(.tables-floor) {
+                padding: 8px 10px 12px !important;
+            }
+
+            .content:has(.tables-floor) {
+                margin: 6px 0 !important;
+            }
+
             .tables-floor {
-                padding-top: 16px;
+                padding-top: 0 !important;
             }
 
             .tables-floor .page-header {
@@ -2564,8 +2601,9 @@
                 grid-template-areas:
                     "title btn"
                     "sales sales";
-                align-items: start;
-                gap: 12px;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 8px !important;
             }
 
             .tables-floor .page-title {
@@ -2573,128 +2611,171 @@
                 min-width: 0;
             }
 
+            .tables-floor .page-title h4 {
+                font-size: 1.05rem !important;
+                line-height: 1.2 !important;
+                margin: 0 !important;
+            }
+
+            .tables-floor .page-title p {
+                display: none !important;
+            }
+
             .tables-floor .page-btn {
                 grid-area: btn;
-                align-self: start;
+                width: auto !important;
+            }
+
+            .tables-floor .btn-added {
+                width: auto !important;
+                justify-content: center;
+                padding: 7px 12px !important;
+                font-size: 12px !important;
+                border-radius: 8px !important;
+                gap: 4px !important;
+                box-shadow: none !important;
+            }
+
+            .tables-floor .btn-added img {
+                width: 12px;
+                height: 12px;
+                margin: 0 !important;
             }
 
             .tables-today-sales {
                 grid-area: sales;
-                display: grid;
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 8px;
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 6px !important;
                 width: 100%;
                 flex: none;
-                justify-content: stretch;
             }
 
             .tables-today-sales .tts-card {
                 min-width: 0;
                 max-width: none;
                 flex: none;
-                padding: 10px 10px;
+                padding: 6px 8px !important;
+                border-radius: 8px;
+                box-shadow: none;
             }
 
             .tables-today-sales .tts-card .tts-label {
-                font-size: 9px;
-                letter-spacing: 0.04em;
-                margin-bottom: 3px;
+                font-size: 8px !important;
+                letter-spacing: 0.03em;
+                margin-bottom: 2px !important;
             }
 
             .tables-today-sales .tts-card .tts-value {
-                font-size: 13px;
+                font-size: 12px !important;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
 
             .tables-toolbar {
-                margin-bottom: 12px;
+                margin-bottom: 8px !important;
             }
 
             .tables-toolbar .legend {
                 display: flex;
-                flex-wrap: wrap;
-                gap: 8px 12px;
+                flex-wrap: nowrap;
+                gap: 6px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 2px;
+            }
+
+            .tables-toolbar .legend span {
+                padding: 4px 8px !important;
+                font-size: 11px !important;
+                border-radius: 999px !important;
+                white-space: nowrap;
+                flex: 0 0 auto;
+            }
+
+            .tables-toolbar .legend span::before {
+                width: 6px;
+                height: 6px;
+            }
+
+            .tables-type-tabs {
+                margin: 0 0 8px !important;
+                padding: 4px !important;
+                border-radius: 10px;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .tables-type-tab {
+                padding: 7px 10px !important;
+                font-size: 12px !important;
+                border-radius: 8px;
+                flex: 0 0 auto;
+            }
+
+            .tables-type-tab__count {
+                min-width: 18px;
+                height: 18px;
+                font-size: 10px;
+            }
+
+            .tables-zone__head {
+                display: none !important;
+            }
+
+            .table-container {
+                gap: 8px;
             }
         }
 
         @media (max-width: 767px) {
-            .tables-floor {
-                padding-top: 12px;
+            .page-wrapper:has(.tables-floor) {
+                padding: 6px 8px 10px !important;
             }
 
             .tables-floor .page-header {
-                grid-template-columns: 1fr;
-                grid-template-areas:
-                    "title"
-                    "btn"
-                    "sales";
-                gap: 10px;
-                margin-bottom: 14px;
+                gap: 6px;
+                margin-bottom: 6px !important;
             }
 
             .tables-floor .page-title h4 {
-                font-size: 1.15rem;
-                line-height: 1.25;
-            }
-
-            .tables-floor .page-title p {
-                font-size: 0.78rem;
-                line-height: 1.4;
-                margin-top: 4px;
-            }
-
-            .tables-floor .page-btn {
-                width: 100%;
+                font-size: 0.98rem !important;
             }
 
             .tables-floor .btn-added {
-                width: 100%;
-                justify-content: center;
-                padding: 10px 14px !important;
-                font-size: 13px !important;
-                border-radius: 10px !important;
+                padding: 6px 10px !important;
+                font-size: 11px !important;
             }
 
             .tables-today-sales {
-                grid-template-columns: 1fr;
-                gap: 8px;
+                gap: 5px !important;
             }
 
             .tables-today-sales .tts-card {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 10px;
-                padding: 10px 12px;
+                padding: 5px 6px !important;
             }
 
             .tables-today-sales .tts-card .tts-label {
-                font-size: 10px;
-                margin-bottom: 0;
+                font-size: 7.5px !important;
             }
 
             .tables-today-sales .tts-card .tts-value {
-                font-size: 15px;
+                font-size: 11px !important;
+            }
+
+            .tables-toolbar {
+                margin-bottom: 6px !important;
             }
 
             .tables-type-tabs {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                flex-wrap: nowrap;
-                padding-bottom: 4px;
+                margin-bottom: 6px !important;
             }
 
             .table-container {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 10px;
-            }
-        }
-
-        @media (max-width: 380px) {
-            .tables-today-sales .tts-card .tts-value {
-                font-size: 14px;
+                gap: 8px;
             }
         }
 
@@ -3199,6 +3280,33 @@
                                         <span class="error_peymentmethod"></span>
                                     </div>
 
+                                    <div class="select-group kot-remarks-box mb-2">
+                                        <label for="kot_remarks">Remarks for KOT only</label>
+                                        <textarea id="kot_remarks" name="kot_remarks" class="form-control"
+                                            rows="2" maxlength="500"
+                                            placeholder="Add any remarks for kitchen (KOT only)..."></textarea>
+                                        <small class="text-muted" style="font-size:11px;">Shown on kitchen ticket only — not on customer bill.</small>
+                                    </div>
+                                    <style>
+                                        #tableOrderModal .kot-remarks-box label {
+                                            font-size: 12px;
+                                            font-weight: 700;
+                                            color: #64748b;
+                                            margin-bottom: 4px;
+                                        }
+                                        #tableOrderModal #kot_remarks {
+                                            font-size: 13px;
+                                            border: 1.5px solid #e2e8f0;
+                                            border-radius: 8px;
+                                            resize: vertical;
+                                            min-height: 58px;
+                                        }
+                                        #tableOrderModal #kot_remarks:focus {
+                                            border-color: #ff9f43;
+                                            box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.15);
+                                        }
+                                    </style>
+
                                     <div class="btn-totallabel">
                                         <h6>Place Order · ₹0.00</h6>
                                         <h5><i class="fas fa-arrow-right"></i></h5>
@@ -3254,7 +3362,18 @@
                     <input type="hidden" id="posOptionProductId">
                     <div id="posVariantOptions" class="mb-3"></div>
                     <div id="posAddonOptions" class="mb-2"></div>
-                    <div class="fw-bold">Line price: <span id="posOptionLinePrice">0.00</span></div>
+                    <div class="pos-option-qty-row d-flex align-items-center justify-content-between gap-2 mb-3">
+                        <label class="form-label fw-bold mb-0" for="posOptionQty">Quantity</label>
+                        <div class="pos-option-qty-control input-group" style="width: 140px;">
+                            <button type="button" class="btn btn-outline-secondary" id="posOptionQtyMinus" aria-label="Decrease quantity">−</button>
+                            <input type="number" id="posOptionQty" class="form-control text-center fw-bold" value="1" min="1" max="999" inputmode="numeric">
+                            <button type="button" class="btn btn-outline-secondary" id="posOptionQtyPlus" aria-label="Increase quantity">+</button>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between gap-2">
+                        <div class="fw-bold">Line total: <span id="posOptionLinePrice">0.00</span></div>
+                        <small class="text-muted" id="posOptionUnitHint"></small>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -3263,6 +3382,36 @@
             </div>
         </div>
     </div>
+
+    <style>
+        #posVariantAddonModal .pos-option-qty-control .btn {
+            min-width: 38px;
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 0.35rem 0.5rem;
+        }
+        #posVariantAddonModal #posOptionQty {
+            border-left: 0;
+            border-right: 0;
+            font-size: 16px;
+            -moz-appearance: textfield;
+        }
+        #posVariantAddonModal #posOptionQty::-webkit-outer-spin-button,
+        #posVariantAddonModal #posOptionQty::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        @media (max-width: 991px) {
+            #posVariantAddonModal .modal-dialog {
+                margin: 0.75rem;
+                max-width: calc(100% - 1.5rem);
+            }
+            #posVariantAddonModal .pos-option-qty-control {
+                width: 150px !important;
+            }
+        }
+    </style>
 
     <div class="modal fade" id="reservationModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -3714,6 +3863,7 @@
                 resetBillServiceTaxRate(defaultServiceTaxRate);
             }
             $('#service_tax_rate').trigger('input');
+            $('#kot_remarks').val((response.sales && response.sales.kot_remarks) ? response.sales.kot_remarks : '');
 
             var custName = response.sales.customer_name || response.sales.user_name || '';
             var custPhone = response.sales.customer_phone || response.sales.user_phone || '';
@@ -3775,6 +3925,7 @@
             $(`input[name="gst_option"][value="${defaultGstOption || 'without'}"]`).prop("checked", true).trigger('change');
             $('#discount').val("").trigger('input');
             $('#discount_amount_input').val("");
+            $('#kot_remarks').val('');
             resetBillServiceTaxRate(defaultServiceTaxRate);
             resetDineInCustomerFields();
             tableOrderModal.show();
@@ -4266,6 +4417,7 @@
                         // Clear discount / restore default service tax %
                         $('#discount').val("").trigger('input');
                         $('#discount_amount_input').val("");
+                        $('#kot_remarks').val('');
                         resetBillServiceTaxRate(defaultServiceTaxRate);
                         $('#service_tax_rate').trigger('input');
                         resetDineInCustomerFields();
@@ -5309,17 +5461,45 @@
 
             function addProductToCart(meta) {
                 var uniqueId = meta.uniqueId || meta.productId;
+                var qtyToAdd = parseInt(meta.quantity, 10);
+                if (isNaN(qtyToAdd) || qtyToAdd < 1) {
+                    qtyToAdd = 1;
+                }
                 if (selectedItems.has(uniqueId)) {
                     var existing = selectedItems.get(uniqueId);
-                    existing.quantity += 1;
+                    existing.quantity = (parseInt(existing.quantity, 10) || 0) + qtyToAdd;
                     selectedItems.set(uniqueId, existing);
                 } else {
+                    meta.quantity = qtyToAdd;
                     selectedItems.set(uniqueId, meta);
                 }
                 updateTotalItems();
             }
 
             var pendingPosProduct = null;
+
+            function getPosOptionQty() {
+                var qty = parseInt($('#posOptionQty').val(), 10);
+                if (isNaN(qty) || qty < 1) {
+                    qty = 1;
+                }
+                if (qty > 999) {
+                    qty = 999;
+                }
+                return qty;
+            }
+
+            function setPosOptionQty(qty) {
+                qty = parseInt(qty, 10);
+                if (isNaN(qty) || qty < 1) {
+                    qty = 1;
+                }
+                if (qty > 999) {
+                    qty = 999;
+                }
+                $('#posOptionQty').val(qty);
+                refreshPosOptionPrice();
+            }
 
             function refreshPosOptionPrice() {
                 if (!pendingPosProduct) return;
@@ -5331,14 +5511,18 @@
                 $('#posAddonOptions input.pos-addon-check:checked').each(function () {
                     unit += parseFloat($(this).attr('data-price')) || 0;
                 });
-                $('#posOptionLinePrice').text(formatPosMoney(unit));
+                var qty = getPosOptionQty();
+                $('#posOptionQty').val(qty);
                 pendingPosProduct.computedUnit = unit;
+                $('#posOptionLinePrice').text(formatPosMoney(unit * qty));
+                $('#posOptionUnitHint').text(qty > 1 ? (formatPosMoney(unit) + ' × ' + qty) : '');
             }
 
             function openPosOptionModal(meta, variants, addons) {
                 pendingPosProduct = meta;
                 $('#posOptionProductName').text(meta.name);
                 $('#posOptionProductId').val(meta.productId);
+                $('#posOptionQty').val(1);
 
                 var $v = $('#posVariantOptions').empty();
                 if (variants.length) {
@@ -5373,6 +5557,18 @@
 
             $(document).on('change', '#posVariantOptions input, #posAddonOptions input', refreshPosOptionPrice);
 
+            $(document).on('click', '#posOptionQtyMinus', function () {
+                setPosOptionQty(getPosOptionQty() - 1);
+            });
+
+            $(document).on('click', '#posOptionQtyPlus', function () {
+                setPosOptionQty(getPosOptionQty() + 1);
+            });
+
+            $(document).on('input change', '#posOptionQty', function () {
+                setPosOptionQty($(this).val());
+            });
+
             $(document).on('click', '#posOptionConfirmAdd', function () {
                 if (!pendingPosProduct) return;
                 var variantId = null;
@@ -5390,6 +5586,7 @@
                 });
 
                 var unit = pendingPosProduct.computedUnit || pendingPosProduct.basePrice;
+                var qty = getPosOptionQty();
                 var displayName = pendingPosProduct.name;
                 if (variantName) displayName += ' (' + variantName + ')';
                 if (addonNames.length) displayName += ' + ' + addonNames.join(', ');
@@ -5408,7 +5605,7 @@
                     quantity_type: pendingPosProduct.quantity_type,
                     quantity_type_id: pendingPosProduct.quantity_type_id,
                     quantity_type123: pendingPosProduct.quantity_type123,
-                    quantity: 1,
+                    quantity: qty,
                     stock: pendingPosProduct.stock,
                     item_discount_percent: 0,
                     tax_id: pendingPosProduct.tax_id || null,
@@ -5771,6 +5968,7 @@
                     items: orderItems,
                     table_type: table_status,
                     table_id: window.selectedTableId || null,
+                    kot_remarks: ($('#kot_remarks').val() || '').toString().trim(),
 
                 };
 
@@ -5799,6 +5997,7 @@
                             $(".check-product i").removeClass("selected");
                             $("#discount").val("");
                             $("#discount_amount_input").val("");
+                            $("#kot_remarks").val("");
                             resetBillServiceTaxRate(defaultServiceTaxRate);
                             if (typeof window.applyDefaultPosPayment === 'function') {
                                 window.applyDefaultPosPayment();
@@ -5972,6 +6171,7 @@
                     items: orderItems,
                     table_type: table_status,
                     table_id: window.selectedTableId || null,
+                    kot_remarks: ($('#kot_remarks').val() || '').toString().trim(),
 
                 };
 
@@ -6000,6 +6200,7 @@
                             $(".check-product i").removeClass("selected");
                             $("#discount").val("");
                             $("#discount_amount_input").val("");
+                            $("#kot_remarks").val("");
                             resetBillServiceTaxRate(defaultServiceTaxRate);
                             if (typeof window.applyDefaultPosPayment === 'function') {
                                 window.applyDefaultPosPayment();
@@ -6174,6 +6375,7 @@
                     table_type: table_status,
                     table_checkout: 'checkout',
                     table_id: window.selectedTableId || null,
+                    kot_remarks: ($('#kot_remarks').val() || '').toString().trim(),
 
                 };
 
@@ -6206,6 +6408,7 @@
                             $(".check-product i").removeClass("selected");
                             $("#discount").val("");
                             $("#discount_amount_input").val("");
+                            $("#kot_remarks").val("");
                             resetBillServiceTaxRate(defaultServiceTaxRate);
                             if (typeof window.applyDefaultPosPayment === 'function') {
                                 window.applyDefaultPosPayment();

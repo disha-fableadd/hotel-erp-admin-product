@@ -1033,6 +1033,10 @@ class SalesController extends Controller
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'service_tax_name')) {
                 $orderPayload['service_tax_name'] = $money['service_tax_name'] ?? null;
             }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'kot_remarks')) {
+                $kotRemarks = trim((string) ($request->kot_remarks ?? $request->kot_remark ?? ''));
+                $orderPayload['kot_remarks'] = $kotRemarks !== '' ? $kotRemarks : null;
+            }
             $order = Order::create($orderPayload);
 
             // Insert order items and reduce finished-good stock when track_inventory is on
@@ -1697,6 +1701,10 @@ class SalesController extends Controller
             }
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'service_tax_name')) {
                 $orderUpdate['service_tax_name'] = $money['service_tax_name'] ?? null;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'kot_remarks') && $request->exists('kot_remarks')) {
+                $kotRemarks = trim((string) ($request->kot_remarks ?? ''));
+                $orderUpdate['kot_remarks'] = $kotRemarks !== '' ? $kotRemarks : null;
             }
             $order->update($orderUpdate);
 

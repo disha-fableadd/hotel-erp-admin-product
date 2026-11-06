@@ -23,6 +23,9 @@
         @if(!empty($isDelta))
             <br><strong>Only new / changed items</strong>
         @endif
+        @if(!empty($order->kot_remarks))
+            <br><strong>Remarks:</strong> {{ $order->kot_remarks }}
+        @endif
     </div>
     <table>
         <thead>
