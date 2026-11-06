@@ -316,6 +316,50 @@
         .table tbody tr td {
             white-space: normal !important;
         }
+
+        .order-report-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 0 0 16px;
+        }
+
+        .order-report-tabs .ort-tab {
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            color: #374151;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.2;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .order-report-tabs .ort-tab:hover {
+            border-color: #ff9f43;
+            color: #ff9f43;
+        }
+
+        .order-report-tabs .ort-tab.active {
+            background: #ff9f43;
+            border-color: #ff9f43;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(255, 159, 67, 0.28);
+        }
+
+        @media screen and (max-width: 575.98px) {
+            .order-report-tabs {
+                width: 100%;
+            }
+
+            .order-report-tabs .ort-tab {
+                flex: 1 1 auto;
+                text-align: center;
+                min-width: 0;
+            }
+        }
     </style>
     <div class="content">
         <div class="page-header">
@@ -329,6 +373,12 @@
                 </h5>
             </div>
 
+        </div>
+
+        <div class="order-report-tabs" role="tablist" aria-label="Order report type">
+            <button type="button" class="ort-tab active" data-report-type="all">All</button>
+            <button type="button" class="ort-tab" data-report-type="food">Food</button>
+            <button type="button" class="ort-tab" data-report-type="liquor">Liquor</button>
         </div>
 
         <div class="card mb-4 shadow-sm border-0">
@@ -466,20 +516,46 @@
             var authToken = localStorage.getItem("authToken");
             const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
             const ImagePath = "{{ env('ImagePath') }}";
+            let activeReportType = 'all';
 
             // Global data map for expandable rows
             window.salesReportDataMap = {};
 
+            function getReportFilters() {
+                return {
+                    filter: $('#date-filter').val(),
+                    month: $('#month-filter').val(),
+                    year: $('#year-filter').val(),
+                    customer_id: $('#vendor-filter').val(),
+                    category_id: $('#category-filter').val(),
+                    report_type: activeReportType || 'all',
+                    selectedSubAdminId: selectedSubAdminId
+                };
+            }
+
+            function refreshOrderReport() {
+                fetchOrderReport();
+                loadSalesProductChart();
+            }
+
             // 🔹 Initial Load
-            fetchOrderReport();
-            loadSalesProductChart();
+            refreshOrderReport();
 
             // 🔹 Trigger filters
             $('#date-filter, #month-filter, #year-filter, #vendor-filter, #category-filter').on('change',
                 function() {
-                    fetchOrderReport();
-                    loadSalesProductChart();
+                    refreshOrderReport();
                 });
+
+            // 🔹 All / Food / Liquor tabs
+            $(document).on('click', '.order-report-tabs .ort-tab', function() {
+                const type = $(this).data('report-type') || 'all';
+                if (type === activeReportType) return;
+                activeReportType = type;
+                $('.order-report-tabs .ort-tab').removeClass('active');
+                $(this).addClass('active');
+                refreshOrderReport();
+            });
 
             /** ----------------------------------------------
              * 📱 Mobile Expandable Row Functions
@@ -635,14 +711,7 @@
              * 📋 Fetch Order Report Table
              * ---------------------------------------------- */
             function fetchOrderReport() {
-                const filters = {
-                    filter: $('#date-filter').val(),
-                    month: $('#month-filter').val(),
-                    year: $('#year-filter').val(),
-                    customer_id: $('#vendor-filter').val(),
-                    category_id: $('#category-filter').val(),
-                    selectedSubAdminId: selectedSubAdminId
-                };
+                const filters = getReportFilters();
 
                 $.ajax({
                     url: "/api/order-report",
@@ -761,14 +830,7 @@
              * Load Order Item Chart
              * ---------------------------------------------- */
             function loadSalesProductChart() {
-                const filters = {
-                    filter: $('#date-filter').val(),
-                    month: $('#month-filter').val(),
-                    year: $('#year-filter').val(),
-                    customer_id: $('#vendor-filter').val(),
-                    category_id: $('#category-filter').val(),
-                    selectedSubAdminId: selectedSubAdminId
-                };
+                const filters = getReportFilters();
 
                 const chartContainer = $("#salesProductChart").parent();
 
@@ -934,14 +996,17 @@
                     `Total: <span style="color:#ff9f43;">₹${totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>`
                 );
 
-                // Hide summary when no filters selected
-                if (!hasCustomer && !hasCategory && !hasMonth && !hasYear && !hasDate) {
+                // Hide summary when no filters / tabs selected
+                const hasReportType = activeReportType && activeReportType !== 'all';
+                if (!hasCustomer && !hasCategory && !hasMonth && !hasYear && !hasDate && !hasReportType) {
                     $('#sales-filter-summary').fadeOut(200);
                     return;
                 }
 
                 // Build readable parts
                 let parts = [];
+                if (activeReportType === 'food') parts.push(`<strong>Food</strong>`);
+                if (activeReportType === 'liquor') parts.push(`<strong>Liquor</strong>`);
                 if (hasCustomer) parts.push(`<strong>${customerText}</strong>`);
                 if (hasCategory) parts.push(`in <strong>${categoryText}</strong>`);
                 if (hasMonth || hasYear) {
@@ -952,7 +1017,9 @@
                 }
                 if (hasDate && dateText !== "All Time") parts.push(`(${dateText})`);
 
-                const message = `Showing sales for ${parts.join(' ')}`;
+                const message = parts.length
+                    ? `Showing sales for ${parts.join(' ')}`
+                    : 'Showing all sales';
 
                 // ✅ Show summary beautifully
                 $('#sales-filter-summary')

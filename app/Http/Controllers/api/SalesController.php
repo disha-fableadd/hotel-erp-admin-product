@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\PaymentStore;
@@ -20,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
@@ -2932,6 +2934,10 @@ class SalesController extends Controller
         $year = $request->query('year');
         $customerId = $request->query('customer_id');
         $categoryId = $request->query('category_id');
+        $reportType = strtolower(trim((string) $request->query('report_type', 'all')));
+        if (! in_array($reportType, ['all', 'food', 'liquor'], true)) {
+            $reportType = 'all';
+        }
 
         $query = OrderItem::with(['product.category', 'product.brand', 'order'])
             ->where(function ($q) {
@@ -3001,6 +3007,42 @@ class SalesController extends Controller
 
         $rawItems = $query->get();
 
+        // Food = category Apply GST ON; Liquor = Apply GST OFF (same as tables floor)
+        $resolveIsFood = static function ($item, array $gstByCategory): bool {
+            $catId = $item->category_id
+                ?: ($item->product->category_id ?? null);
+            if ($catId === null || $catId === '') {
+                return true;
+            }
+            $cid = (int) $catId;
+            if (array_key_exists($cid, $gstByCategory)) {
+                return (bool) $gstByCategory[$cid];
+            }
+
+            return PosPricingService::categoryGstApplicable($catId);
+        };
+
+        $gstByCategory = [];
+        if ($rawItems->isNotEmpty() && Schema::hasColumn('categories', 'gst_applicable')) {
+            $catIds = $rawItems->map(function ($item) {
+                return $item->category_id ?: ($item->product->category_id ?? null);
+            })->filter()->unique()->values();
+            if ($catIds->isNotEmpty()) {
+                $gstByCategory = Category::whereIn('id', $catIds)
+                    ->pluck('gst_applicable', 'id')
+                    ->map(fn ($v) => $v === null ? true : (bool) $v)
+                    ->all();
+            }
+        }
+
+        if (in_array($reportType, ['food', 'liquor'], true)) {
+            $rawItems = $rawItems->filter(function ($item) use ($reportType, $gstByCategory, $resolveIsFood) {
+                $isFood = $resolveIsFood($item, $gstByCategory);
+
+                return $reportType === 'food' ? $isFood : ! $isFood;
+            })->values();
+        }
+
         // Order grand totals (tax/discount included) — same basis as All Orders list
         $orderIds = $rawItems->pluck('order_id')->unique()->filter()->values();
         $ordersById = $orderIds->isEmpty()
@@ -3008,7 +3050,7 @@ class SalesController extends Controller
             : Order::whereIn('id', $orderIds)->get()->keyBy('id');
 
         // Full line subtotals per order (all items) so tax/discount allocation stays correct
-        // even when the report is filtered to one category.
+        // even when the report is filtered to one category / food-liquor tab.
         $lineBaseOf = static function ($row): float {
             $line = (float) ($row->total_amount ?? 0);
             if ($line <= 0) {
@@ -3028,7 +3070,7 @@ class SalesController extends Controller
                 ->groupBy('order_id')
                 ->map(fn ($rows) => (float) $rows->sum($lineBaseOf));
 
-        $orderItems = $rawItems->map(function ($item) use ($ordersById, $itemsSumByOrder, $lineBaseOf) {
+        $orderItems = $rawItems->map(function ($item) use ($ordersById, $itemsSumByOrder, $lineBaseOf, $gstByCategory, $resolveIsFood) {
             $product = $item->product;
             $soldQty = (float) ($item->quantity ?? 0);
 
@@ -3047,6 +3089,8 @@ class SalesController extends Controller
                 ? ($decodedImages[0] ?? 'admin/assets/img/product/noimage.png')
                 : 'admin/assets/img/product/noimage.png';
 
+            $isFood = $resolveIsFood($item, $gstByCategory);
+
             return [
                 'id' => $item->id,
                 'product_id' => $product->id ?? $item->product_id,
@@ -3057,14 +3101,15 @@ class SalesController extends Controller
                 'sold_qty' => $soldQty,
                 'sold_amount' => number_format(round($soldAmount, 2), 2, '.', ''),
                 'sold_amount_raw' => round($soldAmount, 2),
+                'report_kind' => $isFood ? 'food' : 'liquor',
                 'order_id' => $item->order_id,
                 'image' => 'storage/' . $firstImage,
                 'image_url' => $product->image_url ?? null,
             ];
         });
 
-        // Full order totals when not category-filtered; otherwise sum allocated lines only
-        if ($categoryId) {
+        // Full order totals only for "All" with no category filter; otherwise sum allocated lines
+        if ($categoryId || in_array($reportType, ['food', 'liquor'], true)) {
             $ordersTotal = (float) $orderItems->sum('sold_amount_raw');
         } else {
             $ordersTotal = (float) $ordersById->sum(function ($order) {
@@ -3079,6 +3124,7 @@ class SalesController extends Controller
                 'total_amount' => round($ordersTotal, 2),
                 'total_amount_formatted' => number_format($ordersTotal, 2, '.', ''),
                 'orders_count' => $ordersById->count(),
+                'report_type' => $reportType,
             ],
         ]);
     }
