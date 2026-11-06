@@ -99,6 +99,68 @@ $admin = App\Models\User::where('role', 'admin')->first();
     .mobile-header-right {
         display: none !important;
     }
+
+    /* Mobile + tablet: Takeaway / Dine In quick order buttons in header */
+    .header-quick-order-btns {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        z-index: 1002;
+    }
+    .header-quick-order-btns .hqo-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        height: 32px;
+        padding: 0 10px;
+        border-radius: 6px;
+        color: #fff !important;
+        font-size: 11px;
+        font-weight: 700;
+        text-decoration: none !important;
+        white-space: nowrap;
+        line-height: 1;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+    }
+    .header-quick-order-btns .hqo-btn i {
+        font-size: 12px;
+    }
+    .header-quick-order-btns .hqo-takeaway {
+        background: #ff9f43;
+    }
+    .header-quick-order-btns .hqo-takeaway:hover,
+    .header-quick-order-btns .hqo-takeaway:focus {
+        background: #f08a28;
+        color: #fff !important;
+    }
+    .header-quick-order-btns .hqo-dinein {
+        background: #1b2850;
+    }
+    .header-quick-order-btns .hqo-dinein:hover,
+    .header-quick-order-btns .hqo-dinein:focus {
+        background: #151e3d;
+        color: #fff !important;
+    }
+
+    @media (max-width: 991px) {
+        .header {
+            position: relative;
+            min-height: 60px;
+        }
+        .header-quick-order-btns {
+            display: flex;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 60px;
+        }
+        .header-new-order-button {
+            display: none !important;
+        }
+    }
+
     @media (max-width: 575px) {
         .mobile-header-right {
             display: flex !important;
@@ -108,9 +170,15 @@ $admin = App\Models\User::where('role', 'admin')->first();
             height: 60px;
             align-items: center;
             justify-content: flex-end;
-            gap: 20px;
-            padding-right: 15px;
+            gap: 10px;
+            padding-right: 12px;
             z-index: 1000;
+        }
+        .header-quick-order-btns {
+            left: auto;
+            right: 42px;
+            transform: none;
+            gap: 5px;
         }
         .nav.user-menu { display: none !important; }
         .header { min-height: 60px; padding: 0; }
@@ -129,9 +197,21 @@ $admin = App\Models\User::where('role', 'admin')->first();
             display: block !important;
         }
     }
+
+    @media (max-width: 400px) {
+        .header-quick-order-btns .hqo-label {
+            display: none;
+        }
+        .header-quick-order-btns .hqo-btn {
+            width: 32px;
+            padding: 0;
+        }
+    }
 </style>
 @php
 $user = auth()->user();
+$canQuickTakeaway = tenant_has_module('Orders') && app('hasPermission')(2, 'add') && \Illuminate\Support\Facades\Route::has('sales.add');
+$canQuickDineIn = tenant_has_module('Tables') && (app('hasPermission')(9, 'view') || app('hasPermission')(9, 'add') || app('hasPermission')(2, 'add') || app('hasPermission')(2, 'view')) && \Illuminate\Support\Facades\Route::has('tables.create');
 @endphp
 
 <div class="header">
@@ -166,6 +246,23 @@ $user = auth()->user();
             <span></span>
         </span>
     </a>
+
+    @if($canQuickTakeaway || $canQuickDineIn)
+    <div class="header-quick-order-btns" aria-label="Quick orders">
+        @if($canQuickTakeaway)
+            <a href="{{ route('sales.add') }}" class="hqo-btn hqo-takeaway" title="New Takeaway / Delivery order">
+                <i class="fas fa-shopping-bag"></i>
+                <span class="hqo-label">Takeaway</span>
+            </a>
+        @endif
+        @if($canQuickDineIn)
+            <a href="{{ route('tables.create') }}" class="hqo-btn hqo-dinein" title="New Dine In order">
+                <i class="fas fa-utensils"></i>
+                <span class="hqo-label">Dine In</span>
+            </a>
+        @endif
+    </div>
+    @endif
 
     <ul class="nav user-menu">
         <div class="d-flex align-items-center header-search-container">

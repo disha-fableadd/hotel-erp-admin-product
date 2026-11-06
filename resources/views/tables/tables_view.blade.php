@@ -828,21 +828,54 @@
 
             #tableOrderModal .tabs_wrapper {
                 min-height: 280px;
-                max-height: 360px;
+                max-height: none;
+                overflow: visible;
             }
 
             #tableOrderModal .table-order-menu-toolbar {
-                flex-wrap: wrap;
+                display: flex !important;
+                flex-direction: column !important;
+                flex-wrap: nowrap;
+                gap: 10px;
+                position: sticky;
+                top: 0;
+                z-index: 5;
+                background: #fff;
+                margin: 0 0 12px !important;
+                padding: 0 0 10px !important;
             }
 
             #tableOrderModal .tabs_wrapper ul.tabs {
                 flex-wrap: nowrap !important;
                 overflow-x: auto !important;
+                order: 2;
             }
 
             #tableOrderModal .table-order-product-search {
-                flex: 1 1 100%;
-                max-width: 100%;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                flex: 0 0 auto !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                order: 1;
+                margin: 0;
+            }
+
+            #tableOrderModal .table-order-product-search input {
+                height: 42px !important;
+                font-size: 14px !important;
+                padding: 0 40px 0 40px !important;
+                border: 1.5px solid #ff9f43 !important;
+                background: #fff !important;
+                -webkit-appearance: none;
+            }
+
+            #tableOrderModal .table-order-product-search .search-icon {
+                left: 14px;
+                width: 16px;
+                height: 16px;
+                opacity: 0.7;
             }
 
             #tableOrderModal .modal-body {
@@ -1678,6 +1711,11 @@
             .modal-body .tabs_wrapper {
                 max-width: 100%;
                 overflow-x: hidden;
+                overflow-y: visible;
+            }
+
+            #tableOrderModal .table-order-product-search {
+                display: block !important;
             }
 
             .modal-body .productset {
@@ -2694,6 +2732,17 @@
                         @endphp
 
                         <div class="table-order-menu-toolbar">
+                            <div class="table-order-product-search">
+                                <img class="search-icon"
+                                    src="{{ image_path('admin/assets/img/icons/search.svg') }}"
+                                    alt="">
+                                <input type="text" id="tableProductSearch"
+                                    class="form-control"
+                                    placeholder="Search product by name..."
+                                    autocomplete="off"
+                                    inputmode="search">
+                                <button type="button" class="clear-product-search" aria-label="Clear search">&times;</button>
+                            </div>
                             <ul class="tabs border-0 mb-0">
                                 @php
                                     foreach ($categories as $cat) {
@@ -2720,16 +2769,6 @@
                                     @endif
                                 @endforeach
                             </ul>
-                            <div class="table-order-product-search">
-                                <img class="search-icon"
-                                    src="{{ env('ImagePath') . '/admin/assets/img/icons/search.svg' }}"
-                                    alt="">
-                                <input type="text" id="tableProductSearch"
-                                    class="form-control"
-                                    placeholder="Search product..."
-                                    autocomplete="off">
-                                <button type="button" class="clear-product-search" aria-label="Clear search">&times;</button>
-                            </div>
                         </div>
 
                         @if (!$hasProducts)
