@@ -392,6 +392,7 @@
                                     <th>Category Name</th>
                                     <th class="details-column">Details</th>
                                     <th>Apply GST</th>
+                                    <th>KOT Print</th>
                                     <th>Created At</th>
                                     <th>Action</th>
                                 </tr>
@@ -470,7 +471,7 @@
                                                 </div>
                                                 <div class="category-mobile-info">
                                                     <div class="category-mobile-name" title="${escapedCategoryName}">${escapedCategoryName}</div>
-                                                    <div class="category-mobile-date">Created ${createdAt} · GST ${category.gst_applicable === false || category.gst_applicable === 0 || category.gst_applicable === '0' ? 'Off' : 'On'}</div>
+                                                    <div class="category-mobile-date">Created ${createdAt} · GST ${category.gst_applicable === false || category.gst_applicable === 0 || category.gst_applicable === '0' ? 'Off' : 'On'} · KOT ${(String(category.kot_print_target || 'kitchen').toLowerCase() === 'billing') ? 'Counter' : 'Kitchen'}</div>
                                                 </div>
                                             </div>
                                             <div class="category-mobile-actions">
@@ -496,6 +497,7 @@
                                                 <div class=" card-body p-2 ">
                                                     <p class="mb-1"><strong>Created At:</strong> ${createdAt}</p>
                                                     <p class="mb-1"><strong>Apply GST:</strong> ${category.gst_applicable === false || category.gst_applicable === 0 || category.gst_applicable === '0' ? 'Off' : 'On'}</p>
+                                                    <p class="mb-1"><strong>KOT Print:</strong> ${(String(category.kot_print_target || 'kitchen').toLowerCase() === 'billing') ? 'Billing / Counter' : 'Kitchen'}</p>
                                                     <div class="mt-2">
                                                         ${getActionButtons(category.id)}
                                                     </div>
@@ -509,10 +511,15 @@
                                         // Column 3: Apply GST switch
                                         gstToggleHtml(category),
 
-                                        // Column 4: Created At (hidden on mobile)
+                                        // Column 4: KOT print target
+                                        (String(category.kot_print_target || 'kitchen').toLowerCase() === 'billing')
+                                            ? '<span class="badge" style="background:#ff9f43;">Billing / Counter</span>'
+                                            : '<span class="badge" style="background:#20c997;">Kitchen</span>',
+
+                                        // Column 5: Created At (hidden on mobile)
                                         createdAt,
 
-                                        // Column 5: Action Buttons (hidden on mobile)
+                                        // Column 6: Action Buttons (hidden on mobile)
                                         getActionButtons(category.id)
                                     ]);
                                 });
@@ -537,7 +544,7 @@
                                 }
                             } else {
                                 table.clear().draw();
-                                $(".datanew tbody").html('<tr><td colspan="5" class="dataTables_empty">No categories found</td></tr>');
+                                $(".datanew tbody").html('<tr><td colspan="6" class="dataTables_empty">No categories found</td></tr>');
                             }
                         },
                         error: function(xhr) {

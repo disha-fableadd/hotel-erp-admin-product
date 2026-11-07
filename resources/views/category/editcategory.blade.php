@@ -71,6 +71,25 @@
                     <div class="col-12">
                         <div class="col-lg-12">
                             <div class="form-group">
+                                <label for="kot_print_target"><strong>KOT Print To</strong></label>
+                                @php
+                                    $kotTarget = strtolower((string) ($category->kot_print_target ?? 'kitchen'));
+                                    if (!in_array($kotTarget, ['kitchen', 'billing'], true)) {
+                                        $kotTarget = 'kitchen';
+                                    }
+                                @endphp
+                                <select name="kot_print_target" id="kot_print_target" class="form-select">
+                                    <option value="kitchen" {{ $kotTarget === 'kitchen' ? 'selected' : '' }}>Kitchen printer (default)</option>
+                                    <option value="billing" {{ $kotTarget === 'billing' ? 'selected' : '' }}>Billing / Counter printer (same as bill)</option>
+                                </select>
+                                <small class="text-muted">Default is kitchen. Choose billing/counter for categories that should print on the bill printer after / with billing.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="col-lg-12">
+                            <div class="form-group">
                                 <label for="category_image">Category Image</label>
                                 <div class="image-upload">
                                     <input type="file" name="image" id="image" class="form-control">
@@ -123,6 +142,7 @@
             const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
             let formData = new FormData($('#categoryForm')[0]);
             formData.set('gst_applicable', $('#gst_applicable').is(':checked') ? '1' : '0');
+            formData.set('kot_print_target', $('#kot_print_target').val() || 'kitchen');
             if (selectedSubAdminId) {
                 formData.append("sub_admin_id", selectedSubAdminId);
             }

@@ -185,8 +185,10 @@
                         <button type="button"
                                 class="btn btn-dark btn-sm js-kot-board-print"
                                 data-order-id="{{ $ticket['order']->id }}"
-                                data-station="{{ $ticket['station'] }}">
-                            <i class="fas fa-print me-1"></i> Print KOT
+                                data-station="{{ $ticket['station'] }}"
+                                data-print-target="{{ $ticket['print_target'] ?? 'kitchen' }}">
+                            <i class="fas fa-print me-1"></i>
+                            {{ (($ticket['print_target'] ?? '') === 'billing') ? 'Print Counter KOT' : 'Print KOT' }}
                         </button>
                     </div>
                 </div>
@@ -210,19 +212,24 @@
     $(document).on('click', '.js-kot-board-print', function () {
         var orderId = $(this).data('order-id');
         var station = $(this).data('station') || '';
+        var printTarget = $(this).data('print-target') || 'kitchen';
         if (!orderId) return;
         if (typeof window.showKotPrintModal === 'function') {
             // Kitchen board: same-page print modal (full ticket for this station)
             window.showKotPrintModal(orderId, {
                 delta: false,
                 station: station,
+                printTarget: printTarget,
                 reloadOnClose: false,
                 skipIfEmpty: false
             });
             return;
         }
         var url = '/kitchen/kot/' + orderId + '/print';
-        if (station) url += '?station=' + encodeURIComponent(station);
+        var params = [];
+        if (station) params.push('station=' + encodeURIComponent(station));
+        if (printTarget) params.push('print_target=' + encodeURIComponent(printTarget));
+        if (params.length) url += '?' + params.join('&');
         window.open(url, '_blank');
     });
 })(jQuery);

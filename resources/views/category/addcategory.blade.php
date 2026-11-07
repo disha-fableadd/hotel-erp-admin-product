@@ -64,6 +64,16 @@
                     </div>
                     <div class="col-lg-12">
                         <div class="form-group">
+                            <label for="kot_print_target"><strong>KOT Print To</strong></label>
+                            <select name="kot_print_target" id="kot_print_target" class="form-select">
+                                <option value="kitchen" selected>Kitchen printer (default)</option>
+                                <option value="billing">Billing / Counter printer (same as bill)</option>
+                            </select>
+                            <small class="text-muted">Default is kitchen. Choose billing/counter for categories that should print on the bill printer (e.g. drinks at counter).</small>
+                        </div>
+                    </div>
+                    <div class="col-lg-12">
+                        <div class="form-group">
                             <label for="category_image">Product Image</label>
                             <div class="image-upload">
                                 <input type="file" name="image" id="image" class="form-control">
@@ -114,6 +124,7 @@
             var authToken = localStorage.getItem("authToken");
             let formData = new FormData($('#categoryForm')[0]);
             formData.set('gst_applicable', $('#gst_applicable').is(':checked') ? '1' : '0');
+            formData.set('kot_print_target', $('#kot_print_target').val() || 'kitchen');
             if (selectedSubAdminId) {
                 formData.append("sub_admin_id", selectedSubAdminId);
             }

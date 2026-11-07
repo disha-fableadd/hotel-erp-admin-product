@@ -12,10 +12,23 @@ use PhpParser\Builder\Function_;
 use PhpParser\Node\Expr\FuncCall;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class CategoryController extends Controller
 {
-
+    protected function ensureKotPrintTargetColumn(): void
+    {
+        try {
+            if (! Schema::hasTable('categories') || Schema::hasColumn('categories', 'kot_print_target')) {
+                return;
+            }
+            Schema::table('categories', function ($table) {
+                $table->string('kot_print_target', 20)->default('kitchen');
+            });
+        } catch (\Throwable $e) {
+            // ignore — migration may be applied separately
+        }
+    }
 
     public function getAllCategory(Request $request)
     {
@@ -51,6 +64,8 @@ class CategoryController extends Controller
 
     public function addcategory(Request $request)
     {
+        $this->ensureKotPrintTargetColumn();
+
         $userData = Auth::guard('api')->user();
         $userRole = $userData->role;
         if ($userRole == 'staff') {
@@ -87,6 +102,11 @@ class CategoryController extends Controller
             ? filter_var($request->input('gst_applicable'), FILTER_VALIDATE_BOOLEAN)
             : true;
 
+        $kotTarget = strtolower(trim((string) $request->input('kot_print_target', Category::KOT_TARGET_KITCHEN)));
+        if (! in_array($kotTarget, [Category::KOT_TARGET_KITCHEN, Category::KOT_TARGET_BILLING], true)) {
+            $kotTarget = Category::KOT_TARGET_KITCHEN;
+        }
+
         // Save category data
         $payload = [
             'name'  => $request->name,
@@ -95,6 +115,9 @@ class CategoryController extends Controller
         ];
         if (\Illuminate\Support\Facades\Schema::hasColumn('categories', 'gst_applicable')) {
             $payload['gst_applicable'] = $gstApplicable;
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('categories', 'kot_print_target')) {
+            $payload['kot_print_target'] = $kotTarget;
         }
 
         $category = Category::create($payload);
@@ -129,6 +152,8 @@ class CategoryController extends Controller
 
     public function updatecategory(Request $request)
     {
+        $this->ensureKotPrintTargetColumn();
+
         $userData = Auth::guard('api')->user();
         $userRole = $userData->role;
         if ($userRole == 'staff') {
@@ -182,6 +207,13 @@ class CategoryController extends Controller
         ];
         if (\Illuminate\Support\Facades\Schema::hasColumn('categories', 'gst_applicable') && $request->has('gst_applicable')) {
             $payload['gst_applicable'] = filter_var($request->input('gst_applicable'), FILTER_VALIDATE_BOOLEAN);
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('categories', 'kot_print_target') && $request->has('kot_print_target')) {
+            $kotTarget = strtolower(trim((string) $request->input('kot_print_target')));
+            if (! in_array($kotTarget, [Category::KOT_TARGET_KITCHEN, Category::KOT_TARGET_BILLING], true)) {
+                $kotTarget = Category::KOT_TARGET_KITCHEN;
+            }
+            $payload['kot_print_target'] = $kotTarget;
         }
 
         $category->update($payload);

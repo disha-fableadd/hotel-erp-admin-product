@@ -8,7 +8,10 @@
     window._kotOrderId = null;
     window._kotUseDelta = true;
     window._kotStation = '';
+    window._kotPrintTarget = 'kitchen'; // kitchen | billing
     window._kotPendingCount = null;
+    window._kotBillingCount = 0;
+    window._kotKitchenCount = 0;
 
     function shortName(name) {
         name = String(name || '').trim();
@@ -20,11 +23,33 @@
         return $('meta[name="csrf-token"]').attr('content') || '';
     }
 
-    function kotPdfUrl(orderId, useDelta) {
+    function isBillingKotTarget() {
+        return String(window._kotPrintTarget || '') === 'billing'
+            || String(window._kotStation || '').toLowerCase() === 'counter';
+    }
+
+    function kotPrinterStorageKey() {
+        return isBillingKotTarget() ? 'posSelectedPrinter' : 'posSelectedKotPrinter';
+    }
+
+    function resolveBillPrinterName() {
+        var bill = '';
+        try { bill = ($('#posPrinterSelect').val() || localStorage.getItem('posSelectedPrinter') || '').trim(); } catch (e) {}
+        if (bill) return bill;
+        try {
+            var prefs = window.__INVOICE_PRINT_PREFS || {};
+            if (prefs.defaultPrinter) return String(prefs.defaultPrinter);
+        } catch (e2) {}
+        return '';
+    }
+
+    function kotPdfUrl(orderId, useDelta, printTarget) {
         var url = '/kitchen/kot/' + orderId + '/pdf';
         var params = [];
         if (useDelta) params.push('delta=1');
         if (window._kotStation) params.push('station=' + encodeURIComponent(window._kotStation));
+        var target = printTarget || window._kotPrintTarget || '';
+        if (target) params.push('print_target=' + encodeURIComponent(target));
         if (params.length) url += '?' + params.join('&');
         return url;
     }
@@ -33,12 +58,13 @@
         var val = ($('#kotPrinterSelect').val() || '').trim();
         var label = val ? shortName(($('#kotPrinterSelect option:selected').text() || '').trim()) : 'Not set';
         var pending = window._kotPendingCount;
+        var dest = isBillingKotTarget() ? 'Counter/Bill printer' : 'Kitchen';
         if (pending === 0) {
-            $('#kotPrintSummaryLabel').text('No new items for kitchen');
+            $('#kotPrintSummaryLabel').text('No new items for ' + (isBillingKotTarget() ? 'counter' : 'kitchen'));
         } else if (pending > 0) {
-            $('#kotPrintSummaryLabel').text(pending + ' new/changed · Kitchen → ' + label);
+            $('#kotPrintSummaryLabel').text(pending + ' new/changed · ' + dest + ' → ' + label);
         } else {
-            $('#kotPrintSummaryLabel').text('Kitchen → ' + label);
+            $('#kotPrintSummaryLabel').text(dest + ' → ' + label);
         }
     }
 
@@ -47,13 +73,19 @@
             $('#kotQzStatus').text('QZ loading…').css('color', '#6c757d');
             return Promise.resolve();
         }
+        var storageKey = kotPrinterStorageKey();
         return Promise.resolve(InvoiceQzPrint.refreshPrinters({
             select: '#kotPrinterSelect',
             status: '#kotQzStatus',
-            storageKey: 'posSelectedKotPrinter'
+            storageKey: storageKey
         })).then(function() {
             try {
-                var saved = localStorage.getItem('posSelectedKotPrinter') || '';
+                var saved = localStorage.getItem(storageKey) || '';
+                // Billing-target KOT prefers the bill printer
+                if (isBillingKotTarget()) {
+                    var billPrinter = resolveBillPrinterName();
+                    if (billPrinter) saved = billPrinter;
+                }
                 if (saved) {
                     var found = false;
                     $('#kotPrinterSelect option').each(function() {
@@ -68,12 +100,16 @@
         });
     }
 
-    function markKotPrinted(orderId) {
+    function markKotPrinted(orderId, printTarget, station) {
         if (!orderId) return Promise.resolve();
         return $.ajax({
             url: '/kitchen/kot/' + orderId + '/mark-printed',
             type: 'POST',
             dataType: 'json',
+            data: {
+                print_target: printTarget || window._kotPrintTarget || '',
+                station: station || window._kotStation || ''
+            },
             headers: {
                 'X-CSRF-TOKEN': csrfToken(),
                 'Accept': 'application/json'
@@ -92,6 +128,24 @@
         });
     }
 
+    function printOneKotPdf(orderId, pdfUrl, printerName, doAutoCut, storageKey, frame) {
+        if (!window.InvoiceQzPrint || !printerName) {
+            window.open(pdfUrl, '_blank');
+            return Promise.resolve();
+        }
+        try { localStorage.setItem(storageKey, printerName); } catch (e) {}
+        return Promise.resolve(InvoiceQzPrint.printInvoice({
+            printerName: printerName,
+            pdfUrl: pdfUrl,
+            autoCut: doAutoCut,
+            frame: frame || null,
+            status: '#kotQzStatus',
+            button: '#printKotModalBtn',
+            select: '#kotPrinterSelect',
+            storageKey: storageKey
+        }));
+    }
+
     function printKotFromModal() {
         var orderId = window._kotOrderId;
         if (!orderId) return;
@@ -105,42 +159,55 @@
         var pdfUrl = frame && frame.src ? frame.src : kotPdfUrl(orderId, window._kotUseDelta);
         var printerName = ($('#kotPrinterSelect').val() || '').trim();
         var doAutoCut = $('#kotThermalAutoCut').is(':checked');
+        var storageKey = kotPrinterStorageKey();
+        var target = window._kotPrintTarget || 'kitchen';
 
         if (!window.InvoiceQzPrint || !printerName) {
             window.open(pdfUrl, '_blank');
-            $('#kotQzStatus').text(printerName ? 'Opened' : 'Select a kitchen printer').css('color', printerName ? '#28c76f' : '#ea5455');
-            // Still mark as sent when fallback print window opens (same as kitchen receiving ticket)
-            markKotPrinted(orderId).then(function() {
+            $('#kotQzStatus').text(printerName ? 'Opened' : ('Select a ' + (isBillingKotTarget() ? 'bill/counter' : 'kitchen') + ' printer')).css('color', printerName ? '#28c76f' : '#ea5455');
+            markKotPrinted(orderId, target, window._kotStation).then(function() {
                 window._kotPendingCount = 0;
                 updateKotPrintUi();
             });
             return;
         }
 
-        try { localStorage.setItem('posSelectedKotPrinter', printerName); } catch (e) {}
         $('#printKotModalBtn').prop('disabled', true);
-        $('#kotQzStatus').text('Printing KOT…').css('color', '#6c757d');
+        $('#kotQzStatus').text(isBillingKotTarget() ? 'Printing counter KOT…' : 'Printing kitchen KOT…').css('color', '#6c757d');
 
-        Promise.resolve(InvoiceQzPrint.printInvoice({
-            printerName: printerName,
-            pdfUrl: pdfUrl,
-            autoCut: doAutoCut,
-            frame: frame,
-            status: '#kotQzStatus',
-            button: '#printKotModalBtn',
-            select: '#kotPrinterSelect',
-            storageKey: 'posSelectedKotPrinter'
-        })).then(function() {
-            $('#kotQzStatus').text('KOT printed').css('color', '#28c76f');
-            return markKotPrinted(orderId);
+        printOneKotPdf(orderId, pdfUrl, printerName, doAutoCut, storageKey, frame).then(function() {
+            $('#kotQzStatus').text(isBillingKotTarget() ? 'Counter KOT printed' : 'Kitchen KOT printed').css('color', '#28c76f');
+            return markKotPrinted(orderId, target, window._kotStation);
+        }).then(function() {
+            // After kitchen print from Place/Update, also send billing-category items to bill printer
+            if (window._kotUseDelta && !isBillingKotTarget() && (window._kotBillingCount || 0) > 0) {
+                var billPrinter = resolveBillPrinterName() || printerName;
+                var billingPdf = kotPdfUrl(orderId, true, 'billing');
+                $('#kotQzStatus').text('Printing counter items on bill printer…').css('color', '#6c757d');
+                return printOneKotPdf(orderId, billingPdf, billPrinter, doAutoCut, 'posSelectedPrinter', null)
+                    .then(function() {
+                        return markKotPrinted(orderId, 'billing', 'Counter');
+                    })
+                    .then(function() {
+                        $('#kotQzStatus').text('Kitchen + counter KOT printed').css('color', '#28c76f');
+                    })
+                    .catch(function(err) {
+                        console.warn('Counter KOT print failed', err);
+                        window.open(billingPdf, '_blank');
+                        return markKotPrinted(orderId, 'billing', 'Counter');
+                    });
+            }
+            return null;
         }).then(function() {
             window._kotPendingCount = 0;
+            window._kotBillingCount = 0;
+            window._kotKitchenCount = 0;
             updateKotPrintUi();
         }).catch(function(err) {
             console.warn('KOT modal print failed', err);
             $('#kotQzStatus').text('Print failed — opened preview').css('color', '#ea5455');
             window.open(pdfUrl, '_blank');
-            return markKotPrinted(orderId).then(function() {
+            return markKotPrinted(orderId, target, window._kotStation).then(function() {
                 window._kotPendingCount = 0;
                 updateKotPrintUi();
             });
@@ -180,8 +247,12 @@
         $('#kotQzStatus').text('');
         $('#printKotModalBtn').prop('disabled', window._kotPendingCount === 0);
         $('#kotPrintModalHint').html(useDelta
-            ? 'Only new / changed items — Press <kbd>F10</kbd> or Print'
-            : 'Press <kbd>F10</kbd> or Print to send to kitchen');
+            ? (isBillingKotTarget()
+                ? 'Counter categories → bill printer — Press <kbd>F10</kbd> or Print'
+                : 'Kitchen categories → kitchen printer (counter categories auto-print on bill printer) — Press <kbd>F10</kbd>')
+            : (isBillingKotTarget()
+                ? 'Press <kbd>F10</kbd> or Print to send to bill/counter printer'
+                : 'Press <kbd>F10</kbd> or Print to send to kitchen'));
 
         var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('kotPrintModal'), {
             backdrop: 'static',
@@ -194,6 +265,7 @@
     /**
      * opts.delta !== false → Petpooja delta (default true for dine-in Place/Update)
      * opts.station → kitchen station filter for PDF
+     * opts.printTarget → kitchen | billing (billing uses bill/counter printer)
      * opts.reloadOnClose → reload page after close
      * opts.skipIfEmpty → if no new items, toast + reload without modal (default true when delta)
      */
@@ -203,7 +275,12 @@
         window._kotReloadOnClose = !!opts.reloadOnClose;
         window._kotUseDelta = opts.delta !== false;
         window._kotStation = opts.station ? String(opts.station) : '';
+        window._kotPrintTarget = opts.printTarget
+            ? String(opts.printTarget)
+            : (String(window._kotStation).toLowerCase() === 'counter' ? 'billing' : 'kitchen');
         window._kotPendingCount = null;
+        window._kotBillingCount = 0;
+        window._kotKitchenCount = 0;
 
         var skipIfEmpty = opts.skipIfEmpty !== false && window._kotUseDelta;
 
@@ -215,11 +292,23 @@
         fetchDeltaSummary(orderId).then(function(res) {
             var count = (res && typeof res.count === 'number') ? res.count : 0;
             window._kotPendingCount = count;
+            window._kotKitchenCount = (res && typeof res.kitchen_count === 'number') ? res.kitchen_count : 0;
+            window._kotBillingCount = (res && typeof res.billing_count === 'number') ? res.billing_count : 0;
+
+            // Preview kitchen PDF by default; if only billing items pending, open billing target
+            if (!opts.printTarget && window._kotKitchenCount === 0 && window._kotBillingCount > 0) {
+                window._kotPrintTarget = 'billing';
+                window._kotStation = 'Counter';
+            } else if (!opts.printTarget && window._kotKitchenCount > 0) {
+                // Modal preview = kitchen only; billing auto-prints after
+                window._kotPrintTarget = 'kitchen';
+            }
+
             if (skipIfEmpty && count === 0) {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'No new kitchen items',
-                        text: 'Everything on this order was already sent to kitchen.',
+                        text: 'Everything on this order was already sent to kitchen/counter.',
                         icon: 'info',
                         confirmButtonColor: '#ff9f43',
                         timer: 2200,
@@ -271,7 +360,7 @@
     });
 
     $(document).on('change', '#kotPrinterSelect', function() {
-        try { localStorage.setItem('posSelectedKotPrinter', $(this).val() || ''); } catch (e) {}
+        try { localStorage.setItem(kotPrinterStorageKey(), $(this).val() || ''); } catch (e) {}
         updateKotPrintUi();
     });
 

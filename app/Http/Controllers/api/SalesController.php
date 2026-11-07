@@ -1590,7 +1590,7 @@ class SalesController extends Controller
             }
 
             // Restore stock first from OLD items
-            $oldItems = OrderItem::with(['product', 'variant'])->where('order_id', $order_id)->get();
+            $oldItems = OrderItem::with(['product.category', 'variant'])->where('order_id', $order_id)->get();
 
             // Petpooja-style KOT: this Update ticket = only qty changes vs previous table order
             $hasKotPrintedCol = \Illuminate\Support\Facades\Schema::hasColumn('order_items', 'kot_printed_qty');
@@ -1604,15 +1604,21 @@ class SalesController extends Controller
                 $oldKotPrinted[$kotKey] = $printedQty;
                 $oldKotQty[$kotKey] = $oldQty;
                 $oldAddonLines = method_exists($old, 'addonLines') ? $old->addonLines() : [];
+                $oldProduct = $old->product;
+                $oldTarget = Category::resolveKotPrintTarget($oldProduct);
+                $oldStation = $oldTarget === Category::KOT_TARGET_BILLING
+                    ? Category::billingKotStationLabel()
+                    : (trim((string) (optional($oldProduct)->kitchen_station ?? '')) ?: 'General');
                 $oldKotMeta[$kotKey] = [
                     'product_id' => (int) $old->product_id,
                     'variant_id' => $old->variant_id ? (int) $old->variant_id : null,
-                    'name' => optional($old->product)->name ?? 'Item',
+                    'name' => optional($oldProduct)->name ?? 'Item',
                     'variant_name' => method_exists($old, 'variantLabel')
                         ? $old->variantLabel()
                         : (optional($old->variant)->name ?? null),
                     'addons_text' => $oldAddonLines ? implode(', ', $oldAddonLines) : null,
-                    'station' => optional($old->product)->kitchen_station ?? 'General',
+                    'station' => $oldStation,
+                    'print_target' => $oldTarget,
                     'qty_printed' => $printedQty,
                     'qty' => $oldQty,
                 ];
@@ -1810,13 +1816,18 @@ class SalesController extends Controller
                             $addonNames[] = (string) $a['name'];
                         }
                     }
+                    $printTarget = Category::resolveKotPrintTarget($product);
+                    $stationLabel = $printTarget === Category::KOT_TARGET_BILLING
+                        ? Category::billingKotStationLabel()
+                        : (trim((string) ($product->kitchen_station ?? '')) ?: 'General');
                     $fireTicket[] = [
                         'product_id' => (int) $product->id,
                         'variant_id' => $line['variant_id'] ? (int) $line['variant_id'] : null,
                         'variant_name' => $line['variant_name'] ?? null,
                         'addons_text' => $addonNames ? implode(', ', $addonNames) : null,
                         'name' => $product->name ?? 'Item',
-                        'station' => $product->kitchen_station ?? 'General',
+                        'station' => $stationLabel,
+                        'print_target' => $printTarget,
                         'qty' => abs($diff),
                         'action' => $diff > 0 ? 'new' : 'cancel',
                     ];
@@ -1839,6 +1850,7 @@ class SalesController extends Controller
                     'addons_text' => $meta['addons_text'] ?? null,
                     'name' => $meta['name'],
                     'station' => $meta['station'] ?? 'General',
+                    'print_target' => $meta['print_target'] ?? Category::KOT_TARGET_KITCHEN,
                     'qty' => $removedQty,
                     'action' => 'cancel',
                 ];
