@@ -1720,25 +1720,15 @@ class SalesController extends Controller
                 $payment_status = 'pending';
             }
 
-            $isCheckout = ($request->table_checkout ?? '') === 'checkout';
+            $checkoutAction = strtolower(trim((string) ($request->table_checkout ?? '')));
+            $isPrintBill = $checkoutAction === 'checkout' || $checkoutAction === 'print_bill';
+            $isSettle = $checkoutAction === 'settle';
             $hasTable = ! empty($request->table_id) && is_numeric($request->table_id);
-            $wasAlreadyPrinted = $hasTable
-                && \Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')
-                && ! empty($order->bill_printed);
 
-            // Petpooja: first Checkout/Print → Bill Printed (green, still occupied).
-            // Free table only when settling an already-printed bill with full payment (2nd Checkout),
-            // or when staff chooses pending=false after bill was printed.
-            $fullySettled = $isCheckout
-                && $hasTable
-                && $wasAlreadyPrinted
+            // Petpooja: Print Bill → green occupied. Settle (paid) → free table.
+            $fullySettled = $isSettle
                 && $payment_status === 'completed'
                 && (float) $remain <= 0;
-
-            // Non-table / takeaway checkout still closes when paid
-            if ($isCheckout && ! $hasTable) {
-                $fullySettled = $payment_status === 'completed' && (float) $remain <= 0;
-            }
 
             // Update order
             $orderUpdate = [
@@ -1752,12 +1742,16 @@ class SalesController extends Controller
                 'payment_status' => $payment_status,
                 'table_no' => $request->table_id ?? null,
                 'type' => $request->table_type ?? 'dinein',
-                // Keep allocated until settle (printed + paid on subsequent checkout)
-                'table_status' => $fullySettled ? 0 : 1,
+                // Free only after explicit Settle with payment
+                'table_status' => ($hasTable && ! $fullySettled) ? 1 : ($fullySettled ? 0 : 1),
             ];
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
-                // Checkout / print bill → green printed; adding items again → yellow running
-                $orderUpdate['bill_printed'] = $isCheckout ? 1 : 0;
+                if ($isPrintBill || $isSettle) {
+                    $orderUpdate['bill_printed'] = 1;
+                } elseif ($hasTable) {
+                    // Adding items after print → back to running (yellow)
+                    $orderUpdate['bill_printed'] = 0;
+                }
             }
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'tax_breakdown')) {
                 $orderUpdate['tax_breakdown'] = $money['tax_breakdown'] ?? [];
@@ -1970,8 +1964,8 @@ class SalesController extends Controller
             // Delete old payment entries
             PaymentStore::where('order_id', $order->id)->delete();
 
-            // Insert updated payment entries
-            if ($isCheckout) {
+            // Record payments only on Settle (Print Bill keeps pending / no settlement)
+            if ($isSettle) {
                 $paymentType = $request->paid_type ?? (($request->payment_method === 'cash+online') ? 'partially' : 'fully');
                 if ($request->payment_method != 'pending') {
 

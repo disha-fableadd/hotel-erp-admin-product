@@ -873,6 +873,77 @@
             box-shadow: 0 4px 14px rgba(255, 159, 67, 0.35) !important;
         }
 
+        /* Petpooja settle panel (between total and payment) */
+        #tableOrderModal .dine-settle-panel {
+            margin: 10px 0 4px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #bbf7d0;
+            background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%);
+            box-shadow: 0 1px 3px rgba(22, 101, 52, 0.08);
+        }
+        #tableOrderModal .dine-settle-panel__status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        #tableOrderModal .dine-settle-panel__badge {
+            display: inline-flex;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: #166534;
+            background: #dcfce7;
+            border-radius: 999px;
+            padding: 3px 9px;
+        }
+        #tableOrderModal .dine-settle-panel__hint {
+            font-size: 11.5px;
+            color: #3f6212;
+            font-weight: 600;
+        }
+        #tableOrderModal .dine-settle-panel__amount {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #14532d;
+        }
+        #tableOrderModal .dine-settle-panel__amount strong {
+            font-size: 16px;
+            font-weight: 800;
+            color: #166534;
+        }
+        #tableOrderModal .btn-settle-dine {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            border: 0;
+            border-radius: 10px;
+            padding: 11px 14px;
+            color: #fff;
+            font-weight: 800;
+            font-size: 13px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35);
+        }
+        #tableOrderModal .btn-settle-dine:hover {
+            filter: brightness(1.03);
+        }
+        #tableOrderModal .btn-settle-dine:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
         /* Clear Bill — header (next to close) */
         #tableOrderModal .btn-clear-dine-bill {
             border: 1px solid #fecaca;
@@ -3359,6 +3430,22 @@
                                                 <span class="error_total" style="color:red; display:none;"></span>
                                             </li>
                                         </ul>
+
+                                        {{-- Petpooja: settlement only frees table after confirm --}}
+                                        <div class="dine-settle-panel" id="dineSettlePanel" style="display:none;">
+                                            <div class="dine-settle-panel__status">
+                                                <span class="dine-settle-panel__badge">Bill Printed</span>
+                                                <span class="dine-settle-panel__hint">Table stays occupied until you settle</span>
+                                            </div>
+                                            <div class="dine-settle-panel__amount">
+                                                <span>Amount due</span>
+                                                <strong class="js-settle-amount">{{ $currency_symbol }}0.00</strong>
+                                            </div>
+                                            <button type="button" class="btn-settle-dine" id="btnSettleDineBill" data-order_settle_id="">
+                                                <span class="btn-settle-dine__label">Settle Bill · {{ $currency_symbol }}0.00</span>
+                                                <i class="fas fa-check-circle"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -4169,6 +4256,28 @@
         var reservationModalEl = document.getElementById('reservationModal');
         var reservationModal = null;
 
+        function syncDineSettlePanel(forcePrinted) {
+            var $card = $('.table-box123[data-table-id="' + (window.selectedTableId || '') + '"]');
+            var cardStatus = String($card.attr('data-table-status') || '').toLowerCase();
+            var printed = forcePrinted === true
+                || window.dineBillPrinted === true
+                || cardStatus === 'printed';
+            window.dineBillPrinted = !!printed;
+            var orderId = $('#btnSettleDineBill').attr('data-order_settle_id')
+                || $('.btn-totallabel_2').attr('data-order_payment_update_id')
+                || $card.attr('data-order-id')
+                || '';
+            if (orderId) {
+                $('#btnSettleDineBill').attr('data-order_settle_id', orderId);
+            }
+            if (printed && orderId) {
+                $('#dineSettlePanel').show();
+            } else {
+                $('#dineSettlePanel').hide();
+            }
+        }
+        window.syncDineSettlePanel = syncDineSettlePanel;
+
         function applyRunningTableOrderResponse(response, salse_id, modalInstance) {
             if (typeof window.hydrateCartFromOrderItems === 'function') {
                 window.hydrateCartFromOrderItems(response.order_items || []);
@@ -4209,10 +4318,18 @@
             $('#btnClearDineBill').addClass('is-visible');
             $('.btn-totallabel_1').css('display', 'flex').attr('data-order_update_id', salse_id);
             $('.btn-totallabel_2').css('display', 'flex').attr('data-order_payment_update_id', salse_id);
+            $('#btnSettleDineBill').attr('data-order_settle_id', salse_id);
             $('.setvaluecash').show();
             if (typeof window.applyDefaultPosPayment === 'function') {
                 window.applyDefaultPosPayment();
             }
+            var isPrinted = !!(response.sales && (parseInt(response.sales.bill_printed, 10) === 1 || response.sales.bill_printed === true));
+            var $card = $('.table-box123[data-table-id="' + (window.selectedTableId || '') + '"]');
+            if (!isPrinted && String($card.attr('data-table-status') || '').toLowerCase() === 'printed') {
+                isPrinted = true;
+            }
+            window.dineBillPrinted = isPrinted;
+            syncDineSettlePanel(isPrinted);
             (modalInstance || tableOrderModal).show();
         }
 
@@ -4251,6 +4368,9 @@
             $('#btnClearDineBill').removeClass('is-visible');
             $('.btn-totallabel_1').hide();
             $('.btn-totallabel_2').hide();
+            $('#btnSettleDineBill').attr('data-order_settle_id', '');
+            window.dineBillPrinted = false;
+            $('#dineSettlePanel').hide();
             $('.setvaluecash').hide();
             $('input[name="gst_option"]').prop("checked", false);
             $(`input[name="gst_option"][value="${defaultGstOption || 'without'}"]`).prop("checked", true).trigger('change');
@@ -5708,11 +5828,12 @@
                     const payableText = formatCurrency(total.toFixed(2), currencySymbol, currencyPosition);
                     $(".btn-totallabel h6").html('Place Order · ' + payableText);
                     $(".btn-totallabel_1 h6").html('Update · ' + payableText);
-                    var checkoutLabel = (function () {
-                        var st = String($('.table-box123[data-table-id="' + (window.selectedTableId || '') + '"]').attr('data-table-status') || '').toLowerCase();
-                        return st === 'printed' ? ('Settle · ' + payableText) : ('Print Bill · ' + payableText);
-                    })();
-                    $(".btn-totallabel_2 h6").html(checkoutLabel);
+                    $(".btn-totallabel_2 h6").html('Print Bill · ' + payableText);
+                    $(".btn-settle-dine__label").text('Settle Bill · ' + payableText);
+                    $(".js-settle-amount").text(payableText);
+                    if (typeof window.syncDineSettlePanel === 'function') {
+                        window.syncDineSettlePanel();
+                    }
                     $("input[name='total']").val(total.toFixed(2));
                     $("#onlineAmount").val(total.toFixed(2));
                 } else {
@@ -5725,11 +5846,12 @@
                     const zeroPayable = formatCurrency("0.00", currencySymbol, currencyPosition);
                     $(".btn-totallabel h6").html('Place Order · ' + zeroPayable);
                     $(".btn-totallabel_1 h6").html('Update · ' + zeroPayable);
-                    var zeroCheckoutLabel = (function () {
-                        var st = String($('.table-box123[data-table-id="' + (window.selectedTableId || '') + '"]').attr('data-table-status') || '').toLowerCase();
-                        return st === 'printed' ? ('Settle · ' + zeroPayable) : ('Print Bill · ' + zeroPayable);
-                    })();
-                    $(".btn-totallabel_2 h6").html(zeroCheckoutLabel);
+                    $(".btn-totallabel_2 h6").html('Print Bill · ' + zeroPayable);
+                    $(".btn-settle-dine__label").text('Settle Bill · ' + zeroPayable);
+                    $(".js-settle-amount").text(zeroPayable);
+                    if (typeof window.syncDineSettlePanel === 'function') {
+                        window.syncDineSettlePanel();
+                    }
 
                     $("input[name='discount_amount']").val("0.00");
                     $("input[name='price_after_discount']").val("0.00");
@@ -6670,43 +6792,18 @@
                 var table_status = "dinein";
                 // Show loading text and disable the button
                 $btn.html(
-                    '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Placing Order...'
+                    '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Printing…'
                 ).prop('disabled', true);
 
-                // Reset errors
-                $(".error_customername, .error_customerphone, .error_peymentmethod, .error_discount").text(
-                    "");
+                $(".error_customername, .error_customerphone, .error_peymentmethod, .error_discount").text("");
                 $(".total-value .error_total").remove();
 
-                // Get form values
-                // let name = $("input[name='customer_name']").val().trim();
-                let name = $("#table_customer_name").val();
-                let selectedPayment = $("input[name='payment_method']:checked").val();
                 let subtotal = parseFloat($("input[name='subtotal']").val()) || 0;
                 let total = parseFloat($("input[name='total']").val()) || 0;
                 let discount = parseFloat($("#discount").val()) || 0;
-
-                // Validation
                 let isValid = true;
 
-                // if (name === "") {
-                //     $(".error_customername").text("Customer name is required").css("color", "red");
-                //     isValid = false;
-                // }
-                // console.log(selectedPayment);
-
-
-                if (!selectedPayment || selectedPayment === 'pending') {
-                    $(".error_peymentmethod").text("Please select a payment method").css("color", "red");
-                    isValid = false;
-                }
-
-                // return false;
-
-                // if (subtotal <= 0) {
-                //     $(".total-value").append("<span class='error_total' style='color:red; display:block;'>Please select at least one product</span>");
-                //     isValid = false;
-                // }
+                // Print Bill: payment not required (settlement is separate)
                 if (subtotal <= 0) {
                     $(".error_total")
                         .text("Please select at least one product")
@@ -6716,15 +6813,11 @@
                     $(".error_total").hide().text("");
                 }
 
-
-                // if (!isValid) return;
                 if (!isValid) {
-                    $btn.html(originalText).prop('disabled', false); // <-- important line
+                    $btn.html(originalText).prop('disabled', false);
                     return;
                 }
 
-
-                // Prepare order items data
                 let orderItems = buildTableOrderItemsPayload();
                 if (!orderItems.length) {
                     $(".error_total").text("Please select at least one valid product").show();
@@ -6732,22 +6825,6 @@
                     return;
                 }
 
-                // Prepare tax data
-                // let taxes = [];
-                // $(".taxList").each(function () {
-
-                //     const taxName = $(this).find("h5").text().replace(" Tax", "");
-                //     const taxAmount = parseFloat($(this).find("h6").text().replace(/[^0-9.]/g, ""));
-
-
-                //     const taxRate = parseFloat($(this).find(".tax-value").data("rate"));
-                //     taxes.push({
-                //         tax_name: taxName,
-                //         rate: taxRate,
-                //         amount: taxAmount
-                //     });
-                // });
-                // Prepare tax data
                 let taxes = [];
                 let gstOption = $("input[name='gst_option']:checked").val();
 
@@ -6765,23 +6842,17 @@
                         });
                     });
                 } else {
-                    taxes = []; // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ explicitly empty when "without GST"
+                    taxes = [];
                 }
 
-
-                let cash = parseFloat($("#cashAmount").val()) || 0;
-                let online = parseFloat($("#onlineAmount").val()) || 0;
-
-
-                // Prepare order data
                 const dineCustomer = getDineInCustomerPayload();
                 let orderData = {
                     selectedSubAdminId: selectedSubAdminId,
                     update_id: update_id,
                     customer_id: dineCustomer.customer_id,
                     customer_phone: dineCustomer.customer_phone,
-                    payment_method: selectedPayment,
-                    paid_type: $("#paidTypeSelect").val() || defaultPaidType || 'fully',
+                    payment_method: 'pending',
+                    paid_type: 'fully',
                     subtotal: subtotal,
                     discount: discount,
                     discount_amount: subtotal * (discount / 100),
@@ -6789,17 +6860,15 @@
                     tax: taxes,
                     gst_option: gstOption,
                     total: total,
-                    cash_amount: cash,
-                    online_amount: online,
+                    cash_amount: 0,
+                    online_amount: 0,
                     items: orderItems,
                     table_type: table_status,
-                    table_checkout: 'checkout',
+                    table_checkout: 'print_bill',
                     table_id: window.selectedTableId || null,
                     kot_remarks: ($('#kot_remarks').val() || '').toString().trim(),
-
                 };
 
-                // Submit order via AJAX
                 $.ajax({
                     url: "/api/update_sale_order",
                     type: "POST",
@@ -6810,21 +6879,191 @@
                         $btn.html(originalText).prop('disabled', false);
                         if (response.status) {
                             orderId = response.order_id;
-                            var checkoutStatusClass = response.table_status_class || 'blank-table';
-                            var checkoutStatus = response.table_status || 'blank';
-                            var checkoutKeepsTable = (checkoutStatusClass === 'running-table' || checkoutStatusClass === 'printed-table');
+                            window.dineBillPrinted = true;
+                            $('#btnSettleDineBill').attr('data-order_settle_id', response.order_id || orderId || update_id);
                             if (window.selectedTableId) {
-                                // Always pass order id so free tables can keep "Update Last"
                                 updateTableCardStatus(
                                     window.selectedTableId,
-                                    checkoutStatusClass,
-                                    checkoutStatus,
+                                    response.table_status_class || 'printed-table',
+                                    response.table_status || 'printed',
                                     response.order_id || orderId || '',
-                                    checkoutKeepsTable ? response.total_amount : '',
+                                    response.total_amount,
                                     response
                                 );
                             }
-                            // Reset form
+                            syncDineSettlePanel(true);
+                            if (typeof window.refreshTablesTodaySales === 'function') {
+                                window.refreshTablesTodaySales();
+                            }
+                            if (tableOrderModal) tableOrderModal.hide();
+                            var billOrderId = response.order_id || orderId;
+                            if (billOrderId && typeof window.showBillGeneratedModal === 'function') {
+                                window.showBillGeneratedModal(billOrderId, {
+                                    reloadOnClose: false,
+                                    printKot: false,
+                                    markBillPrinted: true,
+                                    tableId: window.selectedTableId || null
+                                });
+                            } else if (billOrderId) {
+                                window.open('/sales/invoice/pdf/' + billOrderId, '_blank');
+                            }
+                        } else {
+                            Swal.fire({
+                                title: "Error",
+                                text: response.message || "Could not print bill.",
+                                icon: "error",
+                                confirmButtonColor: "#ff9f43"
+                            });
+                        }
+                    },
+                    error: function (xhr) {
+                        $btn.html(originalText).prop('disabled', false);
+                        let response = xhr.responseJSON;
+                        Swal.fire({
+                            title: "Error",
+                            text: response && response.message ? response.message : "Error printing bill. Please try again.",
+                            icon: "error",
+                            confirmButtonColor: "#ff9f43"
+                        });
+                    }
+                });
+            });
+
+            // Settle Bill — confirm payment, then free table (Petpooja)
+            $(document).on('click', '#btnSettleDineBill', function (event) {
+                event.preventDefault();
+                var $btn = $(this);
+                var originalHtml = $btn.html();
+                var update_id = $btn.attr('data-order_settle_id')
+                    || $('.btn-totallabel_2').attr('data-order_payment_update_id')
+                    || '';
+                if (!update_id) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'No bill',
+                        text: 'Open the table bill first, then settle.',
+                        confirmButtonColor: '#ff9f43'
+                    });
+                    return;
+                }
+
+                let selectedPayment = $("input[name='payment_method']:checked").val();
+                if (!selectedPayment || selectedPayment === 'pending') {
+                    setPayMethodCollapseOpen(true);
+                    $(".error_peymentmethod").text("Select Cash / Card / UPI to settle").css("color", "red");
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Choose payment method',
+                        text: 'Select how the guest paid, then confirm Settle.',
+                        confirmButtonColor: '#16a34a'
+                    });
+                    return;
+                }
+
+                let subtotal = parseFloat($("input[name='subtotal']").val()) || 0;
+                let total = parseFloat($("input[name='total']").val()) || 0;
+                if (subtotal <= 0) {
+                    $(".error_total").text("Please select at least one product").show();
+                    return;
+                }
+
+                var tableName = window.selectedTableName || ($('.js-table-name').text() || 'this table');
+                var amountText = $('.js-settle-amount').text() || ('₹' + total.toFixed(2));
+
+                Swal.fire({
+                    title: 'Settle bill?',
+                    html: '<div style="text-align:left;font-size:14px;line-height:1.5">' +
+                        '<div><strong>' + $('<div>').text(tableName).html() + '</strong> will become <strong>Available</strong>.</div>' +
+                        '<div style="margin-top:8px">Amount: <strong>' + $('<div>').text(amountText).html() + '</strong></div>' +
+                        '<div>Payment: <strong>' + $('<div>').text(selectedPayment).html() + '</strong></div>' +
+                        '</div>',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#16a34a',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Yes, settle & free table',
+                    cancelButtonText: 'Cancel'
+                }).then(function (result) {
+                    if (!result.isConfirmed) return;
+
+                    let orderItems = buildTableOrderItemsPayload();
+                    if (!orderItems.length) {
+                        Swal.fire({ icon: 'error', title: 'Empty bill', text: 'Add items before settling.', confirmButtonColor: '#ff9f43' });
+                        return;
+                    }
+
+                    let taxes = [];
+                    let gstOption = $("input[name='gst_option']:checked").val();
+                    if (gstOption === "with") {
+                        $(".taxList").each(function () {
+                            const taxName = $(this).find("h5").text().replace(" Tax", "");
+                            const taxAmount = parseFloat($(this).find("h6").text().replace(/[^0-9.]/g, "")) || 0;
+                            const taxRate = parseFloat($(this).find(".tax-value").data("rate")) || 0;
+                            taxes.push({ tax_name: taxName, rate: taxRate, amount: taxAmount });
+                        });
+                    }
+
+                    let cash = parseFloat($("#cashAmount").val()) || 0;
+                    let online = parseFloat($("#onlineAmount").val()) || 0;
+                    let discount = parseFloat($("#discount").val()) || 0;
+                    const dineCustomer = getDineInCustomerPayload();
+                    const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
+
+                    $btn.prop('disabled', true).html(
+                        '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Settling…'
+                    );
+
+                    $.ajax({
+                        url: "/api/update_sale_order",
+                        type: "POST",
+                        dataType: "json",
+                        headers: posApiHeaders(),
+                        data: JSON.stringify({
+                            selectedSubAdminId: selectedSubAdminId,
+                            update_id: update_id,
+                            customer_id: dineCustomer.customer_id,
+                            customer_phone: dineCustomer.customer_phone,
+                            payment_method: selectedPayment,
+                            paid_type: $("#paidTypeSelect").val() || defaultPaidType || 'fully',
+                            subtotal: subtotal,
+                            discount: discount,
+                            discount_amount: subtotal * (discount / 100),
+                            service_tax_rate: getBillServiceTaxRate(),
+                            tax: taxes,
+                            gst_option: gstOption,
+                            total: total,
+                            cash_amount: cash,
+                            online_amount: online,
+                            items: orderItems,
+                            table_type: 'dinein',
+                            table_checkout: 'settle',
+                            table_id: window.selectedTableId || null,
+                            kot_remarks: ($('#kot_remarks').val() || '').toString().trim(),
+                        }),
+                        success: function (response) {
+                            $btn.html(originalHtml).prop('disabled', false);
+                            if (!(response && response.status)) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Settle failed',
+                                    text: (response && response.message) ? response.message : 'Please try again.',
+                                    confirmButtonColor: '#ff9f43'
+                                });
+                                return;
+                            }
+
+                            window.dineBillPrinted = false;
+                            $('#dineSettlePanel').hide();
+                            if (window.selectedTableId) {
+                                updateTableCardStatus(
+                                    window.selectedTableId,
+                                    response.table_status_class || 'blank-table',
+                                    response.table_status || 'blank',
+                                    response.order_id || update_id || '',
+                                    '',
+                                    response
+                                );
+                            }
                             selectedItems.clear();
                             $(".check-product i").removeClass("selected");
                             $("#discount").val("");
@@ -6838,45 +7077,28 @@
                             if (typeof window.refreshTablesTodaySales === 'function') {
                                 window.refreshTablesTodaySales();
                             }
-                            // Print Bill → green occupied; Settle (2nd checkout, paid) → Available
                             if (tableOrderModal) tableOrderModal.hide();
-                            var billOrderId = response.order_id || orderId;
-                            if (billOrderId && typeof window.showBillGeneratedModal === 'function') {
-                                window.showBillGeneratedModal(billOrderId, {
-                                    reloadOnClose: true,
-                                    printKot: false,
-                                    // Always mark printed while table stays occupied; skip when settled/freed
-                                    markBillPrinted: checkoutKeepsTable,
-                                    tableId: window.selectedTableId || null
-                                });
-                            } else if (billOrderId) {
-                                window.open('/sales/invoice/pdf/' + billOrderId, '_blank');
-                                location.reload();
-                            } else {
-                                location.reload();
-                            }
-                        } else {
-                            alert("Error: " + response.message);
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        $btn.html(originalText).prop('disabled', false);
+                            $('.btn-totallabel').css('display', 'flex');
+                            $('.modal-order-edit').hide();
+                            $('#btnClearDineBill').removeClass('is-visible');
 
-                        // Try to extract error message from response
-                        let response = xhr.responseJSON;
-
-                        if (response && response.message && response.message.includes("Duplicate entry")) {
-                            // Detect duplicate phone number error
-                            $(".error_customerphone").text("This phone number is already registered. Please use another one.").css("color", "red");
-                        } else {
                             Swal.fire({
-                                title: "Error",
-                                text: response && response.message ? response.message : "Error placing order. Please try again.",
-                                icon: "error",
-                                confirmButtonColor: "#ff9f43"
+                                icon: 'success',
+                                title: 'Bill settled',
+                                text: (tableName || 'Table') + ' is now Available.',
+                                confirmButtonColor: '#16a34a',
+                                timer: 1800,
+                                showConfirmButton: false
                             });
+                        },
+                        error: function (xhr) {
+                            $btn.html(originalHtml).prop('disabled', false);
+                            var msg = (xhr.responseJSON && xhr.responseJSON.message)
+                                ? xhr.responseJSON.message
+                                : 'Failed to settle bill.';
+                            Swal.fire({ icon: 'error', title: 'Error', text: msg, confirmButtonColor: '#ff9f43' });
                         }
-                    }
+                    });
                 });
             });
 
