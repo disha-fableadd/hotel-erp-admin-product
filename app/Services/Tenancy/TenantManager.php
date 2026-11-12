@@ -303,6 +303,9 @@ class TenantManager
                     $key = 'tenant_id:' . (int) $this->tenant['id'] . '|' . config('tenant.product_code') . '|' . config('tenant.project_code');
                     $cache->forget($key);
                     $cache->forget($key . ':stale');
+                    $enrichKey = 'license_enrich:' . (int) $this->tenant['id'];
+                    $cache->forget($enrichKey);
+                    $cache->forget($enrichKey . ':miss');
                 }
             }
         } catch (\Throwable) {
@@ -409,8 +412,136 @@ class TenantManager
             'tenant_db' => $databaseName,
         ]);
 
+        // Ensure Flutter / Profile license key is present (admin-client setups.unique_id)
+        $tenant = $this->enrichLicenseKey($tenant);
+
         $this->tenant = $tenant;
         app()->instance('tenant', $tenant);
+
+        return $tenant;
+    }
+
+    /**
+     * Fill unique_id / license_key when tenant payload from admin is older and omits them.
+     * Uses public GET /api/setup/search on admin-client (already returns unique_id).
+     */
+    private function enrichLicenseKey(array $tenant): array
+    {
+        $existing = trim((string) ($tenant['unique_id'] ?? $tenant['license_key'] ?? ''));
+        if ($existing !== '') {
+            $tenant['unique_id'] = strtoupper($existing);
+            $tenant['license_key'] = strtoupper($existing);
+
+            return $tenant;
+        }
+
+        $apiBase = rtrim((string) config('tenant.api_url'), '/');
+        if ($apiBase === '') {
+            return $tenant;
+        }
+
+        // Avoid hammering admin when unique_id is still missing
+        $enrichCacheKey = 'license_enrich:' . (int) ($tenant['id'] ?? 0);
+        $lookupCache = $this->lookupCache();
+        if ($lookupCache->has($enrichCacheKey . ':miss')) {
+            return $tenant;
+        }
+        if (is_string($cachedCode = $lookupCache->get($enrichCacheKey))) {
+            $tenant['unique_id'] = strtoupper($cachedCode);
+            $tenant['license_key'] = strtoupper($cachedCode);
+
+            return $tenant;
+        }
+
+        // TENANT_API_URL is typically .../api/tenant → setup search lives at .../api/setup/search
+        $setupSearchUrl = preg_replace('#/tenant$#', '/setup/search', $apiBase);
+        if (! is_string($setupSearchUrl) || $setupSearchUrl === $apiBase) {
+            $setupSearchUrl = preg_replace('#/api/tenant$#', '/api/setup/search', $apiBase) ?: ($apiBase . '/../setup/search');
+        }
+
+        $lookups = array_values(array_unique(array_filter([
+            $tenant['domain'] ?? null,
+            $tenant['db']['database'] ?? null,
+            $tenant['db']['resolved_database'] ?? null,
+            $tenant['client_name'] ?? null,
+            $tenant['brand_name'] ?? null,
+            $tenant['email'] ?? null,
+        ], fn ($v) => is_string($v) && trim($v) !== '')));
+
+        foreach ($lookups as $term) {
+            try {
+                $response = Http::acceptJson()
+                    ->timeout(max(1, (int) config('tenant.http_timeout', 8)))
+                    ->get($setupSearchUrl, [
+                        'search' => $term,
+                        'type' => config('tenant.product_code') ?: 'HOTEL',
+                    ]);
+
+                if (! $response->successful()) {
+                    continue;
+                }
+
+                $rows = $response->json('data') ?? [];
+                if (! is_array($rows) || empty($rows)) {
+                    $one = $response->json('setup');
+                    $rows = is_array($one) ? [$one] : [];
+                }
+
+                foreach ($rows as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $code = trim((string) ($row['unique_id'] ?? $row['license_key'] ?? ''));
+                    if ($code === '') {
+                        continue;
+                    }
+
+                    // Prefer exact domain / database / client match when multiple rows
+                    $rowDomain = strtolower((string) ($row['domain'] ?? ''));
+                    $rowDb = strtolower((string) (
+                        $row['database_name']
+                        ?? data_get($row, 'db.database')
+                        ?? data_get($row, 'db_details.database')
+                        ?? ''
+                    ));
+                    $rowClient = strtolower((string) (
+                        data_get($row, 'client.client_name')
+                        ?? data_get($row, 'client.brand_name')
+                        ?? $row['client_name']
+                        ?? ''
+                    ));
+                    $wantDomain = strtolower((string) ($tenant['domain'] ?? ''));
+                    $wantDb = strtolower((string) ($tenant['db']['database'] ?? $tenant['db']['resolved_database'] ?? ''));
+                    $wantClient = strtolower((string) ($tenant['client_name'] ?? $tenant['brand_name'] ?? ''));
+
+                    $domainOk = $wantDomain === '' || $rowDomain === '' || $rowDomain === $wantDomain
+                        || str_contains($rowDomain, $wantDomain) || str_contains($wantDomain, $rowDomain);
+                    $dbOk = $wantDb === '' || $rowDb === '' || $rowDb === $wantDb
+                        || str_contains($rowDb, $wantDb) || str_contains($wantDb, $rowDb);
+                    $clientOk = $wantClient === '' || $rowClient === '' || $rowClient === $wantClient
+                        || str_contains($rowClient, $wantClient) || str_contains($wantClient, $rowClient);
+
+                    if (! $domainOk && ! $dbOk && ! $clientOk && count($rows) > 1) {
+                        continue;
+                    }
+
+                    $tenant['unique_id'] = strtoupper($code);
+                    $tenant['license_key'] = strtoupper($code);
+                    $lookupCache->put($enrichCacheKey, strtoupper($code), 86400);
+                    $lookupCache->forget($enrichCacheKey . ':miss');
+
+                    return $tenant;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Tenant license enrich failed: ' . $e->getMessage(), [
+                    'term' => $term,
+                    'tenant_id' => $tenant['id'] ?? null,
+                ]);
+            }
+        }
+
+        // Remember miss briefly so we don't call admin on every page view
+        $lookupCache->put($enrichCacheKey . ':miss', 1, 60);
 
         return $tenant;
     }

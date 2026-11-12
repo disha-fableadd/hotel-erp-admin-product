@@ -710,7 +710,33 @@ class AuthController extends Controller
     public function profile()
     {
         $user = auth()->user();
-        return view('profile', compact('user'));
+
+        // Force license key refresh for Profile display (admin-client unique_id)
+        $currentLicenseKey = null;
+        try {
+            if (config('tenant.enabled') && tenant('id')) {
+                if (request()->boolean('refresh_tenant') || request()->has('refresh_tenant')) {
+                    session()->forget(['tenant_unique_id_synced', 'tenant_license_lookup_at']);
+                    try {
+                        app(\App\Services\Tenancy\TenantManager::class)->forgetCurrentCache();
+                    } catch (\Throwable) {
+                    }
+                }
+                $fresh = app(\App\Services\Tenancy\TenantManager::class)
+                    ->resolveById((int) tenant('id'), true);
+                session(['tenant' => $fresh]);
+                $currentLicenseKey = $fresh['unique_id'] ?? $fresh['license_key'] ?? null;
+                if (! empty($currentLicenseKey)) {
+                    session(['tenant_unique_id_synced' => true]);
+                }
+                view()->share('currentTenant', $fresh);
+                view()->share('currentLicenseKey', $currentLicenseKey ? strtoupper(trim((string) $currentLicenseKey)) : null);
+            }
+        } catch (\Throwable) {
+            // Profile still loads; license may show Not assigned
+        }
+
+        return view('profile', compact('user', 'currentLicenseKey'));
     }
     public function taxrates()
     {

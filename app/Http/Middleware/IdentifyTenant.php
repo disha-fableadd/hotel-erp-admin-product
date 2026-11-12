@@ -70,17 +70,19 @@ class IdentifyTenant
                 $sessionTenant = $request->session()->get('tenant');
                 $missingLicense = ! is_array($sessionTenant)
                     || (empty($sessionTenant['unique_id']) && empty($sessionTenant['license_key']));
-                // Re-fetch from admin-client once when license key is missing (e.g. older session cache)
+                $lastLookup = (int) $request->session()->get('tenant_license_lookup_at', 0);
+                // Re-fetch when missing license (throttle 60s) or explicit refresh
                 $forceFresh = $request->has('refresh_tenant')
                     || $request->has('refresh_permissions')
-                    || ($missingLicense && ! $request->session()->get('tenant_unique_id_synced'));
+                    || ($missingLicense && (time() - $lastLookup) >= 60);
 
                 $tenant = $this->tenancy->resolveById($tenantId, $forceFresh);
                 $tenant = $this->stickSessionDatabase($request, $tenant);
                 $request->session()->put('tenant', $tenant);
+                if ($forceFresh) {
+                    $request->session()->put('tenant_license_lookup_at', time());
+                }
                 if (! empty($tenant['unique_id']) || ! empty($tenant['license_key'])) {
-                    $request->session()->put('tenant_unique_id_synced', true);
-                } elseif ($forceFresh) {
                     $request->session()->put('tenant_unique_id_synced', true);
                 }
 
