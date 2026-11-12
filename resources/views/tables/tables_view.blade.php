@@ -873,75 +873,66 @@
             box-shadow: 0 4px 14px rgba(255, 159, 67, 0.35) !important;
         }
 
-        /* Petpooja settle panel (between total and payment) */
-        #tableOrderModal .dine-settle-panel {
-            margin: 10px 0 4px;
-            padding: 10px 12px;
-            border-radius: 12px;
+        /* Petpooja: settlement lives with payment (not a duplicate button) */
+        #tableOrderModal .dine-settle-pay {
+            margin: 0 0 8px;
+            padding: 8px 10px;
+            border-radius: 10px 10px 0 0;
             border: 1px solid #bbf7d0;
-            background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%);
-            box-shadow: 0 1px 3px rgba(22, 101, 52, 0.08);
+            border-bottom: 0;
+            background: #f0fdf4;
         }
-        #tableOrderModal .dine-settle-panel__status {
+        #tableOrderModal .dine-settle-pay__head {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 8px;
-            margin-bottom: 8px;
             flex-wrap: wrap;
+            margin-bottom: 6px;
         }
-        #tableOrderModal .dine-settle-panel__badge {
+        #tableOrderModal .dine-settle-pay__badge {
             display: inline-flex;
-            align-items: center;
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 800;
             letter-spacing: 0.03em;
             text-transform: uppercase;
             color: #166534;
             background: #dcfce7;
             border-radius: 999px;
-            padding: 3px 9px;
+            padding: 2px 8px;
         }
-        #tableOrderModal .dine-settle-panel__hint {
-            font-size: 11.5px;
+        #tableOrderModal .dine-settle-pay__hint {
+            font-size: 11px;
             color: #3f6212;
             font-weight: 600;
         }
-        #tableOrderModal .dine-settle-panel__amount {
+        #tableOrderModal .dine-settle-pay__amount {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 13px;
+            font-size: 12.5px;
             color: #14532d;
         }
-        #tableOrderModal .dine-settle-panel__amount strong {
-            font-size: 16px;
+        #tableOrderModal .dine-settle-pay__amount strong {
+            font-size: 15px;
             font-weight: 800;
             color: #166534;
         }
-        #tableOrderModal .btn-settle-dine {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            border: 0;
-            border-radius: 10px;
-            padding: 11px 14px;
-            color: #fff;
-            font-weight: 800;
-            font-size: 13px;
-            cursor: pointer;
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-            box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35);
+        #tableOrderModal .payment_panel.is-settle-mode .dine-settle-pay {
+            display: block;
         }
-        #tableOrderModal .btn-settle-dine:hover {
-            filter: brightness(1.03);
+        #tableOrderModal .payment_panel.is-settle-mode #dinePayMethodCollapse {
+            border: 1px solid #bbf7d0;
+            border-radius: 0 0 10px 10px;
+            background: #f8fdf9;
+            margin-top: 0;
         }
-        #tableOrderModal .btn-settle-dine:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
+        #tableOrderModal .payment_panel.is-settle-mode .pay-method-collapse-label {
+            color: #166534;
+        }
+        #tableOrderModal .btn-totallabel_2.is-settle-action {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+            box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35) !important;
         }
 
         /* Clear Bill — header (next to close) */
@@ -3430,26 +3421,21 @@
                                                 <span class="error_total" style="color:red; display:none;"></span>
                                             </li>
                                         </ul>
-
-                                        {{-- Petpooja: settlement only frees table after confirm --}}
-                                        <div class="dine-settle-panel" id="dineSettlePanel" style="display:none;">
-                                            <div class="dine-settle-panel__status">
-                                                <span class="dine-settle-panel__badge">Bill Printed</span>
-                                                <span class="dine-settle-panel__hint">Table stays occupied until you settle</span>
-                                            </div>
-                                            <div class="dine-settle-panel__amount">
-                                                <span>Amount due</span>
-                                                <strong class="js-settle-amount">{{ $currency_symbol }}0.00</strong>
-                                            </div>
-                                            <button type="button" class="btn-settle-dine" id="btnSettleDineBill" data-order_settle_id="">
-                                                <span class="btn-settle-dine__label">Settle Bill · {{ $currency_symbol }}0.00</span>
-                                                <i class="fas fa-check-circle"></i>
-                                            </button>
-                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="payment_panel">
+                                    {{-- Petpooja: settlement = pick payment + settle (same step) --}}
+                                    <div class="dine-settle-pay" id="dineSettlePayBox" style="display:none;">
+                                        <div class="dine-settle-pay__head">
+                                            <span class="dine-settle-pay__badge">Bill Printed</span>
+                                            <span class="dine-settle-pay__hint">Choose payment &amp; settle to free table</span>
+                                        </div>
+                                        <div class="dine-settle-pay__amount">
+                                            <span>Collect</span>
+                                            <strong class="js-settle-amount">{{ $currency_symbol }}0.00</strong>
+                                        </div>
+                                    </div>
                                     @php
                                         $defaultPayMethod = optional($setting)->default_payment_method ?: 'cash';
                                         $allowedPayMethods = ['pending', 'cash', 'debit card', 'cash+online', 'scan'];
@@ -3478,7 +3464,7 @@
                                     @endphp
                                     <div class="setvaluecash is-collapsed" id="dinePayMethodCollapse">
                                         <button type="button" class="pay-method-collapse-toggle" id="payMethodCollapseToggle" aria-expanded="false">
-                                            <span class="pay-method-collapse-label">Payment Method</span>
+                                            <span class="pay-method-collapse-label js-pay-collapse-label">Payment Method</span>
                                             <span class="pay-method-collapse-value">
                                                 <i class="fas {{ $defaultPayIcon }} js-selected-pay-icon"></i>
                                                 <span class="js-selected-pay-label">{{ $defaultPayLabel }}</span>
@@ -3655,9 +3641,9 @@
                                             <h6>Update · {{ $currency_symbol }}0.00</h6>
                                             <h5><i class="fas fa-check"></i></h5>
                                         </div>
-                                        <div class="btn-totallabel_2" data-order_payment_update_id="">
-                                            <h6>Print Bill · {{ $currency_symbol }}0.00</h6>
-                                            <h5><i class="fas fa-arrow-right"></i></h5>
+                                        <div class="btn-totallabel_2" data-order_payment_update_id="" data-action-mode="print">
+                                            <h6 class="js-dine-primary-action-label">Print Bill · {{ $currency_symbol }}0.00</h6>
+                                            <h5 class="js-dine-primary-action-icon"><i class="fas fa-print"></i></h5>
                                         </div>
                                     </div>
                                 </div>
@@ -4263,17 +4249,36 @@
                 || window.dineBillPrinted === true
                 || cardStatus === 'printed';
             window.dineBillPrinted = !!printed;
-            var orderId = $('#btnSettleDineBill').attr('data-order_settle_id')
-                || $('.btn-totallabel_2').attr('data-order_payment_update_id')
-                || $card.attr('data-order-id')
-                || '';
-            if (orderId) {
-                $('#btnSettleDineBill').attr('data-order_settle_id', orderId);
-            }
+            var $payPanel = $('#tableOrderModal .payment_panel');
+            var $actionBtn = $('.btn-totallabel_2');
+            var orderId = $actionBtn.attr('data-order_payment_update_id') || $card.attr('data-order-id') || '';
+            var amountText = $('.js-settle-amount').first().text()
+                || ($actionBtn.find('.js-dine-primary-action-label').text().replace(/^.*?·\s*/, '') || '');
+
             if (printed && orderId) {
-                $('#dineSettlePanel').show();
+                $payPanel.addClass('is-settle-mode');
+                $('#dineSettlePayBox').show();
+                $('#dinePayMethodCollapse').show();
+                $('.js-pay-collapse-label').text('Settlement Payment');
+                setPayMethodCollapseOpen(true);
+                $actionBtn
+                    .attr('data-action-mode', 'settle')
+                    .addClass('is-settle-action');
+                $actionBtn.find('.js-dine-primary-action-label').text('Settle · ' + (amountText || ''));
+                $actionBtn.find('.js-dine-primary-action-icon').html('<i class="fas fa-check-circle"></i>');
             } else {
-                $('#dineSettlePanel').hide();
+                $payPanel.removeClass('is-settle-mode');
+                $('#dineSettlePayBox').hide();
+                // Payment is the settle step (Petpooja) — hide until bill is printed
+                $('#dinePayMethodCollapse').hide();
+                $('.js-pay-collapse-label').text('Payment Method');
+                setPayMethodCollapseOpen(false);
+                $actionBtn
+                    .attr('data-action-mode', 'print')
+                    .removeClass('is-settle-action');
+                var printAmount = amountText || $('.total-value h6').text() || '';
+                $actionBtn.find('.js-dine-primary-action-label').text('Print Bill · ' + printAmount);
+                $actionBtn.find('.js-dine-primary-action-icon').html('<i class="fas fa-print"></i>');
             }
         }
         window.syncDineSettlePanel = syncDineSettlePanel;
@@ -4318,7 +4323,6 @@
             $('#btnClearDineBill').addClass('is-visible');
             $('.btn-totallabel_1').css('display', 'flex').attr('data-order_update_id', salse_id);
             $('.btn-totallabel_2').css('display', 'flex').attr('data-order_payment_update_id', salse_id);
-            $('#btnSettleDineBill').attr('data-order_settle_id', salse_id);
             $('.setvaluecash').show();
             if (typeof window.applyDefaultPosPayment === 'function') {
                 window.applyDefaultPosPayment();
@@ -4367,10 +4371,11 @@
             $('.modal-order-edit').hide();
             $('#btnClearDineBill').removeClass('is-visible');
             $('.btn-totallabel_1').hide();
-            $('.btn-totallabel_2').hide();
-            $('#btnSettleDineBill').attr('data-order_settle_id', '');
+            $('.btn-totallabel_2').hide().attr('data-action-mode', 'print').removeClass('is-settle-action');
             window.dineBillPrinted = false;
-            $('#dineSettlePanel').hide();
+            $('#dineSettlePayBox').hide();
+            $('#tableOrderModal .payment_panel').removeClass('is-settle-mode');
+            $('.js-pay-collapse-label').text('Payment Method');
             $('.setvaluecash').hide();
             $('input[name="gst_option"]').prop("checked", false);
             $(`input[name="gst_option"][value="${defaultGstOption || 'without'}"]`).prop("checked", true).trigger('change');
@@ -5828,9 +5833,12 @@
                     const payableText = formatCurrency(total.toFixed(2), currencySymbol, currencyPosition);
                     $(".btn-totallabel h6").html('Place Order · ' + payableText);
                     $(".btn-totallabel_1 h6").html('Update · ' + payableText);
-                    $(".btn-totallabel_2 h6").html('Print Bill · ' + payableText);
-                    $(".btn-settle-dine__label").text('Settle Bill · ' + payableText);
                     $(".js-settle-amount").text(payableText);
+                    if (window.dineBillPrinted) {
+                        $(".btn-totallabel_2 .js-dine-primary-action-label").text('Settle · ' + payableText);
+                    } else {
+                        $(".btn-totallabel_2 .js-dine-primary-action-label").text('Print Bill · ' + payableText);
+                    }
                     if (typeof window.syncDineSettlePanel === 'function') {
                         window.syncDineSettlePanel();
                     }
@@ -5846,9 +5854,12 @@
                     const zeroPayable = formatCurrency("0.00", currencySymbol, currencyPosition);
                     $(".btn-totallabel h6").html('Place Order · ' + zeroPayable);
                     $(".btn-totallabel_1 h6").html('Update · ' + zeroPayable);
-                    $(".btn-totallabel_2 h6").html('Print Bill · ' + zeroPayable);
-                    $(".btn-settle-dine__label").text('Settle Bill · ' + zeroPayable);
                     $(".js-settle-amount").text(zeroPayable);
+                    if (window.dineBillPrinted) {
+                        $(".btn-totallabel_2 .js-dine-primary-action-label").text('Settle · ' + zeroPayable);
+                    } else {
+                        $(".btn-totallabel_2 .js-dine-primary-action-label").text('Print Bill · ' + zeroPayable);
+                    }
                     if (typeof window.syncDineSettlePanel === 'function') {
                         window.syncDineSettlePanel();
                     }
@@ -6783,160 +6794,10 @@
                 });
             });
 
-            $(".btn-totallabel_2").click(function (event) {
-                event.preventDefault();
-                var $btn = $(this); // cache the button
-                var originalText = $btn.html();
-                var update_id = $(this).data("order_payment_update_id");
-                const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
-                var table_status = "dinein";
-                // Show loading text and disable the button
-                $btn.html(
-                    '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Printing…'
-                ).prop('disabled', true);
-
-                $(".error_customername, .error_customerphone, .error_peymentmethod, .error_discount").text("");
-                $(".total-value .error_total").remove();
-
-                let subtotal = parseFloat($("input[name='subtotal']").val()) || 0;
-                let total = parseFloat($("input[name='total']").val()) || 0;
-                let discount = parseFloat($("#discount").val()) || 0;
-                let isValid = true;
-
-                // Print Bill: payment not required (settlement is separate)
-                if (subtotal <= 0) {
-                    $(".error_total")
-                        .text("Please select at least one product")
-                        .show();
-                    isValid = false;
-                } else {
-                    $(".error_total").hide().text("");
-                }
-
-                if (!isValid) {
-                    $btn.html(originalText).prop('disabled', false);
-                    return;
-                }
-
-                let orderItems = buildTableOrderItemsPayload();
-                if (!orderItems.length) {
-                    $(".error_total").text("Please select at least one valid product").show();
-                    $btn.html(originalText).prop('disabled', false);
-                    return;
-                }
-
-                let taxes = [];
-                let gstOption = $("input[name='gst_option']:checked").val();
-
-                if (gstOption === "with") {
-                    $(".taxList").each(function () {
-                        const taxName = $(this).find("h5").text().replace(" Tax", "");
-                        const taxAmount = parseFloat($(this).find("h6").text().replace(/[^0-9.]/g,
-                            "")) || 0;
-                        const taxRate = parseFloat($(this).find(".tax-value").data("rate")) || 0;
-
-                        taxes.push({
-                            tax_name: taxName,
-                            rate: taxRate,
-                            amount: taxAmount
-                        });
-                    });
-                } else {
-                    taxes = [];
-                }
-
-                const dineCustomer = getDineInCustomerPayload();
-                let orderData = {
-                    selectedSubAdminId: selectedSubAdminId,
-                    update_id: update_id,
-                    customer_id: dineCustomer.customer_id,
-                    customer_phone: dineCustomer.customer_phone,
-                    payment_method: 'pending',
-                    paid_type: 'fully',
-                    subtotal: subtotal,
-                    discount: discount,
-                    discount_amount: subtotal * (discount / 100),
-                    service_tax_rate: getBillServiceTaxRate(),
-                    tax: taxes,
-                    gst_option: gstOption,
-                    total: total,
-                    cash_amount: 0,
-                    online_amount: 0,
-                    items: orderItems,
-                    table_type: table_status,
-                    table_checkout: 'print_bill',
-                    table_id: window.selectedTableId || null,
-                    kot_remarks: ($('#kot_remarks').val() || '').toString().trim(),
-                };
-
-                $.ajax({
-                    url: "/api/update_sale_order",
-                    type: "POST",
-                    dataType: "json",
-                    headers: posApiHeaders(),
-                    data: JSON.stringify(orderData),
-                    success: function (response) {
-                        $btn.html(originalText).prop('disabled', false);
-                        if (response.status) {
-                            orderId = response.order_id;
-                            window.dineBillPrinted = true;
-                            $('#btnSettleDineBill').attr('data-order_settle_id', response.order_id || orderId || update_id);
-                            if (window.selectedTableId) {
-                                updateTableCardStatus(
-                                    window.selectedTableId,
-                                    response.table_status_class || 'printed-table',
-                                    response.table_status || 'printed',
-                                    response.order_id || orderId || '',
-                                    response.total_amount,
-                                    response
-                                );
-                            }
-                            syncDineSettlePanel(true);
-                            if (typeof window.refreshTablesTodaySales === 'function') {
-                                window.refreshTablesTodaySales();
-                            }
-                            if (tableOrderModal) tableOrderModal.hide();
-                            var billOrderId = response.order_id || orderId;
-                            if (billOrderId && typeof window.showBillGeneratedModal === 'function') {
-                                window.showBillGeneratedModal(billOrderId, {
-                                    reloadOnClose: false,
-                                    printKot: false,
-                                    markBillPrinted: true,
-                                    tableId: window.selectedTableId || null
-                                });
-                            } else if (billOrderId) {
-                                window.open('/sales/invoice/pdf/' + billOrderId, '_blank');
-                            }
-                        } else {
-                            Swal.fire({
-                                title: "Error",
-                                text: response.message || "Could not print bill.",
-                                icon: "error",
-                                confirmButtonColor: "#ff9f43"
-                            });
-                        }
-                    },
-                    error: function (xhr) {
-                        $btn.html(originalText).prop('disabled', false);
-                        let response = xhr.responseJSON;
-                        Swal.fire({
-                            title: "Error",
-                            text: response && response.message ? response.message : "Error printing bill. Please try again.",
-                            icon: "error",
-                            confirmButtonColor: "#ff9f43"
-                        });
-                    }
-                });
-            });
-
-            // Settle Bill — confirm payment, then free table (Petpooja)
-            $(document).on('click', '#btnSettleDineBill', function (event) {
-                event.preventDefault();
-                var $btn = $(this);
+            // Petpooja: same footer button = Print Bill, or Settle (payment) after print
+            function runDineSettlePayment($btn) {
                 var originalHtml = $btn.html();
-                var update_id = $btn.attr('data-order_settle_id')
-                    || $('.btn-totallabel_2').attr('data-order_payment_update_id')
-                    || '';
+                var update_id = $btn.attr('data-order_payment_update_id') || $btn.data('order_payment_update_id') || '';
                 if (!update_id) {
                     Swal.fire({
                         icon: 'warning',
@@ -6953,8 +6814,8 @@
                     $(".error_peymentmethod").text("Select Cash / Card / UPI to settle").css("color", "red");
                     Swal.fire({
                         icon: 'info',
-                        title: 'Choose payment method',
-                        text: 'Select how the guest paid, then confirm Settle.',
+                        title: 'Choose payment',
+                        text: 'Pick Cash / Card / UPI, then Settle — like Petpooja settlement.',
                         confirmButtonColor: '#16a34a'
                     });
                     return;
@@ -6968,20 +6829,19 @@
                 }
 
                 var tableName = window.selectedTableName || ($('.js-table-name').text() || 'this table');
-                var amountText = $('.js-settle-amount').text() || ('₹' + total.toFixed(2));
+                var amountText = $('.js-settle-amount').first().text() || ('₹' + total.toFixed(2));
 
                 Swal.fire({
-                    title: 'Settle bill?',
+                    title: 'Settle payment?',
                     html: '<div style="text-align:left;font-size:14px;line-height:1.5">' +
-                        '<div><strong>' + $('<div>').text(tableName).html() + '</strong> will become <strong>Available</strong>.</div>' +
-                        '<div style="margin-top:8px">Amount: <strong>' + $('<div>').text(amountText).html() + '</strong></div>' +
-                        '<div>Payment: <strong>' + $('<div>').text(selectedPayment).html() + '</strong></div>' +
+                        '<div>Collect <strong>' + $('<div>').text(amountText).html() + '</strong> via <strong>' + $('<div>').text(selectedPayment).html() + '</strong></div>' +
+                        '<div style="margin-top:8px"><strong>' + $('<div>').text(tableName).html() + '</strong> will become Available.</div>' +
                         '</div>',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#16a34a',
                     cancelButtonColor: '#94a3b8',
-                    confirmButtonText: 'Yes, settle & free table',
+                    confirmButtonText: 'Settle & free table',
                     cancelButtonText: 'Cancel'
                 }).then(function (result) {
                     if (!result.isConfirmed) return;
@@ -7053,7 +6913,10 @@
                             }
 
                             window.dineBillPrinted = false;
-                            $('#dineSettlePanel').hide();
+                            $('#dineSettlePayBox').hide();
+                            $('#tableOrderModal .payment_panel').removeClass('is-settle-mode');
+                            $('.js-pay-collapse-label').text('Payment Method');
+                            $btn.attr('data-action-mode', 'print').removeClass('is-settle-action');
                             if (window.selectedTableId) {
                                 updateTableCardStatus(
                                     window.selectedTableId,
@@ -7084,7 +6947,7 @@
 
                             Swal.fire({
                                 icon: 'success',
-                                title: 'Bill settled',
+                                title: 'Payment settled',
                                 text: (tableName || 'Table') + ' is now Available.',
                                 confirmButtonColor: '#16a34a',
                                 timer: 1800,
@@ -7099,6 +6962,144 @@
                             Swal.fire({ icon: 'error', title: 'Error', text: msg, confirmButtonColor: '#ff9f43' });
                         }
                     });
+                });
+            }
+
+            $(".btn-totallabel_2").click(function (event) {
+                event.preventDefault();
+                var $btn = $(this);
+                var actionMode = String($btn.attr('data-action-mode') || 'print').toLowerCase();
+                if (actionMode === 'settle' || window.dineBillPrinted) {
+                    runDineSettlePayment($btn);
+                    return;
+                }
+
+                var originalText = $btn.html();
+                var update_id = $(this).data("order_payment_update_id") || $(this).attr('data-order_payment_update_id');
+                const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
+                var table_status = "dinein";
+                $btn.html(
+                    '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Printing…'
+                ).prop('disabled', true);
+
+                $(".error_customername, .error_customerphone, .error_peymentmethod, .error_discount").text("");
+                $(".total-value .error_total").remove();
+
+                let subtotal = parseFloat($("input[name='subtotal']").val()) || 0;
+                let total = parseFloat($("input[name='total']").val()) || 0;
+                let discount = parseFloat($("#discount").val()) || 0;
+                let isValid = true;
+
+                if (subtotal <= 0) {
+                    $(".error_total").text("Please select at least one product").show();
+                    isValid = false;
+                } else {
+                    $(".error_total").hide().text("");
+                }
+
+                if (!isValid) {
+                    $btn.html(originalText).prop('disabled', false);
+                    return;
+                }
+
+                let orderItems = buildTableOrderItemsPayload();
+                if (!orderItems.length) {
+                    $(".error_total").text("Please select at least one valid product").show();
+                    $btn.html(originalText).prop('disabled', false);
+                    return;
+                }
+
+                let taxes = [];
+                let gstOption = $("input[name='gst_option']:checked").val();
+                if (gstOption === "with") {
+                    $(".taxList").each(function () {
+                        const taxName = $(this).find("h5").text().replace(" Tax", "");
+                        const taxAmount = parseFloat($(this).find("h6").text().replace(/[^0-9.]/g, "")) || 0;
+                        const taxRate = parseFloat($(this).find(".tax-value").data("rate")) || 0;
+                        taxes.push({ tax_name: taxName, rate: taxRate, amount: taxAmount });
+                    });
+                }
+
+                const dineCustomer = getDineInCustomerPayload();
+                let orderData = {
+                    selectedSubAdminId: selectedSubAdminId,
+                    update_id: update_id,
+                    customer_id: dineCustomer.customer_id,
+                    customer_phone: dineCustomer.customer_phone,
+                    payment_method: 'pending',
+                    paid_type: 'fully',
+                    subtotal: subtotal,
+                    discount: discount,
+                    discount_amount: subtotal * (discount / 100),
+                    service_tax_rate: getBillServiceTaxRate(),
+                    tax: taxes,
+                    gst_option: gstOption,
+                    total: total,
+                    cash_amount: 0,
+                    online_amount: 0,
+                    items: orderItems,
+                    table_type: table_status,
+                    table_checkout: 'print_bill',
+                    table_id: window.selectedTableId || null,
+                    kot_remarks: ($('#kot_remarks').val() || '').toString().trim(),
+                };
+
+                $.ajax({
+                    url: "/api/update_sale_order",
+                    type: "POST",
+                    dataType: "json",
+                    headers: posApiHeaders(),
+                    data: JSON.stringify(orderData),
+                    success: function (response) {
+                        $btn.html(originalText).prop('disabled', false);
+                        if (response.status) {
+                            orderId = response.order_id;
+                            window.dineBillPrinted = true;
+                            if (window.selectedTableId) {
+                                updateTableCardStatus(
+                                    window.selectedTableId,
+                                    response.table_status_class || 'printed-table',
+                                    response.table_status || 'printed',
+                                    response.order_id || orderId || '',
+                                    response.total_amount,
+                                    response
+                                );
+                            }
+                            syncDineSettlePanel(true);
+                            if (typeof window.refreshTablesTodaySales === 'function') {
+                                window.refreshTablesTodaySales();
+                            }
+                            if (tableOrderModal) tableOrderModal.hide();
+                            var billOrderId = response.order_id || orderId;
+                            if (billOrderId && typeof window.showBillGeneratedModal === 'function') {
+                                window.showBillGeneratedModal(billOrderId, {
+                                    reloadOnClose: false,
+                                    printKot: false,
+                                    markBillPrinted: true,
+                                    tableId: window.selectedTableId || null
+                                });
+                            } else if (billOrderId) {
+                                window.open('/sales/invoice/pdf/' + billOrderId, '_blank');
+                            }
+                        } else {
+                            Swal.fire({
+                                title: "Error",
+                                text: response.message || "Could not print bill.",
+                                icon: "error",
+                                confirmButtonColor: "#ff9f43"
+                            });
+                        }
+                    },
+                    error: function (xhr) {
+                        $btn.html(originalText).prop('disabled', false);
+                        let response = xhr.responseJSON;
+                        Swal.fire({
+                            title: "Error",
+                            text: response && response.message ? response.message : "Error printing bill. Please try again.",
+                            icon: "error",
+                            confirmButtonColor: "#ff9f43"
+                        });
+                    }
                 });
             });
 
