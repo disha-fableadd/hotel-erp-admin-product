@@ -668,22 +668,26 @@ class TenantManager
         $email = trim((string) ($extraHints['email'] ?? $tenant['email'] ?? ''));
         $wantDb = strtolower((string) ($tenant['db']['database'] ?? $tenant['db']['resolved_database'] ?? ''));
 
-        // Prefer brand/client name — admin setup/search matches these (DB name does not)
+        // Prefer domain first (admin Edit Setup "Custom Domain"), then brand/client name
+        $productType = config('tenant.product_code') ?: 'HOTEL';
         $querySets = [];
+        if ($domain !== '') {
+            $normDomain = static::normalizeHost($domain);
+            $querySets[] = ['search' => $domain, 'type' => $productType];
+            if ($normDomain !== '' && strcasecmp($normDomain, $domain) !== 0) {
+                $querySets[] = ['search' => $normDomain, 'type' => $productType];
+            }
+            if (str_contains($normDomain, 'hotel-erp.')) {
+                $querySets[] = ['search' => str_replace('hotel-erp.', 'erp.', $normDomain), 'type' => $productType];
+            }
+        }
         if ($brandName !== '') {
-            $querySets[] = ['brand_name' => $brandName, 'type' => config('tenant.product_code') ?: 'HOTEL'];
-            $querySets[] = ['search' => $brandName, 'type' => config('tenant.product_code') ?: 'HOTEL'];
+            $querySets[] = ['brand_name' => $brandName, 'type' => $productType];
+            $querySets[] = ['search' => $brandName, 'type' => $productType];
         }
         if ($clientName !== '' && strcasecmp($clientName, $brandName) !== 0) {
-            $querySets[] = ['brand_name' => $clientName, 'type' => config('tenant.product_code') ?: 'HOTEL'];
-            $querySets[] = ['search' => $clientName, 'type' => config('tenant.product_code') ?: 'HOTEL'];
-        }
-        if ($domain !== '') {
-            $querySets[] = ['search' => $domain, 'type' => config('tenant.product_code') ?: 'HOTEL'];
-            // Also try without first subdomain label (hotel-erp.x.com → x.com won't help; try erp. host variants)
-            if (str_contains($domain, 'hotel-erp.')) {
-                $querySets[] = ['search' => str_replace('hotel-erp.', 'erp.', $domain), 'type' => config('tenant.product_code') ?: 'HOTEL'];
-            }
+            $querySets[] = ['brand_name' => $clientName, 'type' => $productType];
+            $querySets[] = ['search' => $clientName, 'type' => $productType];
         }
         if ($email !== '' && str_contains($email, '@')) {
             // brand often matches email local-part for small hotels

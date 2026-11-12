@@ -735,13 +735,16 @@ class AuthController extends Controller
             }
 
             if (! empty($tenant)) {
+                // Use current browser host + profile identity to fetch setups.unique_id
+                // from admin GET /api/setup/search (same source as admin Edit Setup License Key)
+                $host = request()->getHost();
                 $tenant = $tenancy->ensureLicenseKey($tenant, [
-                    'client_name' => $user->name ?? null,
-                    'brand_name' => $user->name ?? null,
-                    'email' => $user->email ?? null,
-                    'domain' => $tenant['domain'] ?? null,
+                    'client_name' => $user->name ?? ($tenant['client_name'] ?? null),
+                    'brand_name' => $tenant['brand_name'] ?? ($user->name ?? null),
+                    'email' => $user->email ?? ($tenant['email'] ?? null),
+                    'domain' => $tenant['domain'] ?? $host,
                     'name' => $user->name ?? null,
-                ], $force || true);
+                ], true);
 
                 session(['tenant' => $tenant]);
                 if (! empty($tenant['id'])) {
