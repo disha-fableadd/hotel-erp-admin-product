@@ -2512,8 +2512,9 @@
             background: #dcfce7;
         }
 
-        .table-card__timer.is-frozen {
-            opacity: 0.95;
+        /* Printed tables: timer hidden (stopped) */
+        .table-box.table-card.printed-table .table-card__timer {
+            display: none !important;
         }
 
         .table-card__badge {
@@ -4909,10 +4910,9 @@
                 var status = String($card.attr('data-table-status') || '').toLowerCase();
                 var $timer = $card.find('.table-card__timer');
                 if (! $timer.length) return;
-                // Petpooja: Bill Printed → timer freezes (no live tick)
+                // Petpooja: Bill Printed → hide timer (stopped / not shown)
                 if (status === 'printed') {
-                    var frozen = $card.attr('data-timer-frozen-label') || freezeTableTimerLabel($card);
-                    $timer.text(frozen).addClass('is-visible is-frozen');
+                    $timer.text('—').removeClass('is-visible is-frozen');
                     return;
                 }
                 if (status === 'running' && startedAt) {
@@ -4980,13 +4980,14 @@
                 $timer = $card.find('.table-card__timer');
             }
             if (nextStatus === 'printed') {
+                // Stop & hide running timer after bill print
                 if (printedAt) {
                     $card.attr('data-printed-at', printedAt);
                 } else if (! $card.attr('data-printed-at')) {
                     $card.attr('data-printed-at', new Date().toISOString());
                 }
-                var frozenLabel = freezeTableTimerLabel($card);
-                $timer.text(frozenLabel).addClass('is-visible is-frozen');
+                freezeTableTimerLabel($card); // keep stamp for reference, do not show
+                $timer.text('—').removeClass('is-visible is-frozen');
             } else if (nextStatus === 'running') {
                 $card.removeAttr('data-printed-at');
                 $card.removeAttr('data-timer-frozen-label');
