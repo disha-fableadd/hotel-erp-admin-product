@@ -41,7 +41,14 @@ class AppViewData
             ?? tenant('license_key')
             ?? data_get(session('tenant'), 'unique_id')
             ?? data_get(session('tenant'), 'license_key');
-
+        if (empty($licenseKey)) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('settings', 'client_license_key')) {
+                    $licenseKey = Setting::query()->value('client_license_key');
+                }
+            } catch (\Throwable) {
+            }
+        }
         View::share('currentLicenseKey', $licenseKey ? strtoupper(trim((string) $licenseKey)) : null);
 
         $planExpiryNotice = [

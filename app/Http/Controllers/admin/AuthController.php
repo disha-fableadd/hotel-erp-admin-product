@@ -710,31 +710,66 @@ class AuthController extends Controller
     public function profile()
     {
         $user = auth()->user();
-
-        // Force license key refresh for Profile display (admin-client unique_id)
         $currentLicenseKey = null;
+
         try {
-            if (config('tenant.enabled') && tenant('id')) {
-                if (request()->boolean('refresh_tenant') || request()->has('refresh_tenant')) {
-                    session()->forget(['tenant_unique_id_synced', 'tenant_license_lookup_at']);
-                    try {
-                        app(\App\Services\Tenancy\TenantManager::class)->forgetCurrentCache();
-                    } catch (\Throwable) {
-                    }
+            $tenancy = app(\App\Services\Tenancy\TenantManager::class);
+            $tenantId = (int) (tenant('id') ?? session('tenant_id') ?? 0);
+            $force = request()->has('refresh_tenant');
+
+            if ($force) {
+                session()->forget(['tenant_unique_id_synced', 'tenant_license_lookup_at']);
+                try {
+                    $tenancy->forgetCurrentCache();
+                } catch (\Throwable) {
                 }
-                $fresh = app(\App\Services\Tenancy\TenantManager::class)
-                    ->resolveById((int) tenant('id'), true);
-                session(['tenant' => $fresh]);
-                $currentLicenseKey = $fresh['unique_id'] ?? $fresh['license_key'] ?? null;
+            }
+
+            $tenant = is_array(tenant()) ? tenant() : (is_array(session('tenant')) ? session('tenant') : []);
+            if ($tenantId > 0 && config('tenant.enabled')) {
+                try {
+                    $tenant = $tenancy->resolveById($tenantId, true);
+                } catch (\Throwable) {
+                    // keep session tenant
+                }
+            }
+
+            if (! empty($tenant)) {
+                $tenant = $tenancy->ensureLicenseKey($tenant, [
+                    'client_name' => $user->name ?? null,
+                    'brand_name' => $user->name ?? null,
+                    'email' => $user->email ?? null,
+                    'domain' => $tenant['domain'] ?? null,
+                    'name' => $user->name ?? null,
+                ], $force || true);
+
+                session(['tenant' => $tenant]);
+                if (! empty($tenant['id'])) {
+                    session(['tenant_id' => $tenant['id']]);
+                }
+
+                $currentLicenseKey = $tenant['unique_id'] ?? $tenant['license_key'] ?? null;
                 if (! empty($currentLicenseKey)) {
                     session(['tenant_unique_id_synced' => true]);
                 }
-                view()->share('currentTenant', $fresh);
+
+                view()->share('currentTenant', $tenant);
                 view()->share('currentLicenseKey', $currentLicenseKey ? strtoupper(trim((string) $currentLicenseKey)) : null);
             }
         } catch (\Throwable) {
-            // Profile still loads; license may show Not assigned
+            // Profile still loads
         }
+
+        if (empty($currentLicenseKey)) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('settings', 'client_license_key')) {
+                    $currentLicenseKey = \App\Models\Setting::query()->value('client_license_key');
+                }
+            } catch (\Throwable) {
+            }
+        }
+
+        $currentLicenseKey = $currentLicenseKey ? strtoupper(trim((string) $currentLicenseKey)) : null;
 
         return view('profile', compact('user', 'currentLicenseKey'));
     }

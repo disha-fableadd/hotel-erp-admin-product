@@ -31,7 +31,8 @@ When `TENANCY_ENABLED=true` on the Hotel ERP server:
 | Rule | Detail |
 |------|--------|
 | License **required** | Missing key → `403` / `LICENSE_REQUIRED` |
-| Resolve every sync | Pull/push call admin-client and activate that client DB |
+| Resolve every sync | Pull/push resolve the client DB via license key |
+| Resolve path | Tries admin `/resolve-license`; if missing (404), falls back to `/setup/search?unique_id=` + `/resolve` |
 | Product scoped | Only clients that purchased this Hotel product/project |
 | Expired / inactive | `403` with `EXPIRED` / `INACTIVE` |
 
