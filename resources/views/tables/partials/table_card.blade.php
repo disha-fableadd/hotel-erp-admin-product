@@ -104,9 +104,9 @@
             <div class="table-card__meta">
                 <span class="table-card__badge">{{ $statusLabel }}</span>
                 <div class="table-card__meta-right">
-                    {{-- Timer only while Running; hidden after Bill Printed --}}
-                    <span class="table-card__timer {{ $isOccupied && $elapsedLabel !== '' ? 'is-visible' : '' }}"
-                          title="Time since order started">{{ $isOccupied && $elapsedLabel !== '' ? $elapsedLabel : '—' }}</span>
+                    {{-- Running: live tick. Printed: frozen seating time (stopped, still visible) --}}
+                    <span class="table-card__timer {{ $showBill && $elapsedLabel !== '' ? 'is-visible' : '' }} {{ $isPrinted ? 'is-frozen' : '' }}"
+                          title="{{ $isPrinted ? 'Seating time (stopped at bill print)' : 'Time since seating started' }}">{{ $elapsedLabel !== '' ? $elapsedLabel : '—' }}</span>
                     <div class="table-card__signals">
                         @if($table->has_bell ?? false)
                             <span class="table-card__signal" title="Call"><i class="fa-solid fa-bell"></i></span>

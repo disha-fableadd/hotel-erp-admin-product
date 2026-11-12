@@ -2512,9 +2512,11 @@
             background: #dcfce7;
         }
 
-        /* Printed tables: timer hidden (stopped) */
-        .table-box.table-card.printed-table .table-card__timer {
-            display: none !important;
+        /* Printed: show frozen seating time (not ticking) */
+        .table-box.table-card.printed-table .table-card__timer.is-frozen,
+        .table-card__timer.is-frozen {
+            display: inline-block;
+            opacity: 1;
         }
 
         .table-card__badge {
@@ -4910,9 +4912,12 @@
                 var status = String($card.attr('data-table-status') || '').toLowerCase();
                 var $timer = $card.find('.table-card__timer');
                 if (! $timer.length) return;
-                // Petpooja: Bill Printed → hide timer (stopped / not shown)
+                // Bill Printed → keep showing seating time, but STOP ticking
                 if (status === 'printed') {
-                    $timer.text('—').removeClass('is-visible is-frozen');
+                    var frozen = $card.attr('data-timer-frozen-label') || freezeTableTimerLabel($card);
+                    if (frozen) {
+                        $timer.text(frozen).addClass('is-visible is-frozen');
+                    }
                     return;
                 }
                 if (status === 'running' && startedAt) {
@@ -4980,14 +4985,14 @@
                 $timer = $card.find('.table-card__timer');
             }
             if (nextStatus === 'printed') {
-                // Stop & hide running timer after bill print
+                // Freeze seating timer at print moment — still visible, not ticking
                 if (printedAt) {
                     $card.attr('data-printed-at', printedAt);
                 } else if (! $card.attr('data-printed-at')) {
                     $card.attr('data-printed-at', new Date().toISOString());
                 }
-                freezeTableTimerLabel($card); // keep stamp for reference, do not show
-                $timer.text('—').removeClass('is-visible is-frozen');
+                var frozenLabel = freezeTableTimerLabel($card);
+                $timer.text(frozenLabel || '0 Min').addClass('is-visible is-frozen');
             } else if (nextStatus === 'running') {
                 $card.removeAttr('data-printed-at');
                 $card.removeAttr('data-timer-frozen-label');

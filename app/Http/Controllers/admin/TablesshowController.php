@@ -288,7 +288,7 @@ class TablesshowController extends Controller
             })
             ->orderByDesc('id')
             ->get(array_values(array_filter([
-                'id', 'table_no', 'total_amount', 'bill_printed', 'created_at', 'customer_name', 'order_number',
+                'id', 'table_no', 'total_amount', 'bill_printed', 'created_at', 'updated_at', 'customer_name', 'order_number',
                 \Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed_at') ? 'bill_printed_at' : null,
             ])))
             ->unique('table_no')
@@ -321,13 +321,23 @@ class TablesshowController extends Controller
                 $table->order_customer_name = $order->customer_name ?: null;
                 $table->order_number_display = $order->order_number ?: null;
                 $table->order_items_count = (int) ($order->items_count ?? 0);
-                $table->order_printed_at = (! empty($order->bill_printed) && ! empty($order->bill_printed_at))
-                    ? $order->bill_printed_at->timezone('Asia/Kolkata')->toIso8601String()
-                    : null;
                 if (! empty($order->bill_printed)) {
+                    // Stamp bill_printed_at once so seating timer freezes (does not keep growing)
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed_at') && empty($order->bill_printed_at)) {
+                        try {
+                            $order->bill_printed_at = $order->updated_at ?: now('Asia/Kolkata');
+                            $order->saveQuietly();
+                        } catch (\Throwable $e) {
+                            // ignore stamp failure
+                        }
+                    }
+                    $table->order_printed_at = ! empty($order->bill_printed_at)
+                        ? $order->bill_printed_at->timezone('Asia/Kolkata')->toIso8601String()
+                        : now('Asia/Kolkata')->toIso8601String();
                     $table->status = 'printed';
                     $table->table_status = 3;
                 } elseif ((string) ($table->status ?? '') !== 'reserved') {
+                    $table->order_printed_at = null;
                     $table->status = 'running';
                     $table->table_status = 1;
                 }
