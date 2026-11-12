@@ -41,6 +41,29 @@ class AppViewData
             ?? tenant('license_key')
             ?? data_get(session('tenant'), 'unique_id')
             ?? data_get(session('tenant'), 'license_key');
+
+        // If session is stale (no unique_id yet), refresh once from admin-client
+        if (
+            empty($licenseKey)
+            && config('tenant.enabled')
+            && tenant('id')
+            && ! session('tenant_unique_id_synced')
+        ) {
+            try {
+                $fresh = app(\App\Services\Tenancy\TenantManager::class)
+                    ->resolveById((int) tenant('id'), true);
+                $licenseKey = $fresh['unique_id'] ?? $fresh['license_key'] ?? null;
+                if (function_exists('session') && session()->isStarted()) {
+                    session(['tenant' => $fresh, 'tenant_unique_id_synced' => true]);
+                }
+                View::share('currentTenant', $fresh);
+            } catch (\Throwable) {
+                if (function_exists('session') && session()->isStarted()) {
+                    session(['tenant_unique_id_synced' => true]);
+                }
+            }
+        }
+
         View::share('currentLicenseKey', $licenseKey ? strtoupper(trim((string) $licenseKey)) : null);
 
         $planExpiryNotice = [

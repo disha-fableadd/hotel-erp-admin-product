@@ -67,11 +67,22 @@ class IdentifyTenant
         if ($request->hasSession() && $request->session()->has('tenant_id')) {
             try {
                 $tenantId = (int) $request->session()->get('tenant_id');
-                $forceFresh = $request->has('refresh_tenant') || $request->has('refresh_permissions');
+                $sessionTenant = $request->session()->get('tenant');
+                $missingLicense = ! is_array($sessionTenant)
+                    || (empty($sessionTenant['unique_id']) && empty($sessionTenant['license_key']));
+                // Re-fetch from admin-client once when license key is missing (e.g. older session cache)
+                $forceFresh = $request->has('refresh_tenant')
+                    || $request->has('refresh_permissions')
+                    || ($missingLicense && ! $request->session()->get('tenant_unique_id_synced'));
 
                 $tenant = $this->tenancy->resolveById($tenantId, $forceFresh);
                 $tenant = $this->stickSessionDatabase($request, $tenant);
                 $request->session()->put('tenant', $tenant);
+                if (! empty($tenant['unique_id']) || ! empty($tenant['license_key'])) {
+                    $request->session()->put('tenant_unique_id_synced', true);
+                } elseif ($forceFresh) {
+                    $request->session()->put('tenant_unique_id_synced', true);
+                }
 
                 AppViewData::share();
                 return $next($request);
@@ -91,7 +102,7 @@ class IdentifyTenant
 
                 // If tenant is expired/inactive, logout and deny
                 if ($request->hasSession()) {
-                    $request->session()->forget(['tenant_id', 'tenant', 'tenant_resolved_database']);
+                    $request->session()->forget(['tenant_id', 'tenant', 'tenant_resolved_database', 'tenant_unique_id_synced', 'tenant_resolved_for']);
                 }
                 \Illuminate\Support\Facades\Auth::guard('web')->logout();
                 return $this->deny($request, $e);
