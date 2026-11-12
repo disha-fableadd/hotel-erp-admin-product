@@ -2389,6 +2389,10 @@
             background: #dcfce7;
         }
 
+        .table-card__timer.is-frozen {
+            opacity: 0.95;
+        }
+
         .table-card__badge {
             font-size: 9.5px;
             font-weight: 700;
@@ -4649,15 +4653,28 @@
             );
         });
 
-        function formatTableElapsed(startedAt) {
+        function formatTableElapsed(startedAt, endAt) {
             if (!startedAt) return '';
             var start = new Date(startedAt);
             if (isNaN(start.getTime())) return '';
-            var mins = Math.max(0, Math.floor((Date.now() - start.getTime()) / 60000));
+            var endMs = endAt ? new Date(endAt).getTime() : Date.now();
+            if (isNaN(endMs)) endMs = Date.now();
+            var mins = Math.max(0, Math.floor((endMs - start.getTime()) / 60000));
             if (mins < 60) return mins + ' Min';
             var h = Math.floor(mins / 60);
             var m = mins % 60;
             return h + 'h' + (m > 0 ? (' ' + m + 'm') : '');
+        }
+
+        function freezeTableTimerLabel($card) {
+            var startedAt = $card.attr('data-started-at') || '';
+            var frozenAt = $card.attr('data-printed-at') || new Date().toISOString();
+            if (!$card.attr('data-printed-at')) {
+                $card.attr('data-printed-at', frozenAt);
+            }
+            var label = formatTableElapsed(startedAt, frozenAt) || $card.attr('data-timer-frozen-label') || '0 Min';
+            $card.attr('data-timer-frozen-label', label);
+            return label;
         }
 
         function refreshAllTableTimers() {
@@ -4667,19 +4684,29 @@
                 var status = String($card.attr('data-table-status') || '').toLowerCase();
                 var $timer = $card.find('.table-card__timer');
                 if (! $timer.length) return;
-                if ((status === 'running' || status === 'printed') && startedAt) {
+                // Petpooja: Bill Printed → timer freezes (no live tick)
+                if (status === 'printed') {
+                    var frozen = $card.attr('data-timer-frozen-label') || freezeTableTimerLabel($card);
+                    $timer.text(frozen).addClass('is-visible is-frozen');
+                    return;
+                }
+                if (status === 'running' && startedAt) {
+                    $card.removeAttr('data-timer-frozen-label');
+                    $card.removeAttr('data-printed-at');
                     var label = formatTableElapsed(startedAt);
                     if (label) {
-                        $timer.text(label).addClass('is-visible');
+                        $timer.text(label).addClass('is-visible').removeClass('is-frozen');
                     }
                 } else {
-                    $timer.text('—').removeClass('is-visible');
+                    $card.removeAttr('data-timer-frozen-label');
+                    $card.removeAttr('data-printed-at');
+                    $timer.text('—').removeClass('is-visible is-frozen');
                 }
             });
         }
 
         window.refreshAllTableTimers = refreshAllTableTimers;
-        // Live Petpooja-style elapsed time on running / printed tables
+        // Live timer only for Running tables (printed is frozen)
         if (!window.__tableTimerInterval) {
             window.__tableTimerInterval = setInterval(function () {
                 refreshAllTableTimers();
@@ -4709,6 +4736,7 @@
 
             // Petpooja-style elapsed timer + order meta
             var startedAt = extra.order_started_at || extra.started_at || '';
+            var printedAt = extra.bill_printed_at || extra.printed_at || '';
             if (isActiveTable) {
                 if (startedAt) {
                     $card.attr('data-started-at', startedAt);
@@ -4718,17 +4746,29 @@
                 }
             } else {
                 $card.attr('data-started-at', '');
+                $card.removeAttr('data-printed-at');
+                $card.removeAttr('data-timer-frozen-label');
             }
             var $timer = $card.find('.table-card__timer');
             if (! $timer.length) {
                 $card.find('.table-card__meta-right').prepend('<span class="table-card__timer">—</span>');
                 $timer = $card.find('.table-card__timer');
             }
-            if (isActiveTable) {
+            if (nextStatus === 'printed') {
+                if (printedAt) {
+                    $card.attr('data-printed-at', printedAt);
+                } else if (! $card.attr('data-printed-at')) {
+                    $card.attr('data-printed-at', new Date().toISOString());
+                }
+                var frozenLabel = freezeTableTimerLabel($card);
+                $timer.text(frozenLabel).addClass('is-visible is-frozen');
+            } else if (nextStatus === 'running') {
+                $card.removeAttr('data-printed-at');
+                $card.removeAttr('data-timer-frozen-label');
                 var elapsed = formatTableElapsed($card.attr('data-started-at'));
-                $timer.text(elapsed || '0 Min').addClass('is-visible');
+                $timer.text(elapsed || '0 Min').addClass('is-visible').removeClass('is-frozen');
             } else {
-                $timer.text('—').removeClass('is-visible');
+                $timer.text('—').removeClass('is-visible is-frozen');
             }
 
             var $extra = $card.find('.table-card__extra');

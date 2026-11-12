@@ -42,6 +42,7 @@ class Order extends Model
         'assigned_staff_id',
         'table_status',
         'bill_printed',
+        'bill_printed_at',
         'kot_pending_cancels',
         'kot_remarks',
         'created_at',
@@ -51,6 +52,7 @@ class Order extends Model
     protected $casts = [
         'kot_pending_cancels' => 'array',
         'tax_breakdown' => 'array',
+        'bill_printed_at' => 'datetime',
     ];
 
     public function order_items()

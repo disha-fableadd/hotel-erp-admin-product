@@ -273,7 +273,7 @@ class SalesController extends Controller
             ->where('isDeleted', 0)
             ->where('table_status', 1)
             ->orderByDesc('id')
-            ->first(['id', 'bill_printed', 'payment_status', 'remaining_amount', 'created_at', 'customer_name', 'order_number', 'total_amount']);
+            ->first($this->orderTableSyncColumns());
 
         $activeOrderId = $activeOrder?->id;
 
@@ -307,10 +307,59 @@ class SalesController extends Controller
             'order_started_at' => $activeOrder && $activeOrder->created_at
                 ? $activeOrder->created_at->timezone('Asia/Kolkata')->toIso8601String()
                 : null,
+            'bill_printed_at' => ($activeOrder && ! empty($activeOrder->bill_printed) && ! empty($activeOrder->bill_printed_at))
+                ? $activeOrder->bill_printed_at->timezone('Asia/Kolkata')->toIso8601String()
+                : null,
             'customer_name' => $activeOrder->customer_name ?? null,
             'order_number' => $activeOrder->order_number ?? null,
             'items_count' => $activeOrderId ? (int) ($activeOrder->items_count ?? 0) : null,
         ];
+    }
+
+    private function ensureBillPrintedAtColumn(): void
+    {
+        static $ready = null;
+        if ($ready === true) {
+            return;
+        }
+        try {
+            if (! \Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed_at')) {
+                \Illuminate\Support\Facades\Schema::table('orders', function ($table) {
+                    $table->timestamp('bill_printed_at')->nullable()->after('bill_printed');
+                });
+            }
+            $ready = true;
+        } catch (\Throwable $e) {
+            $ready = false;
+        }
+    }
+
+    private function orderTableSyncColumns(): array
+    {
+        $cols = ['id', 'bill_printed', 'payment_status', 'remaining_amount', 'created_at', 'customer_name', 'order_number', 'total_amount'];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed_at')) {
+            $cols[] = 'bill_printed_at';
+        }
+
+        return $cols;
+    }
+
+    private function stampBillPrintedAt(Order $order, bool $force = false): void
+    {
+        $this->ensureBillPrintedAtColumn();
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed_at')) {
+            return;
+        }
+        if ($force || empty($order->bill_printed_at)) {
+            $order->bill_printed_at = now('Asia/Kolkata');
+        }
+    }
+
+    private function clearBillPrintedAt(Order $order): void
+    {
+        if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed_at')) {
+            $order->bill_printed_at = null;
+        }
     }
 
     /**
@@ -326,6 +375,7 @@ class SalesController extends Controller
 
         if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
             $order->bill_printed = 1;
+            $this->stampBillPrintedAt($order);
             // Print ≠ settle: keep / restore active allocation so floor stays green until Checkout settle
             if (! empty($order->table_no) && (int) ($order->table_status ?? 0) === 1) {
                 $order->table_status = 1;
@@ -346,6 +396,8 @@ class SalesController extends Controller
             'table_status_class' => $tableSync['class'] ?? 'blank-table',
             'total_amount' => $order->total_amount,
             'order_started_at' => $tableSync['order_started_at'] ?? null,
+            'bill_printed_at' => $tableSync['bill_printed_at']
+                ?? (($order->bill_printed_at ?? null) ? $order->bill_printed_at->timezone('Asia/Kolkata')->toIso8601String() : null),
             'customer_name' => $tableSync['customer_name'] ?? ($order->customer_name ?? null),
             'order_number' => $tableSync['order_number'] ?? ($order->order_number ?? null),
             'items_count' => $tableSync['items_count'] ?? null,
@@ -1748,9 +1800,19 @@ class SalesController extends Controller
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
                 if ($isPrintBill || $isSettle) {
                     $orderUpdate['bill_printed'] = 1;
+                    $this->ensureBillPrintedAtColumn();
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed_at')) {
+                        // Freeze timer at first print; keep stamp on reprint
+                        $orderUpdate['bill_printed_at'] = ! empty($order->bill_printed_at)
+                            ? $order->bill_printed_at
+                            : now('Asia/Kolkata');
+                    }
                 } elseif ($hasTable) {
-                    // Adding items after print → back to running (yellow)
+                    // Adding items after print → back to running (yellow) + resume timer
                     $orderUpdate['bill_printed'] = 0;
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed_at')) {
+                        $orderUpdate['bill_printed_at'] = null;
+                    }
                 }
             }
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'tax_breakdown')) {
@@ -2043,6 +2105,7 @@ class SalesController extends Controller
                 'table_status' => $tableSync['status'] ?? null,
                 'table_status_class' => $tableSync['class'] ?? null,
                 'order_started_at' => $tableSync['order_started_at'] ?? null,
+                'bill_printed_at' => $tableSync['bill_printed_at'] ?? null,
                 'customer_name' => $tableSync['customer_name'] ?? ($order->customer_name ?? null),
                 'order_number' => $tableSync['order_number'] ?? ($order->order_number ?? null),
                 'items_count' => $tableSync['items_count'] ?? null,
@@ -2845,6 +2908,7 @@ class SalesController extends Controller
                 // Back to yellow running (not green bill-printed)
                 $order->bill_printed = 0;
             }
+            $this->clearBillPrintedAt($order);
             // Re-open payment so staff can keep adding / settle again after mistaken checkout
             $paidSoFar = 0.0;
             try {
@@ -2978,6 +3042,7 @@ class SalesController extends Controller
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
                 $order->bill_printed = 0;
             }
+            $this->clearBillPrintedAt($order);
             $order->save();
 
             $tableId = (int) $order->table_no;

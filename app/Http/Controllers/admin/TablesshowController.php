@@ -287,7 +287,10 @@ class TablesshowController extends Controller
                 $query->where('branch_id', $branchIdToUse);
             })
             ->orderByDesc('id')
-            ->get(['id', 'table_no', 'total_amount', 'bill_printed', 'created_at', 'customer_name', 'order_number'])
+            ->get(array_values(array_filter([
+                'id', 'table_no', 'total_amount', 'bill_printed', 'created_at', 'customer_name', 'order_number',
+                \Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed_at') ? 'bill_printed_at' : null,
+            ])))
             ->unique('table_no')
             ->keyBy('table_no');
 
@@ -316,6 +319,9 @@ class TablesshowController extends Controller
                 $table->order_customer_name = $order->customer_name ?: null;
                 $table->order_number_display = $order->order_number ?: null;
                 $table->order_items_count = (int) ($order->items_count ?? 0);
+                $table->order_printed_at = (! empty($order->bill_printed) && ! empty($order->bill_printed_at))
+                    ? optional($order->bill_printed_at)->timezone('Asia/Kolkata')?->toIso8601String()
+                    : null;
                 if (! empty($order->bill_printed)) {
                     $table->status = 'printed';
                     $table->table_status = 3;

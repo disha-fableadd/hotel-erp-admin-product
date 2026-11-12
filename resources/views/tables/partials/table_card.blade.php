@@ -29,10 +29,26 @@
         ? ($table->order_started_at
             ?? (optional($order->created_at)->timezone('Asia/Kolkata')->toIso8601String()))
         : null;
+    // Petpooja: freeze timer at bill-print time (do not keep ticking)
+    $printedAt = null;
+    if ($isPrinted) {
+        $printedAt = $table->order_printed_at
+            ?? (optional($order->bill_printed_at)->timezone('Asia/Kolkata')->toIso8601String()
+                ?: null);
+    }
     $elapsedLabel = '';
     if ($startedAt) {
         try {
-            $mins = max(0, (int) \Carbon\Carbon::parse($startedAt)->timezone('Asia/Kolkata')->diffInMinutes(now('Asia/Kolkata')));
+            $start = \Carbon\Carbon::parse($startedAt)->timezone('Asia/Kolkata');
+            $end = ($isPrinted && $printedAt)
+                ? \Carbon\Carbon::parse($printedAt)->timezone('Asia/Kolkata')
+                : ($isPrinted ? $start->copy() : now('Asia/Kolkata'));
+            // Printed without printed_at: freeze at current page-load moment (JS will not tick further)
+            if ($isPrinted && ! $printedAt) {
+                $end = now('Asia/Kolkata');
+                $printedAt = $end->toIso8601String();
+            }
+            $mins = max(0, (int) $start->diffInMinutes($end));
             if ($mins < 60) {
                 $elapsedLabel = $mins . ' Min';
             } else {
@@ -64,6 +80,8 @@
         data-table-status="{{ $table->resolved_status }}"
         data-bill-total="{{ $billTotal !== null ? number_format($billTotal, 2, '.', '') : '' }}"
         data-started-at="{{ $startedAt ?? '' }}"
+        data-printed-at="{{ $isPrinted ? ($printedAt ?? '') : '' }}"
+        data-timer-frozen-label="{{ $isPrinted ? ($elapsedLabel ?? '') : '' }}"
         data-customer-name="{{ e($customerName) }}"
         data-order-number="{{ e($orderNumber) }}"
         data-items-count="{{ $itemsCount }}">
@@ -74,8 +92,8 @@
             <div class="table-card__meta">
                 <span class="table-card__badge">{{ $statusLabel }}</span>
                 <div class="table-card__meta-right">
-                    <span class="table-card__timer {{ $showBill && $elapsedLabel !== '' ? 'is-visible' : '' }}"
-                          title="Time since order started">{{ $elapsedLabel !== '' ? $elapsedLabel : '—' }}</span>
+                    <span class="table-card__timer {{ $showBill && $elapsedLabel !== '' ? 'is-visible' : '' }} {{ $isPrinted ? 'is-frozen' : '' }}"
+                          title="{{ $isPrinted ? 'Time until bill printed (stopped)' : 'Time since order started' }}">{{ $elapsedLabel !== '' ? $elapsedLabel : '—' }}</span>
                     <div class="table-card__signals">
                         @if($table->has_bell ?? false)
                             <span class="table-card__signal" title="Call"><i class="fa-solid fa-bell"></i></span>
