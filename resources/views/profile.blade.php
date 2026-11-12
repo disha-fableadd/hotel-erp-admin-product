@@ -45,6 +45,27 @@
                                 <div class="profile-contentname">
                                     <h2>{{ $user->name }}</h2>
                                     <h4>Update Your Photo and Personal Details.</h4>
+                                    @php
+                                        $displayLicenseKey = $currentLicenseKey
+                                            ?? (tenant('unique_id') ?? tenant('license_key') ?? data_get($currentTenant ?? null, 'unique_id'));
+                                        $displayLicenseKey = $displayLicenseKey ? strtoupper(trim((string) $displayLicenseKey)) : null;
+                                    @endphp
+                                    <div class="client-license-ref mt-2" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                        <span style="font-size:12px;font-weight:600;color:#64748b;letter-spacing:.02em;">Client License ID</span>
+                                        <code id="clientLicenseKey"
+                                            style="font-size:13px;font-weight:700;letter-spacing:.08em;background:#f1f5f9;color:#0f172a;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;">
+                                            {{ $displayLicenseKey ?: 'Not assigned' }}
+                                        </code>
+                                        @if(!empty($displayLicenseKey))
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="copyClientLicenseKey"
+                                                style="padding:2px 8px;font-size:11px;" title="Copy for Flutter / Desktop app">
+                                                Copy
+                                            </button>
+                                        @endif
+                                    </div>
+                                    <p style="margin:6px 0 0;font-size:11px;color:#94a3b8;">
+                                        Use this ID in the Desktop app as <strong>X-License-Key</strong> for sync.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -159,6 +180,23 @@
                         });
                     }
                 });
+            });
+
+            $('#copyClientLicenseKey').on('click', function () {
+                var key = ($('#clientLicenseKey').text() || '').trim();
+                if (!key || key === 'Not assigned') return;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(key).then(function () {
+                        Swal.fire({ icon: 'success', title: 'Copied', text: key, timer: 1200, showConfirmButton: false });
+                    });
+                } else {
+                    var $tmp = $('<input>');
+                    $('body').append($tmp);
+                    $tmp.val(key).select();
+                    document.execCommand('copy');
+                    $tmp.remove();
+                    Swal.fire({ icon: 'success', title: 'Copied', text: key, timer: 1200, showConfirmButton: false });
+                }
             });
         });
     </script>

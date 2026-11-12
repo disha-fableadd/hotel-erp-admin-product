@@ -36,6 +36,12 @@ class AppViewData
         View::share('settings', $appSetting);
         View::share('currentTenant', tenant());
         View::share('currentClientId', tenant('client_id'));
+        // Flutter / Desktop app license reference (admin-client setups.unique_id)
+        $licenseKey = tenant('unique_id')
+            ?? tenant('license_key')
+            ?? data_get(session('tenant'), 'unique_id')
+            ?? data_get(session('tenant'), 'license_key');
+        View::share('currentLicenseKey', $licenseKey ? strtoupper(trim((string) $licenseKey)) : null);
 
         $planExpiryNotice = [
             'show' => false,
