@@ -64,6 +64,38 @@ class ReservationController extends Controller
 
         $branchId = $this->resolveBranchId($request);
 
+        // Cannot reserve a table that already has a running / bill-printed order
+        $tableId = (int) $request->table_id;
+        $activeOrder = \App\Models\Order::where('table_no', $tableId)
+            ->where('isDeleted', 0)
+            ->where('table_status', 1)
+            ->orderByDesc('id')
+            ->first(['id']);
+        if ($activeOrder) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This table is already allocated to a bill. Settle or clear it before reserving.',
+                'order_id' => (int) $activeOrder->id,
+                'table_id' => $tableId,
+            ], 409);
+        }
+
+        $table = Table_no::find($tableId);
+        if ($table) {
+            $resolved = method_exists($table, 'getResolvedStatusAttribute')
+                ? $table->resolved_status
+                : (string) ($table->status ?? '');
+            if (in_array(strtolower((string) $resolved), ['running', 'printed'], true)
+                || in_array((int) ($table->table_status ?? 0), [1, 3], true)
+            ) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'This table is occupied. Settle the current bill before reserving.',
+                    'table_id' => $tableId,
+                ], 409);
+            }
+        }
+
         // Create the reservation record
         $reservation = TableReservation::create([
             'table_id'         => $request->table_id,

@@ -7,7 +7,7 @@
         default => 'blank',
     };
     $statusLabel = match ($statusKey) {
-        'running' => 'Occupied',
+        'running' => 'Running',
         'printed' => 'Bill Printed',
         'reserved' => 'Reserved',
         default => 'Available',
@@ -16,7 +16,8 @@
     $isOccupied = $statusKey === 'running';
     $isPrinted = $statusKey === 'printed';
     $showBill = ($isOccupied || $isPrinted);
-    $billTotal = $showBill ? (float) optional($table->order)->total_amount : null;
+    $order = optional($table->order);
+    $billTotal = $showBill ? (float) $order->total_amount : null;
     $currencySymbol = $currencySymbol ?? ($currency_symbol ?? '₹');
     $currencyPosition = $currencyPosition ?? ($currency_position ?? 'left');
     $formattedBill = $billTotal !== null
@@ -24,6 +25,33 @@
             ? number_format($billTotal, 2) . $currencySymbol
             : $currencySymbol . number_format($billTotal, 2))
         : '';
+    $startedAt = $showBill
+        ? ($table->order_started_at
+            ?? (optional($order->created_at)->timezone('Asia/Kolkata')->toIso8601String()))
+        : null;
+    $elapsedLabel = '';
+    if ($startedAt) {
+        try {
+            $mins = max(0, (int) \Carbon\Carbon::parse($startedAt)->timezone('Asia/Kolkata')->diffInMinutes(now('Asia/Kolkata')));
+            if ($mins < 60) {
+                $elapsedLabel = $mins . ' Min';
+            } else {
+                $h = intdiv($mins, 60);
+                $m = $mins % 60;
+                $elapsedLabel = $h . 'h' . ($m > 0 ? ' ' . $m . 'm' : '');
+            }
+        } catch (\Throwable $e) {
+            $elapsedLabel = '';
+        }
+    }
+    $customerName = $showBill
+        ? trim((string) ($table->order_customer_name ?? $order->customer_name ?? ''))
+        : '';
+    if ($customerName === '' || strcasecmp($customerName, 'Unregistered Customer') === 0 || strcasecmp($customerName, 'Default Customer') === 0) {
+        $customerName = '';
+    }
+    $orderNumber = $showBill ? ($table->order_number_display ?? $order->order_number ?? '') : '';
+    $itemsCount = $showBill ? (int) ($table->order_items_count ?? 0) : 0;
 @endphp
 
 <article class="table-card-wrap">
@@ -34,20 +62,28 @@
         data-table-name="{{ $table->table_name }}"
         data-table-type="{{ $table->table_type ?? '' }}"
         data-table-status="{{ $table->resolved_status }}"
-        data-bill-total="{{ $billTotal !== null ? number_format($billTotal, 2, '.', '') : '' }}">
+        data-bill-total="{{ $billTotal !== null ? number_format($billTotal, 2, '.', '') : '' }}"
+        data-started-at="{{ $startedAt ?? '' }}"
+        data-customer-name="{{ e($customerName) }}"
+        data-order-number="{{ e($orderNumber) }}"
+        data-items-count="{{ $itemsCount }}">
 
         <div class="table-card__accent" aria-hidden="true"></div>
 
         <div class="table-card__body">
             <div class="table-card__meta">
                 <span class="table-card__badge">{{ $statusLabel }}</span>
-                <div class="table-card__signals">
-                    @if($table->has_bell ?? false)
-                        <span class="table-card__signal" title="Call"><i class="fa-solid fa-bell"></i></span>
-                    @endif
-                    @if($table->has_food ?? false)
-                        <span class="table-card__signal" title="Food ready"><i class="fa-solid fa-utensils"></i></span>
-                    @endif
+                <div class="table-card__meta-right">
+                    <span class="table-card__timer {{ $showBill && $elapsedLabel !== '' ? 'is-visible' : '' }}"
+                          title="Time since order started">{{ $elapsedLabel !== '' ? $elapsedLabel : '—' }}</span>
+                    <div class="table-card__signals">
+                        @if($table->has_bell ?? false)
+                            <span class="table-card__signal" title="Call"><i class="fa-solid fa-bell"></i></span>
+                        @endif
+                        @if($table->has_food ?? false)
+                            <span class="table-card__signal" title="Food ready"><i class="fa-solid fa-utensils"></i></span>
+                        @endif
+                    </div>
                 </div>
             </div>
 
@@ -66,6 +102,18 @@
                     <div class="table-card__bill {{ $showBill && $billTotal !== null ? 'is-visible' : '' }}">
                         <span class="table-card__bill-label">Total</span>
                         <strong class="table-card__bill-total">{{ $formattedBill }}</strong>
+                    </div>
+                    @php $hasExtra = $showBill && ($orderNumber !== '' || $itemsCount > 0 || $customerName !== ''); @endphp
+                    <div class="table-card__extra {{ $hasExtra ? 'is-visible' : '' }}">
+                        @if($orderNumber !== '')
+                            <span class="table-card__extra-item table-card__order-no" title="Order number">#{{ $orderNumber }}</span>
+                        @endif
+                        @if($itemsCount > 0)
+                            <span class="table-card__extra-item table-card__items-count" title="Items">{{ $itemsCount }} item{{ $itemsCount === 1 ? '' : 's' }}</span>
+                        @endif
+                        @if($customerName !== '')
+                            <span class="table-card__extra-item table-card__customer" title="Customer">{{ \Illuminate\Support\Str::limit($customerName, 18) }}</span>
+                        @endif
                     </div>
                 </div>
             </div>

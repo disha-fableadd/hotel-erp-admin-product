@@ -253,7 +253,7 @@ class TablesshowController extends Controller
 
         // ---- TABLE GROUPING LOGIC ----
         $tables = Table_no::with(['order' => function ($q) {
-                $q->select('id', 'total_amount', 'table_status', 'bill_printed', 'isDeleted');
+                $q->select('id', 'total_amount', 'table_status', 'bill_printed', 'isDeleted', 'created_at', 'customer_name', 'order_number');
             }])
             ->where(function($q) use ($branchIdToUse) {
                 if (! empty($branchIdToUse)) {
@@ -275,14 +275,19 @@ class TablesshowController extends Controller
             ->groupBy('table_type'); // Gives → ['AC'=>[], 'Non AC'=>[], 'Premium'=>[], 'Rooftop'=>[]]
 
         $tableCollection = $tables->flatten();
-        $runningOrders = Order::whereIn('table_no', $tableCollection->pluck('id'))
+        $runningOrders = Order::withCount(['orderItems as items_count' => function ($q) {
+                $q->where(function ($qq) {
+                    $qq->where('isDeleted', 0)->orWhereNull('isDeleted');
+                });
+            }])
+            ->whereIn('table_no', $tableCollection->pluck('id'))
             ->where('table_status', 1)
             ->where('isDeleted', 0)
             ->when(! empty($branchIdToUse), function ($query) use ($branchIdToUse) {
                 $query->where('branch_id', $branchIdToUse);
             })
             ->orderByDesc('id')
-            ->get(['id', 'table_no', 'total_amount', 'bill_printed'])
+            ->get(['id', 'table_no', 'total_amount', 'bill_printed', 'created_at', 'customer_name', 'order_number'])
             ->unique('table_no')
             ->keyBy('table_no');
 
@@ -307,6 +312,10 @@ class TablesshowController extends Controller
                 $table->order_id = $order->id;
                 $table->setRelation('order', $order);
                 $table->running_amount = $order->total_amount;
+                $table->order_started_at = optional($order->created_at)?->timezone('Asia/Kolkata')?->toIso8601String();
+                $table->order_customer_name = $order->customer_name ?: null;
+                $table->order_number_display = $order->order_number ?: null;
+                $table->order_items_count = (int) ($order->items_count ?? 0);
                 if (! empty($order->bill_printed)) {
                     $table->status = 'printed';
                     $table->table_status = 3;

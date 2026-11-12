@@ -235,7 +235,8 @@
                             cls,
                             st,
                             keep ? (res.order_id || orderId) : '',
-                            keep ? res.total_amount : ''
+                            keep ? res.total_amount : '',
+                            res
                         );
                     }
                 });

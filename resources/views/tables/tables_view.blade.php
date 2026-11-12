@@ -2020,9 +2020,11 @@
             background: #94a3b8;
         }
 
+        /* Petpooja-style legend colors:
+           Available = white/grey · Running = yellow · Bill Printed = green · Reserved = amber */
         .legend .blank-table::before { background: #94a3b8; }
-        .legend .running-table::before { background: #22c55e; }
-        .legend .printed-table::before { background: #eab308; }
+        .legend .running-table::before { background: #eab308; }
+        .legend .printed-table::before { background: #22c55e; }
         .legend .reserved-table::before { background: #f59e0b; }
 
         .legend .blank-table,
@@ -2039,24 +2041,25 @@
             --table-soft: #f8fafc;
             background: #ffffff;
             color: #0f172a;
-            border-color: #e2e8f0;
+            border-color: #cbd5e1;
         }
 
+        /* Running / Occupied KOT — Petpooja yellow */
         .running-table {
-            --table-accent: #22c55e;
-            --table-soft: #f0fdf4;
-            background: #ffffff;
-            color: #0f172a;
-            border-color: #bbf7d0;
-        }
-
-        /* Bill printed / in progress — Petpooja-style yellow */
-        .printed-table {
             --table-accent: #eab308;
             --table-soft: #fefce8;
             background: #ffffff;
             color: #0f172a;
             border-color: #fde047;
+        }
+
+        /* Bill printed / awaiting settle — Petpooja green */
+        .printed-table {
+            --table-accent: #22c55e;
+            --table-soft: #f0fdf4;
+            background: #ffffff;
+            color: #0f172a;
+            border-color: #86efac;
         }
 
         .reserved-table {
@@ -2213,27 +2216,43 @@
             box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.28);
         }
 
+        .table-box.table-card.blank-table {
+            border-style: dashed;
+            border-color: #cbd5e1;
+            background: #ffffff;
+        }
+
+        .table-box.table-card.blank-table:hover {
+            border-color: #94a3b8;
+            border-style: dashed;
+        }
+
+        /* Running = yellow (active KOT / occupied) */
         .table-box.table-card.running-table {
-            border-color: #86efac;
-            background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 48%);
-        }
-
-        .table-box.table-card.running-table:hover {
-            border-color: #4ade80;
-            box-shadow: 0 12px 26px -14px rgba(22, 163, 74, 0.35);
-        }
-
-        .table-box.table-card.printed-table {
+            border-style: solid;
             border-color: #facc15;
             background: linear-gradient(180deg, #fefce8 0%, #ffffff 48%);
         }
 
-        .table-box.table-card.printed-table:hover {
+        .table-box.table-card.running-table:hover {
             border-color: #eab308;
             box-shadow: 0 12px 26px -14px rgba(202, 138, 4, 0.35);
         }
 
+        /* Bill printed = green (awaiting settlement) */
+        .table-box.table-card.printed-table {
+            border-style: solid;
+            border-color: #86efac;
+            background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 48%);
+        }
+
+        .table-box.table-card.printed-table:hover {
+            border-color: #4ade80;
+            box-shadow: 0 12px 26px -14px rgba(22, 163, 74, 0.35);
+        }
+
         .table-box.table-card.reserved-table {
+            border-style: solid;
             border-color: #fcd34d;
             background: linear-gradient(180deg, #fffbeb 0%, #ffffff 48%);
         }
@@ -2265,6 +2284,35 @@
             min-height: 20px;
         }
 
+        .table-card__meta-right {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .table-card__timer {
+            display: none;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+            color: #92400e;
+            background: #fef3c7;
+            border-radius: 999px;
+            padding: 2px 7px;
+            line-height: 1.3;
+            white-space: nowrap;
+        }
+
+        .table-card__timer.is-visible {
+            display: inline-block;
+        }
+
+        .table-box.table-card.printed-table .table-card__timer {
+            color: #166534;
+            background: #dcfce7;
+        }
+
         .table-card__badge {
             font-size: 9.5px;
             font-weight: 700;
@@ -2278,13 +2326,13 @@
         }
 
         .table-box.table-card.running-table .table-card__badge {
-            background: #dcfce7;
-            color: #15803d;
+            background: #fef08a;
+            color: #a16207;
         }
 
         .table-box.table-card.printed-table .table-card__badge {
-            background: #fef08a;
-            color: #a16207;
+            background: #dcfce7;
+            color: #15803d;
         }
 
         .table-box.table-card.reserved-table .table-card__badge {
@@ -2332,11 +2380,11 @@
         }
 
         .table-box.table-card.running-table .table-card__visual {
-            color: #16a34a;
+            color: #ca8a04;
         }
 
         .table-box.table-card.printed-table .table-card__visual {
-            color: #ca8a04;
+            color: #16a34a;
         }
 
         .table-box.table-card.reserved-table .table-card__visual {
@@ -2379,6 +2427,45 @@
             letter-spacing: -0.02em;
             color: #15803d;
             line-height: 1.15;
+        }
+
+        .table-box.table-card.running-table .table-card__bill-total {
+            color: #a16207;
+        }
+
+        .table-card__extra {
+            display: none;
+            margin-top: 4px;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .table-card__extra.is-visible {
+            display: flex;
+        }
+
+        .table-card__extra-item {
+            font-size: 10px;
+            font-weight: 600;
+            color: #64748b;
+            background: #f1f5f9;
+            border-radius: 999px;
+            padding: 1px 6px;
+            line-height: 1.4;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .table-box.table-card.running-table .table-card__extra-item {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .table-box.table-card.printed-table .table-card__extra-item {
+            background: #dcfce7;
+            color: #166534;
         }
 
         .table-card__actions {
@@ -2922,7 +3009,7 @@
             <div class="tables-toolbar">
                 <div class="legend">
                     <span class="blank-table">Available</span>
-                    <span class="running-table">Occupied</span>
+                    <span class="running-table">Running</span>
                     <span class="printed-table">Bill Printed</span>
                     <span class="reserved-table">Reserved</span>
                 </div>
@@ -4239,7 +4326,8 @@
                                     response.table_status_class || 'blank-table',
                                     response.table_status || 'blank',
                                     '',
-                                    ''
+                                    '',
+                                    response
                                 );
                             }
                             if (tableOrderModal) {
@@ -4332,7 +4420,8 @@
                         statusClass,
                         status,
                         response.order_id || orderId,
-                        response.total_amount || ''
+                        response.total_amount || '',
+                        response
                     );
                     var $card = $('.table-box123[data-table-id="' + tableId + '"]');
                     $card.attr('data-order-id', response.order_id || orderId);
@@ -4405,13 +4494,52 @@
             );
         });
 
-        window.updateTableCardStatus = function updateTableCardStatus(tableId, statusClass, statusValue, orderId, billTotal) {
+        function formatTableElapsed(startedAt) {
+            if (!startedAt) return '';
+            var start = new Date(startedAt);
+            if (isNaN(start.getTime())) return '';
+            var mins = Math.max(0, Math.floor((Date.now() - start.getTime()) / 60000));
+            if (mins < 60) return mins + ' Min';
+            var h = Math.floor(mins / 60);
+            var m = mins % 60;
+            return h + 'h' + (m > 0 ? (' ' + m + 'm') : '');
+        }
+
+        function refreshAllTableTimers() {
+            $('.table-box123').each(function () {
+                var $card = $(this);
+                var startedAt = $card.attr('data-started-at') || '';
+                var status = String($card.attr('data-table-status') || '').toLowerCase();
+                var $timer = $card.find('.table-card__timer');
+                if (! $timer.length) return;
+                if ((status === 'running' || status === 'printed') && startedAt) {
+                    var label = formatTableElapsed(startedAt);
+                    if (label) {
+                        $timer.text(label).addClass('is-visible');
+                    }
+                } else {
+                    $timer.text('—').removeClass('is-visible');
+                }
+            });
+        }
+
+        window.refreshAllTableTimers = refreshAllTableTimers;
+        // Live Petpooja-style elapsed time on running / printed tables
+        if (!window.__tableTimerInterval) {
+            window.__tableTimerInterval = setInterval(function () {
+                refreshAllTableTimers();
+            }, 30000);
+            setTimeout(refreshAllTableTimers, 400);
+        }
+
+        window.updateTableCardStatus = function updateTableCardStatus(tableId, statusClass, statusValue, orderId, billTotal, extra) {
             const $card = $(".table-box123[data-table-id='" + tableId + "']");
             if (!$card.length) return;
+            extra = extra || {};
             const nextClass = statusClass || 'blank-table';
             const nextStatus = (statusValue || 'blank').toLowerCase();
             const badgeLabel = nextStatus === 'running'
-                ? 'Occupied'
+                ? 'Running'
                 : (nextStatus === 'printed'
                     ? 'Bill Printed'
                     : (nextStatus === 'reserved' ? 'Reserved' : 'Available'));
@@ -4423,6 +4551,56 @@
                 .attr('data-table-status', nextStatus);
 
             $card.find('.table-card__badge').text(badgeLabel);
+
+            // Petpooja-style elapsed timer + order meta
+            var startedAt = extra.order_started_at || extra.started_at || '';
+            if (isActiveTable) {
+                if (startedAt) {
+                    $card.attr('data-started-at', startedAt);
+                } else if (! $card.attr('data-started-at')) {
+                    // First become active without server timestamp → start now
+                    $card.attr('data-started-at', new Date().toISOString());
+                }
+            } else {
+                $card.attr('data-started-at', '');
+            }
+            var $timer = $card.find('.table-card__timer');
+            if (! $timer.length) {
+                $card.find('.table-card__meta-right').prepend('<span class="table-card__timer">—</span>');
+                $timer = $card.find('.table-card__timer');
+            }
+            if (isActiveTable) {
+                var elapsed = formatTableElapsed($card.attr('data-started-at'));
+                $timer.text(elapsed || '0 Min').addClass('is-visible');
+            } else {
+                $timer.text('—').removeClass('is-visible');
+            }
+
+            var $extra = $card.find('.table-card__extra');
+            if (! $extra.length) {
+                $card.find('.table-card__identity').append('<div class="table-card__extra"></div>');
+                $extra = $card.find('.table-card__extra');
+            }
+            if (isActiveTable) {
+                var orderNo = extra.order_number || $card.attr('data-order-number') || '';
+                var customer = extra.customer_name || $card.attr('data-customer-name') || '';
+                var itemsCount = extra.items_count != null ? extra.items_count : ($card.attr('data-items-count') || '');
+                if (customer && /unregistered customer|default customer/i.test(customer)) customer = '';
+                if (extra.order_number != null) $card.attr('data-order-number', orderNo);
+                if (extra.customer_name != null) $card.attr('data-customer-name', customer);
+                if (extra.items_count != null) $card.attr('data-items-count', itemsCount);
+                var bits = [];
+                if (orderNo) bits.push('<span class="table-card__extra-item table-card__order-no" title="Order number">#' + $('<div>').text(String(orderNo)).html() + '</span>');
+                if (itemsCount && parseInt(itemsCount, 10) > 0) {
+                    var n = parseInt(itemsCount, 10);
+                    bits.push('<span class="table-card__extra-item table-card__items-count">' + n + ' item' + (n === 1 ? '' : 's') + '</span>');
+                }
+                if (customer) bits.push('<span class="table-card__extra-item table-card__customer">' + $('<div>').text(String(customer)).html() + '</span>');
+                $extra.html(bits.join('')).toggleClass('is-visible', bits.length > 0);
+            } else {
+                $card.attr('data-order-number', '').attr('data-customer-name', '').attr('data-items-count', '');
+                $extra.empty().removeClass('is-visible');
+            }
 
             const $bill = $card.find('.table-card__bill');
             if (isActiveTable && billTotal !== undefined && billTotal !== null && billTotal !== '') {
@@ -4624,7 +4802,7 @@
                     tableOrderModalEl.querySelector('.js-table-name').textContent = tableName;
                     document.getElementById('table_id').value = tableId;
 
-                    // Occupied (green) or bill-printed (yellow) → reopen running order
+                    // Running (yellow) or bill-printed (green) → reopen same bill only (Petpooja: one table = one bill until settle)
                     if (this.classList.contains("running-table") || this.classList.contains("printed-table")) {
                         const salse_id = this.getAttribute('data-order-id');
                         if (!salse_id) {
@@ -6221,7 +6399,8 @@
                                     response.table_status_class || 'blank-table',
                                     response.table_status || 'blank',
                                     (response.table_status_class === 'running-table' || response.table_status_class === 'printed-table') ? response.order_id : '',
-                                    response.total_amount
+                                    response.total_amount,
+                                    response
                                 );
                             }
                             // Reset form
@@ -6424,7 +6603,8 @@
                                     response.table_status_class || 'blank-table',
                                     response.table_status || 'blank',
                                     (response.table_status_class === 'running-table' || response.table_status_class === 'printed-table') ? response.order_id : '',
-                                    response.total_amount
+                                    response.total_amount,
+                                    response
                                 );
                             }
                             // Reset form
@@ -6632,7 +6812,8 @@
                                     checkoutStatusClass,
                                     checkoutStatus,
                                     response.order_id || orderId || '',
-                                    checkoutKeepsTable ? response.total_amount : ''
+                                    checkoutKeepsTable ? response.total_amount : '',
+                                    response
                                 );
                             }
                             // Reset form

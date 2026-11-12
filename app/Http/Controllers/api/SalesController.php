@@ -264,20 +264,26 @@ class SalesController extends Controller
             ];
         }
 
-        $activeOrder = Order::where('table_no', $tableId)
+        $activeOrder = Order::withCount(['orderItems as items_count' => function ($q) {
+                $q->where(function ($qq) {
+                    $qq->where('isDeleted', 0)->orWhereNull('isDeleted');
+                });
+            }])
+            ->where('table_no', $tableId)
             ->where('isDeleted', 0)
             ->where('table_status', 1)
             ->orderByDesc('id')
-            ->first(['id', 'bill_printed', 'payment_status', 'remaining_amount']);
+            ->first(['id', 'bill_printed', 'payment_status', 'remaining_amount', 'created_at', 'customer_name', 'order_number', 'total_amount']);
 
         $activeOrderId = $activeOrder?->id;
 
         if (! $activeOrderId) {
             $status = Table_no::STATUS_BLANK;
         } elseif (! empty($activeOrder->bill_printed)) {
-            // Bill printed / awaiting settlement → yellow (Petpooja-style)
+            // Bill printed / awaiting settlement → green (Petpooja-style)
             $status = Table_no::STATUS_PRINTED;
         } else {
+            // Active KOT / occupied → yellow (Petpooja-style)
             $status = Table_no::STATUS_RUNNING;
         }
 
@@ -296,13 +302,19 @@ class SalesController extends Controller
             'class' => $this->tableStatusClass($status),
             'order_id' => $activeOrderId,
             'bill_total' => $activeOrderId
-                ? (float) Order::where('id', $activeOrderId)->value('total_amount')
+                ? (float) ($activeOrder->total_amount ?? Order::where('id', $activeOrderId)->value('total_amount'))
                 : null,
+            'order_started_at' => $activeOrder && $activeOrder->created_at
+                ? $activeOrder->created_at->timezone('Asia/Kolkata')->toIso8601String()
+                : null,
+            'customer_name' => $activeOrder->customer_name ?? null,
+            'order_number' => $activeOrder->order_number ?? null,
+            'items_count' => $activeOrderId ? (int) ($activeOrder->items_count ?? 0) : null,
         ];
     }
 
     /**
-     * Mark dine-in customer bill as printed → yellow while awaiting settlement.
+     * Mark dine-in customer bill as printed → green while awaiting settlement.
      * Fully paid / already closed table orders stay free (do not re-occupy).
      */
     public function markBillPrinted(Request $request, $id)
@@ -318,7 +330,7 @@ class SalesController extends Controller
         if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
             $order->bill_printed = 1;
             if (! empty($order->table_no)) {
-                // Only keep table occupied (yellow) when bill is unpaid / partial
+                // Keep table allocated (green printed) until settled; free only when paid
                 $order->table_status = $isSettled ? 0 : 1;
             }
             $order->save();
@@ -336,6 +348,10 @@ class SalesController extends Controller
             'table_status' => $tableSync['status'] ?? Table_no::STATUS_BLANK,
             'table_status_class' => $tableSync['class'] ?? 'blank-table',
             'total_amount' => $order->total_amount,
+            'order_started_at' => $tableSync['order_started_at'] ?? null,
+            'customer_name' => $tableSync['customer_name'] ?? ($order->customer_name ?? null),
+            'order_number' => $tableSync['order_number'] ?? ($order->order_number ?? null),
+            'items_count' => $tableSync['items_count'] ?? null,
         ]);
     }
 
@@ -723,14 +739,25 @@ class SalesController extends Controller
             $tableNoInt = (int) $request->table_id;
         }
 
-        // If this table already has an active running order, merge new items into it
-        // instead of creating a second order (which would hide the first items on the table).
+        // Petpooja-style: one table = one active bill until settled.
+        // If this table already has an active running/printed order, merge into it
+        // instead of allocating the table to a second customer / second bill.
         if ($tableNoInt) {
             $existingActiveOrderId = Order::where('table_no', $tableNoInt)
                 ->where('isDeleted', 0)
                 ->where('table_status', 1)
                 ->orderByDesc('id')
                 ->value('id');
+
+            // Explicit "new bill" attempts on an occupied table are blocked
+            if ($existingActiveOrderId && filter_var($request->input('force_new_table_order'), FILTER_VALIDATE_BOOLEAN)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'This table is already allocated. Settle or clear the current bill before starting a new one.',
+                    'order_id' => (int) $existingActiveOrderId,
+                    'table_id' => $tableNoInt,
+                ], 409);
+            }
 
             if ($existingActiveOrderId) {
                 $lineKey = static function ($productId, $variantId = null, $addons = null): string {
@@ -1105,8 +1132,9 @@ class SalesController extends Controller
                     $gstOpts
                 )));
             }
+            $tableSync = ['status' => null, 'class' => null, 'order_started_at' => null, 'customer_name' => null, 'order_number' => null, 'bill_total' => null];
             if ($tableNoInt) {
-                $this->syncTableStatus($tableNoInt);
+                $tableSync = $this->syncTableStatus($tableNoInt);
             }
             // dd($request->type);
             if ($request->payment_method != 'pending') {
@@ -1428,8 +1456,13 @@ class SalesController extends Controller
                 'order_id' => $order->id,
                 'total_amount' => $order->total_amount,
                 'table_id' => $tableNoInt,
-                'table_status' => $tableNoInt ? Table_no::STATUS_RUNNING : null,
-                'table_status_class' => $tableNoInt ? 'running-table' : null,
+                'table_status' => $tableSync['status'] ?? ($tableNoInt ? Table_no::STATUS_RUNNING : null),
+                'table_status_class' => $tableSync['class'] ?? ($tableNoInt ? 'running-table' : null),
+                'order_started_at' => $tableSync['order_started_at']
+                    ?? ($order->created_at ? $order->created_at->timezone('Asia/Kolkata')->toIso8601String() : null),
+                'customer_name' => $tableSync['customer_name'] ?? ($order->customer_name ?? null),
+                'order_number' => $tableSync['order_number'] ?? ($order->order_number ?? null),
+                'items_count' => $tableSync['items_count'] ?? null,
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1705,11 +1738,11 @@ class SalesController extends Controller
                 'payment_status' => $payment_status,
                 'table_no' => $request->table_id ?? null,
                 'type' => $request->table_type ?? 'dinein',
-                // Free table only when checkout is fully paid; otherwise keep active (bill-in-progress = yellow).
+                // Free table only when checkout is fully paid; otherwise keep allocated until settle.
                 'table_status' => $fullySettled ? 0 : 1,
             ];
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
-                // Checkout / print bill → yellow; adding items again → green occupied
+                // Checkout / print bill → green printed; adding items again → yellow running
                 $orderUpdate['bill_printed'] = $isCheckout ? 1 : 0;
             }
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'tax_breakdown')) {
@@ -1979,7 +2012,7 @@ class SalesController extends Controller
                 }
             }
 
-            // Sync floor map colour (green occupied / yellow bill printed / blank free)
+            // Sync floor map colour (yellow running / green bill printed / blank free)
             $tableSync = ['status' => null, 'class' => null];
             if (! empty($request->table_id) && is_numeric($request->table_id)) {
                 $tableSync = $this->syncTableStatus((int) $request->table_id);
@@ -2001,6 +2034,10 @@ class SalesController extends Controller
                 'table_id' => $request->table_id ?? null,
                 'table_status' => $tableSync['status'] ?? null,
                 'table_status_class' => $tableSync['class'] ?? null,
+                'order_started_at' => $tableSync['order_started_at'] ?? null,
+                'customer_name' => $tableSync['customer_name'] ?? ($order->customer_name ?? null),
+                'order_number' => $tableSync['order_number'] ?? ($order->order_number ?? null),
+                'items_count' => $tableSync['items_count'] ?? null,
             ]);
 
         } catch (\Exception $e) {
@@ -2784,6 +2821,10 @@ class SalesController extends Controller
                 'table_status' => $tableSync['status'] ?? Table_no::STATUS_RUNNING,
                 'table_status_class' => $tableSync['class'] ?? 'running-table',
                 'total_amount' => $order->total_amount,
+                'order_started_at' => $tableSync['order_started_at'] ?? null,
+                'customer_name' => $tableSync['customer_name'] ?? ($order->customer_name ?? null),
+                'order_number' => $tableSync['order_number'] ?? ($order->order_number ?? null),
+                'items_count' => $tableSync['items_count'] ?? null,
                 'already_active' => true,
             ]);
         }
@@ -2793,7 +2834,7 @@ class SalesController extends Controller
             $order->table_no = $tableId;
             $order->table_status = 1;
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
-                // Back to green occupied (not yellow bill-printed)
+                // Back to yellow running (not green bill-printed)
                 $order->bill_printed = 0;
             }
             // Re-open payment so staff can keep adding / settle again after mistaken checkout
@@ -2831,6 +2872,10 @@ class SalesController extends Controller
                 'table_status' => $tableSync['status'] ?? Table_no::STATUS_RUNNING,
                 'table_status_class' => $tableSync['class'] ?? 'running-table',
                 'total_amount' => $order->total_amount,
+                'order_started_at' => $tableSync['order_started_at'] ?? null,
+                'customer_name' => $tableSync['customer_name'] ?? ($order->customer_name ?? null),
+                'order_number' => $tableSync['order_number'] ?? ($order->order_number ?? null),
+                'items_count' => $tableSync['items_count'] ?? null,
                 'already_active' => false,
             ]);
         } catch (\Throwable $e) {
