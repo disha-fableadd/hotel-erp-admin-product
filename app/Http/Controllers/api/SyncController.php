@@ -175,8 +175,28 @@ class SyncController extends Controller
             );
         }
 
-        // Always resolve from admin-client so pull/push hit that client's database only
-        return $tenancy->resolveByLicenseKey($licenseKey, (bool) $request->boolean('fresh_license'));
+        // Always resolve from admin-client so pull/push hit that client's database only.
+        // Default fresh on sync so Desktop never sticks to a stale/wrong DB after license change.
+        $fresh = $request->exists('fresh_license')
+            ? (bool) $request->boolean('fresh_license')
+            : true;
+
+        $tenant = $tenancy->resolveByLicenseKey($licenseKey, $fresh);
+
+        $dbName = (string) ($tenant['db']['resolved_database'] ?? $tenant['db']['database'] ?? '');
+        if ($dbName === '') {
+            throw new TenantResolutionException(
+                'NOT_PROVISIONED',
+                'License resolved but client database is not configured.',
+                409
+            );
+        }
+
+        // Hard guarantee: response/client payload license matches what Flutter sent
+        $tenant['unique_id'] = strtoupper(trim($licenseKey));
+        $tenant['license_key'] = $tenant['unique_id'];
+
+        return $tenant;
     }
 
     /**

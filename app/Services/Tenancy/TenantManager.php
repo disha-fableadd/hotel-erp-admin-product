@@ -214,74 +214,119 @@ class TenantManager
     /**
      * Locate setup by unique_id via /api/setup/search, then activate using /resolve(domain)
      * or a tenant array built from setup search details.
+     *
+     * Important: do NOT rely on type=HOTEL — admin product.code is often "ERP".
+     * Important: shared domains (multiple setups) must use the setup row DB, not /resolve(domain).
      */
     protected function resolveTenantViaSetupSearchLicense(string $licenseKey, string $cacheKey): array
     {
         $apiBase = rtrim((string) config('tenant.api_url'), '/');
-        $setupSearchUrl = preg_replace('#/tenant$#', '/setup/search', $apiBase);
-        if (! is_string($setupSearchUrl) || $setupSearchUrl === $apiBase) {
-            $setupSearchUrl = preg_replace('#/api/tenant$#', '/api/setup/search', $apiBase) ?: ($apiBase . '/../setup/search');
-        }
+        $setupSearchUrls = $this->setupSearchUrls($apiBase);
 
-        try {
-            $search = Http::acceptJson()
-                ->timeout(max(1, (int) config('tenant.http_timeout', 8)))
-                ->withHeaders(['X-Tenant-Secret' => (string) config('tenant.secret')])
-                ->get($setupSearchUrl, [
-                    'unique_id' => $licenseKey,
-                    'type' => config('tenant.product_code') ?: 'HOTEL',
-                ]);
-        } catch (ConnectionException $e) {
-            return $this->activateStaleOrFail($cacheKey, $e->getMessage());
-        }
-
-        if (! $search->successful() || str_contains(strtolower((string) $search->header('Content-Type')), 'text/html')) {
-            // Retry with generic search=
-            try {
-                $search = Http::acceptJson()
-                    ->timeout(max(1, (int) config('tenant.http_timeout', 8)))
-                    ->withHeaders(['X-Tenant-Secret' => (string) config('tenant.secret')])
-                    ->get($setupSearchUrl, [
-                        'search' => $licenseKey,
-                        'type' => config('tenant.product_code') ?: 'HOTEL',
-                    ]);
-            } catch (ConnectionException $e) {
-                return $this->activateStaleOrFail($cacheKey, $e->getMessage());
+        $typeVariants = [''];
+        foreach ([
+            (string) config('tenant.product_code'),
+            (string) config('tenant.project_code'),
+            'ERP',
+            'HOTEL',
+            'HOTEL_ERP',
+        ] as $typeCandidate) {
+            $typeCandidate = strtoupper(trim($typeCandidate));
+            if ($typeCandidate !== '' && ! in_array($typeCandidate, $typeVariants, true)) {
+                $typeVariants[] = $typeCandidate;
             }
         }
 
-        $rows = $search->json('data') ?? [];
-        if (! is_array($rows) || empty($rows)) {
-            $one = $search->json('setup');
-            $rows = is_array($one) ? [$one] : [];
+        $querySets = [];
+        foreach ([['unique_id' => $licenseKey], ['search' => $licenseKey]] as $baseQuery) {
+            foreach ($typeVariants as $type) {
+                $params = $baseQuery;
+                if ($type !== '') {
+                    $params['type'] = $type;
+                }
+                $querySets[] = $params;
+            }
         }
 
         $setup = null;
-        foreach ($rows as $row) {
-            if (! is_array($row)) {
-                continue;
+        $lastError = null;
+        $reachedAdmin = false;
+
+        foreach ($setupSearchUrls as $setupSearchUrl) {
+            foreach ($querySets as $params) {
+                try {
+                    $search = Http::acceptJson()
+                        ->timeout(max(1, (int) config('tenant.http_timeout', 8)))
+                        ->withHeaders([
+                            'X-Tenant-Secret' => (string) config('tenant.secret'),
+                            'Accept' => 'application/json',
+                        ])
+                        ->get($setupSearchUrl, $params);
+                } catch (ConnectionException $e) {
+                    $lastError = $e->getMessage();
+                    continue;
+                }
+
+                $reachedAdmin = true;
+                if (! $search->successful()) {
+                    $lastError = 'HTTP ' . $search->status() . ' @ ' . $setupSearchUrl;
+                    continue;
+                }
+
+                $body = $search->body();
+                if (str_starts_with(ltrim($body), '<')) {
+                    $lastError = 'HTML response @ ' . $setupSearchUrl;
+                    break; // try next URL base
+                }
+
+                $rows = $search->json('data') ?? [];
+                if (! is_array($rows) || empty($rows)) {
+                    $one = $search->json('setup');
+                    $rows = is_array($one) ? [$one] : [];
+                }
+                if (empty($rows)) {
+                    $lastError = 'empty data @ ' . $setupSearchUrl;
+                    continue;
+                }
+
+                foreach ($rows as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $uid = strtoupper(trim((string) ($row['unique_id'] ?? $row['license_key'] ?? '')));
+                    if ($uid === $licenseKey) {
+                        $setup = $row;
+                        break 3;
+                    }
+                }
+
+                // Exact unique_id query with a single row → accept even if unique_id field missing
+                if (isset($params['unique_id']) && count($rows) === 1 && is_array($rows[0])) {
+                    $setup = $rows[0];
+                    break 2;
+                }
+
+                $lastError = 'no unique_id match among ' . count($rows) . ' row(s)';
             }
-            $uid = strtoupper(trim((string) ($row['unique_id'] ?? '')));
-            if ($uid === $licenseKey || $uid === '' && count($rows) === 1) {
-                $setup = $row;
-                break;
-            }
-        }
-        if (! $setup && count($rows) === 1 && is_array($rows[0])) {
-            $setup = $rows[0];
         }
 
         if (! $setup) {
+            if (! $reachedAdmin && $lastError) {
+                return $this->activateStaleOrFail($cacheKey, $lastError);
+            }
             throw new TenantResolutionException(
                 'NOT_FOUND',
-                'No client found for this license key.',
+                'No client found for this license key.' . ($lastError ? " ({$lastError})" : ''),
                 404
             );
         }
 
+        $setupId = (int) ($setup['id'] ?? 0);
+        $wantDb = strtolower((string) data_get($setup, 'db_details.database', data_get($setup, 'db.database', '')));
         $domain = trim((string) ($setup['domain'] ?? ''));
 
-        // Prefer full tenant payload via existing /resolve (modules, membership, etc.)
+        // Prefer full tenant payload via /resolve ONLY when it maps to THIS license/setup.
+        // Shared hosts (e.g. hotel-erp.fableadtech.com) often have multiple setups → /resolve is unsafe.
         if ($domain !== '') {
             try {
                 $response = $this->client()->post('/resolve', array_filter([
@@ -292,17 +337,36 @@ class TenantManager
 
                 if ($response->successful() && ! empty($response->json('success')) && ! empty($response->json('tenant'))) {
                     $tenant = $this->tenantFromResponse($response, $cacheKey);
-                    $tenant['unique_id'] = $licenseKey;
-                    $tenant['license_key'] = $licenseKey;
+                    $resolvedUid = strtoupper(trim((string) ($tenant['unique_id'] ?? $tenant['license_key'] ?? '')));
+                    $resolvedId = (int) ($tenant['id'] ?? 0);
+                    $resolvedDb = strtolower((string) ($tenant['db']['database'] ?? $tenant['db']['resolved_database'] ?? ''));
 
-                    return $tenant;
+                    $sameLicense = $resolvedUid !== '' && $resolvedUid === $licenseKey;
+                    $sameSetup = $setupId > 0 && $resolvedId === $setupId;
+                    $sameDb = $wantDb !== '' && $resolvedDb !== '' && $resolvedDb === $wantDb;
+
+                    if ($sameLicense || $sameSetup || ($sameDb && $resolvedUid === '')) {
+                        $tenant['unique_id'] = $licenseKey;
+                        $tenant['license_key'] = $licenseKey;
+
+                        return $tenant;
+                    }
+
+                    Log::warning('License /resolve domain mismatch — using setup/search DB credentials', [
+                        'license_key' => $licenseKey,
+                        'setup_id' => $setupId,
+                        'resolved_id' => $resolvedId,
+                        'resolved_unique_id' => $resolvedUid,
+                        'want_db' => $wantDb,
+                        'resolved_db' => $resolvedDb,
+                    ]);
                 }
             } catch (\Throwable $e) {
                 Log::warning('License fallback /resolve failed: ' . $e->getMessage());
             }
         }
 
-        // Last resort: build tenant from setup/search row (includes DB credentials)
+        // Authoritative for Flutter sync: DB credentials from the unique_id setup row
         $tenant = $this->tenantFromSetupSearchRow($setup, $licenseKey);
         if (! $this->isUsable($tenant)) {
             $reason = ($tenant['membership_status'] ?? '') === 'Expired' ? 'EXPIRED' : 'INACTIVE';

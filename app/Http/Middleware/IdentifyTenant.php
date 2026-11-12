@@ -31,14 +31,29 @@ class IdentifyTenant
         // Resolve tenant via explicit License Key header or query/body param (e.g. Flutter Desktop app sync)
         $licenseKey = $request->header('X-License-Key')
             ?? $request->header('X-Tenant-Key')
+            ?? $request->header('X-Purchase-Code')
             ?? $request->input('license_key')
-            ?? $request->input('tenant_license');
+            ?? $request->input('tenant_license')
+            ?? $request->input('unique_id')
+            ?? $request->input('purchase_code');
 
-        if (!empty($licenseKey)) {
+        if (! empty($licenseKey) && is_string($licenseKey) && trim($licenseKey) !== '') {
             try {
-                $tenant = $this->tenancy->resolveByLicenseKey($licenseKey);
+                $fresh = $request->boolean('fresh_license') || $request->has('refresh_tenant');
+                $tenant = $this->tenancy->resolveByLicenseKey(trim($licenseKey), $fresh);
+                // Explicit license must win — do not re-stick an older session DB
+                // (Flutter sync / multi-client Desktop can switch licenses on same host).
                 if ($request->hasSession()) {
-                    $tenant = $this->stickSessionDatabase($request, $tenant);
+                    $lk = strtoupper(trim((string) ($tenant['unique_id'] ?? $tenant['license_key'] ?? $licenseKey)));
+                    $resolvedDb = (string) ($tenant['db']['resolved_database'] ?? $tenant['db']['database'] ?? '');
+                    $request->session()->put('tenant_id', (int) ($tenant['id'] ?? 0));
+                    $request->session()->put('tenant', $tenant);
+                    $request->session()->put('client_license_key', $lk);
+                    $request->session()->put('tenant_unique_id_synced', true);
+                    if ($resolvedDb !== '' && ! empty($tenant['id'])) {
+                        $request->session()->put('tenant_resolved_for', (int) $tenant['id']);
+                        $request->session()->put('tenant_resolved_database', $resolvedDb);
+                    }
                 }
                 $request->attributes->set('tenant', $tenant);
                 AppViewData::share();

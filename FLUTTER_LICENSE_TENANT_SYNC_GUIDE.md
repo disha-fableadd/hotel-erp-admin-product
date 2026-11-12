@@ -32,8 +32,8 @@ When `TENANCY_ENABLED=true` on the Hotel ERP server:
 |------|--------|
 | License **required** | Missing key → `403` / `LICENSE_REQUIRED` |
 | Resolve every sync | Pull/push resolve the client DB via license key |
-| Resolve path | Tries admin `/resolve-license`; if missing (404), falls back to `/setup/search?unique_id=` + `/resolve` |
-| Product scoped | Only clients that purchased this Hotel product/project |
+| Resolve path | Tries admin `/resolve-license`; if missing (404), falls back to `/setup/search?unique_id=` (no `type=HOTEL` required) then that setup’s DB credentials |
+| Multi-client | Each `unique_id` maps to its own DB (e.g. `CULZ4` → `…_hotelerpdb`, `M8F6Z` → `…_toniqdb`) even if domains are shared |
 | Expired / inactive | `403` with `EXPIRED` / `INACTIVE` |
 
 When tenancy is **disabled** (local single-DB), license is optional and the default `.env` database is used.
