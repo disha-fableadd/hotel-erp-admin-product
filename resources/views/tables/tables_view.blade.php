@@ -826,12 +826,12 @@
             white-space: nowrap;
         }
 
-        /* Petpooja actions: Save | Save & Print | Settle */
+        /* Petpooja actions: Save | Save & Print  /  Settle full-width */
         #tableOrderModal .modal-order-edit {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 8px !important;
-            margin-top: 8px !important;
+            margin-top: 10px !important;
             align-items: stretch;
         }
 
@@ -840,23 +840,16 @@
         #tableOrderModal .modal-order-edit .btn-totallabel_settle {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
             gap: 8px;
-            flex: 1 1 calc(50% - 4px);
-            width: auto !important;
+            width: 100% !important;
             min-width: 0;
             margin: 0 !important;
-            padding: 11px 12px !important;
+            padding: 12px 10px !important;
             border-radius: 10px !important;
             color: #fff !important;
             border: 0 !important;
             cursor: pointer;
-        }
-
-        #tableOrderModal .modal-order-edit.is-settle-ready .btn-totallabel_1,
-        #tableOrderModal .modal-order-edit.is-settle-ready .btn-totallabel_2,
-        #tableOrderModal .modal-order-edit.is-settle-ready .btn-totallabel_settle {
-            flex: 1 1 calc(33.33% - 6px);
         }
 
         #tableOrderModal .modal-order-edit .btn-totallabel_1 h6,
@@ -867,87 +860,150 @@
         #tableOrderModal .modal-order-edit .btn-totallabel_settle h5 {
             margin: 0 !important;
             color: #fff !important;
-            font-size: 12px !important;
+            font-size: 13px !important;
             font-weight: 700 !important;
             white-space: nowrap;
         }
 
+        #tableOrderModal .modal-order-edit .btn-totallabel_1 h5,
+        #tableOrderModal .modal-order-edit .btn-totallabel_2 h5,
+        #tableOrderModal .modal-order-edit .btn-totallabel_settle h5 {
+            font-size: 14px !important;
+            opacity: 0.95;
+        }
+
         #tableOrderModal .btn-totallabel_1 {
-            background: linear-gradient(135deg, #1b2850 0%, #0f172a 100%) !important;
-            box-shadow: 0 4px 12px rgba(27, 40, 80, 0.25) !important;
+            background: #1e293b !important;
+            box-shadow: none !important;
         }
 
         #tableOrderModal .btn-totallabel_2 {
-            background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%) !important;
-            box-shadow: 0 4px 14px rgba(255, 159, 67, 0.35) !important;
+            background: #ff9f43 !important;
+            box-shadow: none !important;
         }
 
         #tableOrderModal .btn-totallabel_settle {
             display: none !important;
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
-            box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35) !important;
+            grid-column: 1 / -1;
+            justify-content: flex-start !important;
+            background: #16a34a !important;
+            box-shadow: none !important;
+            padding: 13px 14px !important;
         }
 
         #tableOrderModal .modal-order-edit.is-settle-ready .btn-totallabel_settle {
             display: flex !important;
         }
 
-        /* Petpooja: settlement lives with payment (not a duplicate button) */
+        #tableOrderModal .modal-order-edit.is-settle-ready .btn-totallabel_settle h6 {
+            font-size: 14px !important;
+            font-weight: 800 !important;
+        }
+
+        #tableOrderModal .js-dine-settle-amount-inline {
+            margin-left: auto;
+            font-weight: 800;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        /* One clean settlement card */
         #tableOrderModal .dine-settle-pay {
-            margin: 0 0 8px;
-            padding: 8px 10px;
-            border-radius: 10px 10px 0 0;
-            border: 1px solid #bbf7d0;
+            display: none;
+            margin: 0;
+            padding: 10px 12px 8px;
+            border: 1px solid #d1fae5;
             border-bottom: 0;
-            background: #f0fdf4;
+            border-radius: 12px 12px 0 0;
+            background: #ecfdf5;
         }
         #tableOrderModal .dine-settle-pay__head {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         #tableOrderModal .dine-settle-pay__badge {
             display: inline-flex;
-            font-size: 10.5px;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
             font-weight: 800;
-            letter-spacing: 0.03em;
+            letter-spacing: 0.04em;
             text-transform: uppercase;
             color: #166534;
-            background: #dcfce7;
-            border-radius: 999px;
-            padding: 2px 8px;
+        }
+        #tableOrderModal .dine-settle-pay__badge::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
         }
         #tableOrderModal .dine-settle-pay__hint {
-            font-size: 11px;
-            color: #3f6212;
-            font-weight: 600;
+            display: none;
         }
         #tableOrderModal .dine-settle-pay__amount {
             display: flex;
-            align-items: center;
+            align-items: baseline;
             justify-content: space-between;
-            font-size: 12.5px;
+            gap: 8px;
             color: #14532d;
+            font-size: 12px;
+            font-weight: 600;
         }
         #tableOrderModal .dine-settle-pay__amount strong {
-            font-size: 15px;
+            font-size: 20px;
             font-weight: 800;
-            color: #166534;
+            color: #15803d;
+            letter-spacing: -0.02em;
         }
         #tableOrderModal .payment_panel.is-settle-mode .dine-settle-pay {
             display: block;
         }
         #tableOrderModal .payment_panel.is-settle-mode #dinePayMethodCollapse {
-            border: 1px solid #bbf7d0;
-            border-radius: 0 0 10px 10px;
-            background: #f8fdf9;
-            margin-top: 0;
+            border: 1px solid #d1fae5;
+            border-radius: 0 0 12px 12px;
+            background: #fff;
+            margin: 0 0 10px;
+            overflow: hidden;
         }
-        #tableOrderModal .payment_panel.is-settle-mode .pay-method-collapse-label {
-            color: #166534;
+        #tableOrderModal .payment_panel.is-settle-mode .pay-method-collapse-toggle {
+            display: none !important;
+        }
+        #tableOrderModal .payment_panel.is-settle-mode .pay-method-collapse-body {
+            display: block !important;
+            margin: 0 !important;
+            padding: 10px !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+        }
+        #tableOrderModal .payment_panel.is-settle-mode .setvaluecash ul {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 6px !important;
+        }
+        #tableOrderModal .payment_panel.is-settle-mode .setvaluecash ul li a.paymentmethod {
+            flex-direction: column !important;
+            justify-content: center !important;
+            gap: 4px !important;
+            min-height: 58px !important;
+            padding: 8px 4px !important;
+            font-size: 11px !important;
+            border-radius: 8px !important;
+        }
+        #tableOrderModal .payment_panel.is-settle-mode .setvaluecash ul li a.paymentmethod span {
+            font-size: 10.5px !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+        }
+        #tableOrderModal .payment_panel.is-settle-mode .setvaluecash ul li a.paymentmethod i {
+            font-size: 14px !important;
+            margin: 0 !important;
+        }
+        #tableOrderModal .payment_panel.is-settle-mode #dineKotRemarksCollapse {
+            display: none !important;
         }
         /* Clear Bill — header (next to close) */
         #tableOrderModal .btn-clear-dine-bill {
@@ -3447,10 +3503,9 @@
                                     <div class="dine-settle-pay" id="dineSettlePayBox" style="display:none;">
                                         <div class="dine-settle-pay__head">
                                             <span class="dine-settle-pay__badge">Bill Printed</span>
-                                            <span class="dine-settle-pay__hint">Choose payment &amp; settle to free table</span>
                                         </div>
                                         <div class="dine-settle-pay__amount">
-                                            <span>Collect</span>
+                                            <span>Amount to collect</span>
                                             <strong class="js-settle-amount">{{ $currency_symbol }}0.00</strong>
                                         </div>
                                     </div>
@@ -3656,16 +3711,17 @@
 
                                     <div class="modal-order-edit" style="display: none;">
                                         <div class="btn-totallabel_1" data-order_update_id="">
-                                            <h6 class="js-dine-save-label">Save · {{ $currency_symbol }}0.00</h6>
                                             <h5><i class="fas fa-check"></i></h5>
+                                            <h6 class="js-dine-save-label">Save</h6>
                                         </div>
                                         <div class="btn-totallabel_2" data-order_payment_update_id="" data-action-mode="print">
-                                            <h6 class="js-dine-primary-action-label">Save &amp; Print · {{ $currency_symbol }}0.00</h6>
                                             <h5 class="js-dine-primary-action-icon"><i class="fas fa-print"></i></h5>
+                                            <h6 class="js-dine-primary-action-label">Save &amp; Print</h6>
                                         </div>
                                         <div class="btn-totallabel_settle" id="btnSettleDineBill" data-order_settle_id="" style="display:none;">
-                                            <h6 class="js-dine-settle-label">Settle · {{ $currency_symbol }}0.00</h6>
                                             <h5><i class="fas fa-check-circle"></i></h5>
+                                            <h6 class="js-dine-settle-label">Settle Bill</h6>
+                                            <span class="js-dine-settle-amount-inline" style="margin-left:auto;font-weight:800;font-size:13px;">{{ $currency_symbol }}0.00</span>
                                         </div>
                                     </div>
                                 </div>
@@ -4285,10 +4341,11 @@
 
             // Save & Print always stays print (Petpooja) — never swaps to Settle
             $printBtn.attr('data-action-mode', 'print').removeClass('is-settle-action');
-            $printBtn.find('.js-dine-primary-action-label').text('Save & Print · ' + amountText);
+            $printBtn.find('.js-dine-primary-action-label').text('Save & Print');
             $printBtn.find('.js-dine-primary-action-icon').html('<i class="fas fa-print"></i>');
-            $('.js-dine-save-label').text('Save · ' + amountText);
-            $('.js-dine-settle-label').text('Settle · ' + amountText);
+            $('.js-dine-save-label').text('Save');
+            $('.js-dine-settle-label').text('Settle Bill');
+            $('.js-settle-amount, .js-dine-settle-amount-inline').text(amountText || '');
 
             if (orderId) {
                 $settleBtn.attr('data-order_settle_id', orderId);
@@ -5902,10 +5959,10 @@
                     $(".total-value h6").html(formatCurrency(total.toFixed(2), currencySymbol, currencyPosition));
                     const payableText = formatCurrency(total.toFixed(2), currencySymbol, currencyPosition);
                     $(".btn-totallabel h6").html('Place Order · ' + payableText);
-                    $(".js-dine-save-label").text('Save · ' + payableText);
-                    $(".js-dine-primary-action-label").text('Save & Print · ' + payableText);
-                    $(".js-dine-settle-label").text('Settle · ' + payableText);
-                    $(".js-settle-amount").text(payableText);
+                    $(".js-dine-save-label").text('Save');
+                    $(".js-dine-primary-action-label").text('Save & Print');
+                    $(".js-dine-settle-label").text('Settle Bill');
+                    $(".js-settle-amount, .js-dine-settle-amount-inline").text(payableText);
                     if (typeof window.syncDineSettlePanel === 'function') {
                         window.syncDineSettlePanel();
                     }
@@ -5920,10 +5977,10 @@
                     $(".total-value h6").html(formatCurrency("0.00", currencySymbol, currencyPosition));
                     const zeroPayable = formatCurrency("0.00", currencySymbol, currencyPosition);
                     $(".btn-totallabel h6").html('Place Order · ' + zeroPayable);
-                    $(".js-dine-save-label").text('Save · ' + zeroPayable);
-                    $(".js-dine-primary-action-label").text('Save & Print · ' + zeroPayable);
-                    $(".js-dine-settle-label").text('Settle · ' + zeroPayable);
-                    $(".js-settle-amount").text(zeroPayable);
+                    $(".js-dine-save-label").text('Save');
+                    $(".js-dine-primary-action-label").text('Save & Print');
+                    $(".js-dine-settle-label").text('Settle Bill');
+                    $(".js-settle-amount, .js-dine-settle-amount-inline").text(zeroPayable);
                     if (typeof window.syncDineSettlePanel === 'function') {
                         window.syncDineSettlePanel();
                     }
