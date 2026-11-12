@@ -53,6 +53,9 @@ class Order extends Model
         'kot_pending_cancels' => 'array',
         'tax_breakdown' => 'array',
         'bill_printed_at' => 'datetime',
+        'overall_gst_rate' => 'decimal:2',
+        'service_tax_rate' => 'decimal:2',
+        'service_tax_amount' => 'decimal:2',
     ];
 
     public function order_items()

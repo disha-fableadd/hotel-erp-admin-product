@@ -493,6 +493,23 @@ class SyncController extends Controller
                                 $item->product_name = optional($item->product)->name ?? 'Item';
                             }
                         }
+                    } elseif ($tableKey === 'settings') {
+                        // Normalize GST / Service Tax so Desktop always gets stable defaults
+                        if ($this->fastHasColumn($tableName, 'service_tax_enabled')) {
+                            $r->setAttribute('service_tax_enabled', (int) ($r->service_tax_enabled ?? 0));
+                        }
+                        if ($this->fastHasColumn($tableName, 'service_tax_rate') && $r->service_tax_rate !== null && $r->service_tax_rate !== '') {
+                            $r->setAttribute('service_tax_rate', number_format((float) $r->service_tax_rate, 2, '.', ''));
+                        }
+                        if ($this->fastHasColumn($tableName, 'service_tax_name') && empty($r->service_tax_name) && (int) ($r->service_tax_enabled ?? 0) === 1) {
+                            $r->setAttribute('service_tax_name', 'Service Tax');
+                        }
+                        if ($this->fastHasColumn($tableName, 'gst_apply_mode') && empty($r->gst_apply_mode)) {
+                            $r->setAttribute('gst_apply_mode', 'product');
+                        }
+                        if ($this->fastHasColumn($tableName, 'overall_gst_rate') && $r->overall_gst_rate !== null && $r->overall_gst_rate !== '') {
+                            $r->setAttribute('overall_gst_rate', number_format((float) $r->overall_gst_rate, 2, '.', ''));
+                        }
                     }
                     $active[] = $r;
                 }
@@ -818,6 +835,21 @@ class SyncController extends Controller
                 foreach ($payload['orders'] as $o) {
                     $orderUuid = $o['client_uuid'] ?? (string) Str::uuid();
                     $order = \App\Models\Order::firstOrNew(['client_uuid' => $orderUuid]);
+                    // Prefer existing remote row when Desktop re-pushes with remote_id
+                    if (! $order->exists) {
+                        $remoteOrderId = $o['remote_id'] ?? $o['id'] ?? null;
+                        if ($remoteOrderId) {
+                            $byRemote = \App\Models\Order::find($remoteOrderId);
+                            if ($byRemote) {
+                                $order = $byRemote;
+                                if (empty($order->client_uuid)) {
+                                    $order->client_uuid = $orderUuid;
+                                } else {
+                                    $orderUuid = $order->client_uuid;
+                                }
+                            }
+                        }
+                    }
 
                     // Resolve customer / user
                     $userId = $o['user_id'] ?? $o['customer_id'] ?? null;
@@ -879,6 +911,8 @@ class SyncController extends Controller
                     if (isset($o['table_status'])) {
                         $order->table_status = (int)$o['table_status'];
                     }
+                    // Persist GST + Service Tax from Desktop (must match Web POS columns)
+                    $this->applyOrderTaxFieldsFromSync($order, $o);
                     // Petpooja-style KOT fire ticket (latest Update delta) — one sync API carries everything
                     if (Schema::hasColumn('orders', 'kot_pending_cancels') && array_key_exists('kot_pending_cancels', $o)) {
                         $order->kot_pending_cancels = $o['kot_pending_cancels'];
@@ -1336,6 +1370,107 @@ class SyncController extends Controller
                 'line' => $e->getLine(),
                 'file' => $e->getFile(),
             ], 500);
+        }
+    }
+
+    /**
+     * Map Flutter Desktop GST / Service Tax fields onto Order (create + update).
+     * Desktop may send aliases: service_tax_percent, service_tax_percentage, service_tax_label.
+     */
+    protected function applyOrderTaxFieldsFromSync(\App\Models\Order $order, array $orderData): void
+    {
+        $serviceTaxRate = $orderData['service_tax_rate']
+            ?? $orderData['service_tax_percent']
+            ?? $orderData['service_tax_percentage']
+            ?? null;
+
+        $serviceTaxAmount = array_key_exists('service_tax_amount', $orderData)
+            ? $orderData['service_tax_amount']
+            : null;
+
+        $serviceTaxName = $orderData['service_tax_name']
+            ?? $orderData['service_tax_label']
+            ?? null;
+        if (
+            ($serviceTaxName === null || $serviceTaxName === '')
+            && $serviceTaxRate !== null
+            && (float) $serviceTaxRate > 0
+        ) {
+            $serviceTaxName = 'Service Tax';
+        }
+
+        $taxBreakdown = $orderData['tax_breakdown'] ?? null;
+        if (is_string($taxBreakdown) && $taxBreakdown !== '') {
+            $decoded = json_decode($taxBreakdown, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $taxBreakdown = $decoded;
+            }
+        }
+        if (empty($taxBreakdown) && $serviceTaxRate !== null && (float) $serviceTaxRate > 0) {
+            $taxBreakdown = [
+                [
+                    'id' => 'service_tax',
+                    'name' => $serviceTaxName ?: 'Service Tax',
+                    'rate' => (float) $serviceTaxRate,
+                    'amount' => round((float) ($serviceTaxAmount ?? 0), 2),
+                    'kind' => 'service',
+                ],
+            ];
+        }
+
+        $rawGstOption = strtolower(trim((string) ($orderData['gst_option'] ?? ($order->gst_option ?? 'without_gst'))));
+        $gstOption = ($rawGstOption === 'with_gst' || $rawGstOption === 'with')
+            ? 'with_gst'
+            : 'without_gst';
+
+        $gstApplyMode = strtolower(trim((string) ($orderData['gst_apply_mode'] ?? ($order->gst_apply_mode ?? 'product'))));
+        if ($gstApplyMode !== 'overall') {
+            $gstApplyMode = 'product';
+        }
+
+        $overallGstRate = array_key_exists('overall_gst_rate', $orderData)
+            ? $orderData['overall_gst_rate']
+            : ($order->overall_gst_rate ?? null);
+
+        // tax_id: Web stores JSON "[]"; Desktop may send "0.00" / numeric GST total — accept safely
+        $taxId = $orderData['tax_id'] ?? null;
+        if ($taxId === null || $taxId === '' || $taxId === '0.00' || $taxId === 0 || $taxId === 0.0) {
+            $taxId = ($gstOption === 'without_gst') ? '[]' : ($order->tax_id ?? '[]');
+        } elseif (is_array($taxId)) {
+            $taxId = json_encode($taxId);
+        }
+
+        if (Schema::hasColumn('orders', 'gst_option')) {
+            $order->gst_option = $gstOption;
+        }
+        if (Schema::hasColumn('orders', 'gst_apply_mode')) {
+            $order->gst_apply_mode = $gstApplyMode;
+        }
+        if (Schema::hasColumn('orders', 'overall_gst_rate')) {
+            $order->overall_gst_rate = ($overallGstRate === null || $overallGstRate === '')
+                ? null
+                : round((float) $overallGstRate, 2);
+        }
+        if (Schema::hasColumn('orders', 'service_tax_rate')) {
+            $order->service_tax_rate = ($serviceTaxRate === null || $serviceTaxRate === '')
+                ? null
+                : round((float) $serviceTaxRate, 2);
+        }
+        if (Schema::hasColumn('orders', 'service_tax_amount')) {
+            $order->service_tax_amount = ($serviceTaxAmount === null || $serviceTaxAmount === '')
+                ? null
+                : round((float) $serviceTaxAmount, 2);
+        }
+        if (Schema::hasColumn('orders', 'service_tax_name')) {
+            $order->service_tax_name = $serviceTaxName !== null && $serviceTaxName !== ''
+                ? (string) $serviceTaxName
+                : null;
+        }
+        if (Schema::hasColumn('orders', 'tax_breakdown')) {
+            $order->tax_breakdown = is_array($taxBreakdown) ? $taxBreakdown : null;
+        }
+        if (Schema::hasColumn('orders', 'tax_id') && $taxId !== null) {
+            $order->tax_id = is_scalar($taxId) ? (string) $taxId : json_encode($taxId);
         }
     }
 
