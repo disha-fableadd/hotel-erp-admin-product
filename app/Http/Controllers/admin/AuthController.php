@@ -726,14 +726,27 @@ class AuthController extends Controller
             }
 
             $tenant = is_array(tenant()) ? tenant() : (is_array(session('tenant')) ? session('tenant') : []);
+            $sessionLicense = $tenant['unique_id']
+                ?? $tenant['license_key']
+                ?? session('client_license_key')
+                ?? null;
+
             if ($tenantId > 0 && config('tenant.enabled')) {
                 try {
-                    $tenant = $tenancy->resolveById($tenantId, true);
+                    // Only hard-refresh from admin when ?refresh_tenant=1
+                    $tenant = $tenancy->resolveById($tenantId, $force);
                 } catch (\Throwable) {
                     // keep session tenant
                 }
             }
 
+            // Fresh admin payload may still omit unique_id — keep any known license
+            if (empty($tenant['unique_id']) && empty($tenant['license_key']) && ! empty($sessionLicense)) {
+                $tenant['unique_id'] = strtoupper(trim((string) $sessionLicense));
+                $tenant['license_key'] = $tenant['unique_id'];
+            }
+
+            $licenseDebug = null;
             if (! empty($tenant)) {
                 // Use current browser host + profile identity to fetch setups.unique_id
                 // from admin GET /api/setup/search (same source as admin Edit Setup License Key)
@@ -742,9 +755,12 @@ class AuthController extends Controller
                     'client_name' => $user->name ?? ($tenant['client_name'] ?? null),
                     'brand_name' => $tenant['brand_name'] ?? ($user->name ?? null),
                     'email' => $user->email ?? ($tenant['email'] ?? null),
-                    'domain' => $tenant['domain'] ?? $host,
+                    'domain' => $host ?: ($tenant['domain'] ?? null),
                     'name' => $user->name ?? null,
                 ], true);
+
+                $licenseDebug = $tenant['_license_debug'] ?? null;
+                unset($tenant['_license_debug']);
 
                 session(['tenant' => $tenant]);
                 if (! empty($tenant['id'])) {
@@ -753,16 +769,23 @@ class AuthController extends Controller
 
                 $currentLicenseKey = $tenant['unique_id'] ?? $tenant['license_key'] ?? null;
                 if (! empty($currentLicenseKey)) {
-                    session(['tenant_unique_id_synced' => true]);
+                    $currentLicenseKey = strtoupper(trim((string) $currentLicenseKey));
+                    session([
+                        'tenant_unique_id_synced' => true,
+                        'client_license_key' => $currentLicenseKey,
+                    ]);
                 }
 
                 view()->share('currentTenant', $tenant);
-                view()->share('currentLicenseKey', $currentLicenseKey ? strtoupper(trim((string) $currentLicenseKey)) : null);
+                view()->share('currentLicenseKey', $currentLicenseKey);
             }
-        } catch (\Throwable) {
-            // Profile still loads
+        } catch (\Throwable $e) {
+            $licenseDebug = $e->getMessage();
         }
 
+        if (empty($currentLicenseKey)) {
+            $currentLicenseKey = session('client_license_key');
+        }
         if (empty($currentLicenseKey)) {
             try {
                 if (\Illuminate\Support\Facades\Schema::hasColumn('settings', 'client_license_key')) {
@@ -773,8 +796,10 @@ class AuthController extends Controller
         }
 
         $currentLicenseKey = $currentLicenseKey ? strtoupper(trim((string) $currentLicenseKey)) : null;
+        $licenseDebug = $licenseDebug ?? null;
+        $tenantApiConfigured = (string) config('tenant.api_url');
 
-        return view('profile', compact('user', 'currentLicenseKey'));
+        return view('profile', compact('user', 'currentLicenseKey', 'licenseDebug', 'tenantApiConfigured'));
     }
     public function taxrates()
     {

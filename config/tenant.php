@@ -16,8 +16,16 @@ return [
     /*
     | Base URL of the admin_erp tenant API, e.g.
     | http://127.0.0.1:8001/api/tenant
+    | Production admin-products:
+    | https://admin-products.fableadtech.com/services/public/api/tenant
     */
     'api_url' => rtrim((string) env('TENANT_API_URL', ''), '/'),
+
+    /*
+    | Optional override for GET setup/search (license unique_id lookup).
+    | Defaults to deriving .../setup/search from api_url.
+    */
+    'setup_search_url' => rtrim((string) env('TENANT_SETUP_SEARCH_URL', ''), '/'),
 
     /*
     | Must equal TENANT_API_SECRET in admin_erp.

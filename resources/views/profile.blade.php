@@ -47,6 +47,7 @@
                                     <h4>Update Your Photo and Personal Details.</h4>
                                     @php
                                         $displayLicenseKey = $currentLicenseKey
+                                            ?? session('client_license_key')
                                             ?? (tenant('unique_id') ?? tenant('license_key') ?? data_get($currentTenant ?? null, 'unique_id'));
                                         $displayLicenseKey = $displayLicenseKey ? strtoupper(trim((string) $displayLicenseKey)) : null;
                                     @endphp
@@ -66,6 +67,20 @@
                                     <p style="margin:6px 0 0;font-size:11px;color:#94a3b8;">
                                         Use this ID in the Desktop app as <strong>X-License-Key</strong> for sync.
                                     </p>
+                                    @if(empty($displayLicenseKey) && (request()->has('debug_license') || !empty($licenseDebug)))
+                                        <div class="mt-2 p-2" style="font-size:11px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;color:#9a3412;max-width:520px;">
+                                            <strong>License lookup debug</strong><br>
+                                            Host: {{ request()->getHost() }}<br>
+                                            Tenant API: {{ $tenantApiConfigured ?: '(empty TENANT_API_URL)' }}<br>
+                                            Tenant ID: {{ tenant('id') ?? session('tenant_id') ?? '—' }}<br>
+                                            Domain: {{ tenant('domain') ?? data_get($currentTenant ?? null, 'domain') ?? '—' }}<br>
+                                            DB: {{ data_get(tenant(), 'db.database') ?? data_get(session('tenant'), 'db.database') ?? '—' }}<br>
+                                            Error: {{ $licenseDebug ?? 'no unique_id from admin setup/search' }}<br>
+                                            Tip: On production set <code>TENANT_API_URL=https://admin-products.fableadtech.com/services/public/api/tenant</code>
+                                            (not <code>/api/tenant</code> — that returns the SPA HTML). Then open
+                                            <code>/profile?refresh_tenant=1&amp;debug_license=1</code> after deploy.
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>

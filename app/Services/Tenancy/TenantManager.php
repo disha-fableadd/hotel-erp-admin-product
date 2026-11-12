@@ -650,12 +650,7 @@ class TenantManager
             return $tenant;
         }
 
-        // TENANT_API_URL = .../api/tenant  →  setup search = .../api/setup/search
-        $setupSearchUrl = preg_replace('#/tenant$#', '/setup/search', $apiBase);
-        if (! is_string($setupSearchUrl) || $setupSearchUrl === $apiBase) {
-            $setupSearchUrl = preg_replace('#/api/tenant$#', '/api/setup/search', $apiBase) ?: ($apiBase . '/../setup/search');
-        }
-
+        $setupSearchUrls = $this->setupSearchUrls($apiBase);
         $clientName = trim((string) (
             $extraHints['client_name']
             ?? $tenant['client_name']
@@ -667,116 +662,284 @@ class TenantManager
         $domain = trim((string) ($extraHints['domain'] ?? $tenant['domain'] ?? ''));
         $email = trim((string) ($extraHints['email'] ?? $tenant['email'] ?? ''));
         $wantDb = strtolower((string) ($tenant['db']['database'] ?? $tenant['db']['resolved_database'] ?? ''));
+        $wantSetupId = (int) ($tenant['id'] ?? 0);
 
-        // Prefer domain first (admin Edit Setup "Custom Domain"), then brand/client name
-        $productType = config('tenant.product_code') ?: 'HOTEL';
-        $querySets = [];
+        // Admin product.code for hotel clients is often "ERP" (project HOTEL_ERP),
+        // while hotel .env may set TENANT_PRODUCT_CODE=HOTEL — typed search then returns [].
+        // Empty string = untyped search (must stay first).
+        $typeVariants = [''];
+        foreach ([
+            (string) ($tenant['product_code'] ?? ''),
+            (string) config('tenant.product_code'),
+            (string) config('tenant.project_code'),
+            'ERP',
+            'HOTEL',
+            'HOTEL_ERP',
+        ] as $typeCandidate) {
+            $typeCandidate = strtoupper(trim($typeCandidate));
+            if ($typeCandidate !== '' && ! in_array($typeCandidate, $typeVariants, true)) {
+                $typeVariants[] = $typeCandidate;
+            }
+        }
+
+        // Prefer identity matches before bare domain (shared host can have multiple setups)
+        $baseQueries = [];
+        if ($clientName !== '') {
+            $baseQueries[] = ['brand_name' => $clientName];
+            $baseQueries[] = ['search' => $clientName];
+        }
+        if ($brandName !== '' && strcasecmp($brandName, $clientName) !== 0) {
+            $baseQueries[] = ['brand_name' => $brandName];
+            $baseQueries[] = ['search' => $brandName];
+        }
+        if ($email !== '') {
+            $baseQueries[] = ['search' => $email];
+        }
+        if ($wantDb !== '') {
+            $baseQueries[] = ['search' => $wantDb];
+        }
         if ($domain !== '') {
             $normDomain = static::normalizeHost($domain);
-            $querySets[] = ['search' => $domain, 'type' => $productType];
+            $baseQueries[] = ['search' => $normDomain ?: $domain];
             if ($normDomain !== '' && strcasecmp($normDomain, $domain) !== 0) {
-                $querySets[] = ['search' => $normDomain, 'type' => $productType];
-            }
-            if (str_contains($normDomain, 'hotel-erp.')) {
-                $querySets[] = ['search' => str_replace('hotel-erp.', 'erp.', $normDomain), 'type' => $productType];
-            }
-        }
-        if ($brandName !== '') {
-            $querySets[] = ['brand_name' => $brandName, 'type' => $productType];
-            $querySets[] = ['search' => $brandName, 'type' => $productType];
-        }
-        if ($clientName !== '' && strcasecmp($clientName, $brandName) !== 0) {
-            $querySets[] = ['brand_name' => $clientName, 'type' => $productType];
-            $querySets[] = ['search' => $clientName, 'type' => $productType];
-        }
-        if ($email !== '' && str_contains($email, '@')) {
-            // brand often matches email local-part for small hotels
-            $local = strstr($email, '@', true);
-            if (is_string($local) && strlen($local) >= 3) {
-                $querySets[] = ['search' => $local, 'type' => config('tenant.product_code') ?: 'HOTEL'];
+                $baseQueries[] = ['search' => $domain];
             }
         }
 
-        foreach ($querySets as $params) {
-            try {
-                $response = Http::acceptJson()
-                    ->timeout(max(1, (int) config('tenant.http_timeout', 8)))
-                    ->get($setupSearchUrl, $params);
-
-                if (! $response->successful()) {
-                    continue;
+        $querySets = [];
+        foreach ($baseQueries as $baseQuery) {
+            foreach ($typeVariants as $type) {
+                $params = $baseQuery;
+                if ($type !== '') {
+                    $params['type'] = $type;
                 }
+                $querySets[] = $params;
+            }
+        }
 
-                // Ignore HTML SPA responses
-                $contentType = strtolower((string) $response->header('Content-Type'));
-                if (str_contains($contentType, 'text/html')) {
-                    continue;
-                }
+        $lastError = null;
+        $htmlUrls = [];
+        foreach ($setupSearchUrls as $setupSearchUrl) {
+            foreach ($querySets as $params) {
+                try {
+                    $response = Http::acceptJson()
+                        ->timeout(max(3, (int) config('tenant.http_timeout', 8)))
+                        ->withHeaders([
+                            'X-Tenant-Secret' => (string) config('tenant.secret'),
+                            'Accept' => 'application/json',
+                        ])
+                        ->get($setupSearchUrl, $params);
 
-                $rows = $response->json('data') ?? [];
-                if (! is_array($rows) || empty($rows)) {
-                    $one = $response->json('setup');
-                    $rows = is_array($one) ? [$one] : [];
-                }
-
-                foreach ($rows as $row) {
-                    if (! is_array($row)) {
-                        continue;
-                    }
-                    $code = trim((string) ($row['unique_id'] ?? $row['license_key'] ?? ''));
-                    if ($code === '') {
+                    if (! $response->successful()) {
+                        $lastError = 'HTTP ' . $response->status() . ' @ ' . $setupSearchUrl;
                         continue;
                     }
 
-                    $rowDomain = strtolower((string) ($row['domain'] ?? ''));
-                    $rowDb = strtolower((string) (
-                        $row['database_name']
-                        ?? data_get($row, 'db.database')
-                        ?? data_get($row, 'db_details.database')
-                        ?? ''
-                    ));
-                    $rowClient = strtolower((string) (
-                        data_get($row, 'client.client_name')
-                        ?? data_get($row, 'client.brand_name')
-                        ?? $row['client_name']
-                        ?? ''
-                    ));
-                    $wantDomain = strtolower($domain);
-                    $wantClient = strtolower($clientName !== '' ? $clientName : $brandName);
+                    $body = $response->body();
+                    if (str_starts_with(ltrim($body), '<')) {
+                        $htmlUrls[$setupSearchUrl] = true;
+                        $lastError = 'HTML response @ ' . $setupSearchUrl . ' (need /services/public/api base)';
+                        // Don't hammer SPA host with every query variant
+                        break;
+                    }
 
-                    $domainOk = $wantDomain === '' || $rowDomain === '' || $rowDomain === $wantDomain
-                        || str_contains($rowDomain, explode('.', $wantDomain)[0] ?? '')
-                        || str_contains($wantDomain, explode('.', $rowDomain)[0] ?? '')
-                        || (str_contains($wantDomain, 'hotel-erp.') && str_contains($rowDomain, 'erp.'));
-                    $dbOk = $wantDb === '' || $rowDb === '' || $rowDb === $wantDb
-                        || str_contains($rowDb, $wantDb) || str_contains($wantDb, $rowDb);
-                    $clientOk = $wantClient === '' || $rowClient === '' || $rowClient === $wantClient
-                        || str_contains($rowClient, $wantClient) || str_contains($wantClient, $rowClient);
-
-                    if (! $domainOk && ! $dbOk && ! $clientOk && count($rows) > 1) {
+                    $rows = $response->json('data') ?? [];
+                    if (! is_array($rows) || empty($rows)) {
+                        $one = $response->json('setup');
+                        $rows = is_array($one) ? [$one] : [];
+                    }
+                    if (empty($rows)) {
+                        $lastError = 'empty data @ ' . $setupSearchUrl . ' params=' . json_encode($params);
                         continue;
                     }
 
-                    $code = strtoupper($code);
-                    $tenant['unique_id'] = $code;
-                    $tenant['license_key'] = $code;
-                    $lookupCache->put($enrichCacheKey, $code, 86400);
-                    $lookupCache->forget($enrichCacheKey . ':miss');
-                    $this->persistLicenseKeyToSettings($code);
+                    $picked = $this->pickLicenseFromSetupRows(
+                        $rows,
+                        $domain,
+                        $wantDb,
+                        $clientName ?: $brandName,
+                        $wantSetupId
+                    );
+                    if ($picked !== null) {
+                        $tenant['unique_id'] = $picked;
+                        $tenant['license_key'] = $picked;
+                        $lookupCache->put($enrichCacheKey, $picked, 86400);
+                        $lookupCache->forget($enrichCacheKey . ':miss');
+                        $this->persistLicenseKeyToSettings($picked);
+                        Log::info('Tenant license key resolved', [
+                            'tenant_id' => $tenant['id'] ?? null,
+                            'license_key' => $picked,
+                            'url' => $setupSearchUrl,
+                            'params' => $params,
+                        ]);
 
-                    return $tenant;
+                        return $tenant;
+                    }
+
+                    $lastError = 'no scored match among ' . count($rows) . ' row(s) @ ' . $setupSearchUrl
+                        . ' params=' . json_encode($params);
+                } catch (\Throwable $e) {
+                    $lastError = $e->getMessage();
+                    Log::warning('Tenant license enrich failed: ' . $e->getMessage(), [
+                        'url' => $setupSearchUrl,
+                        'params' => $params,
+                        'tenant_id' => $tenant['id'] ?? null,
+                    ]);
                 }
-            } catch (\Throwable $e) {
-                Log::warning('Tenant license enrich failed: ' . $e->getMessage(), [
-                    'params' => $params,
-                    'tenant_id' => $tenant['id'] ?? null,
-                ]);
             }
         }
 
-        $lookupCache->put($enrichCacheKey . ':miss', 1, 60);
+        if (! empty($htmlUrls) && $lastError && ! str_contains($lastError, 'services/public')) {
+            $lastError .= '; HTML from: ' . implode(', ', array_keys($htmlUrls));
+        }
+
+        if ($lastError) {
+            Log::warning('Tenant license enrich exhausted', [
+                'tenant_id' => $tenant['id'] ?? null,
+                'domain' => $domain,
+                'last_error' => $lastError,
+                'urls' => $setupSearchUrls,
+            ]);
+            // Expose for Profile ?debug_license=1
+            $tenant['_license_debug'] = $lastError;
+        }
+
+        $lookupCache->put($enrichCacheKey . ':miss', 1, 30);
 
         return $tenant;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function setupSearchUrls(string $apiBase): array
+    {
+        $apiBase = rtrim($apiBase, '/');
+        $urls = [];
+
+        // Optional explicit override (highest priority)
+        $override = trim((string) config('tenant.setup_search_url', env('TENANT_SETUP_SEARCH_URL', '')));
+        if ($override !== '') {
+            $urls[] = rtrim($override, '/');
+        }
+
+        if (str_ends_with($apiBase, '/tenant')) {
+            $urls[] = substr($apiBase, 0, -strlen('/tenant')) . '/setup/search';
+        }
+        if (str_ends_with($apiBase, '/api/tenant')) {
+            $urls[] = substr($apiBase, 0, -strlen('/api/tenant')) . '/api/setup/search';
+        }
+        $urls[] = preg_replace('#/tenant$#', '/setup/search', $apiBase) ?: '';
+        $urls[] = rtrim(preg_replace('#/tenant/?$#', '', $apiBase) ?: $apiBase, '/') . '/setup/search';
+
+        // Production admin SPA is at / ; Laravel API lives under /services/public/api
+        // If TENANT_API_URL mistakenly points at /api/tenant, still try the real path.
+        if (preg_match('#^(https?://[^/]+)#i', $apiBase, $m)) {
+            $origin = $m[1];
+            $urls[] = $origin . '/services/public/api/setup/search';
+            $urls[] = $origin . '/api/setup/search';
+        }
+        if (str_contains($apiBase, '/api/') && ! str_contains($apiBase, '/services/public/')) {
+            $urls[] = preg_replace('#/api/#', '/services/public/api/', $apiBase, 1);
+            $derived = preg_replace('#/tenant$#', '/setup/search', (string) end($urls));
+            if (is_string($derived) && $derived !== '') {
+                $urls[] = $derived;
+            }
+        }
+
+        return array_values(array_unique(array_filter($urls)));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     */
+    protected function pickLicenseFromSetupRows(
+        array $rows,
+        string $domain,
+        string $wantDb,
+        string $wantClient,
+        int $wantSetupId = 0
+    ): ?string {
+        $wantDomain = strtolower(static::normalizeHost($domain));
+        $wantClient = strtolower(trim($wantClient));
+        $wantDb = strtolower(trim($wantDb));
+
+        $candidates = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $code = strtoupper(trim((string) ($row['unique_id'] ?? $row['license_key'] ?? '')));
+            if ($code === '') {
+                continue;
+            }
+
+            $rowId = (int) ($row['id'] ?? 0);
+            $rowDomain = strtolower(static::normalizeHost((string) ($row['domain'] ?? '')));
+            $rowDb = strtolower((string) (
+                $row['database_name']
+                ?? data_get($row, 'db.database')
+                ?? data_get($row, 'db_details.database')
+                ?? ''
+            ));
+            $rowClientName = strtolower((string) (
+                data_get($row, 'client.client_name')
+                ?? $row['client_name']
+                ?? ''
+            ));
+            $rowBrand = strtolower((string) (
+                data_get($row, 'client.brand_name')
+                ?? $row['brand_name']
+                ?? ''
+            ));
+
+            $score = 0;
+            if ($wantSetupId > 0 && $rowId === $wantSetupId) {
+                $score += 200;
+            }
+            if ($wantDomain !== '' && $rowDomain === $wantDomain) {
+                $score += 100;
+            } elseif ($wantDomain !== '' && $rowDomain !== '' && (str_contains($rowDomain, $wantDomain) || str_contains($wantDomain, $rowDomain))) {
+                $score += 50;
+            }
+            if ($wantDb !== '' && $rowDb !== '' && ($rowDb === $wantDb || str_contains($rowDb, $wantDb) || str_contains($wantDb, $rowDb))) {
+                $score += 80;
+            }
+            if ($wantClient !== '') {
+                if ($rowClientName !== '' && ($rowClientName === $wantClient || str_contains($rowClientName, $wantClient) || str_contains($wantClient, $rowClientName))) {
+                    $score += 60;
+                } elseif ($rowBrand !== '' && ($rowBrand === $wantClient || str_contains($rowBrand, $wantClient) || str_contains($wantClient, $rowBrand))) {
+                    $score += 45;
+                }
+            }
+
+            $candidates[] = ['code' => $code, 'score' => $score, 'id' => $rowId];
+        }
+
+        if (empty($candidates)) {
+            return null;
+        }
+
+        // Single result from a targeted search → trust it
+        if (count($candidates) === 1) {
+            return $candidates[0]['code'];
+        }
+
+        usort($candidates, function ($a, $b) {
+            if ($a['score'] !== $b['score']) {
+                return $b['score'] <=> $a['score'];
+            }
+
+            // Prefer higher setup id only as weak tie-break (newer row)
+            return ($b['id'] ?? 0) <=> ($a['id'] ?? 0);
+        });
+
+        // Require a positive identity/domain/db signal when multiple setups share a host
+        if ($candidates[0]['score'] > 0) {
+            return $candidates[0]['code'];
+        }
+
+        return null;
     }
 
     protected function persistLicenseKeyToSettings(string $code): void

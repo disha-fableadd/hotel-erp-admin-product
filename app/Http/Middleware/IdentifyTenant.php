@@ -78,12 +78,43 @@ class IdentifyTenant
 
                 $tenant = $this->tenancy->resolveById($tenantId, $forceFresh);
                 $tenant = $this->stickSessionDatabase($request, $tenant);
+
+                // Keep license key if a fresh admin payload still omits unique_id
+                $sessionLicense = null;
+                if (is_array($sessionTenant)) {
+                    $sessionLicense = $sessionTenant['unique_id']
+                        ?? $sessionTenant['license_key']
+                        ?? null;
+                }
+                $sessionLicense = $sessionLicense
+                    ?: $request->session()->get('client_license_key');
+                if (empty($tenant['unique_id']) && empty($tenant['license_key']) && ! empty($sessionLicense)) {
+                    $tenant['unique_id'] = strtoupper(trim((string) $sessionLicense));
+                    $tenant['license_key'] = $tenant['unique_id'];
+                }
+
+                // Still missing → fetch from admin setup/search (same License Key as admin Edit Setup)
+                if (empty($tenant['unique_id']) && empty($tenant['license_key'])) {
+                    try {
+                        $tenant = $this->tenancy->ensureLicenseKey($tenant, [
+                            'domain' => $tenant['domain'] ?? $request->getHost(),
+                            'client_name' => $tenant['client_name'] ?? null,
+                            'brand_name' => $tenant['brand_name'] ?? null,
+                            'email' => $tenant['email'] ?? null,
+                        ], $forceFresh || $missingLicense);
+                    } catch (\Throwable) {
+                        // continue without license
+                    }
+                }
+
                 $request->session()->put('tenant', $tenant);
                 if ($forceFresh) {
                     $request->session()->put('tenant_license_lookup_at', time());
                 }
                 if (! empty($tenant['unique_id']) || ! empty($tenant['license_key'])) {
+                    $lk = strtoupper(trim((string) ($tenant['unique_id'] ?? $tenant['license_key'])));
                     $request->session()->put('tenant_unique_id_synced', true);
+                    $request->session()->put('client_license_key', $lk);
                 }
 
                 AppViewData::share();
