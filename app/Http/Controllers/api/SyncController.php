@@ -106,25 +106,77 @@ class SyncController extends Controller
     ];
 
     /**
-     * Resolve and activate tenant database using license_key if multi-tenancy is active.
+     * Read client license key from headers/body (admin_erp / admin-client unique_id).
+     */
+    protected function extractLicenseKey(Request $request): ?string
+    {
+        $raw = $request->header('X-License-Key')
+            ?? $request->header('X-Tenant-Key')
+            ?? $request->header('X-Purchase-Code')
+            ?? $request->input('license_key')
+            ?? $request->input('tenant_license')
+            ?? $request->input('unique_id')
+            ?? $request->input('purchase_code');
+
+        $key = is_string($raw) ? trim($raw) : '';
+
+        return $key !== '' ? $key : null;
+    }
+
+    /**
+     * Public client summary for Flutter (from admin-client tenant resolve).
+     */
+    protected function clientPayloadFromTenant(?array $tenant): ?array
+    {
+        if (! is_array($tenant) || empty($tenant)) {
+            return null;
+        }
+
+        return [
+            'id' => $tenant['client_id'] ?? $tenant['id'] ?? null,
+            'tenant_id' => $tenant['id'] ?? null,
+            'client_id' => $tenant['client_id'] ?? $tenant['id'] ?? null,
+            'client_name' => $tenant['client_name'] ?? $tenant['name'] ?? null,
+            'brand_name' => $tenant['brand_name'] ?? null,
+            'domain' => $tenant['domain'] ?? null,
+            'email' => $tenant['email'] ?? null,
+            'plan_name' => $tenant['plan_name'] ?? 'Standard',
+            'status' => $tenant['status'] ?? null,
+            'membership_status' => $tenant['membership_status'] ?? null,
+            'expiry_date' => $tenant['expiry_date'] ?? null,
+            'max_user' => $tenant['max_user'] ?? null,
+            'max_branch' => $tenant['max_branch'] ?? null,
+            'product_code' => $tenant['product_code'] ?? config('tenant.product_code'),
+            'project_code' => $tenant['project_code'] ?? config('tenant.project_code'),
+            'license_key' => $tenant['license_key'] ?? $tenant['unique_id'] ?? null,
+            'database' => $tenant['db']['resolved_database'] ?? $tenant['db']['database'] ?? null,
+        ];
+    }
+
+    /**
+     * Resolve and activate the specific client DB via admin-client license.
+     * When TENANCY_ENABLED=true, license_key is REQUIRED for sync APIs.
+     *
+     * @throws TenantResolutionException
      */
     protected function resolveTenantIfNeeded(Request $request): ?array
     {
         $tenancy = app(TenantManager::class);
-        if (!$tenancy->enabled()) {
+        if (! $tenancy->enabled()) {
             return null;
         }
 
-        $licenseKey = $request->header('X-License-Key')
-            ?? $request->header('X-Tenant-Key')
-            ?? $request->input('license_key')
-            ?? $request->input('tenant_license');
-
-        if (!empty($licenseKey)) {
-            return $tenancy->resolveByLicenseKey($licenseKey);
+        $licenseKey = $this->extractLicenseKey($request);
+        if ($licenseKey === null) {
+            throw new TenantResolutionException(
+                'LICENSE_REQUIRED',
+                'License key is required. Pass X-License-Key header or license_key / unique_id in the body (from admin-client).',
+                403
+            );
         }
 
-        return $tenancy->current();
+        // Always resolve from admin-client so pull/push hit that client's database only
+        return $tenancy->resolveByLicenseKey($licenseKey, (bool) $request->boolean('fresh_license'));
     }
 
     /**
@@ -226,14 +278,13 @@ class SyncController extends Controller
     // =============================================
     public function verifyLicense(Request $request)
     {
-        $licenseKey = $request->header('X-License-Key')
-            ?? $request->input('license_key')
-            ?? $request->input('unique_id');
+        $licenseKey = $this->extractLicenseKey($request);
 
         if (empty($licenseKey)) {
             return response()->json([
                 'status' => false,
-                'message' => 'License key is required.',
+                'error' => 'LICENSE_REQUIRED',
+                'message' => 'License key is required. Pass X-License-Key or license_key / unique_id.',
             ], 422);
         }
 
@@ -244,17 +295,8 @@ class SyncController extends Controller
                 return response()->json([
                     'status' => true,
                     'message' => 'License is active and valid.',
-                    'client' => [
-                        'id' => $tenant['client_id'] ?? $tenant['id'] ?? null,
-                        'client_name' => $tenant['client_name'] ?? null,
-                        'brand_name' => $tenant['brand_name'] ?? null,
-                        'domain' => $tenant['domain'] ?? null,
-                        'plan_name' => $tenant['plan_name'] ?? 'Standard',
-                        'status' => $tenant['status'] ?? 'Active',
-                        'expiry_date' => $tenant['expiry_date'] ?? null,
-                        'max_user' => $tenant['max_user'] ?? 10,
-                        'max_branch' => $tenant['max_branch'] ?? 1,
-                    ],
+                    'client' => $this->clientPayloadFromTenant($tenant),
+                    'tenancy_enabled' => true,
                     'server_time' => Carbon::now('Asia/Kolkata')->format('Y-m-d H:i:s'),
                 ], 200);
             } catch (TenantResolutionException $e) {
@@ -308,15 +350,18 @@ class SyncController extends Controller
             'email'    => 'required|string',
             'password' => 'required|string',
             'license_key' => 'nullable|string',
+            'unique_id' => 'nullable|string',
         ]);
 
+        $tenant = null;
         try {
-            $this->resolveTenantIfNeeded($request);
+            $tenant = $this->resolveTenantIfNeeded($request);
         } catch (TenantResolutionException $e) {
             return response()->json([
                 'status' => false,
                 'error' => $e->reason,
                 'message' => $e->getMessage(),
+                'expiry_date' => $e->context['expiry_date'] ?? null,
             ], 403);
         }
 
@@ -364,6 +409,8 @@ class SyncController extends Controller
                 'role' => $user->role,
                 'branch_id' => $user->branch_id ?? 1,
             ],
+            'client' => $this->clientPayloadFromTenant($tenant),
+            'tenancy_enabled' => app(TenantManager::class)->enabled(),
             'server_time' => Carbon::now('Asia/Kolkata')->format('Y-m-d H:i:s'),
         ], 200);
     }
@@ -374,10 +421,16 @@ class SyncController extends Controller
     // =============================================
     public function pull(Request $request)
     {
+        $tenant = null;
         try {
-            $this->resolveTenantIfNeeded($request);
+            $tenant = $this->resolveTenantIfNeeded($request);
         } catch (TenantResolutionException $e) {
-            return response()->json(['status' => false, 'error' => $e->reason, 'message' => $e->getMessage()], 403);
+            return response()->json([
+                'status' => false,
+                'error' => $e->reason,
+                'message' => $e->getMessage(),
+                'expiry_date' => $e->context['expiry_date'] ?? null,
+            ], 403);
         }
 
         $branchId = $request->input('branch_id');
@@ -528,6 +581,8 @@ class SyncController extends Controller
         return response()->json([
             'status' => 'success',
             'server_time' => Carbon::now('Asia/Kolkata')->format('Y-m-d H:i:s'),
+            'client' => $this->clientPayloadFromTenant($tenant),
+            'tenancy_enabled' => app(TenantManager::class)->enabled(),
             'data' => $payloadData,
         ], 200);
     }
@@ -547,10 +602,16 @@ class SyncController extends Controller
     // =============================================
     public function push(Request $request)
     {
+        $tenant = null;
         try {
-            $this->resolveTenantIfNeeded($request);
+            $tenant = $this->resolveTenantIfNeeded($request);
         } catch (TenantResolutionException $e) {
-            return response()->json(['status' => false, 'error' => $e->reason, 'message' => $e->getMessage()], 403);
+            return response()->json([
+                'status' => false,
+                'error' => $e->reason,
+                'message' => $e->getMessage(),
+                'expiry_date' => $e->context['expiry_date'] ?? null,
+            ], 403);
         }
 
         $branchId = $request->input('branch_id', 1);
@@ -1359,6 +1420,8 @@ class SyncController extends Controller
                 'status' => 'success',
                 'message' => 'Data synchronized successfully.',
                 'server_time' => Carbon::now('Asia/Kolkata')->format('Y-m-d H:i:s'),
+                'client' => $this->clientPayloadFromTenant($tenant),
+                'tenancy_enabled' => app(TenantManager::class)->enabled(),
                 'synced_mappings' => $syncedMappings,
             ], 200);
 

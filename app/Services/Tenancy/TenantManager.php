@@ -151,8 +151,11 @@ class TenantManager
         }
 
         try {
+            // admin-client / admin_erp accepts license_key or unique_id (setups.unique_id)
             $response = $this->client()->post('/resolve-license', array_filter([
                 'license_key' => $licenseKey,
+                'unique_id' => $licenseKey,
+                'purchase_code' => $licenseKey,
                 'product_code' => config('tenant.product_code'),
                 'project_code' => config('tenant.project_code') ?: null,
             ]));

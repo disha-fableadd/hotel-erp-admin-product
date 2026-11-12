@@ -95,18 +95,22 @@ Every single database table in `hotel-erp-admin-product` is fully mapped in `Syn
 
 ## 3. Client License Key Authentication Flow
 
-Each client registered in `admin_erp` has a unique license identifier (stored in the `setups` table as `unique_id`, e.g. `23B8A`).
+Each client registered in `admin_erp` / **admin-client** has a unique license identifier (stored in the `setups` table as `unique_id`, e.g. `23B8A`).
 
-1. The desktop application prompts the cashier/administrator for the **Client License Key** upon first launch.
-2. In **EVERY** sync API call, pass this key in the HTTP Header:
+> **Full Flutter guide:** [`FLUTTER_LICENSE_TENANT_SYNC_GUIDE.md`](FLUTTER_LICENSE_TENANT_SYNC_GUIDE.md)
+
+1. The desktop application prompts the cashier/administrator for the **Client License Key** upon first launch (`POST /api/v1/sync/verify-license`).
+2. In **EVERY** sync API call (`login`, `pull`, `push`), pass this key:
    ```http
    X-License-Key: 23B8A
    ```
-   *(Or in the request body as `"license_key": "23B8A"`)*
-3. The server's `IdentifyTenant` middleware interceptor uses `TenantManager::resolveByLicenseKey()` to:
-   - Validate that the license is **Active** and subscription is **not expired**.
-   - Dynamically bind the MySQL connection to that specific client's database.
-   - Run the pull/push query directly against the client's live data.
+   *(Or in the request body as `"license_key"` / `"unique_id": "23B8A"`)*  
+   When `TENANCY_ENABLED=true`, missing key returns **`403 LICENSE_REQUIRED`**.
+3. The server resolves the client via admin-client (`/resolve-license`) then:
+   - Validates that the license is **Active** and subscription is **not expired**.
+   - Dynamically binds MySQL to **that specific client's database only**.
+   - Runs pull/push against that client's live data.
+   - Returns a `client` object on verify / login / pull / push responses.
 
 ---
 
