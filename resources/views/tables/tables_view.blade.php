@@ -826,22 +826,23 @@
             white-space: nowrap;
         }
 
-        /* Update + Checkout side-by-side (same as before) */
+        /* Petpooja actions: Save | Save & Print | Settle */
         #tableOrderModal .modal-order-edit {
             display: flex;
-            flex-wrap: nowrap;
+            flex-wrap: wrap;
             gap: 8px !important;
             margin-top: 8px !important;
             align-items: stretch;
         }
 
         #tableOrderModal .modal-order-edit .btn-totallabel_1,
-        #tableOrderModal .modal-order-edit .btn-totallabel_2 {
+        #tableOrderModal .modal-order-edit .btn-totallabel_2,
+        #tableOrderModal .modal-order-edit .btn-totallabel_settle {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 8px;
-            flex: 1 1 0;
+            flex: 1 1 calc(50% - 4px);
             width: auto !important;
             min-width: 0;
             margin: 0 !important;
@@ -852,13 +853,21 @@
             cursor: pointer;
         }
 
+        #tableOrderModal .modal-order-edit.is-settle-ready .btn-totallabel_1,
+        #tableOrderModal .modal-order-edit.is-settle-ready .btn-totallabel_2,
+        #tableOrderModal .modal-order-edit.is-settle-ready .btn-totallabel_settle {
+            flex: 1 1 calc(33.33% - 6px);
+        }
+
         #tableOrderModal .modal-order-edit .btn-totallabel_1 h6,
         #tableOrderModal .modal-order-edit .btn-totallabel_2 h6,
+        #tableOrderModal .modal-order-edit .btn-totallabel_settle h6,
         #tableOrderModal .modal-order-edit .btn-totallabel_1 h5,
-        #tableOrderModal .modal-order-edit .btn-totallabel_2 h5 {
+        #tableOrderModal .modal-order-edit .btn-totallabel_2 h5,
+        #tableOrderModal .modal-order-edit .btn-totallabel_settle h5 {
             margin: 0 !important;
             color: #fff !important;
-            font-size: 12.5px !important;
+            font-size: 12px !important;
             font-weight: 700 !important;
             white-space: nowrap;
         }
@@ -871,6 +880,16 @@
         #tableOrderModal .btn-totallabel_2 {
             background: linear-gradient(135deg, #ff9f43 0%, #ff8510 100%) !important;
             box-shadow: 0 4px 14px rgba(255, 159, 67, 0.35) !important;
+        }
+
+        #tableOrderModal .btn-totallabel_settle {
+            display: none !important;
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+            box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35) !important;
+        }
+
+        #tableOrderModal .modal-order-edit.is-settle-ready .btn-totallabel_settle {
+            display: flex !important;
         }
 
         /* Petpooja: settlement lives with payment (not a duplicate button) */
@@ -930,11 +949,6 @@
         #tableOrderModal .payment_panel.is-settle-mode .pay-method-collapse-label {
             color: #166534;
         }
-        #tableOrderModal .btn-totallabel_2.is-settle-action {
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
-            box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35) !important;
-        }
-
         /* Clear Bill — header (next to close) */
         #tableOrderModal .btn-clear-dine-bill {
             border: 1px solid #fecaca;
@@ -3638,12 +3652,16 @@
 
                                     <div class="modal-order-edit" style="display: none;">
                                         <div class="btn-totallabel_1" data-order_update_id="">
-                                            <h6>Update · {{ $currency_symbol }}0.00</h6>
+                                            <h6 class="js-dine-save-label">Save · {{ $currency_symbol }}0.00</h6>
                                             <h5><i class="fas fa-check"></i></h5>
                                         </div>
                                         <div class="btn-totallabel_2" data-order_payment_update_id="" data-action-mode="print">
-                                            <h6 class="js-dine-primary-action-label">Print Bill · {{ $currency_symbol }}0.00</h6>
+                                            <h6 class="js-dine-primary-action-label">Save &amp; Print · {{ $currency_symbol }}0.00</h6>
                                             <h5 class="js-dine-primary-action-icon"><i class="fas fa-print"></i></h5>
+                                        </div>
+                                        <div class="btn-totallabel_settle" id="btnSettleDineBill" data-order_settle_id="" style="display:none;">
+                                            <h6 class="js-dine-settle-label">Settle · {{ $currency_symbol }}0.00</h6>
+                                            <h5><i class="fas fa-check-circle"></i></h5>
                                         </div>
                                     </div>
                                 </div>
@@ -4250,35 +4268,45 @@
                 || cardStatus === 'printed';
             window.dineBillPrinted = !!printed;
             var $payPanel = $('#tableOrderModal .payment_panel');
-            var $actionBtn = $('.btn-totallabel_2');
-            var orderId = $actionBtn.attr('data-order_payment_update_id') || $card.attr('data-order-id') || '';
+            var $editActions = $('#tableOrderModal .modal-order-edit');
+            var $printBtn = $('.btn-totallabel_2');
+            var $settleBtn = $('#btnSettleDineBill');
+            var orderId = $printBtn.attr('data-order_payment_update_id')
+                || $settleBtn.attr('data-order_settle_id')
+                || $card.attr('data-order-id')
+                || '';
             var amountText = $('.js-settle-amount').first().text()
-                || ($actionBtn.find('.js-dine-primary-action-label').text().replace(/^.*?·\s*/, '') || '');
+                || ($('.total-value h6').text() || '').trim()
+                || '';
+
+            // Save & Print always stays print (Petpooja) — never swaps to Settle
+            $printBtn.attr('data-action-mode', 'print').removeClass('is-settle-action');
+            $printBtn.find('.js-dine-primary-action-label').text('Save & Print · ' + amountText);
+            $printBtn.find('.js-dine-primary-action-icon').html('<i class="fas fa-print"></i>');
+            $('.js-dine-save-label').text('Save · ' + amountText);
+            $('.js-dine-settle-label').text('Settle · ' + amountText);
+
+            if (orderId) {
+                $settleBtn.attr('data-order_settle_id', orderId);
+                $printBtn.attr('data-order_payment_update_id', orderId);
+            }
 
             if (printed && orderId) {
                 $payPanel.addClass('is-settle-mode');
+                $editActions.addClass('is-settle-ready');
                 $('#dineSettlePayBox').show();
                 $('#dinePayMethodCollapse').show();
                 $('.js-pay-collapse-label').text('Settlement Payment');
                 setPayMethodCollapseOpen(true);
-                $actionBtn
-                    .attr('data-action-mode', 'settle')
-                    .addClass('is-settle-action');
-                $actionBtn.find('.js-dine-primary-action-label').text('Settle · ' + (amountText || ''));
-                $actionBtn.find('.js-dine-primary-action-icon').html('<i class="fas fa-check-circle"></i>');
+                $settleBtn.css('display', 'flex');
             } else {
                 $payPanel.removeClass('is-settle-mode');
+                $editActions.removeClass('is-settle-ready');
                 $('#dineSettlePayBox').hide();
-                // Payment is the settle step (Petpooja) — hide until bill is printed
                 $('#dinePayMethodCollapse').hide();
                 $('.js-pay-collapse-label').text('Payment Method');
                 setPayMethodCollapseOpen(false);
-                $actionBtn
-                    .attr('data-action-mode', 'print')
-                    .removeClass('is-settle-action');
-                var printAmount = amountText || $('.total-value h6').text() || '';
-                $actionBtn.find('.js-dine-primary-action-label').text('Print Bill · ' + printAmount);
-                $actionBtn.find('.js-dine-primary-action-icon').html('<i class="fas fa-print"></i>');
+                $settleBtn.hide();
             }
         }
         window.syncDineSettlePanel = syncDineSettlePanel;
@@ -4322,8 +4350,8 @@
             $('.modal-order-edit').css('display', 'flex');
             $('#btnClearDineBill').addClass('is-visible');
             $('.btn-totallabel_1').css('display', 'flex').attr('data-order_update_id', salse_id);
-            $('.btn-totallabel_2').css('display', 'flex').attr('data-order_payment_update_id', salse_id);
-            $('.setvaluecash').show();
+            $('.btn-totallabel_2').css('display', 'flex').attr('data-order_payment_update_id', salse_id).attr('data-action-mode', 'print');
+            $('#btnSettleDineBill').attr('data-order_settle_id', salse_id);
             if (typeof window.applyDefaultPosPayment === 'function') {
                 window.applyDefaultPosPayment();
             }
@@ -4372,11 +4400,13 @@
             $('#btnClearDineBill').removeClass('is-visible');
             $('.btn-totallabel_1').hide();
             $('.btn-totallabel_2').hide().attr('data-action-mode', 'print').removeClass('is-settle-action');
+            $('#btnSettleDineBill').hide().attr('data-order_settle_id', '');
+            $('#tableOrderModal .modal-order-edit').removeClass('is-settle-ready');
             window.dineBillPrinted = false;
             $('#dineSettlePayBox').hide();
             $('#tableOrderModal .payment_panel').removeClass('is-settle-mode');
             $('.js-pay-collapse-label').text('Payment Method');
-            $('.setvaluecash').hide();
+            $('#dinePayMethodCollapse').hide();
             $('input[name="gst_option"]').prop("checked", false);
             $(`input[name="gst_option"][value="${defaultGstOption || 'without'}"]`).prop("checked", true).trigger('change');
             $('#discount').val("").trigger('input');
@@ -5832,13 +5862,10 @@
                     $(".total-value h6").html(formatCurrency(total.toFixed(2), currencySymbol, currencyPosition));
                     const payableText = formatCurrency(total.toFixed(2), currencySymbol, currencyPosition);
                     $(".btn-totallabel h6").html('Place Order · ' + payableText);
-                    $(".btn-totallabel_1 h6").html('Update · ' + payableText);
+                    $(".js-dine-save-label").text('Save · ' + payableText);
+                    $(".js-dine-primary-action-label").text('Save & Print · ' + payableText);
+                    $(".js-dine-settle-label").text('Settle · ' + payableText);
                     $(".js-settle-amount").text(payableText);
-                    if (window.dineBillPrinted) {
-                        $(".btn-totallabel_2 .js-dine-primary-action-label").text('Settle · ' + payableText);
-                    } else {
-                        $(".btn-totallabel_2 .js-dine-primary-action-label").text('Print Bill · ' + payableText);
-                    }
                     if (typeof window.syncDineSettlePanel === 'function') {
                         window.syncDineSettlePanel();
                     }
@@ -5853,13 +5880,10 @@
                     $(".total-value h6").html(formatCurrency("0.00", currencySymbol, currencyPosition));
                     const zeroPayable = formatCurrency("0.00", currencySymbol, currencyPosition);
                     $(".btn-totallabel h6").html('Place Order · ' + zeroPayable);
-                    $(".btn-totallabel_1 h6").html('Update · ' + zeroPayable);
+                    $(".js-dine-save-label").text('Save · ' + zeroPayable);
+                    $(".js-dine-primary-action-label").text('Save & Print · ' + zeroPayable);
+                    $(".js-dine-settle-label").text('Settle · ' + zeroPayable);
                     $(".js-settle-amount").text(zeroPayable);
-                    if (window.dineBillPrinted) {
-                        $(".btn-totallabel_2 .js-dine-primary-action-label").text('Settle · ' + zeroPayable);
-                    } else {
-                        $(".btn-totallabel_2 .js-dine-primary-action-label").text('Print Bill · ' + zeroPayable);
-                    }
                     if (typeof window.syncDineSettlePanel === 'function') {
                         window.syncDineSettlePanel();
                     }
@@ -6797,7 +6821,12 @@
             // Petpooja: same footer button = Print Bill, or Settle (payment) after print
             function runDineSettlePayment($btn) {
                 var originalHtml = $btn.html();
-                var update_id = $btn.attr('data-order_payment_update_id') || $btn.data('order_payment_update_id') || '';
+                var update_id = $btn.attr('data-order_settle_id')
+                    || $btn.attr('data-order_payment_update_id')
+                    || $btn.data('order_settle_id')
+                    || $btn.data('order_payment_update_id')
+                    || $('.btn-totallabel_2').attr('data-order_payment_update_id')
+                    || '';
                 if (!update_id) {
                     Swal.fire({
                         icon: 'warning',
@@ -6915,8 +6944,10 @@
                             window.dineBillPrinted = false;
                             $('#dineSettlePayBox').hide();
                             $('#tableOrderModal .payment_panel').removeClass('is-settle-mode');
+                            $('#tableOrderModal .modal-order-edit').removeClass('is-settle-ready');
                             $('.js-pay-collapse-label').text('Payment Method');
-                            $btn.attr('data-action-mode', 'print').removeClass('is-settle-action');
+                            $('#btnSettleDineBill').hide();
+                            $('.btn-totallabel_2').attr('data-action-mode', 'print').removeClass('is-settle-action');
                             if (window.selectedTableId) {
                                 updateTableCardStatus(
                                     window.selectedTableId,
@@ -6965,21 +6996,25 @@
                 });
             }
 
+            // Allow Settle button to use order id from print button if needed
+            window.runDineSettlePayment = runDineSettlePayment;
+
+            // Settle payment (Petpooja) — separate from Save & Print
+            $(document).on('click', '#btnSettleDineBill', function (event) {
+                event.preventDefault();
+                runDineSettlePayment($(this));
+            });
+
+            // Save & Print — always save order + print bill (table stays occupied)
             $(".btn-totallabel_2").click(function (event) {
                 event.preventDefault();
                 var $btn = $(this);
-                var actionMode = String($btn.attr('data-action-mode') || 'print').toLowerCase();
-                if (actionMode === 'settle' || window.dineBillPrinted) {
-                    runDineSettlePayment($btn);
-                    return;
-                }
-
                 var originalText = $btn.html();
                 var update_id = $(this).data("order_payment_update_id") || $(this).attr('data-order_payment_update_id');
                 const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
                 var table_status = "dinein";
                 $btn.html(
-                    '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Printing…'
+                    '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving…'
                 ).prop('disabled', true);
 
                 $(".error_customername, .error_customerphone, .error_peymentmethod, .error_discount").text("");
