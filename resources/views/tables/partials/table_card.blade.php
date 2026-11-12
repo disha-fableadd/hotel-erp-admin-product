@@ -25,16 +25,28 @@
             ? number_format($billTotal, 2) . $currencySymbol
             : $currencySymbol . number_format($billTotal, 2))
         : '';
-    $startedAt = $showBill
-        ? ($table->order_started_at
-            ?? (optional($order->created_at)->timezone('Asia/Kolkata')->toIso8601String()))
-        : null;
+    $startedAt = null;
+    if ($showBill) {
+        $startedAt = $table->order_started_at ?? null;
+        if (! $startedAt && ! empty($order->created_at)) {
+            try {
+                $startedAt = $order->created_at->timezone('Asia/Kolkata')->toIso8601String();
+            } catch (\Throwable $e) {
+                $startedAt = null;
+            }
+        }
+    }
     // Petpooja: freeze timer at bill-print time (do not keep ticking)
     $printedAt = null;
     if ($isPrinted) {
-        $printedAt = $table->order_printed_at
-            ?? (optional($order->bill_printed_at)->timezone('Asia/Kolkata')->toIso8601String()
-                ?: null);
+        $printedAt = $table->order_printed_at ?? null;
+        if (! $printedAt && ! empty($order->bill_printed_at)) {
+            try {
+                $printedAt = $order->bill_printed_at->timezone('Asia/Kolkata')->toIso8601String();
+            } catch (\Throwable $e) {
+                $printedAt = null;
+            }
+        }
     }
     $elapsedLabel = '';
     if ($startedAt) {

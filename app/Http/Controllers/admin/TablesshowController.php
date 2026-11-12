@@ -315,12 +315,14 @@ class TablesshowController extends Controller
                 $table->order_id = $order->id;
                 $table->setRelation('order', $order);
                 $table->running_amount = $order->total_amount;
-                $table->order_started_at = optional($order->created_at)?->timezone('Asia/Kolkata')?->toIso8601String();
+                $table->order_started_at = $order->created_at
+                    ? $order->created_at->timezone('Asia/Kolkata')->toIso8601String()
+                    : null;
                 $table->order_customer_name = $order->customer_name ?: null;
                 $table->order_number_display = $order->order_number ?: null;
                 $table->order_items_count = (int) ($order->items_count ?? 0);
                 $table->order_printed_at = (! empty($order->bill_printed) && ! empty($order->bill_printed_at))
-                    ? optional($order->bill_printed_at)->timezone('Asia/Kolkata')?->toIso8601String()
+                    ? $order->bill_printed_at->timezone('Asia/Kolkata')->toIso8601String()
                     : null;
                 if (! empty($order->bill_printed)) {
                     $table->status = 'printed';
