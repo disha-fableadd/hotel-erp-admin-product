@@ -3569,7 +3569,7 @@
                                             <h5><i class="fas fa-check"></i></h5>
                                         </div>
                                         <div class="btn-totallabel_2" data-order_payment_update_id="">
-                                            <h6>Checkout · {{ $currency_symbol }}0.00</h6>
+                                            <h6>Print Bill · {{ $currency_symbol }}0.00</h6>
                                             <h5><i class="fas fa-arrow-right"></i></h5>
                                         </div>
                                     </div>
@@ -5708,7 +5708,11 @@
                     const payableText = formatCurrency(total.toFixed(2), currencySymbol, currencyPosition);
                     $(".btn-totallabel h6").html('Place Order · ' + payableText);
                     $(".btn-totallabel_1 h6").html('Update · ' + payableText);
-                    $(".btn-totallabel_2 h6").html('Checkout · ' + payableText);
+                    var checkoutLabel = (function () {
+                        var st = String($('.table-box123[data-table-id="' + (window.selectedTableId || '') + '"]').attr('data-table-status') || '').toLowerCase();
+                        return st === 'printed' ? ('Settle · ' + payableText) : ('Print Bill · ' + payableText);
+                    })();
+                    $(".btn-totallabel_2 h6").html(checkoutLabel);
                     $("input[name='total']").val(total.toFixed(2));
                     $("#onlineAmount").val(total.toFixed(2));
                 } else {
@@ -5721,7 +5725,11 @@
                     const zeroPayable = formatCurrency("0.00", currencySymbol, currencyPosition);
                     $(".btn-totallabel h6").html('Place Order · ' + zeroPayable);
                     $(".btn-totallabel_1 h6").html('Update · ' + zeroPayable);
-                    $(".btn-totallabel_2 h6").html('Checkout · ' + zeroPayable);
+                    var zeroCheckoutLabel = (function () {
+                        var st = String($('.table-box123[data-table-id="' + (window.selectedTableId || '') + '"]').attr('data-table-status') || '').toLowerCase();
+                        return st === 'printed' ? ('Settle · ' + zeroPayable) : ('Print Bill · ' + zeroPayable);
+                    })();
+                    $(".btn-totallabel_2 h6").html(zeroCheckoutLabel);
 
                     $("input[name='discount_amount']").val("0.00");
                     $("input[name='price_after_discount']").val("0.00");
@@ -6830,13 +6838,14 @@
                             if (typeof window.refreshTablesTodaySales === 'function') {
                                 window.refreshTablesTodaySales();
                             }
-                            // Checkout = customer bill; fully paid → free table (do not re-occupy via markBillPrinted)
+                            // Print Bill → green occupied; Settle (2nd checkout, paid) → Available
                             if (tableOrderModal) tableOrderModal.hide();
                             var billOrderId = response.order_id || orderId;
                             if (billOrderId && typeof window.showBillGeneratedModal === 'function') {
                                 window.showBillGeneratedModal(billOrderId, {
                                     reloadOnClose: true,
                                     printKot: false,
+                                    // Always mark printed while table stays occupied; skip when settled/freed
                                     markBillPrinted: checkoutKeepsTable,
                                     tableId: window.selectedTableId || null
                                 });

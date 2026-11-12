@@ -212,7 +212,7 @@
             } catch (e) {}
         }
 
-        // Petpooja-style: mark bill printed → floor map table turns yellow
+        // Petpooja-style: mark bill printed → floor map table turns green (still occupied until settle)
         if (opts.markBillPrinted !== false && orderId) {
             try {
                 var authToken = localStorage.getItem('authToken') || '';

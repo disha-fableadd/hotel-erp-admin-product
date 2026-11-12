@@ -314,8 +314,8 @@ class SalesController extends Controller
     }
 
     /**
-     * Mark dine-in customer bill as printed → green while awaiting settlement.
-     * Fully paid / already closed table orders stay free (do not re-occupy).
+     * Mark dine-in customer bill as printed → green (Petpooja).
+     * Printing never frees the table. Table becomes Available only on Checkout settle or Clear.
      */
     public function markBillPrinted(Request $request, $id)
     {
@@ -324,14 +324,11 @@ class SalesController extends Controller
             return response()->json(['status' => false, 'message' => 'Order not found'], 404);
         }
 
-        $isSettled = in_array(strtolower((string) ($order->payment_status ?? '')), ['completed', 'paid'], true)
-            && (float) ($order->remaining_amount ?? 0) <= 0.00001;
-
         if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
             $order->bill_printed = 1;
-            if (! empty($order->table_no)) {
-                // Keep table allocated (green printed) until settled; free only when paid
-                $order->table_status = $isSettled ? 0 : 1;
+            // Print ≠ settle: keep / restore active allocation so floor stays green until Checkout settle
+            if (! empty($order->table_no) && (int) ($order->table_status ?? 0) === 1) {
+                $order->table_status = 1;
             }
             $order->save();
         }
@@ -1724,7 +1721,24 @@ class SalesController extends Controller
             }
 
             $isCheckout = ($request->table_checkout ?? '') === 'checkout';
-            $fullySettled = $isCheckout && $payment_status === 'completed' && (float) $remain <= 0;
+            $hasTable = ! empty($request->table_id) && is_numeric($request->table_id);
+            $wasAlreadyPrinted = $hasTable
+                && \Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')
+                && ! empty($order->bill_printed);
+
+            // Petpooja: first Checkout/Print → Bill Printed (green, still occupied).
+            // Free table only when settling an already-printed bill with full payment (2nd Checkout),
+            // or when staff chooses pending=false after bill was printed.
+            $fullySettled = $isCheckout
+                && $hasTable
+                && $wasAlreadyPrinted
+                && $payment_status === 'completed'
+                && (float) $remain <= 0;
+
+            // Non-table / takeaway checkout still closes when paid
+            if ($isCheckout && ! $hasTable) {
+                $fullySettled = $payment_status === 'completed' && (float) $remain <= 0;
+            }
 
             // Update order
             $orderUpdate = [
@@ -1738,7 +1752,7 @@ class SalesController extends Controller
                 'payment_status' => $payment_status,
                 'table_no' => $request->table_id ?? null,
                 'type' => $request->table_type ?? 'dinein',
-                // Free table only when checkout is fully paid; otherwise keep allocated until settle.
+                // Keep allocated until settle (printed + paid on subsequent checkout)
                 'table_status' => $fullySettled ? 0 : 1,
             ];
             if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_printed')) {
