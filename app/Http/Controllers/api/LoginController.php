@@ -83,6 +83,8 @@ class LoginController extends Controller
 
         $user = $authResult['user'];
 
+        $licenseKey = null;
+        $tenantPayload = null;
         if ($request->hasSession()) {
             $tenancy = app(TenantManager::class);
             if ($tenancy->enabled() && $tenancy->current()) {
@@ -94,6 +96,10 @@ class LoginController extends Controller
             if ($request->hasSession()) {
                 $request->session()->put('auth_keep_alive_at', now()->toIso8601String());
             }
+
+            // Fetch admin setups.unique_id (License Key) right after login — for Profile + Flutter sync
+            [$licenseKey, $tenantPayload] = $this->captureTenantLicenseKey($request, $user);
+
             AppViewData::share();
 
             // If sub-admin (sub-branch) or staff with branch_id, initialize selectedSubAdminId
@@ -125,39 +131,117 @@ class LoginController extends Controller
 
         $redirect = route('auth.dashboard');
 
+        $licenseMeta = [
+            'license_key' => $licenseKey,
+            'unique_id' => $licenseKey,
+            'client' => $tenantPayload ? [
+                'id' => $tenantPayload['client_id'] ?? $tenantPayload['id'] ?? null,
+                'tenant_id' => $tenantPayload['id'] ?? null,
+                'client_name' => $tenantPayload['client_name'] ?? null,
+                'brand_name' => $tenantPayload['brand_name'] ?? null,
+                'domain' => $tenantPayload['domain'] ?? null,
+                'license_key' => $licenseKey,
+                'unique_id' => $licenseKey,
+                'plan_name' => $tenantPayload['plan_name'] ?? null,
+                'expiry_date' => $tenantPayload['expiry_date'] ?? null,
+            ] : null,
+        ];
+
         if (strtolower($user->role) === 'staff') {
             $redirect = route('auth.staff-dashboard');
 
-            return response()->json([
+            return response()->json(array_merge([
                 'status' => true,
                 'token' => $token,
                 'user' => $user,
                 'redirect' => $redirect,
                 'permissions' => $formattedPermissions,
                 'showAppointments' => false,
-            ]);
+            ], $licenseMeta));
         } elseif (strtolower($user->role) === 'hr') {
             $redirect = route('hr.dashboard');
 
-            return response()->json([
+            return response()->json(array_merge([
                 'status' => true,
                 'token' => $token,
                 'user' => $user,
                 'redirect' => $redirect,
                 'permissions' => $formattedPermissions,
                 'showAppointments' => false,
-            ]);
+            ], $licenseMeta));
         }
 
         // Return response for non-staff logins (admin, sub-admin, etc.)
-        return response()->json([
+        return response()->json(array_merge([
             'status' => true,
             'token' => $token,
             'user' => $user,
             'redirect' => $redirect,
             'permissions' => $formattedPermissions,
             'showAppointments' => true,
-        ]);
+        ], $licenseMeta));
+    }
+
+    /**
+     * After login: resolve admin License Key (setups.unique_id) into session + settings.
+     *
+     * @return array{0: ?string, 1: ?array}
+     */
+    protected function captureTenantLicenseKey(Request $request, $user): array
+    {
+        try {
+            $tenancy = app(TenantManager::class);
+            if (! $tenancy->enabled()) {
+                return [null, null];
+            }
+
+            $tenant = $tenancy->current();
+            if (! is_array($tenant) || empty($tenant)) {
+                $tenant = is_array($request->session()->get('tenant'))
+                    ? $request->session()->get('tenant')
+                    : [];
+            }
+            if (empty($tenant) && $request->session()->get('tenant_id')) {
+                try {
+                    $tenant = $tenancy->resolveById((int) $request->session()->get('tenant_id'), true);
+                } catch (\Throwable) {
+                    $tenant = [];
+                }
+            }
+            if (empty($tenant)) {
+                try {
+                    $tenant = $tenancy->resolveByHost($request->getHost(), true);
+                } catch (\Throwable) {
+                    return [null, null];
+                }
+            }
+
+            $tenant = $tenancy->ensureLicenseKey($tenant, [
+                'client_name' => $user->name ?? ($tenant['client_name'] ?? null),
+                'brand_name' => $tenant['brand_name'] ?? ($user->name ?? null),
+                'email' => $user->email ?? ($tenant['email'] ?? null),
+                'domain' => $tenant['domain'] ?? $request->getHost(),
+                'name' => $user->name ?? null,
+            ], true);
+
+            $request->session()->put('tenant', $tenant);
+            if (! empty($tenant['id'])) {
+                $request->session()->put('tenant_id', $tenant['id']);
+            }
+
+            $licenseKey = $tenant['unique_id'] ?? $tenant['license_key'] ?? null;
+            $licenseKey = $licenseKey ? strtoupper(trim((string) $licenseKey)) : null;
+            if ($licenseKey) {
+                $request->session()->put('tenant_unique_id_synced', true);
+                $request->session()->put('client_license_key', $licenseKey);
+            }
+
+            return [$licenseKey, $tenant];
+        } catch (\Throwable $e) {
+            Log::warning('captureTenantLicenseKey failed: ' . $e->getMessage());
+
+            return [null, null];
+        }
     }
 
     /**
@@ -342,7 +426,27 @@ class LoginController extends Controller
 
         try {
             // Check if request host matches a specific tenant subdomain
-            $tenancy->resolveByHost($request->getHost(), true);
+            $tenant = $tenancy->resolveByHost($request->getHost(), true);
+            // Pull License Key (setups.unique_id) as early as host resolve — used after login
+            try {
+                $tenant = $tenancy->ensureLicenseKey($tenant, [
+                    'domain' => $tenant['domain'] ?? $request->getHost(),
+                    'client_name' => $tenant['client_name'] ?? null,
+                    'brand_name' => $tenant['brand_name'] ?? null,
+                    'email' => $tenant['email'] ?? null,
+                ], true);
+                if ($request->hasSession()) {
+                    $request->session()->put('tenant_id', $tenant['id'] ?? null);
+                    $request->session()->put('tenant', $tenant);
+                    $lk = $tenant['unique_id'] ?? $tenant['license_key'] ?? null;
+                    if ($lk) {
+                        $request->session()->put('client_license_key', strtoupper(trim((string) $lk)));
+                        $request->session()->put('tenant_unique_id_synced', true);
+                    }
+                }
+            } catch (\Throwable) {
+                // login can continue; license may fill later
+            }
             return null;
         } catch (TenantResolutionException $e) {
             // If domain not registered or mismatched, try resolving tenant by user's username or email

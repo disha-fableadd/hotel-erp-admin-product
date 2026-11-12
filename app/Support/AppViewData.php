@@ -40,7 +40,8 @@ class AppViewData
         $licenseKey = tenant('unique_id')
             ?? tenant('license_key')
             ?? data_get(session('tenant'), 'unique_id')
-            ?? data_get(session('tenant'), 'license_key');
+            ?? data_get(session('tenant'), 'license_key')
+            ?? session('client_license_key');
         if (empty($licenseKey)) {
             try {
                 if (\Illuminate\Support\Facades\Schema::hasColumn('settings', 'client_license_key')) {
