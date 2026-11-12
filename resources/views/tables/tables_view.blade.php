@@ -1005,6 +1005,24 @@
         #tableOrderModal .payment_panel.is-settle-mode #dineKotRemarksCollapse {
             display: none !important;
         }
+
+        #tableOrderModal .dine-partial-pay-box {
+            margin-top: 8px;
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+        #tableOrderModal .dine-partial-pay-box label {
+            display: block;
+            margin-bottom: 3px;
+        }
+        #tableOrderModal #paidTypeBox .form-control,
+        #tableOrderModal #paidTypeBox .form-select,
+        #tableOrderModal #paidTypeSelect {
+            width: 100%;
+            max-width: 100%;
+        }
         /* Clear Bill — header (next to close) */
         #tableOrderModal .btn-clear-dine-bill {
             border: 1px solid #fecaca;
@@ -3590,6 +3608,20 @@
                                                         <option value="partially" {{ $defaultPaidType === 'partially' ? 'selected' : '' }}>Partially</option>
                                                     </select>
                                                 </div>
+                                                <div id="partialPayBox" class="dine-partial-pay-box" style="display:none;">
+                                                    <div class="row g-2">
+                                                        <div class="col-6">
+                                                            <label style="font-size: 12px; font-weight: 600; color: #64748b;">Paying Now</label>
+                                                            <input type="number" min="0" step="0.01" class="form-control form-control-sm" id="dinePartialAmount" name="enter_amount" placeholder="0.00">
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label style="font-size: 12px; font-weight: 600; color: #64748b;">Pending</label>
+                                                            <input type="number" class="form-control form-control-sm" id="dinePendingAmount" name="pending_amount" placeholder="0.00" readonly>
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted" style="font-size:11px;">Enter amount collected now. Pending stays on the bill.</small>
+                                                    <div class="text-danger" id="dinePartialAmountError" style="font-size:12px;display:none;"></div>
+                                                </div>
                                             </div>
                                             <div id="cashOnlineBox" style="{{ $defaultPayMethod === 'cash+online' ? '' : 'display:none;' }} margin-top:8px;">
                                                 <div class="form-group mb-2">
@@ -4149,6 +4181,42 @@
             setKotRemarksCollapseOpen(false);
         }
 
+        function getDineBillTotal() {
+            return parseFloat($("input[name='total']").val()) || 0;
+        }
+
+        function syncDinePartialAmounts() {
+            var total = getDineBillTotal();
+            var paid = parseFloat($('#dinePartialAmount').val());
+            if (isNaN(paid) || paid < 0) paid = 0;
+            if (paid > total) paid = total;
+            var pending = Math.max(0, +(total - paid).toFixed(2));
+            $('#dinePendingAmount').val(pending.toFixed(2));
+            $('#dinePartialAmountError').hide().text('');
+            if (parseFloat($('#dinePartialAmount').val()) > total) {
+                $('#dinePartialAmount').val(total.toFixed(2));
+            }
+        }
+
+        function syncDinePartialPayBox() {
+            var paidType = ($('#paidTypeSelect').val() || 'fully').toLowerCase();
+            var payMethod = ($("input[name='payment_method']:checked").val() || '').toLowerCase();
+            var canPartial = ['cash', 'debit card', 'scan'].indexOf(payMethod) !== -1;
+            if (canPartial && paidType === 'partially') {
+                $('#partialPayBox').show();
+                if (!$('#dinePartialAmount').val()) {
+                    $('#dinePartialAmount').val('');
+                }
+                syncDinePartialAmounts();
+            } else {
+                $('#partialPayBox').hide();
+                $('#dinePartialAmount').val('');
+                $('#dinePendingAmount').val('');
+                $('#dinePartialAmountError').hide().text('');
+            }
+        }
+        window.syncDinePartialPayBox = syncDinePartialPayBox;
+
         function applyDefaultPosPayment() {
             var pay = defaultPaymentMethod || 'cash';
             var paid = defaultPaidType || 'fully';
@@ -4174,6 +4242,7 @@
             }
             syncSelectedPayMethodSummary();
             setPayMethodCollapseOpen(false);
+            syncDinePartialPayBox();
         }
         window.applyDefaultPosPayment = applyDefaultPosPayment;
 
@@ -4305,9 +4374,25 @@
                 }
 
                 syncSelectedPayMethodSummary();
+                syncDinePartialPayBox();
                 // Keep cash+online open so amounts can be entered; otherwise collapse to free space
                 if (value !== 'cash+online') {
                     setPayMethodCollapseOpen(false);
+                }
+            });
+
+            $(document).on('change', '#paidTypeSelect', function () {
+                syncDinePartialPayBox();
+            });
+
+            $(document).on('input', '#dinePartialAmount', function () {
+                syncDinePartialAmounts();
+            });
+
+            // Keep pending in sync when bill total changes
+            $(document).on('input change', "input[name='total'], #discount, #discount_amount_input, #service_tax_rate", function () {
+                if ($('#partialPayBox').is(':visible')) {
+                    syncDinePartialAmounts();
                 }
             });
         });
@@ -4360,6 +4445,7 @@
                 $('.js-pay-collapse-label').text('Settlement Payment');
                 setPayMethodCollapseOpen(true);
                 $settleBtn.css('display', 'flex');
+                syncDinePartialPayBox();
             } else {
                 $payPanel.removeClass('is-settle-mode');
                 $editActions.removeClass('is-settle-ready');
@@ -6954,20 +7040,46 @@
                     return;
                 }
 
+                var paidType = ($("#paidTypeSelect").val() || 'fully').toLowerCase();
+                var enterAmount = total;
+                var pendingAmount = 0;
+                if (paidType === 'partially') {
+                    syncDinePartialAmounts();
+                    enterAmount = parseFloat($('#dinePartialAmount').val()) || 0;
+                    pendingAmount = parseFloat($('#dinePendingAmount').val()) || 0;
+                    if (enterAmount <= 0) {
+                        $('#dinePartialAmountError').text('Enter amount paying now.').show();
+                        $('#dinePartialAmount').trigger('focus');
+                        return;
+                    }
+                    if (enterAmount > total) {
+                        $('#dinePartialAmountError').text('Paying now cannot exceed bill total.').show();
+                        return;
+                    }
+                }
+
                 var tableName = window.selectedTableName || ($('.js-table-name').text() || 'this table');
-                var amountText = $('.js-settle-amount').first().text() || ('₹' + total.toFixed(2));
+                var amountText = (window.formatCurrency
+                    ? window.formatCurrency(enterAmount.toFixed(2), currencySymbol, currencyPosition)
+                    : ('₹' + enterAmount.toFixed(2)));
+                var isPartialSettle = paidType === 'partially' && pendingAmount > 0.00001;
+                var confirmHtml = isPartialSettle
+                    ? ('<div style="text-align:left;font-size:14px;line-height:1.5">' +
+                        '<div>Collect <strong>' + $('<div>').text(amountText).html() + '</strong> now via <strong>' + $('<div>').text(selectedPayment).html() + '</strong></div>' +
+                        '<div style="margin-top:6px">Pending: <strong>₹' + pendingAmount.toFixed(2) + '</strong></div>' +
+                        '<div style="margin-top:8px">Table stays occupied until full payment.</div></div>')
+                    : ('<div style="text-align:left;font-size:14px;line-height:1.5">' +
+                        '<div>Collect <strong>' + $('<div>').text(amountText).html() + '</strong> via <strong>' + $('<div>').text(selectedPayment).html() + '</strong></div>' +
+                        '<div style="margin-top:8px"><strong>' + $('<div>').text(tableName).html() + '</strong> will become Available.</div></div>');
 
                 Swal.fire({
-                    title: 'Settle payment?',
-                    html: '<div style="text-align:left;font-size:14px;line-height:1.5">' +
-                        '<div>Collect <strong>' + $('<div>').text(amountText).html() + '</strong> via <strong>' + $('<div>').text(selectedPayment).html() + '</strong></div>' +
-                        '<div style="margin-top:8px"><strong>' + $('<div>').text(tableName).html() + '</strong> will become Available.</div>' +
-                        '</div>',
+                    title: isPartialSettle ? 'Partial settle?' : 'Settle payment?',
+                    html: confirmHtml,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#16a34a',
                     cancelButtonColor: '#94a3b8',
-                    confirmButtonText: 'Settle & free table',
+                    confirmButtonText: isPartialSettle ? 'Collect partial' : 'Settle & free table',
                     cancelButtonText: 'Cancel'
                 }).then(function (result) {
                     if (!result.isConfirmed) return;
@@ -6991,6 +7103,9 @@
 
                     let cash = parseFloat($("#cashAmount").val()) || 0;
                     let online = parseFloat($("#onlineAmount").val()) || 0;
+                    if (selectedPayment === 'cash' && paidType === 'partially') {
+                        cash = enterAmount;
+                    }
                     let discount = parseFloat($("#discount").val()) || 0;
                     const dineCustomer = getDineInCustomerPayload();
                     const selectedSubAdminId = localStorage.getItem("selectedSubAdminId");
@@ -7010,7 +7125,9 @@
                             customer_id: dineCustomer.customer_id,
                             customer_phone: dineCustomer.customer_phone,
                             payment_method: selectedPayment,
-                            paid_type: $("#paidTypeSelect").val() || defaultPaidType || 'fully',
+                            paid_type: paidType,
+                            enter_amount: enterAmount,
+                            pending_amount: pendingAmount,
                             subtotal: subtotal,
                             discount: discount,
                             discount_amount: subtotal * (discount / 100),
@@ -7038,6 +7155,43 @@
                                 return;
                             }
 
+                            var keepOccupied = (response.table_status_class === 'running-table'
+                                || response.table_status_class === 'printed-table'
+                                || response.table_status === 'running'
+                                || response.table_status === 'printed');
+                            if (window.selectedTableId) {
+                                updateTableCardStatus(
+                                    window.selectedTableId,
+                                    response.table_status_class || (keepOccupied ? 'printed-table' : 'blank-table'),
+                                    response.table_status || (keepOccupied ? 'printed' : 'blank'),
+                                    response.order_id || update_id || '',
+                                    keepOccupied ? (response.total_amount || total) : '',
+                                    response
+                                );
+                            }
+
+                            if (keepOccupied) {
+                                // Partial settle — table still occupied / bill printed
+                                window.dineBillPrinted = true;
+                                syncDineSettlePanel(true);
+                                $('#dinePartialAmount').val('');
+                                $('#dinePendingAmount').val('');
+                                $('#paidTypeSelect').val('fully');
+                                syncDinePartialPayBox();
+                                if (typeof window.refreshTablesTodaySales === 'function') {
+                                    window.refreshTablesTodaySales();
+                                }
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Partial payment collected',
+                                    text: 'Pending remains on this table until full settle.',
+                                    confirmButtonColor: '#16a34a',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                                return;
+                            }
+
                             window.dineBillPrinted = false;
                             $('#dineSettlePayBox').hide();
                             $('#tableOrderModal .payment_panel').removeClass('is-settle-mode');
@@ -7045,16 +7199,6 @@
                             $('.js-pay-collapse-label').text('Payment Method');
                             $('#btnSettleDineBill').hide();
                             $('.btn-totallabel_2').attr('data-action-mode', 'print').removeClass('is-settle-action');
-                            if (window.selectedTableId) {
-                                updateTableCardStatus(
-                                    window.selectedTableId,
-                                    response.table_status_class || 'blank-table',
-                                    response.table_status || 'blank',
-                                    response.order_id || update_id || '',
-                                    '',
-                                    response
-                                );
-                            }
                             selectedItems.clear();
                             $(".check-product i").removeClass("selected");
                             $("#discount").val("");

@@ -1764,12 +1764,35 @@ class SalesController extends Controller
             $taxJson = !empty($money['tax_ids']) ? json_encode($money['tax_ids']) : json_encode([]);
             $trustedTotal = $money['total'];
 
+            $paidType = strtolower(trim((string) ($request->paid_type ?? 'fully')));
+            $enterAmount = (float) ($request->enter_amount ?? $request->cash_amount ?? 0);
+            $pendingAmountReq = (float) ($request->pending_amount ?? 0);
+
             if ($request->payment_method != 'pending') {
-                $remain = 0;
-                $payment_status = 'completed';
+                if ($paidType === 'partially') {
+                    if ($enterAmount <= 0 && $pendingAmountReq <= 0) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Enter the amount paying now for partial settlement.',
+                        ], 422);
+                    }
+                    if ($enterAmount <= 0) {
+                        $enterAmount = max(0, round($trustedTotal - $pendingAmountReq, 2));
+                    }
+                    if ($enterAmount > $trustedTotal) {
+                        $enterAmount = $trustedTotal;
+                    }
+                    $remain = max(0, round($trustedTotal - $enterAmount, 2));
+                    $payment_status = $remain > 0.00001 ? 'partial' : 'completed';
+                } else {
+                    $remain = 0;
+                    $payment_status = 'completed';
+                    $enterAmount = $trustedTotal;
+                }
             } else {
                 $remain = $trustedTotal;
                 $payment_status = 'pending';
+                $enterAmount = 0;
             }
 
             $checkoutAction = strtolower(trim((string) ($request->table_checkout ?? '')));
@@ -1777,10 +1800,10 @@ class SalesController extends Controller
             $isSettle = $checkoutAction === 'settle';
             $hasTable = ! empty($request->table_id) && is_numeric($request->table_id);
 
-            // Petpooja: Print Bill → green occupied. Settle (paid) → free table.
+            // Petpooja: Print Bill → green occupied. Full settle → free table. Partial → stay occupied.
             $fullySettled = $isSettle
                 && $payment_status === 'completed'
-                && (float) $remain <= 0;
+                && (float) $remain <= 0.00001;
 
             // Update order
             $orderUpdate = [
@@ -2062,19 +2085,23 @@ class SalesController extends Controller
                         }
 
                     } else {
+                        $payAmt = ($paidType === 'partially')
+                            ? $enterAmount
+                            : (float) ($request->total ?? $trustedTotal);
                         // For a plain cash payment, cash_amount should equal the payment amount
                         $updateCashAmt = ($request->payment_method === 'cash')
-                            ? ($request->cash_amount > 0 ? $request->cash_amount : $request->total)
-                            : ($request->cash_amount ?? 0);
+                            ? ($request->cash_amount > 0 ? (float) $request->cash_amount : $payAmt)
+                            : (float) ($request->cash_amount ?? 0);
 
                         PaymentStore::create([
                             'user_id' => $customer_id,
                             'order_id' => $order->id,
-                            'payment_amount' => $request->total,
+                            'payment_amount' => $payAmt,
                             'payment_method' => $request->payment_method,
                             'payment_type' => $paymentType,
                             'cash_amount' => $updateCashAmt,
                             'upi_amount' => $request->upi_amount ?? 0,
+                            'remaining_amount' => $remain,
                             'payment_date' => now(),
                             'status' => 'credit'
                         ]);
