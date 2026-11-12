@@ -907,22 +907,74 @@
             color: #fff;
         }
 
-        /* One clean settlement card */
-        #tableOrderModal .dine-settle-pay {
+        /* Collapsible settlement (free space for cart items above) */
+        #tableOrderModal .dine-settle-section {
             display: none;
-            margin: 0;
-            padding: 10px 12px 8px;
+            margin: 0 0 10px;
             border: 1px solid #d1fae5;
-            border-bottom: 0;
-            border-radius: 12px 12px 0 0;
+            border-radius: 12px;
             background: #ecfdf5;
+            overflow: hidden;
         }
-        #tableOrderModal .dine-settle-pay__head {
+        #tableOrderModal .dine-settle-section__toggle {
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 10px;
+            border: 0;
+            background: transparent;
+            padding: 10px 12px;
+            cursor: pointer;
+            text-align: left;
+        }
+        #tableOrderModal .dine-settle-section__left {
+            display: inline-flex;
+            align-items: center;
             gap: 8px;
-            margin-bottom: 4px;
+            min-width: 0;
+        }
+        #tableOrderModal .dine-settle-section__hint {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #3f6212;
+        }
+        #tableOrderModal .dine-settle-section__right {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        #tableOrderModal .dine-settle-section__right strong {
+            font-size: 15px;
+            font-weight: 800;
+            color: #15803d;
+        }
+        #tableOrderModal .dine-settle-section__chevron {
+            color: #16a34a;
+            font-size: 12px;
+            transition: transform 0.2s ease;
+        }
+        #tableOrderModal .dine-settle-section.is-open .dine-settle-section__chevron {
+            transform: rotate(180deg);
+        }
+        #tableOrderModal .dine-settle-section.is-open .dine-settle-section__hint {
+            display: none;
+        }
+        #tableOrderModal .dine-settle-section__body {
+            display: none;
+            border-top: 1px solid #bbf7d0;
+            background: #fff;
+        }
+        #tableOrderModal .dine-settle-section.is-open .dine-settle-section__body {
+            display: block;
+        }
+        #tableOrderModal .dine-settle-pay {
+            margin: 0;
+            padding: 8px 12px;
+            background: #f0fdf4;
+            border: 0;
+            border-radius: 0;
         }
         #tableOrderModal .dine-settle-pay__badge {
             display: inline-flex;
@@ -941,9 +993,6 @@
             border-radius: 50%;
             background: #22c55e;
         }
-        #tableOrderModal .dine-settle-pay__hint {
-            display: none;
-        }
         #tableOrderModal .dine-settle-pay__amount {
             display: flex;
             align-items: baseline;
@@ -954,19 +1003,19 @@
             font-weight: 600;
         }
         #tableOrderModal .dine-settle-pay__amount strong {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 800;
             color: #15803d;
             letter-spacing: -0.02em;
         }
-        #tableOrderModal .payment_panel.is-settle-mode .dine-settle-pay {
+        #tableOrderModal .payment_panel.is-settle-mode .dine-settle-section {
             display: block;
         }
         #tableOrderModal .payment_panel.is-settle-mode #dinePayMethodCollapse {
-            border: 1px solid #d1fae5;
-            border-radius: 0 0 12px 12px;
+            border: 0;
+            border-radius: 0;
             background: #fff;
-            margin: 0 0 10px;
+            margin: 0;
             overflow: hidden;
         }
         #tableOrderModal .payment_panel.is-settle-mode .pay-method-collapse-toggle {
@@ -975,7 +1024,7 @@
         #tableOrderModal .payment_panel.is-settle-mode .pay-method-collapse-body {
             display: block !important;
             margin: 0 !important;
-            padding: 10px !important;
+            padding: 10px 12px 12px !important;
             border: 0 !important;
             border-radius: 0 !important;
             background: transparent !important;
@@ -3517,16 +3566,6 @@
                                 </div>
 
                                 <div class="payment_panel">
-                                    {{-- Petpooja: settlement = pick payment + settle (same step) --}}
-                                    <div class="dine-settle-pay" id="dineSettlePayBox" style="display:none;">
-                                        <div class="dine-settle-pay__head">
-                                            <span class="dine-settle-pay__badge">Bill Printed</span>
-                                        </div>
-                                        <div class="dine-settle-pay__amount">
-                                            <span>Amount to collect</span>
-                                            <strong class="js-settle-amount">{{ $currency_symbol }}0.00</strong>
-                                        </div>
-                                    </div>
                                     @php
                                         $defaultPayMethod = optional($setting)->default_payment_method ?: 'cash';
                                         $allowedPayMethods = ['pending', 'cash', 'debit card', 'cash+online', 'scan'];
@@ -3553,6 +3592,26 @@
                                         $defaultPayLabel = $payMethodLabels[$defaultPayMethod] ?? 'Cash';
                                         $defaultPayIcon = $payMethodIcons[$defaultPayMethod] ?? 'fa-money-bill-wave';
                                     @endphp
+
+                                    {{-- Collapsible settlement so cart items stay visible above --}}
+                                    <div class="dine-settle-section is-collapsed" id="dineSettleSection" style="display:none;">
+                                        <button type="button" class="dine-settle-section__toggle" id="dineSettleSectionToggle" aria-expanded="false">
+                                            <span class="dine-settle-section__left">
+                                                <span class="dine-settle-pay__badge">Bill Printed</span>
+                                                <span class="dine-settle-section__hint js-settle-toggle-hint">Tap to settle</span>
+                                            </span>
+                                            <span class="dine-settle-section__right">
+                                                <strong class="js-settle-amount">{{ $currency_symbol }}0.00</strong>
+                                                <i class="fas fa-chevron-down dine-settle-section__chevron"></i>
+                                            </span>
+                                        </button>
+                                        <div class="dine-settle-section__body" id="dineSettlePayBox">
+                                            <div class="dine-settle-pay">
+                                                <div class="dine-settle-pay__amount">
+                                                    <span>Amount to collect</span>
+                                                    <strong class="js-settle-amount">{{ $currency_symbol }}0.00</strong>
+                                                </div>
+                                            </div>
                                     <div class="setvaluecash is-collapsed" id="dinePayMethodCollapse">
                                         <button type="button" class="pay-method-collapse-toggle" id="payMethodCollapseToggle" aria-expanded="false">
                                             <span class="pay-method-collapse-label js-pay-collapse-label">Payment Method</span>
@@ -3636,6 +3695,8 @@
                                             <span class="error_peymentmethod"></span>
                                         </div>
                                     </div>
+                                        </div>{{-- /.dine-settle-section__body --}}
+                                    </div>{{-- /#dineSettleSection --}}
 
                                     <div class="kot-remarks-collapse is-collapsed mb-2" id="dineKotRemarksCollapse">
                                         <button type="button" class="kot-remarks-collapse-toggle" id="kotRemarksCollapseToggle" aria-expanded="false">
@@ -4153,6 +4214,16 @@
             $('#payMethodCollapseToggle').attr('aria-expanded', isOpen ? 'true' : 'false');
         }
 
+        function setDineSettleSectionOpen(isOpen) {
+            var $sec = $('#dineSettleSection');
+            if (!$sec.length) return;
+            $sec.toggleClass('is-open', !!isOpen);
+            $sec.toggleClass('is-collapsed', !isOpen);
+            $('#dineSettleSectionToggle').attr('aria-expanded', isOpen ? 'true' : 'false');
+            $('.js-settle-toggle-hint').text(isOpen ? 'Hide settlement' : 'Tap to settle / view payment');
+        }
+        window.setDineSettleSectionOpen = setDineSettleSectionOpen;
+
         function syncKotRemarksPreview() {
             var text = ($('#kot_remarks').val() || '').toString().trim();
             var $preview = $('#tableOrderModal .js-kot-remarks-preview');
@@ -4334,6 +4405,13 @@
                 setPayMethodCollapseOpen(willOpen);
             });
 
+            $(document).on('click', '#dineSettleSectionToggle', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var willOpen = !$('#dineSettleSection').hasClass('is-open');
+                setDineSettleSectionOpen(willOpen);
+            });
+
             $(document).on('click', '#kotRemarksCollapseToggle', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -4440,19 +4518,22 @@
             if (printed && orderId) {
                 $payPanel.addClass('is-settle-mode');
                 $editActions.addClass('is-settle-ready');
-                $('#dineSettlePayBox').show();
+                $('#dineSettleSection').show();
                 $('#dinePayMethodCollapse').show();
                 $('.js-pay-collapse-label').text('Settlement Payment');
                 setPayMethodCollapseOpen(true);
                 $settleBtn.css('display', 'flex');
+                // Start collapsed so order items above stay visible
+                setDineSettleSectionOpen(false);
                 syncDinePartialPayBox();
             } else {
                 $payPanel.removeClass('is-settle-mode');
                 $editActions.removeClass('is-settle-ready');
-                $('#dineSettlePayBox').hide();
+                $('#dineSettleSection').hide();
                 $('#dinePayMethodCollapse').hide();
                 $('.js-pay-collapse-label').text('Payment Method');
                 setPayMethodCollapseOpen(false);
+                setDineSettleSectionOpen(false);
                 $settleBtn.hide();
             }
         }
@@ -4550,10 +4631,11 @@
             $('#btnSettleDineBill').hide().attr('data-order_settle_id', '');
             $('#tableOrderModal .modal-order-edit').removeClass('is-settle-ready');
             window.dineBillPrinted = false;
-            $('#dineSettlePayBox').hide();
+            $('#dineSettleSection').hide();
             $('#tableOrderModal .payment_panel').removeClass('is-settle-mode');
             $('.js-pay-collapse-label').text('Payment Method');
             $('#dinePayMethodCollapse').hide();
+            setDineSettleSectionOpen(false);
             $('input[name="gst_option"]').prop("checked", false);
             $(`input[name="gst_option"][value="${defaultGstOption || 'without'}"]`).prop("checked", true).trigger('change');
             $('#discount').val("").trigger('input');
@@ -7003,6 +7085,10 @@
 
             // Petpooja: same footer button = Print Bill, or Settle (payment) after print
             function runDineSettlePayment($btn) {
+                // Expand settlement panel so payment options are visible
+                if ($('#dineSettleSection').is(':visible') && !$('#dineSettleSection').hasClass('is-open')) {
+                    setDineSettleSectionOpen(true);
+                }
                 var originalHtml = $btn.html();
                 var update_id = $btn.attr('data-order_settle_id')
                     || $btn.attr('data-order_payment_update_id')
@@ -7193,7 +7279,8 @@
                             }
 
                             window.dineBillPrinted = false;
-                            $('#dineSettlePayBox').hide();
+                            $('#dineSettleSection').hide();
+                            setDineSettleSectionOpen(false);
                             $('#tableOrderModal .payment_panel').removeClass('is-settle-mode');
                             $('#tableOrderModal .modal-order-edit').removeClass('is-settle-ready');
                             $('.js-pay-collapse-label').text('Payment Method');
