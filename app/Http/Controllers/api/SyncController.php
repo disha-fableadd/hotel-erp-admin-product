@@ -653,6 +653,10 @@ class SyncController extends Controller
             'purchase_invoice' => [],
         ];
 
+        // Desktop local order PK → MySQL orders.id (same push batch)
+        $localToRemoteOrderMap = [];
+        $uuidToRemoteOrderMap = [];
+
         try {
             DB::beginTransaction();
 
@@ -817,11 +821,9 @@ class SyncController extends Controller
                     $table->branch_id = $t['branch_id'] ?? $branchId;
 
                     // Resolve order if linked
-                    if (!empty($t['order_client_uuid'])) {
-                        $ord = \App\Models\Order::where('client_uuid', $t['order_client_uuid'])->first();
-                        $table->order_id = $ord ? $ord->id : null;
-                    } elseif (isset($t['order_id'])) {
-                        $table->order_id = $t['order_id'];
+                    // Resolve order FK via UUID / batch map — never raw Desktop local order_id
+                    if (! empty($t['order_client_uuid']) || isset($t['order_id']) || isset($t['local_order_id'])) {
+                        $table->order_id = $this->resolveSyncedOrderId($t, $localToRemoteOrderMap, $uuidToRemoteOrderMap);
                     }
 
                     if (isset($t['isDeleted'])) {
@@ -1010,6 +1012,18 @@ class SyncController extends Controller
                     $order->client_uuid = $orderUuid;
                     $order->save();
 
+                    // Map Desktop local order PK / UUID → MySQL id for payment_store / order_items
+                    if (! empty($o['local_id'])) {
+                        $localToRemoteOrderMap[(string) $o['local_id']] = (int) $order->id;
+                        $localToRemoteOrderMap[(int) $o['local_id']] = (int) $order->id;
+                    }
+                    // Also map payload "id" when it is the desktop local PK (not yet a server remote_id)
+                    if (! empty($o['id']) && empty($o['remote_id'])) {
+                        $localToRemoteOrderMap[(string) $o['id']] = (int) $order->id;
+                        $localToRemoteOrderMap[(int) $o['id']] = (int) $order->id;
+                    }
+                    $uuidToRemoteOrderMap[$orderUuid] = (int) $order->id;
+
                     // Process Order Items
                     $itemMappings = [];
                     if (!empty($o['items']) || !empty($o['order_items'])) {
@@ -1114,14 +1128,8 @@ class SyncController extends Controller
                     $itemUuid = $it['client_uuid'] ?? (string) Str::uuid();
                     $orderItem = \App\Models\OrderItem::firstOrNew(['client_uuid' => $itemUuid]);
 
-                    $orderId = $it['order_id'] ?? null;
-                    $parentOrd = null;
-                    if (!$orderId && !empty($it['order_client_uuid'])) {
-                        $parentOrd = \App\Models\Order::where('client_uuid', $it['order_client_uuid'])->first();
-                        $orderId = $parentOrd ? $parentOrd->id : null;
-                    } elseif ($orderId) {
-                        $parentOrd = \App\Models\Order::find($orderId);
-                    }
+                    $orderId = $this->resolveSyncedOrderId($it, $localToRemoteOrderMap, $uuidToRemoteOrderMap);
+                    $parentOrd = $orderId ? \App\Models\Order::find($orderId) : null;
 
                     $productId = $it['product_id'] ?? null;
                     $prd = null;
@@ -1150,7 +1158,11 @@ class SyncController extends Controller
                     $qty = intval($it['quantity'] ?? 1);
                     $totalAmount = floatval($it['total_amount'] ?? ($qty * $price));
 
-                    $orderItem->order_id = $orderId ?? 1;
+                    // Never invent order_id=1 — that was a silent FK/wrong-parent bug
+                    if (! $orderId) {
+                        continue;
+                    }
+                    $orderItem->order_id = $orderId;
                     $orderItem->user_id = $itemUserId;
                     $orderItem->product_id = $productId;
                     $orderItem->category_id = $categoryId;
@@ -1203,15 +1215,9 @@ class SyncController extends Controller
                     // 1. Resolve Amount (support both payment_amount and amount)
                     $amount = floatval($p['payment_amount'] ?? $p['amount'] ?? 0.0);
 
-                    // 2. Resolve Order ID
-                    $orderId = $p['order_id'] ?? null;
-                    $ord = null;
-                    if (!$orderId && !empty($p['order_client_uuid'])) {
-                        $ord = \App\Models\Order::where('client_uuid', $p['order_client_uuid'])->first();
-                        $orderId = $ord ? $ord->id : null;
-                    } elseif ($orderId) {
-                        $ord = \App\Models\Order::find($orderId);
-                    }
+                    // 2. Resolve Order ID — NEVER trust Desktop local SQLite order_id as MySQL FK
+                    $orderId = $this->resolveSyncedOrderId($p, $localToRemoteOrderMap, $uuidToRemoteOrderMap);
+                    $ord = $orderId ? \App\Models\Order::find($orderId) : null;
 
                     // 3. Resolve User ID (user_id is NOT NULL in database)
                     $userId = $p['user_id'] ?? null;
@@ -1240,6 +1246,7 @@ class SyncController extends Controller
 
                     // 5. Populate attributes safely
                     $payment->user_id = $userId;
+                    // NULL is valid (FK ON DELETE SET NULL). Unverified local IDs are NOT.
                     $payment->order_id = $orderId;
                     $payment->payment_amount = $amount;
                     if ($hasAmountCol) {
@@ -1686,6 +1693,72 @@ class SyncController extends Controller
         }
 
         return $brandId ? (int) $brandId : null;
+    }
+
+    /**
+     * Map Desktop order references to MySQL orders.id for the current push batch.
+     *
+     * Accepts (in priority order):
+     * - local_order_id / order local map from this push's orders[]
+     * - order_client_uuid / client_uuid of the parent order
+     * - order_id only when it already exists as a MySQL orders.id
+     *
+     * Returns null when unresolved (safe for nullable FKs). Never returns an unverified local SQLite id.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array<int|string, int>  $localToRemoteOrderMap
+     * @param  array<string, int>  $uuidToRemoteOrderMap
+     */
+    protected function resolveSyncedOrderId(array $row, array $localToRemoteOrderMap, array $uuidToRemoteOrderMap): ?int
+    {
+        // Only order-specific local keys (never this row's own local_id — that is the payment/item PK)
+        $candidates = [];
+        foreach (['local_order_id', 'order_local_id'] as $key) {
+            if (isset($row[$key]) && $row[$key] !== '' && $row[$key] !== null) {
+                $candidates[] = $row[$key];
+            }
+        }
+        // Desktop often still sends order_id = SQLite orders.id; try batch map first
+        if (isset($row['order_id']) && $row['order_id'] !== '' && $row['order_id'] !== null) {
+            $candidates[] = $row['order_id'];
+        }
+
+        foreach ($candidates as $localKey) {
+            if (array_key_exists($localKey, $localToRemoteOrderMap)) {
+                return (int) $localToRemoteOrderMap[$localKey];
+            }
+            $asString = (string) $localKey;
+            if (array_key_exists($asString, $localToRemoteOrderMap)) {
+                return (int) $localToRemoteOrderMap[$asString];
+            }
+            if (is_numeric($localKey)) {
+                $asInt = (int) $localKey;
+                if (array_key_exists($asInt, $localToRemoteOrderMap)) {
+                    return (int) $localToRemoteOrderMap[$asInt];
+                }
+            }
+        }
+
+        $orderUuid = $row['order_client_uuid'] ?? $row['order_uuid'] ?? null;
+        if (is_string($orderUuid) && $orderUuid !== '') {
+            if (isset($uuidToRemoteOrderMap[$orderUuid])) {
+                return (int) $uuidToRemoteOrderMap[$orderUuid];
+            }
+            $existingId = \App\Models\Order::where('client_uuid', $orderUuid)->value('id');
+            if ($existingId) {
+                return (int) $existingId;
+            }
+        }
+
+        $rawOrderId = $row['order_id'] ?? $row['remote_order_id'] ?? null;
+        if ($rawOrderId !== null && $rawOrderId !== '' && is_numeric($rawOrderId)) {
+            $rawOrderId = (int) $rawOrderId;
+            if ($rawOrderId > 0 && \App\Models\Order::where('id', $rawOrderId)->exists()) {
+                return $rawOrderId;
+            }
+        }
+
+        return null;
     }
 
     // =============================================
