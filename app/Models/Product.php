@@ -30,6 +30,7 @@ class Product extends Model
         'availablility',
         'status',
         'product_kind',
+        'item_type',
         'food_type',
         'tax_id',
         'tax_inclusive',
@@ -53,12 +54,49 @@ class Product extends Model
         'min_stock' => 'decimal:4',
     ];
 
-    protected $appends = ['image_url'];
+    protected $appends = ['image_url', 'is_liquor', 'resolved_item_type'];
 
     // Relationship with Category
     public function category()
     {
         return $this->belongsTo(Category::class, 'category_id');
+    }
+
+    /**
+     * Explicit product item_type, else inherit from category (Flutter food/liquor split).
+     */
+    public function resolveItemType(): string
+    {
+        if (\Illuminate\Support\Facades\Schema::hasColumn($this->getTable(), 'item_type')) {
+            $raw = strtolower(trim((string) ($this->attributes['item_type'] ?? '')));
+            if (in_array($raw, ['food', 'beverage', 'liquor', 'tobacco', 'general', 'bar'], true)) {
+                return $raw === 'bar' ? 'liquor' : $raw;
+            }
+        }
+
+        $cat = $this->relationLoaded('category') ? $this->category : null;
+        if (! $cat && ! empty($this->category_id)) {
+            try {
+                $cat = Category::find($this->category_id);
+            } catch (\Throwable) {
+                $cat = null;
+            }
+        }
+        if ($cat instanceof Category) {
+            return $cat->resolveItemType();
+        }
+
+        return 'food';
+    }
+
+    public function getResolvedItemTypeAttribute(): string
+    {
+        return $this->resolveItemType();
+    }
+
+    public function getIsLiquorAttribute(): int
+    {
+        return in_array($this->resolveItemType(), ['liquor', 'beverage', 'tobacco', 'bar'], true) ? 1 : 0;
     }
     
     // Relationship with Brand

@@ -15,6 +15,7 @@ class Category extends Model
     protected $fillable = [
         'name',
         'gst_applicable',
+        'item_type',
         'kot_print_target',
         'image',
         'branch_id',
@@ -29,7 +30,44 @@ class Category extends Model
         'isDeleted' => 'integer',
     ];
 
-    protected $appends = ['image_url'];
+    protected $appends = ['image_url', 'is_liquor'];
+
+    /**
+     * food | beverage | liquor | tobacco | general — always present for Flutter sync.
+     */
+    public function resolveItemType(): string
+    {
+        if (\Illuminate\Support\Facades\Schema::hasColumn($this->getTable(), 'item_type')) {
+            $raw = strtolower(trim((string) ($this->attributes['item_type'] ?? $this->item_type ?? '')));
+            if (in_array($raw, ['food', 'beverage', 'liquor', 'tobacco', 'general', 'bar'], true)) {
+                return $raw === 'bar' ? 'liquor' : $raw;
+            }
+        }
+
+        // Legacy: Apply GST OFF → liquor share on Web KPI cards
+        if (! $this->appliesGst()) {
+            return 'liquor';
+        }
+
+        return 'food';
+    }
+
+    public function getItemTypeAttribute($value): string
+    {
+        if ($value !== null && $value !== '') {
+            $raw = strtolower(trim((string) $value));
+            if (in_array($raw, ['food', 'beverage', 'liquor', 'tobacco', 'general', 'bar'], true)) {
+                return $raw === 'bar' ? 'liquor' : $raw;
+            }
+        }
+
+        return $this->resolveItemType();
+    }
+
+    public function getIsLiquorAttribute(): int
+    {
+        return in_array($this->resolveItemType(), ['liquor', 'beverage', 'tobacco', 'bar'], true) ? 1 : 0;
+    }
 
     /** Whether products in this category should receive GST when billing With GST. */
     public function appliesGst(): bool

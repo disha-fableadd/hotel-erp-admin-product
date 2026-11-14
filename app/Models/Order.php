@@ -58,6 +58,71 @@ class Order extends Model
         'service_tax_amount' => 'decimal:2',
     ];
 
+    protected $appends = [
+        'invoice_generated',
+        'invoice_number',
+        'order_lifecycle_status',
+    ];
+
+    /**
+     * 1 when this order counts as a sales invoice / settled or printed bill (not only an open table).
+     */
+    public function getInvoiceGeneratedAttribute(): int
+    {
+        $pay = strtolower(trim((string) ($this->payment_status ?? '')));
+        if (in_array($pay, ['completed', 'paid', 'partially', 'partially paid'], true)) {
+            return 1;
+        }
+        if ((int) ($this->bill_printed ?? 0) === 1) {
+            return 1;
+        }
+        if (! empty($this->attributes['order_invoice'] ?? null)) {
+            return 1;
+        }
+
+        return 0;
+    }
+
+    public function getInvoiceNumberAttribute(): ?string
+    {
+        $inv = $this->attributes['order_invoice'] ?? null;
+        if (is_string($inv) && trim($inv) !== '') {
+            return trim($inv);
+        }
+
+        return ! empty($this->order_number) ? (string) $this->order_number : null;
+    }
+
+    /**
+     * active_table | bill_printed | settled_invoice | cancelled
+     */
+    public function getOrderLifecycleStatusAttribute(): string
+    {
+        $delivery = strtolower(trim((string) ($this->delivery_status ?? '')));
+        if (in_array($delivery, ['cancelled', 'canceled', 'void', 'voided'], true)) {
+            return 'cancelled';
+        }
+
+        $pay = strtolower(trim((string) ($this->payment_status ?? '')));
+        if (in_array($pay, ['completed', 'paid'], true)) {
+            return 'settled_invoice';
+        }
+
+        if ((int) ($this->bill_printed ?? 0) === 1 || in_array($pay, ['partially', 'partially paid'], true)) {
+            return 'bill_printed';
+        }
+
+        if ((int) ($this->table_status ?? 0) === 1 && in_array($delivery, ['running', 'pending', ''], true)) {
+            return 'active_table';
+        }
+
+        if (in_array($pay, ['pending', 'unpaid'], true) && (int) ($this->table_status ?? 0) !== 1) {
+            return 'bill_printed';
+        }
+
+        return 'settled_invoice';
+    }
+
     public function order_items()
     {
         return $this->hasMany(OrderItem::class, 'order_id', 'id');

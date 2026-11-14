@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Services\Tenancy\TenantManager;
+use App\Services\DashboardMetricsService;
 use App\Exceptions\TenantResolutionException;
 
 class SyncController extends Controller
@@ -291,6 +292,51 @@ class SyncController extends Controller
         }
 
         return isset(self::$cachedTableColumns[$db][$lowTable][$lowCol]);
+    }
+
+    // =============================================
+    // DASHBOARD METRICS: POST /api/v1/sync/dashboard-metrics
+    // Authoritative KPIs matching Web ERP (today food/liquor + volume)
+    // =============================================
+    public function dashboardMetrics(Request $request)
+    {
+        try {
+            $this->resolveTenantIfNeeded($request);
+        } catch (TenantResolutionException $e) {
+            return response()->json([
+                'status' => false,
+                'error' => $e->reason,
+                'message' => $e->getMessage(),
+                'expiry_date' => $e->context['expiry_date'] ?? null,
+            ], 403);
+        }
+
+        $branchId = (int) ($request->input('branch_id') ?: 1);
+        $dateFilter = (string) ($request->input('date_filter') ?: 'all_time');
+
+        $data = app(DashboardMetricsService::class)->build([
+            'branch_id' => $branchId,
+            'date_filter' => $dateFilter,
+            'start_date' => $request->input('start_date'),
+            'end_date' => $request->input('end_date'),
+        ]);
+
+        $tenant = null;
+        try {
+            $tenant = is_array(app()->bound('tenant') ? app('tenant') : null)
+                ? app('tenant')
+                : (function_exists('tenant') && is_array(tenant()) ? tenant() : null);
+        } catch (\Throwable) {
+            $tenant = null;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'server_time' => Carbon::now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
+            'branch_id' => $branchId,
+            'data' => $data,
+            'client' => $this->clientPayloadFromTenant($tenant),
+        ], 200);
     }
 
     // =============================================
@@ -583,6 +629,40 @@ class SyncController extends Controller
                         if ($this->fastHasColumn($tableName, 'overall_gst_rate') && $r->overall_gst_rate !== null && $r->overall_gst_rate !== '') {
                             $r->setAttribute('overall_gst_rate', number_format((float) $r->overall_gst_rate, 2, '.', ''));
                         }
+                    } elseif ($tableKey === 'products') {
+                        // Force integer category_id for Desktop KPI food/liquor split
+                        if (empty($r->category_id) && $r->relationLoaded('category') && $r->category) {
+                            $r->setAttribute('category_id', (int) $r->category->id);
+                        } elseif (! empty($r->category_id)) {
+                            $r->setAttribute('category_id', (int) $r->category_id);
+                        }
+                        $itemType = method_exists($r, 'resolveItemType') ? $r->resolveItemType() : 'food';
+                        $r->setAttribute('item_type', $itemType);
+                        $r->setAttribute('resolved_item_type', $itemType);
+                        $r->setAttribute('is_liquor', in_array($itemType, ['liquor', 'beverage', 'tobacco', 'bar'], true) ? 1 : 0);
+                        if ($r->relationLoaded('category') && $r->category) {
+                            $catType = method_exists($r->category, 'resolveItemType')
+                                ? $r->category->resolveItemType()
+                                : (string) ($r->category->item_type ?? 'food');
+                            $r->category->setAttribute('item_type', $catType);
+                            $r->category->setAttribute('is_liquor', in_array($catType, ['liquor', 'beverage', 'tobacco', 'bar'], true) ? 1 : 0);
+                        }
+                    } elseif ($tableKey === 'categories') {
+                        $catType = method_exists($r, 'resolveItemType') ? $r->resolveItemType() : 'food';
+                        $r->setAttribute('item_type', $catType);
+                        $r->setAttribute('is_liquor', in_array($catType, ['liquor', 'beverage', 'tobacco', 'bar'], true) ? 1 : 0);
+                    } elseif ($tableKey === 'orders') {
+                        // Ensure lifecycle fields always present for Sales Bills / dashboard parity
+                        $r->setAttribute('invoice_generated', (int) ($r->invoice_generated ?? 0));
+                        $r->setAttribute('invoice_number', $r->invoice_number);
+                        $r->setAttribute('order_lifecycle_status', (string) ($r->order_lifecycle_status ?? 'settled_invoice'));
+                        if (! empty($r->order_items)) {
+                            foreach ($r->order_items as $item) {
+                                if (empty($item->category_id) && $item->relationLoaded('product') && $item->product && ! empty($item->product->category_id)) {
+                                    $item->setAttribute('category_id', (int) $item->product->category_id);
+                                }
+                            }
+                        }
                     }
                     $active[] = $r;
                 }
@@ -715,6 +795,14 @@ class SyncController extends Controller
                         $cat->gst_applicable = filter_var($c['gst_applicable'], FILTER_VALIDATE_BOOLEAN);
                     } elseif (! $cat->exists) {
                         $cat->gst_applicable = true;
+                    }
+                    if ($this->fastHasColumn('categories', 'item_type') && array_key_exists('item_type', $c)) {
+                        $type = strtolower(trim((string) $c['item_type']));
+                        $cat->item_type = in_array($type, ['food', 'beverage', 'liquor', 'tobacco', 'general'], true)
+                            ? $type
+                            : ((isset($c['is_liquor']) && (int) $c['is_liquor'] === 1) ? 'liquor' : 'food');
+                    } elseif ($this->fastHasColumn('categories', 'item_type') && array_key_exists('is_liquor', $c)) {
+                        $cat->item_type = ((int) $c['is_liquor'] === 1) ? 'liquor' : 'food';
                     }
                     $cat->branch_id = $c['branch_id'] ?? $branchId;
                     if (isset($c['isDeleted'])) {
@@ -901,6 +989,16 @@ class SyncController extends Controller
 
                     if (isset($p['isDeleted'])) {
                         $product->isDeleted = (int) $p['isDeleted'];
+                    }
+                    if ($this->fastHasColumn('products', 'item_type')) {
+                        if (! empty($p['item_type']) || ! empty($p['resolved_item_type'])) {
+                            $type = strtolower(trim((string) ($p['item_type'] ?? $p['resolved_item_type'])));
+                            $product->item_type = in_array($type, ['food', 'beverage', 'liquor', 'tobacco', 'general'], true)
+                                ? $type
+                                : null;
+                        } elseif (array_key_exists('is_liquor', $p)) {
+                            $product->item_type = ((int) $p['is_liquor'] === 1) ? 'liquor' : 'food';
+                        }
                     }
                     $product->client_uuid = $uuid;
                     $product->save();
