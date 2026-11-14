@@ -663,6 +663,19 @@ class SyncController extends Controller
                                 }
                             }
                         }
+                    } elseif ($tableKey === 'users') {
+                        // Always include admin/staff profile photo for Desktop My Profile sync
+                        $rel = $this->normalizeSyncedImagePath((string) ($r->profile_image ?? ''));
+                        $r->setAttribute('profile_image', $rel);
+                        $r->setAttribute(
+                            'profile_image_url',
+                            $rel
+                                ? (function_exists('tenant_image_url') ? tenant_image_url($rel) : asset('storage/' . $rel))
+                                : ($r->profile_image_url ?? null)
+                        );
+                        $r->setAttribute('remote_id', (int) $r->id);
+                        // Never send password hash to Desktop
+                        $r->makeHidden(['password', 'remember_token', 'face_descriptor']);
                     }
                     $active[] = $r;
                 }
@@ -740,24 +753,61 @@ class SyncController extends Controller
         try {
             DB::beginTransaction();
 
-            // 1. Users (Customers, Waiters, Staff)
+            // 1. Users (Admin, Staff, Customers, Waiters) — bi-directional profile + avatar
             if (!empty($payload['users'])) {
                 foreach ($payload['users'] as $u) {
-                    $uuid = $u['client_uuid'] ?? (string) Str::uuid();
-                    $user = \App\Models\User::firstOrNew(['client_uuid' => $uuid]);
+                    $user = $this->resolveSyncedUser($u);
+                    $uuid = $u['client_uuid']
+                        ?? $user->client_uuid
+                        ?? (string) Str::uuid();
 
-                    $user->name = $u['name'] ?? 'Guest Customer';
-                    $user->email = !empty($u['email']) ? $u['email'] : null;
-                    $user->phone = $u['phone'] ?? null;
-                    $user->role = $u['role'] ?? 'customer';
-                    $user->branch_id = $u['branch_id'] ?? $branchId;
-                    if (!empty($u['password'])) {
+                    // Never blank out an existing admin name/email with empty payload noise
+                    if (! empty($u['name'])) {
+                        $user->name = $u['name'];
+                    } elseif (! $user->exists) {
+                        $user->name = 'Guest Customer';
+                    }
+                    if (array_key_exists('email', $u)) {
+                        $user->email = ! empty($u['email']) ? $u['email'] : $user->email;
+                    }
+                    if (array_key_exists('phone', $u)) {
+                        $user->phone = $u['phone'];
+                    }
+                    if (! empty($u['role'])) {
+                        $user->role = $u['role'];
+                    } elseif (! $user->exists) {
+                        $user->role = 'customer';
+                    }
+                    if (isset($u['branch_id'])) {
+                        $user->branch_id = $u['branch_id'];
+                    } elseif (! $user->exists) {
+                        $user->branch_id = $branchId;
+                    }
+                    if (! empty($u['password'])) {
                         $user->password = Hash::make($u['password']);
+                    } elseif (! $user->exists && empty($user->password)) {
+                        // New synced customer/staff without password — unusable login until set
+                        $user->password = Hash::make(Str::random(32));
+                    }
+                    if (isset($u['status']) && $this->fastHasColumn('users', 'status')) {
+                        $user->status = $u['status'];
+                    }
+                    if (isset($u['account_status']) && $this->fastHasColumn('users', 'account_status')) {
+                        $user->account_status = $u['account_status'];
                     }
                     if (isset($u['isDeleted'])) {
-                        $user->isDeleted = (int)$u['isDeleted'];
+                        $user->isDeleted = (int) $u['isDeleted'];
                     }
-                    $user->client_uuid = $uuid;
+                    // Profile photo relative path from upload-image (e.g. profile_images/xyz.jpg)
+                    if ($this->fastHasColumn('users', 'profile_image') && array_key_exists('profile_image', $u)) {
+                        $img = $this->normalizeSyncedImagePath((string) ($u['profile_image'] ?? ''));
+                        if ($img !== null) {
+                            $user->profile_image = $img;
+                        }
+                    }
+                    if ($this->fastHasColumn('users', 'client_uuid') && empty($user->client_uuid)) {
+                        $user->client_uuid = $uuid;
+                    }
                     $user->save();
 
                     // Optional User Detail
@@ -777,7 +827,9 @@ class SyncController extends Controller
                     $syncedMappings['users'][] = [
                         'local_id' => $u['local_id'] ?? null,
                         'remote_id' => $user->id,
-                        'client_uuid' => $uuid,
+                        'client_uuid' => $user->client_uuid ?? $uuid,
+                        'profile_image' => $user->profile_image ?? null,
+                        'profile_image_url' => $user->profile_image_url ?? null,
                     ];
                 }
             }
@@ -1794,6 +1846,68 @@ class SyncController extends Controller
     }
 
     /**
+     * Resolve existing user for sync push (admin/staff/customer) without creating duplicates.
+     * Match order: remote_id/id → client_uuid → email → admin role.
+     *
+     * @param  array<string, mixed>  $u
+     */
+    protected function resolveSyncedUser(array $u): \App\Models\User
+    {
+        $user = null;
+
+        $remoteId = $u['remote_id'] ?? null;
+        if ($remoteId === null || $remoteId === '' || $remoteId === 0 || $remoteId === '0') {
+            // Desktop often sends id=1 for local admin; only trust when remote_id present OR role admin
+            if (! empty($u['id']) && (! empty($u['remote_id']) || (($u['role'] ?? '') === 'admin'))) {
+                $remoteId = $u['id'];
+            }
+        }
+        if (! empty($remoteId) && is_numeric($remoteId)) {
+            $user = \App\Models\User::find((int) $remoteId);
+        }
+
+        if (! $user && ! empty($u['client_uuid']) && $this->fastHasColumn('users', 'client_uuid')) {
+            $user = \App\Models\User::where('client_uuid', $u['client_uuid'])->first();
+        }
+
+        if (! $user && ! empty($u['email'])) {
+            $user = \App\Models\User::where('email', $u['email'])->first();
+        }
+
+        if (! $user && isset($u['role']) && strtolower((string) $u['role']) === 'admin') {
+            $user = \App\Models\User::where('role', 'admin')
+                ->where(function ($q) {
+                    $q->where('isDeleted', '!=', 1)->orWhereNull('isDeleted');
+                })
+                ->orderBy('id')
+                ->first();
+        }
+
+        return $user ?: new \App\Models\User();
+    }
+
+    /**
+     * Normalize uploaded / pushed image path to a relative public-disk path.
+     */
+    protected function normalizeSyncedImagePath(string $img): ?string
+    {
+        $img = trim($img);
+        if ($img === '') {
+            return null;
+        }
+        $img = preg_replace('#^public/#', '', $img);
+        $img = preg_replace('#^storage/#', '', $img);
+        if (preg_match('#/storage/tenants/\d+/app/public/(.+)$#', $img, $m)) {
+            $img = $m[1];
+        } elseif (preg_match('#/storage/(.+)$#', $img, $m)) {
+            $img = $m[1];
+        }
+        $img = ltrim((string) $img, '/');
+
+        return $img !== '' ? $img : null;
+    }
+
+    /**
      * Map Desktop order references to MySQL orders.id for the current push batch.
      *
      * Accepts (in priority order):
@@ -1869,33 +1983,73 @@ class SyncController extends Controller
 
     // =============================================
     // IMAGE UPLOAD: POST /api/v1/sync/upload-image
+    // Supports folder=profile_images|img/product|...
+    // Files land in tenant public disk: storage/tenants/{id}/app/public/{folder}/
     // =============================================
     public function uploadImage(Request $request)
     {
         try {
             $this->resolveTenantIfNeeded($request);
-        } catch (\Throwable $e) {
-            // Proceed with upload
+        } catch (TenantResolutionException $e) {
+            return response()->json([
+                'status' => false,
+                'success' => false,
+                'error' => $e->reason,
+                'message' => $e->getMessage(),
+            ], 403);
+        } catch (\Throwable) {
+            // Tenancy off / optional license on local
         }
 
         $request->validate([
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'folder' => 'nullable|string|max:100',
         ]);
 
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('img/product', 'public');
-            $fullUrl = function_exists('tenant_image_url') ? tenant_image_url($imagePath) : asset('storage/' . $imagePath);
+        if (! $request->hasFile('image')) {
             return response()->json([
-                'status' => 'success',
-                'path' => $imagePath,
-                'url' => $fullUrl,
-            ], 200);
+                'status' => false,
+                'success' => false,
+                'message' => 'No image uploaded',
+            ], 400);
         }
 
+        $folder = trim((string) ($request->input('folder') ?: 'img/product'), '/');
+        // Allow only safe relative folders (no traversal)
+        $folder = str_replace('\\', '/', $folder);
+        $folder = preg_replace('#\.\.+#', '', $folder);
+        $allowed = [
+            'profile_images',
+            'img/product',
+            'img/category',
+            'img/brand',
+            'img/sync',
+            'products',
+            'categories',
+        ];
+        $folderLower = strtolower($folder);
+        if (! in_array($folderLower, $allowed, true) && ! str_starts_with($folderLower, 'img/')) {
+            $folder = 'profile_images';
+        }
+
+        $file = $request->file('image');
+        $fileName = Str::random(40) . '.' . strtolower($file->getClientOriginalExtension() ?: 'jpg');
+        $imagePath = $file->storeAs($folder, $fileName, 'public');
+        $fullUrl = function_exists('tenant_image_url') ? tenant_image_url($imagePath) : asset('storage/' . $imagePath);
+
         return response()->json([
-            'status' => 'error',
-            'message' => 'No image uploaded',
-        ], 400);
+            'status' => true,
+            'success' => true,
+            'message' => 'Image uploaded successfully.',
+            'path' => $imagePath,
+            'url' => $fullUrl,
+            'data' => [
+                'path' => $imagePath,
+                'relative_path' => $imagePath,
+                'url' => $fullUrl,
+                'folder' => $folder,
+            ],
+        ], 200);
     }
 
     // =============================================
