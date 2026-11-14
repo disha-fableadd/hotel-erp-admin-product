@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Services\Tenancy\TenantManager;
 use App\Services\DashboardMetricsService;
+use App\Services\ProductMasterService;
 use App\Exceptions\TenantResolutionException;
 
 class SyncController extends Controller
@@ -548,7 +549,7 @@ class SyncController extends Controller
 
             // Eager load relations for clean nested structures
             if ($tableKey === 'products') {
-                $query->with(['category', 'brand', 'quantityType']);
+                $query->with(['category', 'brand', 'quantityType', 'variants', 'addons']);
             }
             if ($tableKey === 'orders') {
                 $query->with([
@@ -640,6 +641,22 @@ class SyncController extends Controller
                         $r->setAttribute('item_type', $itemType);
                         $r->setAttribute('resolved_item_type', $itemType);
                         $r->setAttribute('is_liquor', in_array($itemType, ['liquor', 'beverage', 'tobacco', 'bar'], true) ? 1 : 0);
+
+                        // Restaurant / kitchen fields — never omit (Web + multi-PC parity)
+                        $kind = strtolower((string) ($r->product_kind ?? 'general')) ?: 'general';
+                        $r->setAttribute('product_kind', $kind);
+                        $r->setAttribute('product_type', $kind); // Flutter alias
+                        $r->setAttribute('food_type', strtolower((string) ($r->food_type ?? 'na')) ?: 'na');
+                        $r->setAttribute('kitchen_station', $r->kitchen_station);
+                        $r->setAttribute('prep_time_minutes', $r->prep_time_minutes !== null ? (int) $r->prep_time_minutes : null);
+
+                        $serialized = app(ProductMasterService::class)->serializeVariantsForSync($r);
+                        // Desktop expects variants[] (incl. Addon rows via color) + separate addons[]
+                        $r->setAttribute('variants', $serialized['variants_with_addons']);
+                        $r->setAttribute('addons', $serialized['addons']);
+                        $r->setRelation('variants', collect($serialized['variants']));
+                        $r->setRelation('addons', collect($serialized['addons']));
+
                         if ($r->relationLoaded('category') && $r->category) {
                             $catType = method_exists($r->category, 'resolveItemType')
                                 ? $r->category->resolveItemType()
@@ -1055,10 +1072,40 @@ class SyncController extends Controller
                     $product->client_uuid = $uuid;
                     $product->save();
 
+                    // product_kind / food_type / kitchen / prep + nested variants & addons
+                    app(ProductMasterService::class)->applyDesktopProductPayload($product, $p);
+
+                    $variantMaps = [];
+                    try {
+                        $product->load(['variants', 'addons']);
+                        foreach ($product->variants as $v) {
+                            $variantMaps[] = [
+                                'local_id' => null,
+                                'remote_id' => $v->id,
+                                'client_uuid' => $v->client_uuid ?? null,
+                                'name' => $v->name,
+                                'color' => 'Variant',
+                            ];
+                        }
+                        foreach ($product->addons as $a) {
+                            $variantMaps[] = [
+                                'local_id' => null,
+                                'remote_id' => $a->id,
+                                'name' => $a->name,
+                                'color' => 'Addon',
+                            ];
+                        }
+                    } catch (\Throwable) {
+                        // ignore mapping enrichment failures
+                    }
+
                     $syncedMappings['products'][] = [
                         'local_id' => $p['local_id'] ?? null,
                         'remote_id' => $product->id,
                         'client_uuid' => $uuid,
+                        'product_kind' => $product->product_kind ?? null,
+                        'food_type' => $product->food_type ?? null,
+                        'variants' => $variantMaps,
                     ];
                 }
             }
