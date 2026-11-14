@@ -65,6 +65,11 @@ Content-Type: application/json
       "today_food_sales": 4754.30,
       "today_liquor_share": 3044.80,
       "date": "2026-11-14",
+      "timezone": "Asia/Kolkata",
+      "day_start": "2026-11-14 00:00:00",
+      "day_end": "2026-11-14 23:59:59",
+      "orders_count": 8,
+      "includes_pending_and_partial": true,
       "currency_symbol": "₹",
       "currency_position": "left"
     },
@@ -99,12 +104,14 @@ Content-Type: application/json
 
 ### How Web computes today KPIs (same on this API)
 
-1. Orders where `isDeleted = 0` and `DATE(created_at) = today` (Asia/Kolkata)  
-2. **All** payment statuses (pending + partially + completed)  
-3. Split bill `total_amount` by line items:  
+1. Orders in IST day window: `created_at` between `day_start` and `day_end` (`Asia/Kolkata`, not UTC `CURDATE()`)  
+2. Soft-delete: `isDeleted` is `0` / `'0'` / `null`  
+3. **All** payment statuses (pending + partially + completed) — see `includes_pending_and_partial: true`  
+4. Split bill `total_amount` by line items:  
    - `item_type` in `liquor|beverage|tobacco` **or** category `gst_applicable = false` → **Liquor**  
    - else → **Food**  
-4. Food + Liquor always equals Total (paisa-rounded)
+5. Food + Liquor always equals Total (paisa-rounded)  
+6. Send the same `branch_id` Web uses (usually admin/sub-admin id, often `1`)
 
 ---
 

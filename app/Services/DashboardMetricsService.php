@@ -34,17 +34,37 @@ class DashboardMetricsService
         $currencySymbol = $setting->currency_symbol ?? '₹';
         $currencyPosition = $setting->currency_position ?? 'left';
 
-        $today = Carbon::now('Asia/Kolkata')->format('Y-m-d');
+        // Always evaluate "today" in IST (hotel ops timezone) — never bare MySQL CURDATE()/UTC.
+        $tz = 'Asia/Kolkata';
+        $todayStart = Carbon::now($tz)->startOfDay();
+        $todayEnd = Carbon::now($tz)->endOfDay();
+        $today = $todayStart->format('Y-m-d');
+
+        // Align MySQL session TZ so DATE()/comparisons match IST wall-clock stored by the app
+        try {
+            DB::statement("SET time_zone = '+05:30'");
+        } catch (\Throwable) {
+            // Shared hosts may deny SET time_zone — whereBetween below still uses IST strings
+        }
 
         $ordersQuery = Order::query()
-            ->where('isDeleted', 0)
-            ->whereRaw('DATE(created_at) = ?', [$today]);
+            // Match Web dashboard: include rows where isDeleted is 0/null (not soft-deleted)
+            ->where(function ($q) {
+                $q->where('isDeleted', 0)
+                    ->orWhere('isDeleted', '0')
+                    ->orWhereNull('isDeleted');
+            })
+            // Inclusive IST day window (no payment_status filter — pending + partially + completed)
+            ->whereBetween('created_at', [
+                $todayStart->format('Y-m-d H:i:s'),
+                $todayEnd->format('Y-m-d H:i:s'),
+            ]);
 
         if (! empty($branchIdToUse)) {
             $ordersQuery->where('branch_id', $branchIdToUse);
         }
 
-        $orders = (clone $ordersQuery)->get(['id', 'total_amount']);
+        $orders = (clone $ordersQuery)->get(['id', 'total_amount', 'payment_status', 'created_at']);
         $totalSales = round((float) $orders->sum('total_amount'), 2);
 
         $foodSales = 0.0;
@@ -193,6 +213,12 @@ class DashboardMetricsService
             'currency_symbol' => $currencySymbol,
             'currency_position' => $currencyPosition,
             'date' => $today,
+            'timezone' => $tz,
+            'day_start' => $todayStart->format('Y-m-d H:i:s'),
+            'day_end' => $todayEnd->format('Y-m-d H:i:s'),
+            'orders_count' => $orders->count(),
+            // Explicit: no payment_status filter was applied
+            'includes_pending_and_partial' => true,
         ];
     }
 
@@ -315,6 +341,11 @@ class DashboardMetricsService
                 'today_food_sales' => $today['food_sales'],
                 'today_liquor_share' => $today['liquor_sales'],
                 'date' => $today['date'],
+                'timezone' => $today['timezone'] ?? 'Asia/Kolkata',
+                'day_start' => $today['day_start'] ?? null,
+                'day_end' => $today['day_end'] ?? null,
+                'orders_count' => $today['orders_count'] ?? 0,
+                'includes_pending_and_partial' => $today['includes_pending_and_partial'] ?? true,
                 'currency_symbol' => $today['currency_symbol'],
                 'currency_position' => $today['currency_position'],
             ],

@@ -800,8 +800,20 @@ class SyncController extends Controller
                     } elseif (! $user->exists) {
                         $user->branch_id = $branchId;
                     }
-                    if (! empty($u['password'])) {
-                        $user->password = Hash::make($u['password']);
+                    // Password: accept plain text from Desktop, hash once before save.
+                    // User model casts password as 'hashed' — assign plaintext OR Hash::make (cast skips already-hashed).
+                    if (array_key_exists('password', $u)) {
+                        $plain = trim((string) ($u['password'] ?? ''));
+                        $isMasked = $plain === '' || preg_match('/^\*+$/', $plain) === 1;
+                        $alreadyHashed = str_starts_with($plain, '$2y$')
+                            || str_starts_with($plain, '$2a$')
+                            || str_starts_with($plain, '$2b$')
+                            || str_starts_with($plain, '$argon');
+                        if (! $isMasked && ! $alreadyHashed) {
+                            $user->password = Hash::make($plain);
+                        } elseif (! $isMasked && $alreadyHashed) {
+                            $user->password = $plain;
+                        }
                     } elseif (! $user->exists && empty($user->password)) {
                         // New synced customer/staff without password — unusable login until set
                         $user->password = Hash::make(Str::random(32));
