@@ -596,6 +596,26 @@ class SyncController extends Controller
                     $isDel = !is_null($r->deleted_at);
                 }
 
+                // Table No safety: active tables must never be treated as deleted
+                if ($tableKey === 'table_no') {
+                    $rawStatus = strtolower(trim((string)($r->status ?? '')));
+                    $isTableActive = in_array($rawStatus, ['running', 'printed', 'reserved', 'blank'], true)
+                        || ((int)($r->table_status ?? 0) > 0)
+                        || !empty($r->order_id);
+
+                    if ($isDel && $isTableActive) {
+                        try {
+                            DB::table('table_no')->where('id', $r->id)->update([
+                                'isDeleted' => 0,
+                                'deleted_at' => null,
+                            ]);
+                            $r->isDeleted = 0;
+                            $r->deleted_at = null;
+                        } catch (\Throwable $e) {}
+                        $isDel = false;
+                    }
+                }
+
                 if ($isDel) {
                     $deleted[] = $r->id;
                     $deletedRecs[] = [
@@ -958,26 +978,63 @@ class SyncController extends Controller
             }
 
             // 5. Restaurant Tables (table_no) — same fields as web / get-all-tables (incl. Rooftop + printed)
-            if (!empty($payload['table_no'])) {
+            if (!empty($payload['table_no']) && is_array($payload['table_no'])) {
                 foreach ($payload['table_no'] as $t) {
-                    $uuid = $t['client_uuid'] ?? (string) Str::uuid();
-                    $table = \App\Models\Table_no::withoutGlobalScope('active')
-                        ->firstOrNew(['client_uuid' => $uuid]);
-                    $table->table_name = $t['table_name'];
+                    $tableId = $t['id'] ?? $t['remote_id'] ?? null;
+                    $table = null;
+                    if ($tableId) {
+                        $table = \App\Models\Table_no::withoutGlobalScope('active')->find($tableId);
+                    }
+                    if (!$table && !empty($t['client_uuid'])) {
+                        $table = \App\Models\Table_no::withoutGlobalScope('active')
+                            ->where('client_uuid', $t['client_uuid'])
+                            ->first();
+                    }
+                    if (!$table && !empty($t['table_name'])) {
+                        $table = \App\Models\Table_no::withoutGlobalScope('active')
+                            ->where('branch_id', $t['branch_id'] ?? $branchId)
+                            ->where('table_name', $t['table_name'])
+                            ->first();
+                    }
+                    if (!$table) {
+                        $table = new \App\Models\Table_no();
+                    }
+
+                    $uuid = $t['client_uuid'] ?? ($table->client_uuid ?: (string) Str::uuid());
+                    $table->client_uuid = $uuid;
+
+                    if (isset($t['table_name'])) {
+                        $table->table_name = $t['table_name'];
+                    } elseif (!$table->exists) {
+                        $table->table_name = 'Table ' . ($tableId ?? '');
+                    }
+
                     // Free-text type; web + Flutter use AC | Non AC | Premium | Rooftop
-                    $table->table_type = $t['table_type'] ?? 'AC';
+                    if (isset($t['table_type'])) {
+                        $table->table_type = $t['table_type'];
+                    } elseif (!$table->exists) {
+                        $table->table_type = 'AC';
+                    }
 
                     $rawStatus = strtolower(trim((string) ($t['status'] ?? '')));
-                    if (in_array($rawStatus, [
+                    $isPrinted = ($rawStatus === \App\Models\Table_no::STATUS_PRINTED)
+                        || (!empty($t['bill_printed']))
+                        || (!empty($t['is_printed']))
+                        || (($t['order_lifecycle_status'] ?? '') === 'bill_printed')
+                        || ((int) ($t['table_status'] ?? 0) === 3);
+
+                    if ($isPrinted) {
+                        $table->status = \App\Models\Table_no::STATUS_PRINTED;
+                        $table->table_status = 3;
+                    } elseif (in_array($rawStatus, [
                         \App\Models\Table_no::STATUS_BLANK,
                         \App\Models\Table_no::STATUS_RUNNING,
                         \App\Models\Table_no::STATUS_RESERVED,
-                        \App\Models\Table_no::STATUS_PRINTED,
                     ], true)) {
                         $table->status = $rawStatus;
                         $table->table_status = \App\Models\Table_no::statusToInt($rawStatus);
-                    } else {
-                        $tableStatusInt = (int) ($t['table_status'] ?? 0);
+                    } elseif (isset($t['table_status'])) {
+                        $tableStatusInt = (int) $t['table_status'];
                         $table->table_status = $tableStatusInt;
                         $table->status = match ($tableStatusInt) {
                             1 => \App\Models\Table_no::STATUS_RUNNING,
@@ -987,18 +1044,39 @@ class SyncController extends Controller
                         };
                     }
 
-                    $table->branch_id = $t['branch_id'] ?? $branchId;
+                    if (isset($t['branch_id'])) {
+                        $table->branch_id = $t['branch_id'];
+                    } elseif (!$table->exists) {
+                        $table->branch_id = $branchId;
+                    }
 
                     // Resolve order if linked
                     // Resolve order FK via UUID / batch map — never raw Desktop local order_id
                     if (! empty($t['order_client_uuid']) || isset($t['order_id']) || isset($t['local_order_id'])) {
-                        $table->order_id = $this->resolveSyncedOrderId($t, $localToRemoteOrderMap, $uuidToRemoteOrderMap);
+                        $resolvedOrder = $this->resolveSyncedOrderId($t, $localToRemoteOrderMap, $uuidToRemoteOrderMap);
+                        if ($resolvedOrder) {
+                            $table->order_id = $resolvedOrder;
+                        } elseif (isset($t['order_id']) && is_numeric($t['order_id'])) {
+                            $table->order_id = (int)$t['order_id'];
+                        }
+                    } elseif (array_key_exists('order_id', $t) && is_null($t['order_id'])) {
+                        $table->order_id = null;
                     }
 
-                    if (isset($t['isDeleted'])) {
+                    if (Schema::hasColumn('table_no', 'bill_printed_at')) {
+                        if (isset($t['bill_printed_at'])) {
+                            $table->bill_printed_at = $t['bill_printed_at'];
+                        } elseif ($table->status === \App\Models\Table_no::STATUS_PRINTED && empty($table->bill_printed_at)) {
+                            $table->bill_printed_at = now();
+                        }
+                    }
+
+                    if (isset($t['is_deleted'])) {
+                        $table->isDeleted = (int)$t['is_deleted'];
+                    } elseif (isset($t['isDeleted'])) {
                         $table->isDeleted = (int)$t['isDeleted'];
                     }
-                    $table->client_uuid = $uuid;
+
                     $table->save();
 
                     $syncedMappings['table_no'][] = [
@@ -1143,21 +1221,27 @@ class SyncController extends Controller
                         }
                     }
 
-                    // Resolve customer / user
-                    $userId = $o['user_id'] ?? $o['customer_id'] ?? null;
-                    if (!$userId && !empty($o['user_client_uuid'])) {
+                    // Resolve customer / user (walk-in/unregistered shouldn't attach Admin User ID 1)
+                    $customerId = $o['user_id'] ?? $o['customer_id'] ?? null;
+                    if (!$customerId && !empty($o['user_client_uuid'])) {
                         $user = \App\Models\User::where('client_uuid', $o['user_client_uuid'])->first();
-                        $userId = $user ? $user->id : null;
+                        $customerId = $user ? $user->id : null;
                     }
-                    if (!$userId) {
-                        try {
-                            $userId = auth('api')->id() ?? auth()->id();
-                        } catch (\Throwable $e) {
-                            $userId = null;
+                    if ($customerId == 1) {
+                        // ID 1 is Admin, never a walk-in customer!
+                        $customerId = null;
+                    }
+                    $userId = $customerId;
+
+                    // Resolve customer name
+                    $customerName = $o['customer_name'] ?? $o['import_party_name'] ?? null;
+                    if (empty($customerName)) {
+                        if ($userId) {
+                            $foundUser = \App\Models\User::find($userId);
+                            $customerName = $foundUser ? $foundUser->name : 'Customer';
+                        } else {
+                            $customerName = 'Unregistered Customer';
                         }
-                    }
-                    if (!$userId) {
-                        $userId = \App\Models\User::where('branch_id', $branchId)->value('id') ?? \App\Models\User::value('id') ?? 1;
                     }
 
                     // Avoid duplicate order number conflicts
@@ -1189,7 +1273,7 @@ class SyncController extends Controller
 
                     $order->order_number = $orderNumber;
                     $order->user_id = $userId;
-                    $order->customer_name = $o['customer_name'] ?? null;
+                    $order->customer_name = $customerName;
                     $order->customer_phone = $o['customer_phone'] ?? null;
                     $order->table_no = $tableId ?? 0;
                     $order->order_type = $o['order_type'] ?? 'Dine-In';
@@ -1200,9 +1284,34 @@ class SyncController extends Controller
                     $order->payment_status = $o['payment_status'] ?? 'completed';
                     $order->payment_method = $o['payment_method'] ?? 'cash';
                     $order->delivery_status = $o['delivery_status'] ?? $order->delivery_status ?? 'running';
+
+                    $isBillPrinted = !empty($o['bill_printed']) 
+                        || !empty($o['is_printed']) 
+                        || (($o['order_lifecycle_status'] ?? '') === 'bill_printed') 
+                        || ((int)($o['table_status'] ?? 0) === 3);
+
                     if (isset($o['table_status'])) {
                         $order->table_status = (int)$o['table_status'];
+                    } elseif ($isBillPrinted) {
+                        $order->table_status = 3;
                     }
+
+                    if (isset($o['bill_printed'])) {
+                        $order->bill_printed = (int)$o['bill_printed'];
+                    } elseif ($isBillPrinted) {
+                        $order->bill_printed = 1;
+                    }
+
+                    if (isset($o['bill_printed_at'])) {
+                        $order->bill_printed_at = $o['bill_printed_at'];
+                    } elseif ($isBillPrinted && empty($order->bill_printed_at)) {
+                        $order->bill_printed_at = now();
+                    }
+
+                    if (Schema::hasColumn('orders', 'order_lifecycle_status') && isset($o['order_lifecycle_status'])) {
+                        $order->order_lifecycle_status = $o['order_lifecycle_status'];
+                    }
+
                     // Persist GST + Service Tax from Desktop (must match Web POS columns)
                     $this->applyOrderTaxFieldsFromSync($order, $o);
                     // Petpooja-style KOT fire ticket (latest Update delta) — one sync API carries everything
@@ -1221,6 +1330,53 @@ class SyncController extends Controller
                     $order->client_uuid = $orderUuid;
                     $order->save();
 
+                    // AUTOMATIC TABLE_NO PARITY:
+                    // Ensure table_no mirrors the order's active / printed / settled status
+                    $tableIdentifier = $o['table_id'] ?? $o['table_no'] ?? $order->table_no ?? null;
+                    $tableClientUuid = $o['table_client_uuid'] ?? null;
+                    if (!empty($tableIdentifier) || !empty($tableClientUuid)) {
+                        $tblQuery = \App\Models\Table_no::withoutGlobalScope('active');
+                        if (!empty($tableClientUuid)) {
+                            $tblQuery->where('client_uuid', $tableClientUuid);
+                        } elseif (is_numeric($tableIdentifier)) {
+                            $tblQuery->where(function($q) use ($tableIdentifier) {
+                                $q->where('id', (int)$tableIdentifier)
+                                  ->orWhere('table_name', (string)$tableIdentifier);
+                            });
+                        } else {
+                            $tblQuery->where('table_name', (string)$tableIdentifier);
+                        }
+
+                        $targetTable = $tblQuery->first();
+                        if ($targetTable) {
+                            $isTablePrinted = ((int)$order->table_status === 3 || (int)$order->bill_printed === 1 || (($o['order_lifecycle_status'] ?? '') === 'bill_printed'));
+                            $payStatus = strtolower(trim((string)($order->payment_status ?? '')));
+                            $delStatus = strtolower(trim((string)($order->delivery_status ?? '')));
+                            $isClosed = in_array($payStatus, ['completed', 'paid']) ||
+                                        in_array($delStatus, ['cancelled', 'canceled', 'void', 'served']);
+
+                            if ($isClosed) {
+                                $targetTable->status = \App\Models\Table_no::STATUS_BLANK;
+                                $targetTable->table_status = 0;
+                                if ($targetTable->order_id == $order->id) {
+                                    $targetTable->order_id = null;
+                                }
+                            } elseif ($isTablePrinted) {
+                                $targetTable->status = \App\Models\Table_no::STATUS_PRINTED;
+                                $targetTable->table_status = 3;
+                                $targetTable->order_id = $order->id;
+                                if (Schema::hasColumn('table_no', 'bill_printed_at')) {
+                                    $targetTable->bill_printed_at = $order->bill_printed_at ?? now();
+                                }
+                            } else {
+                                $targetTable->status = \App\Models\Table_no::STATUS_RUNNING;
+                                $targetTable->table_status = 1;
+                                $targetTable->order_id = $order->id;
+                            }
+                            $targetTable->save();
+                        }
+                    }
+
                     // Map Desktop local order PK / UUID → MySQL id for payment_store / order_items
                     if (! empty($o['local_id'])) {
                         $localToRemoteOrderMap[(string) $o['local_id']] = (int) $order->id;
@@ -1237,14 +1393,53 @@ class SyncController extends Controller
                     $itemMappings = [];
                     if (!empty($o['items']) || !empty($o['order_items'])) {
                         $itemsList = !empty($o['items']) ? $o['items'] : $o['order_items'];
+                        $replaceItems = !empty($o['replace_items']) || !empty($o['replaceItems']);
+                        if (!$replaceItems) {
+                            foreach ($itemsList as $checkIt) {
+                                if (!empty($checkIt['replace_items'])) {
+                                    $replaceItems = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if ($replaceItems) {
+                            \App\Models\OrderItem::where('order_id', $order->id)->delete();
+                        }
+
                         $syncedItemUuids = [];
+                        $syncedItemIds = [];
 
                         foreach ($itemsList as $it) {
-                            $itemUuid = $it['client_uuid'] ?? (string) Str::uuid();
-                            $syncedItemUuids[] = $itemUuid;
+                            $itemId = $it['id'] ?? $it['remote_id'] ?? null;
+                            $itemUuid = $it['client_uuid'] ?? null;
 
-                            // Find existing item by client_uuid or create new
-                            $orderItem = \App\Models\OrderItem::firstOrNew(['client_uuid' => $itemUuid]);
+                            $existingItem = null;
+                            if (!$replaceItems) {
+                                if ($itemId) {
+                                    $existingItem = \App\Models\OrderItem::where('id', $itemId)->first();
+                                }
+                                if (!$existingItem && $itemUuid) {
+                                    $existingItem = \App\Models\OrderItem::where('client_uuid', $itemUuid)->first();
+                                }
+                                if (!$existingItem && !empty($order->id)) {
+                                    $candidateProdId = $it['product_id'] ?? null;
+                                    $candidateProdName = trim((string)($it['product_name'] ?? ''));
+                                    if ($candidateProdId) {
+                                        $existingItem = \App\Models\OrderItem::where('order_id', $order->id)
+                                            ->where('product_id', $candidateProdId)
+                                            ->first();
+                                    } elseif ($candidateProdName !== '') {
+                                        $existingItem = \App\Models\OrderItem::where('order_id', $order->id)
+                                            ->where('product_name', $candidateProdName)
+                                            ->first();
+                                    }
+                                }
+                            }
+
+                            $orderItem = $existingItem ?: new \App\Models\OrderItem();
+                            $itemUuid = $itemUuid ?? ($orderItem->client_uuid ?: (string) Str::uuid());
+                            $syncedItemUuids[] = $itemUuid;
 
                             // Resolve product_id
                             $productId = $it['product_id'] ?? null;
@@ -1259,12 +1454,11 @@ class SyncController extends Controller
                                 $productId = \App\Models\Product::where('branch_id', $branchId)->value('id') ?? \App\Models\Product::value('id') ?? 1;
                             }
 
-                            // Resolve user_id (fixes Field 'user_id' doesn't have a default value)
-                            $itemUserId = $it['user_id'] 
-                                ?? $it['customer_id'] 
-                                ?? $order->user_id 
-                                ?? $userId 
-                                ?? 1;
+                            // Resolve user_id (not admin 1 if walk-in)
+                            $itemUserId = $it['user_id'] ?? $it['customer_id'] ?? $order->user_id ?? $userId ?? null;
+                            if ($itemUserId == 1 && empty($userId)) {
+                                $itemUserId = null;
+                            }
 
                             // Resolve category_id (NOT NULL constraint safe)
                             $categoryId = $it['category_id'] 
@@ -1287,7 +1481,7 @@ class SyncController extends Controller
                             $orderItem->quantity = $qty;
                             $orderItem->total_amount = $totalAmount;
                             $orderItem->branch_id = $it['branch_id'] ?? $o['branch_id'] ?? $branchId;
-                            $orderItem->created_by = $it['created_by'] ?? $order->user_id ?? $userId;
+                            $orderItem->created_by = $it['created_by'] ?? $order->user_id ?? $userId ?? 1;
                             $orderItem->client_uuid = $itemUuid;
 
                             $resolvedProductName = !empty($it['product_name'])
@@ -1296,14 +1490,31 @@ class SyncController extends Controller
                             $orderItem->product_name = $resolvedProductName;
 
                             if (isset($it['variant_id'])) $orderItem->variant_id = $it['variant_id'];
+                            elseif (isset($it['product_variant_id'])) $orderItem->variant_id = $it['product_variant_id'];
+
                             if (isset($it['addons'])) $orderItem->addons = $it['addons'];
                             if (isset($it['isDeleted'])) $orderItem->isDeleted = (int)$it['isDeleted'];
+
+                            if (Schema::hasColumn('order_items', 'item_discount_percent')) {
+                                $orderItem->item_discount_percent = $it['item_discount_percent'] ?? $it['discount_percentage'] ?? 0;
+                            }
+                            if (Schema::hasColumn('order_items', 'item_discount_amount')) {
+                                $orderItem->item_discount_amount = $it['item_discount_amount'] ?? $it['discount_amount'] ?? 0;
+                            }
+                            if (Schema::hasColumn('order_items', 'discount_percentage') && isset($it['discount_percentage'])) {
+                                $orderItem->discount_percentage = $it['discount_percentage'];
+                            }
+                            if (Schema::hasColumn('order_items', 'discount_amount') && isset($it['discount_amount'])) {
+                                $orderItem->discount_amount = $it['discount_amount'];
+                            }
+
                             // KOT printed qty travels in the same sync push (no separate mark-printed API needed for Flutter)
                             if (Schema::hasColumn('order_items', 'kot_printed_qty') && array_key_exists('kot_printed_qty', $it)) {
                                 $orderItem->kot_printed_qty = max(0, (int) $it['kot_printed_qty']);
                             }
 
                             $orderItem->save();
+                            $syncedItemIds[] = $orderItem->id;
 
                             $mapping = [
                                 'local_id' => $it['local_id'] ?? null,
@@ -1315,9 +1526,9 @@ class SyncController extends Controller
                         }
 
                         // Remove items that were deleted from client order
-                        if (!empty($syncedItemUuids)) {
+                        if (!$replaceItems && !empty($syncedItemIds)) {
                             \App\Models\OrderItem::where('order_id', $order->id)
-                                ->whereNotIn('client_uuid', $syncedItemUuids)
+                                ->whereNotIn('id', $syncedItemIds)
                                 ->delete();
                         }
                     }
@@ -1334,11 +1545,29 @@ class SyncController extends Controller
             // 7.5 Standalone Order Items (if pushed directly outside orders)
             if (!empty($payload['order_items'])) {
                 foreach ($payload['order_items'] as $it) {
-                    $itemUuid = $it['client_uuid'] ?? (string) Str::uuid();
-                    $orderItem = \App\Models\OrderItem::firstOrNew(['client_uuid' => $itemUuid]);
+                    $itemId = $it['id'] ?? $it['remote_id'] ?? null;
+                    $itemUuid = $it['client_uuid'] ?? null;
+
+                    $existingItem = null;
+                    if ($itemId) {
+                        $existingItem = \App\Models\OrderItem::find($itemId);
+                    }
+                    if (!$existingItem && $itemUuid) {
+                        $existingItem = \App\Models\OrderItem::where('client_uuid', $itemUuid)->first();
+                    }
+                    $orderItem = $existingItem ?: new \App\Models\OrderItem();
+                    $itemUuid = $itemUuid ?? ($orderItem->client_uuid ?: (string) Str::uuid());
 
                     $orderId = $this->resolveSyncedOrderId($it, $localToRemoteOrderMap, $uuidToRemoteOrderMap);
                     $parentOrd = $orderId ? \App\Models\Order::find($orderId) : null;
+                    if (!$orderId && $existingItem) {
+                        $orderId = $existingItem->order_id;
+                    }
+
+                    // Never invent order_id=1 — that was a silent FK/wrong-parent bug
+                    if (! $orderId) {
+                        continue;
+                    }
 
                     $productId = $it['product_id'] ?? null;
                     $prd = null;
@@ -1355,7 +1584,10 @@ class SyncController extends Controller
                     $itemUserId = $it['user_id'] 
                         ?? $it['customer_id'] 
                         ?? ($parentOrd ? $parentOrd->user_id : null) 
-                        ?? 1;
+                        ?? null;
+                    if ($itemUserId == 1 && (!$parentOrd || empty($parentOrd->user_id))) {
+                        $itemUserId = null;
+                    }
 
                     $categoryId = $it['category_id'] 
                         ?? $prd?->category_id 
@@ -1367,10 +1599,6 @@ class SyncController extends Controller
                     $qty = intval($it['quantity'] ?? 1);
                     $totalAmount = floatval($it['total_amount'] ?? ($qty * $price));
 
-                    // Never invent order_id=1 — that was a silent FK/wrong-parent bug
-                    if (! $orderId) {
-                        continue;
-                    }
                     $orderItem->order_id = $orderId;
                     $orderItem->user_id = $itemUserId;
                     $orderItem->product_id = $productId;
@@ -1381,7 +1609,7 @@ class SyncController extends Controller
                     $orderItem->quantity = $qty;
                     $orderItem->total_amount = $totalAmount;
                     $orderItem->branch_id = $it['branch_id'] ?? $branchId;
-                    $orderItem->created_by = $it['created_by'] ?? $itemUserId;
+                    $orderItem->created_by = $it['created_by'] ?? $itemUserId ?? 1;
                     $orderItem->client_uuid = $itemUuid;
 
                     $resolvedProductName = !empty($it['product_name'])
@@ -1390,8 +1618,24 @@ class SyncController extends Controller
                     $orderItem->product_name = $resolvedProductName;
 
                     if (isset($it['variant_id'])) $orderItem->variant_id = $it['variant_id'];
+                    elseif (isset($it['product_variant_id'])) $orderItem->variant_id = $it['product_variant_id'];
+
                     if (isset($it['addons'])) $orderItem->addons = $it['addons'];
                     if (isset($it['isDeleted'])) $orderItem->isDeleted = (int)$it['isDeleted'];
+
+                    if (Schema::hasColumn('order_items', 'item_discount_percent')) {
+                        $orderItem->item_discount_percent = $it['item_discount_percent'] ?? $it['discount_percentage'] ?? 0;
+                    }
+                    if (Schema::hasColumn('order_items', 'item_discount_amount')) {
+                        $orderItem->item_discount_amount = $it['item_discount_amount'] ?? $it['discount_amount'] ?? 0;
+                    }
+                    if (Schema::hasColumn('order_items', 'discount_percentage') && isset($it['discount_percentage'])) {
+                        $orderItem->discount_percentage = $it['discount_percentage'];
+                    }
+                    if (Schema::hasColumn('order_items', 'discount_amount') && isset($it['discount_amount'])) {
+                        $orderItem->discount_amount = $it['discount_amount'];
+                    }
+
                     if (Schema::hasColumn('order_items', 'kot_printed_qty') && array_key_exists('kot_printed_qty', $it)) {
                         $orderItem->kot_printed_qty = max(0, (int) $it['kot_printed_qty']);
                     }
